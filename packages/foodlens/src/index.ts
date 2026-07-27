@@ -1,5 +1,5 @@
 /**
- * @jessie-os/foodlens
+ * @movequest/foodlens
  *
  * FoodLens 360° — visual food intelligence.
  *
@@ -11,7 +11,7 @@
  *
  * Child-safety note: for users under 18 this module must be driven in
  * its non-numeric framing. Charter rule C6 forbids surfacing calorie
- * figures to a minor, and `bodySurfacePolicy` in @jessie-os/shared is
+ * figures to a minor, and `bodySurfacePolicy` in @movequest/shared is
  * the gate that enforces it.
  */
 

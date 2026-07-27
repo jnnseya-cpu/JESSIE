@@ -1,20 +1,56 @@
 import Link from 'next/link';
-import { BRAND, SIGNATURE_LINE } from '@jessie-os/shared';
+import { BRAND, SIGNATURE_LINE } from '@movequest/shared';
 
 /* ---------------- marks and icons (no external assets) ---------------- */
 
+/**
+ * The MoveQuest mark. §9.
+ *
+ * A quest ring, an M, and a route that rises through it. The route uses
+ * the Movement Energy gradient (teal → lime) and finishes above the M —
+ * the journey continues past the letter rather than closing on it.
+ *
+ * Deliberately not: a heart, a weighing scale, a running figure, a medical
+ * cross, a dumbbell, a footprint, an apple, or a pulse line.
+ */
 export function Mark() {
   return (
-    <svg className="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="#00E08A" />
+    <svg className="brand__mark" viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="mq-route" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#00A99D" />
+          <stop offset="100%" stopColor="#B7E436" />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="40" rx="11" fill="#102A43" />
+      {/* the quest ring — open at the top right, where the route leaves */}
       <path
-        d="M8 19.5h3.4l2.1-6.4 2.9 9 2.4-7.2 1.5 4.6H24"
+        d="M31.5 12.2A13 13 0 1 1 20 7"
         fill="none"
-        stroke="#0B1220"
-        strokeWidth="2.2"
+        stroke="#3487F7"
+        strokeOpacity="0.5"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      {/* the M */}
+      <path
+        d="M12 27V16l5 6 5-6v11"
+        fill="none"
+        stroke="#F4FAF9"
+        strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {/* the route rising through and beyond it */}
+      <path
+        d="M22 27l4.5-6.5L31 14"
+        fill="none"
+        stroke="url(#mq-route)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="31" cy="14" r="2.6" fill="#B7E436" />
     </svg>
   );
 }
@@ -104,9 +140,10 @@ export function VariantGlyph({ variant }: { variant: string }) {
 
 const NAV = [
   { href: '/', label: 'Platform' },
-  { href: '/for-children', label: 'For children' },
-  { href: '/for-adults', label: 'For adults' },
-  { href: '/body-balance', label: 'Body Balance' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/industries', label: 'Industries' },
+  { href: '/developers', label: 'Developers' },
+  { href: '/about', label: 'About' },
 ];
 
 export function Nav({ current }: { current: string }) {
@@ -129,27 +166,94 @@ export function Nav({ current }: { current: string }) {
             </Link>
           ))}
         </nav>
-        <a className="btn btn--primary" href="#cta">
-          Request access
-        </a>
+        <Link className="btn btn--primary" href="/get-started">
+          Get started
+        </Link>
       </div>
     </header>
   );
 }
 
+/* ---------------- footer sitemap ---------------- */
+
+const FOOT_NAV: ReadonlyArray<{
+  heading: string;
+  links: ReadonlyArray<{ href: string; label: string }>;
+}> = [
+  {
+    heading: 'Product',
+    links: [
+      { href: '/how-it-works', label: 'How it works' },
+      { href: '/for-children', label: 'For children' },
+      { href: '/for-adults', label: 'For adults' },
+      { href: '/body-balance', label: 'Body Balance' },
+      { href: '/get-started', label: 'Get started' },
+    ],
+  },
+  {
+    heading: 'Solutions',
+    links: [
+      { href: '/industries', label: 'Industries' },
+      { href: '/industries#workplaces', label: 'Workplaces' },
+      { href: '/industries#schools', label: 'Schools' },
+      { href: '/industries#care', label: 'Care & later life' },
+      { href: '/industries#public-health', label: 'Councils & public health' },
+    ],
+  },
+  {
+    heading: 'Company',
+    links: [
+      { href: '/about', label: 'About' },
+      { href: '/blog', label: 'Blog' },
+      { href: '/growth', label: 'Growth & Influencers' },
+      { href: '/contact', label: 'Contact' },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { href: '/developers', label: 'Developers' },
+      { href: '/status', label: 'Platform status' },
+      { href: '/policies', label: 'All policies' },
+      { href: '/terms', label: 'Terms of Service' },
+      { href: '/privacy', label: 'Privacy Policy' },
+    ],
+  },
+];
+
 export function Footer() {
   return (
     <footer className="foot">
       <div className="wrap">
-        <div className="foot__top">
-          <div className="brand">
-            <Mark />
-            <span>{BRAND.platform}</span>
+        <div className="foot__nav">
+          <div className="foot__col">
+            <div className="brand">
+              <Mark />
+              <span>{BRAND.platform}</span>
+            </div>
+            <p className="foot__pitch">
+              Movement, engineered into the gaps. Ten to a hundred. Every body qualifies.
+            </p>
+            <Link className="foot__status" href="/status">
+              <i aria-hidden="true" />
+              All systems operational
+            </Link>
           </div>
-          <p className="foot__sig">
-            Movement, engineered into the gaps. Ten to a hundred. Every body qualifies.
-          </p>
+
+          {FOOT_NAV.map((col) => (
+            <div className="foot__col" key={col.heading}>
+              <h3>{col.heading}</h3>
+              <ul>
+                {col.links.map((l) => (
+                  <li key={l.href + l.label}>
+                    <Link href={l.href}>{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
+
         <div className="foot__legal">
           <p>
             {BRAND.platform} is a general wellness product. It does not diagnose or treat any
@@ -161,6 +265,37 @@ export function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+/* ---------------- sub-page shell ---------------- */
+
+export function PageHero({
+  eyebrow,
+  title,
+  lede,
+  crumb,
+}: {
+  eyebrow: string;
+  title: React.ReactNode;
+  lede: string;
+  crumb?: string;
+}) {
+  return (
+    <section className="phero">
+      <div className="wrap">
+        {crumb && (
+          <p className="phero__crumbs">
+            <Link href="/">{BRAND.platform}</Link>
+            <span aria-hidden="true">/</span>
+            <span>{crumb}</span>
+          </p>
+        )}
+        <p className="eyebrow eyebrow--onDark">{eyebrow}</p>
+        <h1>{title}</h1>
+        <p className="phero__lede">{lede}</p>
+      </div>
+    </section>
   );
 }
 

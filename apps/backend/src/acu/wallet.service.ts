@@ -12,7 +12,7 @@ import {
   requiredAcus,
   type CostInput,
   type WalletBucket,
-} from '@jessie-os/body-command';
+} from '@movequest/body-command';
 
 /**
  * The ACU wallet and Cost Governor.

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { AGE_MODE_DEFINITIONS } from '@jessie-os/shared';
+import { AGE_MODE_DEFINITIONS } from '@movequest/shared';
 import { Footer, Nav, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'For adults — JESSIE-OS™',
+  title: 'For adults — MOVEQUEST',
   description:
     'Movement and body-balance support for ages 18 to 100 — nine pathways, of which reduction ' +
     'is only one.',
@@ -19,8 +19,8 @@ const DAY = [
 ];
 
 const LATER_LIFE = [
-  { mode: 'silver' as const, points: ['Balance, lower-limb strength, grip, gait and dual-task cognition — the falls-prevention stack', 'Chair-supported is the default; standing is opt-up, never opt-out', 'Weekly Steady Check; deterioration notifies the Circle', 'Maximum four tap targets per screen'] },
-  { mode: 'centennial' as const, points: ['Voice-first, one action per screen, no timers, no failure states', 'Falls Protocol: a confirmed stability anchor before any balance work', 'Standing work disabled unless a clinician has cleared it', 'Sessions produce CQC-ready activity evidence automatically'] },
+  { mode: 'independence' as const, points: ['Balance, lower-limb strength, grip, gait and dual-task cognition — the falls-prevention stack', 'Chair-supported is the default; standing is opt-up, never opt-out', 'Weekly Steady Check; deterioration notifies the Circle', 'Maximum four tap targets per screen'] },
+  { mode: 'vitality' as const, points: ['Voice-first, one action per screen, no timers, no failure states', 'Falls Protocol: a confirmed stability anchor before any balance work', 'Standing work disabled unless a clinician has cleared it', 'Sessions produce CQC-ready activity evidence automatically'] },
 ];
 
 export default function ForAdults() {
@@ -94,7 +94,7 @@ export default function ForAdults() {
                     <h3>
                       {def.label} · {def.minAge}–{def.maxAge}
                     </h3>
-                    <p style={{ color: 'var(--jes-slate)', marginBottom: 18 }}>{def.register}</p>
+                    <p style={{ color: 'var(--mq-text-2)', marginBottom: 18 }}>{def.register}</p>
                     <ul>
                       {points.map((p) => (
                         <li key={p}>
@@ -180,7 +180,7 @@ export default function ForAdults() {
               dependence on willpower.
             </p>
             <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:hello@jessie-os.com">
+              <a className="btn btn--primary" href="mailto:hello@movequest.ai">
                 Request access
               </a>
               <a className="btn btn--ghost" href="/body-balance">

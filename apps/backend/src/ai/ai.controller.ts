@@ -16,7 +16,7 @@ import {
   type AgentCode,
   type AiProvider,
   type AiRole,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 import { AiGatewayService } from './ai-gateway.service';
 
 class AiMessageDto {

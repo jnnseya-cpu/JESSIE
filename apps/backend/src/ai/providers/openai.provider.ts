@@ -6,7 +6,7 @@ import {
   DEFAULT_MODELS,
   type AiCompletionRequest,
   type AiProvider,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 import { toAcu, type ModelProvider } from '../provider.interface';
 
 @Injectable()
@@ -58,7 +58,7 @@ export class OpenAiProvider implements ModelProvider {
               response_format: {
                 type: 'json_schema' as const,
                 json_schema: {
-                  name: 'jessie_structured_output',
+                  name: 'movequest_structured_output',
                   schema: request.jsonSchema,
                   strict: true,
                 },

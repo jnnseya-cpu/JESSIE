@@ -9,7 +9,7 @@ import {
   type MotionState,
   type PrivacyClass,
   type SignalClass,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 
 export interface ContextSignals {
   userId: string;
@@ -145,7 +145,7 @@ export class ContextService {
   }
 
   /**
-   * Determines whether Jess offers a star jump or a discreet ankle circle.
+   * Determines whether MOVA offers a star jump or a discreet ankle circle.
    */
   private privacyFor(signals: ContextSignals): PrivacyClass {
     switch (signals.locationClass) {

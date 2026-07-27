@@ -1,0 +1,289 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { K_ANONYMITY_THRESHOLD, SNAP_DURATION_SECONDS } from '@movequest/shared';
+import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+
+export const metadata: Metadata = {
+  title: 'Developers — MOVEQUEST',
+  description:
+    'The MOVEQUEST API: the envelope, the endpoints, the AI gateway, the invariants the ' +
+    'database enforces, and the rules a client may not work around.',
+};
+
+const ENDPOINTS: ReadonlyArray<{
+  verb: 'GET' | 'POST';
+  path: string;
+  what: string;
+}> = [
+  { verb: 'GET', path: '/health', what: 'Liveness plus AI-gateway status.' },
+  { verb: 'GET', path: '/system', what: 'The operating system’s invariants, machine-readable.' },
+  { verb: 'GET', path: '/ai/providers', what: 'Provider configuration and resolved model names.' },
+  { verb: 'POST', path: '/ai/complete', what: 'Gateway completion, scoped to a registered agent.' },
+  { verb: 'GET', path: '/movements', what: 'The published library.' },
+  { verb: 'GET', path: '/movements/gate', what: 'The publishing contract, in full.' },
+  { verb: 'POST', path: '/movements/:id/check', what: 'Dry-run the five-variant gate.' },
+  { verb: 'POST', path: '/movements/:id/publish', what: 'Attempt publication. Fails closed.' },
+  { verb: 'POST', path: '/prescriptions/next', what: 'The core call — the next best Snap, or an explicit hold.' },
+  { verb: 'POST', path: '/body/assess', what: 'Pathway and safety assessment. Can only narrow.' },
+  { verb: 'POST', path: '/body/plan', what: 'The daily plan for the assessed pathway.' },
+  { verb: 'GET', path: '/body/pathways', what: 'The nine pathways and what each permits.' },
+  { verb: 'GET', path: '/body/scorecard', what: 'The weighting behind the four readings.' },
+  { verb: 'GET', path: '/body/agents', what: 'The nineteen BodyCommand agents and their supervisor.' },
+  { verb: 'GET', path: '/acu/policy', what: 'Published economics — the 4× cost-protection rule.' },
+  { verb: 'POST', path: '/acu/quote', what: 'Price an action before running it.' },
+  { verb: 'POST', path: '/acu/wallets/:id/spend', what: 'Cost Governor: bucket precedence, hard stop at zero.' },
+];
+
+const GATEWAY = [
+  { p: 'Anthropic', pkg: '@anthropic-ai/sdk', mid: 'claude-sonnet-5', top: 'claude-opus-5' },
+  { p: 'OpenAI', pkg: 'openai', mid: 'gpt-4.1-mini', top: 'gpt-4.1' },
+  { p: 'Google Gemini', pkg: '@google/genai', mid: 'gemini-2.5-flash', top: 'gemini-2.5-pro' },
+];
+
+const INVARIANTS = [
+  `A Snap outside ${SNAP_DURATION_SECONDS.min}–${SNAP_DURATION_SECONDS.max} seconds is rejected by the database.`,
+  'A prescription without a context decision cannot be written.',
+  'A minor without a linked guardian cannot exist.',
+  'A minor placed in an adult mode cannot exist.',
+  'A movement published without review is rejected.',
+  `A cohort report below k = ${K_ANONYMITY_THRESHOLD} is rejected.`,
+  'An ACU debit charging under 4× provider cost is rejected.',
+  'Grace tokens outside 0–2 are rejected.',
+  'A proxy action without a named acting person is rejected.',
+];
+
+export default function Developers() {
+  return (
+    <>
+      <SkipLink />
+      <Nav current="/developers" />
+
+      <main id="main">
+        <PageHero
+          crumb="Developers"
+          eyebrow="Build on it"
+          title={
+            <>
+              The rules are in the API,<br />
+              not the documentation.
+            </>
+          }
+          lede={
+            'Everything the platform promises is enforced at a layer a client cannot route ' +
+            'around: the publishing gate in the service, the privacy floor in the query planner, ' +
+            'and the invariants as constraints inside PostgreSQL.'
+          }
+        />
+
+        <section className="section">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow">The envelope</p>
+              <h2>Every response has the same shape.</h2>
+              <p className="lede">
+                Base path <code>/api</code>. Every response carries the signature line — the full
+                line in <code>meta.poweredBy</code>, and an ASCII-safe rendering in the{' '}
+                <code>x-powered-by-movequest</code> header, because HTTP header values must be
+                latin1.
+              </p>
+            </div>
+
+            <div className="query" style={{ maxWidth: 760 }}>
+              <div className="query__bar">
+                <span>POST /api/prescriptions/next</span>
+                <span>200</span>
+              </div>
+              <pre className="query__body">
+                <code>
+                  {'{\n'}
+                  {'  '}<span className="k">&quot;data&quot;</span>: {'{\n'}
+                  {'    '}<span className="k">&quot;held&quot;</span>: <span className="s">true</span>,{'\n'}
+                  {'    '}<span className="k">&quot;reason&quot;</span>: <span className="s">&quot;The user cannot move right now.&quot;</span>,{'\n'}
+                  {'    '}<span className="k">&quot;blocks&quot;</span>: [<span className="s">&quot;driving&quot;</span>],{'\n'}
+                  {'    '}<span className="k">&quot;retryAfterSeconds&quot;</span>: <span className="s">900</span>{'\n'}
+                  {'  },\n'}
+                  {'  '}<span className="k">&quot;meta&quot;</span>: {'{ '}<span className="k">&quot;poweredBy&quot;</span>: <span className="s">&quot;…&quot;</span>{' }\n'}
+                  {'}'}
+                  {'\n\n'}
+                  <span className="c">-- a hold is a 200, never an error</span>
+                </code>
+              </pre>
+            </div>
+          </div>
+        </section>
+
+        <section className="section section--tint">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow">Reference</p>
+              <h2>Endpoints.</h2>
+            </div>
+            <div className="tablewrap">
+              <table className="endpoints">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Path</th>
+                    <th scope="col">Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ENDPOINTS.map((e) => (
+                    <tr key={e.verb + e.path}>
+                      <td>
+                        <span className={`verb${e.verb === 'POST' ? ' verb--post' : ''}`}>
+                          {e.verb}
+                        </span>
+                      </td>
+                      <td>
+                        <code>{e.path}</code>
+                      </td>
+                      <td>{e.what}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="section section--ink">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow eyebrow--onDark">The AI gateway</p>
+              <h2>One interface, three providers, no vendor in the call sites.</h2>
+              <p className="lede">
+                Agents never touch a vendor SDK. The gateway owns provider selection, the fallback
+                chain, prompt redaction, the per-agent cost ceiling, the timeout and the decision
+                log. A refusal on one provider walks to the next; when every provider fails, the
+                caller falls back to the cached plan — a slow model must never produce a broken
+                app.
+              </p>
+            </div>
+
+            <div className="tablewrap">
+              <table className="endpoints">
+                <thead>
+                  <tr>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Package</th>
+                    <th scope="col">Mid-tier</th>
+                    <th scope="col">Frontier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GATEWAY.map((g) => (
+                    <tr key={g.p}>
+                      <td style={{ fontWeight: 600 }}>{g.p}</td>
+                      <td>
+                        <code>{g.pkg}</code>
+                      </td>
+                      <td>
+                        <code>{g.mid}</code>
+                      </td>
+                      <td>
+                        <code>{g.top}</code>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="lede" style={{ marginTop: 26 }}>
+              Adding a fourth provider means implementing <code>ModelProvider</code> and
+              registering it. No other call site in the platform changes.
+            </p>
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow">Enforcement</p>
+              <h2>Nine invariants the database rejects on your behalf.</h2>
+              <p className="lede">
+                The schema is not a passive record. Each of these is a CHECK constraint with a
+                test that attempts the violating write and asserts the rejection.
+              </p>
+            </div>
+            <div className="tiles">
+              {INVARIANTS.map((inv, i) => (
+                <article
+                  className="tile"
+                  key={inv}
+                  style={{ ['--tone' as string]: `var(--c${(i % 6) + 1})` }}
+                >
+                  <div className="tile__n">CHECK {String(i + 1).padStart(2, '0')}</div>
+                  <p>{inv}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="ci" style={{ marginTop: 34 }}>
+              <Tick />
+              <span>
+                <code>pnpm db:migrate &amp;&amp; pnpm db:test</code> — every rule proven to reject
+                the write that violates it
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="section section--tint">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow">Rules for clients</p>
+              <h2>Things a client is not permitted to do.</h2>
+            </div>
+            <div className="prose">
+              <ul>
+                <li>
+                  Render a Snap without the <code>contextDecisionId</code> that authorised it.
+                </li>
+                <li>
+                  Display a movement in fewer than its five published variants, or default to
+                  standing.
+                </li>
+                <li>
+                  Surface any weight, BMI, calorie or appearance framing to a user under 18, in
+                  any mode, under any consent setting.
+                </li>
+                <li>
+                  Exceed the mode’s daily nudge cap, or re-fire a prompt the engine held.
+                </li>
+                <li>
+                  Send calendar titles, attendees or free-text health notes to any model. The
+                  redaction list is enforced gateway-side, but a client must not attempt it.
+                </li>
+                <li>
+                  Present a composite “health score”. Four readings, separately, or none.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="section cta">
+          <div className="wrap">
+            <h2>Integration access.</h2>
+            <p>
+              API keys, the OpenAPI document and the agent contract cards are issued per
+              organisation during pilot onboarding.
+            </p>
+            <div className="cta__row">
+              <Link className="btn btn--primary" href="/contact">
+                Request API access
+              </Link>
+              <Link className="btn btn--ghost" href="/status">
+                Platform status
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </>
+  );
+}

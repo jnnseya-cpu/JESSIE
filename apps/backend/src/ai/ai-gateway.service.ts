@@ -10,7 +10,7 @@ import {
   type AiCompletionResponse,
   type AiProvider,
   type AiProviderHealth,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 import { MODEL_PROVIDERS, type ModelProvider } from './provider.interface';
 
 /**

@@ -1,33 +1,36 @@
 import type { Metadata, Viewport } from 'next';
-import { BRAND, SIGNATURE_LINE } from '@jessie-os/shared';
+import { BRAND, SIGNATURE_LINE, TAGLINE } from '@movequest/shared';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: `${BRAND.platform} — ${BRAND.expansion}`,
+  title: `${BRAND.platform} — ${TAGLINE}`,
   description:
-    'The movement operating system for human beings aged 10 to 100. Context-verified micro-movement, ' +
-    'delivered into the gaps of a real day, for every body.',
+    `${BRAND.descriptor}. MoveQuest finds realistic movement opportunities across work, home ` +
+    'and commute, then turns them into personalised missions that fit the day you already have. ' +
+    'Six adaptive modes, ages 10 to 100.',
   applicationName: BRAND.platform,
-  authors: [{ name: 'Jessie' }],
+  authors: [{ name: 'MoveQuest' }],
   keywords: [
+    'micro-movement',
     'movement operating system',
     'sedentary behaviour',
     'workplace wellbeing',
+    'AI health coach',
     'adaptive movement',
     'falls prevention',
     'accessible fitness',
+    'food intelligence',
   ],
   openGraph: {
-    title: `${BRAND.platform} — movement, engineered into the gaps`,
-    description:
-      'Fitness apps compete for the hour you do not have. JESSIE-OS owns the 200 two-minute gaps you did not know you had.',
+    title: `${BRAND.platform} — ${TAGLINE}`,
+    description: BRAND.fullName,
     type: 'website',
   },
   other: { 'powered-by': SIGNATURE_LINE },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0B1220',
+  themeColor: '#102A43',
   width: 'device-width',
   initialScale: 1,
 };

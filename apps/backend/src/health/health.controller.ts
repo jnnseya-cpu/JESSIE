@@ -6,7 +6,7 @@ import {
   AGE_MODES,
   MOVEMENT_VARIANTS,
   type HealthReport,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
 
 @Controller()
@@ -40,7 +40,7 @@ export class HealthController {
   system() {
     return {
       platform: BRAND.platform,
-      expansion: BRAND.expansion,
+      descriptor: BRAND.descriptor,
       app: BRAND.app,
       coach: BRAND.coach,
       unit: BRAND.unit,

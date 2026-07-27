@@ -5,7 +5,7 @@
 -- violate a rule from the specification. A constraint that does not
 -- fire here is not enforcement — it is documentation.
 --
--- Run:  psql -d jessie -v ON_ERROR_STOP=1 -f db/test/constraints.sql
+-- Run:  psql -d movequest -v ON_ERROR_STOP=1 -f db/test/constraints.sql
 -- ============================================================
 
 \set QUIET on
@@ -29,7 +29,7 @@ VALUES ('11111111-1111-1111-1111-111111111111', 'employer', 'Test Co');
 
 INSERT INTO users (id, tenant_id, age_mode, is_minor)
 VALUES ('22222222-2222-2222-2222-222222222222',
-        '11111111-1111-1111-1111-111111111111', 'standard', false);
+        '11111111-1111-1111-1111-111111111111', 'momentum', false);
 
 INSERT INTO movements (id, slug, title, category, state)
 VALUES ('33333333-3333-3333-3333-333333333333', 'test-mv', 'Test', 'mobility', 'draft');
@@ -37,13 +37,13 @@ VALUES ('33333333-3333-3333-3333-333333333333', 'test-mv', 'Test', 'mobility', '
 -- ── §6.1 a minor may not exist without a guardian ──
 SELECT must_reject($$
   INSERT INTO users (tenant_id, age_mode, is_minor)
-  VALUES ('11111111-1111-1111-1111-111111111111', 'kid', true)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'explorer', true)
 $$, 'a minor cannot be created without a guardian');
 
 -- ── a minor may not sit in an adult mode ──
 SELECT must_reject($$
   INSERT INTO users (tenant_id, age_mode, is_minor, guardian_user_id)
-  VALUES ('11111111-1111-1111-1111-111111111111', 'standard', true,
+  VALUES ('11111111-1111-1111-1111-111111111111', 'momentum', true,
           '22222222-2222-2222-2222-222222222222')
 $$, 'a minor cannot be placed in an adult mode');
 
@@ -79,7 +79,7 @@ SELECT must_reject($$
   VALUES ('11111111-1111-1111-1111-111111111111',
           '22222222-2222-2222-2222-222222222222',
           '33333333-3333-3333-3333-333333333333',
-          'seated', 'standard', 'T2', 150, now(), now() + interval '20 min')
+          'seated', 'momentum', 'T2', 150, now(), now() + interval '20 min')
 $$, 'a Snap cannot be prescribed without a context decision');
 
 -- ── §16.3: a cohort report below k=8 cannot be persisted ──
@@ -145,7 +145,7 @@ INSERT INTO prescriptions
 VALUES ('11111111-1111-1111-1111-111111111111',
         '22222222-2222-2222-2222-222222222222',
         '33333333-3333-3333-3333-333333333333',
-        'seated', '55555555-5555-5555-5555-555555555555', 'standard', 'T2',
+        'seated', '55555555-5555-5555-5555-555555555555', 'momentum', 'T2',
         150, now(), now() + interval '25 min');
 
 INSERT INTO workforce_reports (tenant_id, period, metrics, contributing_users)

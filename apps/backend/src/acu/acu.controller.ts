@@ -10,7 +10,7 @@ import {
   ZERO_ACU_ACTIONS,
   requiredAcus,
   type CostInput,
-} from '@jessie-os/body-command';
+} from '@movequest/body-command';
 import { WalletService, type SpendControls, type SpendRequest } from './wallet.service';
 
 @Controller('acu')

@@ -16,10 +16,10 @@ importers:
       '@google/genai':
         specifier: ^2.13.0
         version: 2.13.0
-      '@jessie-os/body-command':
+      '@movequest/body-command':
         specifier: workspace:*
         version: link:../../packages/body-command
-      '@jessie-os/shared':
+      '@movequest/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@nestjs/common':
@@ -65,10 +65,10 @@ importers:
 
   apps/frontend:
     dependencies:
-      '@jessie-os/body-command':
+      '@movequest/body-command':
         specifier: workspace:*
         version: link:../../packages/body-command
-      '@jessie-os/shared':
+      '@movequest/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       next:

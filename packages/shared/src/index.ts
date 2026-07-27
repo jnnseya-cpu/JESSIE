@@ -1,7 +1,7 @@
 /**
- * @jessie-os/shared
+ * @movequest/shared
  *
- * The single source of truth for the JESSIE-OS™ domain model.
+ * The single source of truth for the MOVEQUEST domain model.
  * Both the backend (NestJS) and the frontend (Next.js) compile against
  * this package, so a change to a contract breaks the build on both
  * sides rather than at runtime.
@@ -9,6 +9,7 @@
 
 export * from './brand';
 export * from './design';
+export * from './core-concepts';
 export * from './age-modes';
 export * from './capability';
 export * from './movements';

@@ -63,7 +63,7 @@ export function bodyCommandScore(input: ScoreInput): number {
 
 /**
  * §10 — Gamification without harm.
- * Mechanics banned at the engine level, mirroring the JESSIE-OS Charter's
+ * Mechanics banned at the engine level, mirroring the MOVEQUEST Charter's
  * intent. Any of these appearing in a build is a defect.
  */
 export const PROHIBITED_MECHANICS = [

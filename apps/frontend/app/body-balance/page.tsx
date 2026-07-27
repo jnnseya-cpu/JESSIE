@@ -9,11 +9,11 @@ import {
   SCORE_DIMENSIONS,
   SCORE_LABELS,
   SCORE_WEIGHTS,
-} from '@jessie-os/body-command';
+} from '@movequest/body-command';
 import { Cross, Footer, Nav, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Body Balance — JESSIE-OS™',
+  title: 'Body Balance — MOVEQUEST',
   description:
     'BodyCommand AI: nineteen agents, nine pathways, one supervisor. BMI is a navigation ' +
     'signal, never a verdict.',
@@ -113,7 +113,7 @@ export default function BodyBalance() {
                 </div>
               ))}
               <div className="bar bar--excluded">
-                <div className="bar__label" style={{ color: 'var(--jes-slate)' }}>
+                <div className="bar__label" style={{ color: 'var(--mq-text-2)' }}>
                   BMI — shown separately, weighted at nothing
                 </div>
                 <div className="bar__pct">0%</div>
@@ -213,7 +213,7 @@ export default function BodyBalance() {
                   <Tick />
                   The Non-Scale Victory Board
                 </h3>
-                <p style={{ color: 'var(--jes-slate)', marginBottom: 16 }}>
+                <p style={{ color: 'var(--mq-text-2)', marginBottom: 16 }}>
                   Deliberately the longer list, and the one the product celebrates.
                 </p>
                 <ul>
@@ -237,7 +237,7 @@ export default function BodyBalance() {
               sees governed by a rule the consent switch cannot override.
             </p>
             <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:hello@jessie-os.com">
+              <a className="btn btn--primary" href="mailto:hello@movequest.ai">
                 Request access
               </a>
               <a className="btn btn--ghost" href="/for-children">

@@ -9,7 +9,7 @@ import {
   type ContextDecision,
   type MovementCategory,
   type MovementVariant,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 import { ContextService, type ContextSignals } from '../context/context.service';
 
 export interface PrescriptionRequest {
@@ -137,7 +137,7 @@ export class PrescriptionsService {
    */
   private selectVariant(request: PrescriptionRequest): MovementVariant | null {
     const order: MovementVariant[] =
-      request.mode === 'silver' || request.mode === 'centennial'
+      request.mode === 'independence' || request.mode === 'vitality'
         ? ['chair_supported', 'seated', 'bed_recliner', 'adaptive_single_limb', 'standing']
         : ['seated', 'standing', 'chair_supported', 'adaptive_single_limb', 'bed_recliner'];
 
@@ -148,7 +148,7 @@ export class PrescriptionsService {
     const excluded = new Set(request.excludeCategories ?? []);
     // Silver and Centennial bias to the falls-prevention stack. §6.4.
     const preference: MovementCategory[] =
-      request.mode === 'silver' || request.mode === 'centennial'
+      request.mode === 'independence' || request.mode === 'vitality'
         ? ['balance', 'strength', 'mobility', 'breath']
         : ['mobility', 'posture', 'breath', 'strength'];
 

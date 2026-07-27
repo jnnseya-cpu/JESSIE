@@ -48,15 +48,15 @@ protection did not weaken.
 
 ## 0b. The original conflict, for the record
 
-This module is specified against **MoveQuest AI OS**, not JESSIE-OS™, and it collides
+This module is specified against **MoveQuest AI OS**, not MOVEQUEST, and it collides
 head-on with a shipped, CI-enforced guardrail.
 
-**JESSIE-OS Ethical Gamification Charter, rule C6:**
+**MOVEQUEST Ethical Gamification Charter, rule C6:**
 
 > *No appearance, weight, BMI or calorie framing at any age, in any mode, in any locale.*
 
 C6 is asserted in `apps/backend/test/charter.test.ts`. A build that violates it fails the
-pipeline. That is deliberate — it is the mechanism §13.6.8 of the JESSIE-OS specification
+pipeline. That is deliberate — it is the mechanism §13.6.8 of the MOVEQUEST specification
 requires.
 
 Body Balance AI is built on BMI, waist-to-height ratio, weight trend, body-composition
@@ -65,8 +65,8 @@ product.** Three resolutions exist:
 
 | Option | Consequence |
 |---|---|
-| **A — Separate product** | Body Balance ships as MoveQuest, outside JESSIE-OS. The Charter is untouched. No code change to the existing build. |
-| **B — Amend C6** | JESSIE-OS absorbs Body Balance. C6 must be rewritten and `charter.test.ts` amended with it. Under §6 Rule M0 this is a change of product category and needs documented, named sign-off. |
+| **A — Separate product** | Body Balance ships as MoveQuest, outside MOVEQUEST. The Charter is untouched. No code change to the existing build. |
+| **B — Amend C6** | MOVEQUEST absorbs Body Balance. C6 must be rewritten and `charter.test.ts` amended with it. Under §6 Rule M0 this is a change of product category and needs documented, named sign-off. |
 | **C — Scoped carve-out** | C6 holds for Kid, Teen, Silver and Centennial modes; Body Balance is available only in Standard mode for consenting adults. The CI test becomes mode-aware rather than absolute. |
 
 **No code has been written against this module, and C6 has not been weakened.** Weakening
@@ -226,7 +226,7 @@ Journey Maps.
 fasting competitions; child weight-loss rankings; punishment for eating;
 exercise-to-cancel-food messaging; shame notifications.
 
-> These prohibitions are substantively the same instinct as JESSIE-OS Charter C6. They are
+> These prohibitions are substantively the same instinct as MOVEQUEST Charter C6. They are
 > the basis on which Option C in §0 could be made to work.
 
 ---
@@ -263,7 +263,7 @@ habit tick-off, water logging, saved meal viewing, standard movement playback, r
 The ACU Cost Governor maintains the rule that **every £1 of direct provider cost produces at
 least £4 of customer revenue.**
 
-> Reconciliation note: JESSIE-OS §25.2 targets a 66% blended gross margin. The 4× rule
+> Reconciliation note: MOVEQUEST §25.2 targets a 66% blended gross margin. The 4× rule
 > implies 75%. The 4× rule is the stricter constraint and therefore satisfies both, but the
 > two figures should be reconciled in one document.
 
@@ -417,7 +417,7 @@ safeguards. This is the correct architecture: safety is a supervisor, not a peer
 rank = (health_value × safety × completion_probability) ÷ friction
 ```
 
-Note this is the same shape as the JESSIE-OS prescription scoring function (§10.2), where
+Note this is the same shape as the MOVEQUEST prescription scoring function (§10.2), where
 safety is likewise a multiplier that can zero the result rather than a weight that can be
 outvoted.
 
@@ -441,8 +441,8 @@ Radar · Behaviour Heatmap by day, hour, location, meal, emotional and work cont
 2. `PlanAction` interface is undefined.
 3. Eating-disorder screening instrument not named; escalation routing not specified.
 4. Child centile data source not named (UK-WHO vs UK90).
-5. Relationship to the JESSIE-OS six-mode model — Body Balance pathways and age modes are
+5. Relationship to the MOVEQUEST six-mode model — Body Balance pathways and age modes are
    two different taxonomies over the same users and must be reconciled.
 6. Whether the safety-escalation agent constitutes a medical-device function under UK MDR.
-   This is the same class of question as JESSIE-OS open decision **O3**, and would gate
+   This is the same class of question as MOVEQUEST open decision **O3**, and would gate
    release the same way.

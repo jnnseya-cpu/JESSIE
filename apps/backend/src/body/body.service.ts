@@ -14,8 +14,8 @@ import {
   type SafetyAssessment,
   type ScoreInput,
   type TwinState,
-} from '@jessie-os/body-command';
-import { bodySurfacePolicy, modeForAge, type AgeMode } from '@jessie-os/shared';
+} from '@movequest/body-command';
+import { bodySurfacePolicy, modeForAge, type AgeMode } from '@movequest/shared';
 
 /**
  * BodyCommand, wired for both children and adults.
@@ -288,7 +288,7 @@ export class BodyService {
     if (isMinor) {
       return 'Growth, energy, confidence, food variety, family routines, activity and sleep.';
     }
-    if (mode === 'silver' || mode === 'centennial') {
+    if (mode === 'independence' || mode === 'vitality') {
       return 'Muscle, balance, mobility, hydration, appetite and staying independent.';
     }
     return 'Food quality, movement, strength, recovery and the behaviours behind them.';

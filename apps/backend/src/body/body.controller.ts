@@ -8,8 +8,8 @@ import {
   SCORE_DIMENSIONS,
   SCORE_LABELS,
   SCORE_WEIGHTS,
-} from '@jessie-os/body-command';
-import { BODY_COMPOSITION_MIN_AGE } from '@jessie-os/shared';
+} from '@movequest/body-command';
+import { BODY_COMPOSITION_MIN_AGE } from '@movequest/shared';
 import { BodyService, type BodyAssessmentRequest } from './body.service';
 
 @Controller('body')

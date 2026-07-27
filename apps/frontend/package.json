@@ -1,8 +1,8 @@
 {
-  "name": "@jessie-os/frontend",
+  "name": "@movequest/frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "JESSIE-OS™ marketing site and consoles",
+  "description": "MOVEQUEST marketing site and consoles",
   "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -12,8 +12,8 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
-    "@jessie-os/body-command": "workspace:*",
-    "@jessie-os/shared": "workspace:*",
+    "@movequest/body-command": "workspace:*",
+    "@movequest/shared": "workspace:*",
     "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

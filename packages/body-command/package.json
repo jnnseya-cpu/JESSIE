@@ -1,5 +1,5 @@
 {
-  "name": "@jessie-os/body-command",
+  "name": "@movequest/body-command",
   "version": "0.1.0",
   "private": true,
   "description": "BodyCommand AI — body-balance contracts. Isolated pending the §0 governance decision.",

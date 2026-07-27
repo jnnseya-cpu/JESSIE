@@ -1,5 +1,5 @@
 -- ============================================================
--- JESSIE-OS™ — core schema (specification §20)
+-- MOVEQUEST — core schema (specification §20)
 --
 -- Every tenant-scoped table carries tenant_id and is covered by
 -- row-level security. The Workforce API role is granted on
@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ─────────── enums ───────────
 
-CREATE TYPE age_mode          AS ENUM ('kid','teen','standard','silver','centennial');
+CREATE TYPE age_mode          AS ENUM ('explorer','teen','momentum','balance','independence','vitality');
 CREATE TYPE delivery_tier     AS ENUM ('T1','T2','T3','T4');
 CREATE TYPE movement_variant  AS ENUM ('standing','seated','chair_supported','bed_recliner','adaptive_single_limb');
 CREATE TYPE publish_state     AS ENUM ('draft','in_review','published','retired');
@@ -63,7 +63,7 @@ CREATE TABLE users (
 
   -- A minor may only sit in a minor mode.
   CONSTRAINT minor_mode_consistent
-    CHECK (is_minor = (age_mode IN ('kid','teen')))
+    CHECK (is_minor = (age_mode IN ('explorer','teen')))
 );
 
 CREATE UNIQUE INDEX users_email_hash_key ON users (email_hash) WHERE email_hash IS NOT NULL;
@@ -400,25 +400,25 @@ ALTER TABLE sessions            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workforce_reports   ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_users ON users
-  USING (tenant_id = current_setting('jessie.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_rx ON prescriptions
-  USING (tenant_id = current_setting('jessie.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_sessions ON sessions
-  USING (tenant_id = current_setting('jessie.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_reports ON workforce_reports
-  USING (tenant_id = current_setting('jessie.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
 
 -- §16.3 — the workforce role. Granted on aggregates only.
 -- The absence of a grant on `sessions` is the control: individual
 -- visibility does not exist rather than being permission-gated.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'jessie_workforce') THEN
-    CREATE ROLE jessie_workforce NOLOGIN;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'movequest_workforce') THEN
+    CREATE ROLE movequest_workforce NOLOGIN;
   END IF;
 END $$;
 
-GRANT SELECT ON workforce_reports TO jessie_workforce;
-REVOKE ALL ON sessions, prescriptions, users, nudges, sparks_ledger FROM jessie_workforce;
+GRANT SELECT ON workforce_reports TO movequest_workforce;
+REVOKE ALL ON sessions, prescriptions, users, nudges, sparks_ledger FROM movequest_workforce;
 
 COMMIT;

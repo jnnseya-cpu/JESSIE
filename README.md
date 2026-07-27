@@ -1,40 +1,56 @@
-# JESSIE-OS™
+# MOVEQUEST
 
-**Just Enough Somatic Stimulus Intelligence Engine**
+**Small Moves. Powerful Change.**
 
-> Movement, engineered into the gaps. Ten to a hundred. Every body qualifies.
+> MoveQuest AI — Your Daily Movement and Body-Balance Operating System.
+> An AI-powered micro-movement, food intelligence and healthy-lifestyle platform, ages 10 to 100.
 
-An AI Movement Infrastructure Operating System. It ingests a person's calendar, context,
-capability and history, and answers one question no existing platform answers well:
+Meeting a weekly exercise target does not cancel the risk of spending the rest of the day
+sitting. That gap is the product. MoveQuest ingests a person's schedule, context, capability
+and history and answers one question no existing platform answers well:
 
 > *Given everything true about this human right now, what is the single best two-minute movement
 > they will actually do in the next 45 minutes — and how do I make them want to?*
 
 | Surface | Name |
 |---|---|
-| Platform / operating system | **JESSIE-OS™** |
-| Consumer app | **Jessie** |
-| AI coach persona | **Jess** |
-| Atomic unit | **the Snap** (90–300 seconds) |
+| Platform / operating system | **MOVEQUEST** |
+| Consumer app | **MoveQuest** |
+| AI coach persona | **MOVA** — Movement Optimisation and Vitality Assistant |
+| Atomic unit | a **micro-movement** (90–300 seconds), delivered as a **mission** |
+
+### The six adaptive modes
+
+| Mode | Ages | Built to solve |
+|---|---|---|
+| Explorer | 10–12 | Adventure, not health. Screen-break missions, coordination, classroom-safe play |
+| Teen | 13–17 | Autonomy and identity. Revision resets, gaming recovery, private crews |
+| Momentum | 18–39 | Hybrid work, commuting, early parenting. Meeting recovery and stress resets |
+| Balance | 40–64 | Stiffness prevention, joint-friendly strength, sustainable weight management |
+| Independence | 65–79 | Balance, lower-limb strength, grip and gait — staying independent |
+| Vitality | 80–100 | Dignity and simplicity. Seated, carer-assisted, voice-operated |
+
+Mode is derived from a verified age band plus a capability profile. It is never chosen freely,
+because it governs safeguarding rules rather than preferences.
 
 ---
 
 ## Repository layout
 
 ```
-JESSIE/
+MOVEQUEST/
 ├─ apps/
-│  ├─ backend/          @jessie-os/backend   — NestJS API + agent runtime
-│  └─ frontend/         @jessie-os/frontend  — Next.js 14 (App Router) site & consoles
+│  ├─ backend/          @movequest/backend   — NestJS API + agent runtime
+│  └─ frontend/         @movequest/frontend  — Next.js 14 (App Router) site & consoles
 ├─ packages/
-│  ├─ shared/           @jessie-os/shared        — domain model, contracts, design tokens
-│  ├─ body-command/     @jessie-os/body-command  — BodyCommand AI: pathways, guardian, ACU maths
-│  └─ foodlens/         @jessie-os/foodlens      — FoodLens 360°: evidence and confidence
+│  ├─ shared/           @movequest/shared        — domain model, contracts, design tokens
+│  ├─ body-command/     @movequest/body-command  — BodyCommand AI: pathways, guardian, ACU maths
+│  └─ foodlens/         @movequest/foodlens      — FoodLens 360°: evidence and confidence
 ├─ db/
 │  ├─ migrations/       Postgres schema — invariants enforced in the database
 │  └─ test/             constraint tests: every rule proven to reject bad writes
 └─ docs/
-   ├─ JESSIE-OS-SPEC.md    — the production specification (v1.0, JS-01)
+   ├─ MOVEQUEST-SPEC.md    — the production specification (v1.0, JS-01)
    └─ BODY-BALANCE-AI.md   — BodyCommand AI (C6 resolved: scoped carve-out)
 ```
 
@@ -67,7 +83,7 @@ pnpm build:shared
 pnpm build:backend
 pnpm build:frontend
 pnpm typecheck              # across the workspace
-pnpm --filter @jessie-os/backend test    # the Charter CI gate
+pnpm --filter @movequest/backend test    # the Charter CI gate
 ```
 
 ---
@@ -174,18 +190,48 @@ type system, let alone the API.
 
 ## Design system
 
-Canonical tokens live in `packages/shared/src/design.ts` and are mirrored once into
-`apps/frontend/app/globals.css`. Do not introduce hex values outside that block.
+Canonical tokens live in `packages/shared/src/design.ts` and are mirrored once into the
+`:root` block of `apps/frontend/app/globals.css`. Do not introduce hex values outside it.
 
-Minimum body type is 17px, rising to 22px in Silver Mode and 26px in Centennial Mode. WCAG 2.2
-AA is the floor and AAA is required in Kid, Silver and Centennial. All motion respects
-`prefers-reduced-motion`, and nothing flashes above 3Hz.
+| Token | Hex | Meaning |
+|---|---|---|
+| `--mq-navy` | `#102A43` | Trust, depth, authority. Navigation, headers, dark mode |
+| `--mq-teal` | `#00A99D` | Health, momentum. Primary buttons, completion, progress |
+| `--mq-lime` | `#B7E436` | Energy, achievement. Rewards, streaks, celebration |
+| `--mq-blue` | `#3487F7` | Intelligence, clarity. AI, wearables, data, links |
+| `--mq-purple` | `#7656E8` | Personalisation. BodyCommand, specialist pathways |
+| `--mq-coral` | `#FF6B5E` | Attention without danger. Challenges, missed-action recovery |
+| `--mq-orange` | `#F59E3D` | FoodLens, nutrition, meal insight |
+| `--mq-sky` | `#67C5EB` | Hydration, sleep, breathing, recovery |
+| `--mq-magenta` | `#D84F9A` | Strength, muscle protection, recomposition |
+
+Health-state colours (`excellent`, `positive`, `monitor`, `action`, `critical`, `information`,
+`specialist`, `unavailable`) are separate from the brand ramp. **Two rules are absolute:**
+
+1. Colour is never the only way information is communicated — every status travels with an icon
+   or a label.
+2. Red is for safety, allergy conflict, account security and critical system warnings. It is
+   never used because somebody missed a movement or ate an energy-dense meal.
+
+Type is Inter for the interface and Manrope for display, with Nunito Sans in Explorer Mode.
+Minimum body size is 16px, rising to 18px in Independence and 20px in Vitality. WCAG 2.2 AA is
+the floor and AAA is required in Explorer, Independence and Vitality. Pointer targets clear the
+24 × 24 px WCAG minimum by a wide margin — 48px standard, 56px in later-life modes. All motion
+respects `prefers-reduced-motion`, and nothing flashes above 3Hz.
+
+### Public site
+
+17 statically rendered routes: the landing page plus `/how-it-works`, `/industries`,
+`/for-children`, `/for-adults`, `/body-balance`, `/get-started`, `/about`, `/blog`,
+`/developers`, `/growth`, `/contact`, `/status`, `/policies`, `/terms` and `/privacy`.
+Every chart is hand-drawn SVG with no external dependency, no runtime fetch and no randomness,
+so server output and client hydration are byte-identical.
 
 ---
 
 ## Regulatory posture
 
-JESSIE-OS is a **general wellness product — not a medical device.** It does not diagnose or
+MOVEQUEST is a **general wellness product — not a medical device.** It does not diagnose or
 treat, does not replace clinical care, and never contacts emergency services. Any move toward
 clinician-prescribed rehabilitation with therapeutic claims (Care Link Pro) triggers a formal
 medical-device classification review **before** release. That is a hard gate on the roadmap.
@@ -197,4 +243,4 @@ citations.
 
 ---
 
-*Authored by Jessie. Engineered under NSEYA X-EXECUTE.*
+*Authored by MoveQuest. Engineered under NSEYA X-EXECUTE.*

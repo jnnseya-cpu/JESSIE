@@ -1,26 +1,26 @@
 {
-  "name": "jessie-os",
+  "name": "movequest",
   "version": "1.0.0",
   "private": true,
-  "description": "JESSIE-OS\u2122 \u2014 Just Enough Somatic Stimulus Intelligence Engine",
+  "description": "MOVEQUEST\u2122 \u2014 Just Enough Somatic Stimulus Intelligence Engine",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=20.11.0"
   },
   "scripts": {
-    "build": "pnpm --filter @jessie-os/shared build && pnpm --filter @jessie-os/backend build && pnpm --filter @jessie-os/frontend build",
-    "build:backend": "pnpm --filter @jessie-os/backend build",
-    "build:body-command": "pnpm --filter @jessie-os/body-command build",
-    "build:foodlens": "pnpm --filter @jessie-os/foodlens build",
-    "build:frontend": "pnpm --filter @jessie-os/frontend build",
-    "build:shared": "pnpm --filter @jessie-os/shared build",
+    "build": "pnpm --filter @movequest/shared build && pnpm --filter @movequest/backend build && pnpm --filter @movequest/frontend build",
+    "build:backend": "pnpm --filter @movequest/backend build",
+    "build:body-command": "pnpm --filter @movequest/body-command build",
+    "build:foodlens": "pnpm --filter @movequest/foodlens build",
+    "build:frontend": "pnpm --filter @movequest/frontend build",
+    "build:shared": "pnpm --filter @movequest/shared build",
     "clean": "rm -rf packages/*/dist apps/backend/dist apps/frontend/.next node_modules/.cache",
     "db:migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/migrations/0001_core.sql",
     "db:test": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/test/constraints.sql",
-    "dev": "pnpm --parallel --filter @jessie-os/backend --filter @jessie-os/frontend dev",
-    "dev:backend": "pnpm --filter @jessie-os/backend dev",
-    "dev:frontend": "pnpm --filter @jessie-os/frontend dev",
+    "dev": "pnpm --parallel --filter @movequest/backend --filter @movequest/frontend dev",
+    "dev:backend": "pnpm --filter @movequest/backend dev",
+    "dev:frontend": "pnpm --filter @movequest/frontend dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   }

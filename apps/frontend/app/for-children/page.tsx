@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { AGE_MODE_DEFINITIONS, BODY_COMPOSITION_MIN_AGE } from '@jessie-os/shared';
+import { AGE_MODE_DEFINITIONS, BODY_COMPOSITION_MIN_AGE } from '@movequest/shared';
 import { Cross, Footer, Nav, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'For children and families — JESSIE-OS™',
+  title: 'For children and families — MOVEQUEST',
   description:
     'Movement and healthy-weight support for ages 10 to 17, built so a child is never shown a ' +
     'weight target, a body score or a comparison.',
@@ -37,7 +37,7 @@ const DAY = [
 ];
 
 export default function ForChildren() {
-  const kid = AGE_MODE_DEFINITIONS.kid;
+  const explorer = AGE_MODE_DEFINITIONS.explorer;
   const teen = AGE_MODE_DEFINITIONS.teen;
 
   return (
@@ -202,20 +202,20 @@ export default function ForChildren() {
 
             <div className="compare">
               <article className="panel">
-                <h3>{kid.label} · {kid.minAge}–{kid.maxAge}</h3>
-                <p style={{ color: 'var(--jes-slate)', marginBottom: 18 }}>{kid.register}</p>
+                <h3>{explorer.label} · {explorer.minAge}–{explorer.maxAge}</h3>
+                <p style={{ color: 'var(--mq-text-2)', marginBottom: 18 }}>{explorer.register}</p>
                 <ul>
                   <li><Tick /><span>Guardian account required; no standalone profile</span></li>
-                  <li><Tick /><span>{kid.dailyCap} nudges a day, hard ceiling</span></li>
+                  <li><Tick /><span>{explorer.dailyCap} nudges a day, hard ceiling</span></li>
                   <li><Tick /><span>No free-text with the AI — structured prompts only</span></li>
                   <li><Tick /><span>No biometrics, no precise location, no ambient sensing</span></li>
-                  <li><Tick /><span>Reading age {kid.readingAgeCeiling} · WCAG {kid.contrast}</span></li>
+                  <li><Tick /><span>Reading age {explorer.readingAgeCeiling} · WCAG {explorer.contrast}</span></li>
                 </ul>
               </article>
 
               <article className="panel">
                 <h3>{teen.label} · {teen.minAge}–{teen.maxAge}</h3>
-                <p style={{ color: 'var(--jes-slate)', marginBottom: 18 }}>{teen.register}</p>
+                <p style={{ color: 'var(--mq-text-2)', marginBottom: 18 }}>{teen.register}</p>
                 <ul>
                   <li><Tick /><span>Self-registration with age assurance</span></li>
                   <li><Tick /><span>Guardian visibility is configurable and disclosed to the teen — never covert</span></li>
@@ -236,10 +236,10 @@ export default function ForChildren() {
               Below that, the product is about growing, moving and feeling capable.
             </p>
             <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:schools@jessie-os.com">
+              <a className="btn btn--primary" href="mailto:schools@movequest.ai">
                 Talk to us about schools
               </a>
-              <a className="btn btn--ghost" href="mailto:hello@jessie-os.com">
+              <a className="btn btn--ghost" href="mailto:hello@movequest.ai">
                 Request access
               </a>
             </div>

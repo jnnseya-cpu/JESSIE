@@ -1,5 +1,5 @@
 {
-  "name": "@jessie-os/foodlens",
+  "name": "@movequest/foodlens",
   "version": "0.1.0",
   "private": true,
   "description": "FoodLens 360° — visual food intelligence contracts with explicit uncertainty",

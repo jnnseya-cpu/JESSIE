@@ -12,7 +12,7 @@ import {
   SIGNATURE_LINE,
   SIGNATURE_LINE_ASCII,
   type ApiEnvelope,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 
 /**
  * §2 — the signature line is required on every screen, invoice, export

@@ -1,4 +1,4 @@
-# JESSIE-OS™
+# MOVEQUEST
 ### Just Enough Somatic Stimulus Intelligence Engine
 **The world's first Movement Operating System for human beings aged 10 to 100.**
 
@@ -6,11 +6,11 @@
 
 | Field | Value |
 |---|---|
-| **System name** | JESSIE-OS™ |
+| **System name** | MOVEQUEST |
 | **Backronym** | **J**ust **E**nough **S**omatic **S**timulus **I**ntelligence **E**ngine |
-| **Consumer brand** | **Jessie** (the app) |
-| **AI coach persona** | **Jess** — one identity, six age-calibrated voices |
-| **Author / Originating Architect** | **Jessie** |
+| **Consumer brand** | **MoveQuest** (the app) |
+| **AI coach persona** | **MOVA** — one identity, six age-calibrated voices |
+| **Author / Originating Architect** | **MoveQuest** |
 | **Programme** | NSEYA X-EXECUTE (shared AI intelligence backbone) |
 | **Document class** | Developer-Ready Production Specification |
 | **Version** | v1.0 — Build Specification (JS-01) |
@@ -19,7 +19,7 @@
 | **Regulatory posture** | Wellness product — **not** a medical device (see §22) |
 
 **Signature line for every screen, invoice, export and API response header:**
-`Powered by JESSIE-OS™ — movement, engineered into the gaps.`
+`Powered by MOVEQUEST — movement, engineered into the gaps.`
 
 ---
 
@@ -28,7 +28,7 @@
 Every product in this category has failed for the same reason: **it asks the user for time they
 do not have, in a form they find humiliating.**
 
-JESSIE-OS does not sell exercise. It sells **the reclamation of dead time**.
+MOVEQUEST does not sell exercise. It sells **the reclamation of dead time**.
 
 The atomic unit is the **Snap**: a 90-to-300-second movement prescription, delivered into a
 verified gap in a real human's real day, matched to their real body, in their real environment,
@@ -62,8 +62,8 @@ continuously:
 > *Given everything true about this human right now, what is the single best 2-minute movement
 > they will actually do in the next 45 minutes — and how do I make them want to?*
 
-Delivered as: a consumer app; **JESSIE Workforce**; **JESSIE Schools**; **JESSIE Silver**;
-**JESSIE Care**; **JESSIE Care Link** (clinical adjunct); and **JESSIE Inside**, a headless
+Delivered as: a consumer app; **MOVEQUEST Workforce**; **MOVEQUEST Schools**; **MOVEQUEST Silver**;
+**MOVEQUEST Care**; **MOVEQUEST Care Link** (clinical adjunct); and **MOVEQUEST Inside**, a headless
 API/white-label layer.
 
 ### 1.2 The problem
@@ -80,7 +80,7 @@ gym-adjacent middle.
 
 ### 1.3 Why it is different
 
-| Everyone else | JESSIE-OS |
+| Everyone else | MOVEQUEST |
 |---|---|
 | Time-based reminder | Context-verified prescription |
 | One movement library for all | 9-dimension Movement Vector → per-person prescription |
@@ -100,7 +100,7 @@ gym-adjacent middle.
    switching cost organisational, not personal.
 
 ### 1.5 Positioning
-> *Fitness apps compete for the hour you don't have. JESSIE-OS owns the 200 two-minute gaps you
+> *Fitness apps compete for the hour you don't have. MOVEQUEST owns the 200 two-minute gaps you
 > didn't know you had.*
 
 ---
@@ -122,7 +122,7 @@ gym-adjacent middle.
   26px Centennial.**
 - **Contrast:** WCAG 2.2 AA everywhere; AAA in Silver, Centennial and Kid.
 - **Motion:** respects `prefers-reduced-motion`; nothing flashes above 3Hz.
-- **Voice:** Jess is warm, brief, never patronising, never shaming, never references weight or
+- **Voice:** MOVA is warm, brief, never patronising, never shaming, never references weight or
   appearance. Enforced by the Localisation Agent's lint pass.
 
 *Canonical implementation: `packages/shared/src/design.ts`, mirrored once into
@@ -134,7 +134,7 @@ gym-adjacent middle.
 
 ### 3.1 Competitive teardown
 
-| Player | Structural failure JESSIE exploits |
+| Player | Structural failure MOVEQUEST exploits |
 |---|---|
 | Apple Fitness+ / Watch | Hardware-locked; volume goals, not context-aware micro-dosing |
 | Strava | Performance culture intimidates the deconditioned; nothing under 10 min counts |
@@ -154,7 +154,7 @@ gym-adjacent middle.
 | G1 | Nobody reads the calendar for *real* gaps | Schedule Intelligence Agent (§9.2) |
 | G2 | Nobody verifies the user *can* move now | Context Sensing Agent (§9.2) |
 | G3 | No adaptive-equivalence scoring | Effort Equivalence Model (§13.4) |
-| G4 | Nothing for 10–15 outside PE | JESSIE Schools + Kid Mode (§6.1) |
+| G4 | Nothing for 10–15 outside PE | MOVEQUEST Schools + Kid Mode (§6.1) |
 | G5 | Nothing for 80–100 with falls risk | Centennial + Falls Protocol (§6.5) |
 | G6 | Streaks punish the ill and the caring | Grace Tokens, Flare Mode (§13.6) |
 | G7 | Employer dashboards leak health signals | k-anonymity (§16.3) |
@@ -164,7 +164,7 @@ gym-adjacent middle.
 | G11 | No circadian-aware shift-worker product | Shift Pattern Model (§10.4) |
 | G12 | Carers and families excluded | Proxy & Circle mode (§6.6) |
 | G13 | No credible anti-cheat | Integrity Agent (§13.5) |
-| G14 | No headless engine for third parties | JESSIE Inside (§21) |
+| G14 | No headless engine for third parties | MOVEQUEST Inside (§21) |
 
 ---
 
@@ -181,7 +181,7 @@ PRESCRIBE   Movement Vector (9-dim) → candidate retrieval (vector DB) →
             safety filter → variant selection → dose calibration → framing
    ↓
 DELIVER     Timing bandit chooses the moment · channel by tier ·
-            Jess voice calibrated to age band
+            MOVA voice calibrated to age band
    ↓
 VERIFY      motion signature · wearable delta · self-attest · camera pose*
             → completion event → Sparks → Chain → Crew contribution
@@ -208,7 +208,7 @@ content authors and physio reviewers, platform admins, and regulators/auditors.
 ## 6. AGE-BAND OPERATING MODES
 
 Six modes. Mode is derived from a verified age band plus capability profile — never chosen
-freely, never inferred from behaviour. It governs UI density, copy register, Jess's voice,
+freely, never inferred from behaviour. It governs UI density, copy register, MOVA's voice,
 gamification mechanics, data-collection scope, safeguarding rules and clinical guardrails.
 
 | Mode | Band | Daily cap | Type | Contrast |
@@ -358,7 +358,7 @@ separate, explicit, revocable opt-in with its own consent record.
 `on_call` (unless the Snap is a call-safe silent seated variant), `in_lesson`, `sleep_window`,
 `clinically_flagged_rest`. Outputs `movability {verdict, confidence, environment_class,
 privacy_class}` where `privacy_class ∈ {alone, semi_public, public}` — this determines whether
-Jess offers a star jump or a discreet ankle circle. **This is the single most defensible
+MOVA offers a star jump or a discreet ankle circle. **This is the single most defensible
 component. Every incumbent fails here.**
 
 **RX — Movement Prescription.** Hybrid retrieval plus policy: build the query embedding, retrieve
@@ -375,7 +375,7 @@ rule ID that fired. **This log is the legal defence artefact.**
 completion within 20 minutes, penalised by dismissal and heavily penalised by
 notification-disable. After three ignores the system goes quiet for 24h and sends a single
 "want to change how often I check in?" control message — **not more nudges. Going quiet rather
-than escalating is what will keep JESSIE installed for years.**
+than escalating is what will keep MOVEQUEST installed for years.**
 
 **GAM — Gamification (with GOV veto).** Currencies: Sparks, Chain, four progress meters, badges,
 Season Rank. **Banned in code:** loss-framed push copy; streak-expiry countdowns; paid streak
@@ -520,7 +520,7 @@ its raw inputs.
 
 ## 15. BITRIPAY INTEGRATION GATEWAY
 
-A first-class gateway module usable by JESSIE, by tenants, and by external platforms: merchant
+A first-class gateway module usable by MOVEQUEST, by tenants, and by external platforms: merchant
 onboarding, scoped rotatable keys, sandbox/production separation, wallet, QR (including
 offline-validated), payment links, card, bank transfer, mobile money, squad wallets, Sparks
 payout rail, T+n settlement, splits at authorisation, refunds and disputes, transaction
@@ -560,7 +560,7 @@ sector benchmarks, and a modelled ROI **with explicit confidence bounds and stat
 - Employees see exactly what their employer can see, on a permanent transparency screen.
 - Annual independent privacy attestation, published.
 
-This is a sales weapon, not a constraint: JESSIE Workforce is the only wellbeing product an
+This is a sales weapon, not a constraint: MOVEQUEST Workforce is the only wellbeing product an
 employee representative body can endorse without reservation.
 
 *Implementation: `suppressBelowThreshold()` in `packages/shared/src/api.ts`.*
@@ -653,9 +653,9 @@ mirror.
 
 ---
 
-## 21. API — JESSIE INSIDE
+## 21. API — MOVEQUEST INSIDE
 
-Base `https://api.jessie-os.com/v1`. Bearer or OAuth 2.1 + PKCE. `X-Jessie-Tenant` required;
+Base `https://api.movequest.ai/v1`. Bearer or OAuth 2.1 + PKCE. `X-MoveQuest-Tenant` required;
 `Idempotency-Key` required on writes.
 
 **The core call** is `POST /v1/prescriptions:next`. A blocked prescription is **never a hard
@@ -688,7 +688,7 @@ the product is a general wellness product and must not diagnose, treat or make d
 claims** — any move toward clinician-prescribed rehab with therapeutic claims triggers a formal
 medical-device classification review **before** release. NHS DTAC and DCB0129/0160 for NHS
 deployments. CQC KLOEs for Care Console evidence. KCSIE safeguarding for schools. PCI-DSS SAQ-A
-— card data never touches JESSIE infrastructure. Equality Act and WCAG 2.2 AA. Cyber Essentials
+— card data never touches MOVEQUEST infrastructure. Equality Act and WCAG 2.2 AA. Cyber Essentials
 Plus → ISO 27001 → SOC 2 Type II.
 
 **22.2 Security.** Zero Trust, mTLS between services, workload identity. Passkeys plus MFA,
@@ -733,7 +733,7 @@ lived-experience panel). A **Clinical Safety Officer** owns the DCB0129 hazard l
 screening at onboarding and quarterly thereafter restricts the prescription space and prompts —
 never diagnoses — a GP conversation.
 
-**Emergency posture:** JESSIE never calls emergency services and never claims to detect a medical
+**Emergency posture:** MOVEQUEST never calls emergency services and never claims to detect a medical
 emergency. It surfaces clear self-directed guidance and, where consented, notifies the Circle or
 the Care Link clinician.
 
@@ -753,9 +753,9 @@ Trust & Safety · Payments & Ledger · Compliance (72h breach clock) · Reliabil
 
 ## 25. MONETISATION
 
-Ten revenue lines: B2C subscription (Jessie Plus £4.99/mo, Family £8.99/mo); B2B Workforce
+Ten revenue lines: B2C subscription (MoveQuest Plus £4.99/mo, Family £8.99/mo); B2B Workforce
 (£2.50–£5.50 per employee per month); Schools (£595–£2,950/yr, **free above a free-school-meals
-threshold**); Care (£3.50 per resident per month); Clinical/ICB; JESSIE Inside API; white-label;
+threshold**); Care (£3.50 per resident per month); Clinical/ICB; MOVEQUEST Inside API; white-label;
 BitriPay gateway revenue; rewards marketplace (**no HFSS food, alcohol, gambling or weight-loss
 products, ever**); and aggregate insights at k ≥ 50 — **never individual data, never sold to
 insurers for underwriting.**
@@ -800,7 +800,7 @@ outages.
 | **P1 MVP** | 7–16 | Calendar gaps, CTX, RX, SAFE, Snap Player, Chain/Sparks, phone-only tier, Stripe | 1,000 beta users; ≥55% nudge conversion |
 | **P2 Beta** | 17–26 | FUSE, Crews, Seasons, Snap Together, Adaptive layer, Silver Mode, WhatsApp T3 | 15,000 users; D30 ≥ 25%; 3 pilot employers |
 | **P3 Commercial** | 27–40 | Workforce Console + k-anon engine, billing, BitriPay, rewards, Kid/Teen + Schools, safeguarding | £250k ARR; Cyber Essentials Plus |
-| **P4 Enterprise** | 41–60 | SSO/SCIM, HRIS + MIS, Care Console + CQC, Centennial, white-label, JESSIE Inside, ISO 27001 | £1.2M ARR |
+| **P4 Enterprise** | 41–60 | SSO/SCIM, HRIS + MIS, Care Console + CQC, Centennial, white-label, MOVEQUEST Inside, ISO 27001 | £1.2M ARR |
 | **P5 Clinical** | 61–90 | Care Link Pro (**post medical-device classification review**), DTAC, DCB0129/0160, FHIR, ICB pilots, localisation, SOC 2 | £4M+ ARR |
 | **P6 Autonomy** | ongoing | Self-optimising loop, per-cohort policy learning, predictive deterioration models | Category ownership |
 
@@ -856,27 +856,27 @@ outages.
 
 ## 32. AUTHORSHIP & IDENTITY
 
-**JESSIE-OS™** — *Just Enough Somatic Stimulus Intelligence Engine.*
+**MOVEQUEST** — *Just Enough Somatic Stimulus Intelligence Engine.*
 
-The name carries the author's identity into the system's function: **JESSIE** is both the person
+The name carries the author's identity into the system's function: **MOVEQUEST** is both the person
 who conceived it and the operating principle it runs on — *just enough*, delivered
 intelligently, to a body that is somatically real and specifically theirs.
 
 | Surface | Name |
 |---|---|
-| Operating system | **JESSIE-OS™** |
-| Consumer app | **Jessie** |
-| AI coach persona | **Jess** |
-| Workplace product | **JESSIE Workforce** |
-| Schools product | **JESSIE Schools** |
-| Later-life product | **JESSIE Silver** (80+ tier: **Centennial**) |
-| Care-setting product | **JESSIE Care** |
-| Clinical adjunct | **JESSIE Care Link** |
-| Embeddable engine | **JESSIE Inside** |
+| Operating system | **MOVEQUEST** |
+| Consumer app | **MoveQuest** |
+| AI coach persona | **MOVA** |
+| Workplace product | **MOVEQUEST Workforce** |
+| Schools product | **MOVEQUEST Schools** |
+| Later-life product | **MOVEQUEST Silver** (80+ tier: **Centennial**) |
+| Care-setting product | **MOVEQUEST Care** |
+| Clinical adjunct | **MOVEQUEST Care Link** |
+| Embeddable engine | **MOVEQUEST Inside** |
 | Atomic unit | **the Snap** |
 | Currency · streak · team | **Sparks · Chain · Crew** |
 
-> **JESSIE-OS™ — Authored by Jessie. Engineered under NSEYA X-EXECUTE.**
+> **MOVEQUEST — Authored by MoveQuest. Engineered under NSEYA X-EXECUTE.**
 > *Movement, engineered into the gaps. Ten to a hundred. Every body qualifies.*
 
 ---

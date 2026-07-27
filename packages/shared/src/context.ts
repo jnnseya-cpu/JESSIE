@@ -23,7 +23,7 @@ export const LOCATION_CLASSES = [
 export type LocationClass = (typeof LOCATION_CLASSES)[number];
 
 /**
- * Determines whether Jess offers a star jump or a discreet ankle circle.
+ * Determines whether MOVA offers a star jump or a discreet ankle circle.
  */
 export const PRIVACY_CLASSES = ['alone', 'semi_public', 'public'] as const;
 export type PrivacyClass = (typeof PRIVACY_CLASSES)[number];

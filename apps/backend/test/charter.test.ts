@@ -17,7 +17,7 @@ import {
   suppressBelowThreshold,
   K_ANONYMITY_THRESHOLD,
   type Movement,
-} from '@jessie-os/shared';
+} from '@movequest/shared';
 
 /**
  * §13.6 / §27 — the Ethical Gamification Charter is asserted here.
@@ -48,9 +48,9 @@ test('C4: bottom-of-leaderboard exposure is forbidden', () => {
 
 test('C5: variable-ratio mechanics are forbidden for minors', () => {
   assert.ok(FORBIDDEN_MECHANICS.includes('variable_ratio_minor'));
-  assert.ok(isMinorMode('kid'));
+  assert.ok(isMinorMode('explorer'));
   assert.ok(isMinorMode('teen'));
-  assert.equal(isMinorMode('standard'), false);
+  assert.equal(isMinorMode('momentum'), false);
 });
 
 test('C6: shaming and appearance lexicon stays banned at every age', () => {
