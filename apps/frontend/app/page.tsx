@@ -27,6 +27,7 @@ import {
   Spark,
   StackedBars,
   Stat,
+  TrafficLights,
   Waterfall,
   type DaySlot,
 } from './charts';
@@ -81,6 +82,14 @@ const WHEEL_LABELS = [
   'Hydration', 'Plant points', 'Processing', 'Portion', 'Timing', 'Confidence',
 ];
 const WHEEL_VALUES = [72, 58, 40, 34, 45, 66, 80, 62, 48, 70, 76, 54];
+
+/** UK front-of-pack bands at the published per-100g thresholds. */
+const TRAFFIC = [
+  { name: 'Fat', grams: 11.4, band: 'amber' as const, of: 25 },
+  { name: 'Saturates', grams: 3.2, band: 'amber' as const, of: 8 },
+  { name: 'Sugars', grams: 4.1, band: 'green' as const, of: 30 },
+  { name: 'Salt', grams: 1.7, band: 'red' as const, of: 2.5 },
+];
 
 const HEAT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HEAT_HOURS = ['08', '10', '12', '14', '16', '18', '20'];
@@ -647,6 +656,17 @@ export default function Home() {
                   unit="kcal"
                   confidence="low — quantity of oil and sauce"
                 />
+                <div className="card__head" style={{ marginTop: 4 }}>
+                  <h3 className="card__t" style={{ fontSize: 17 }}>
+                    Per 100g
+                  </h3>
+                  <span className="card__tag">UK front-of-pack</span>
+                </div>
+                <TrafficLights rows={TRAFFIC} />
+                <p className="card__note">
+                  Bands follow the published UK thresholds. The word is printed beside the
+                  colour, because colour on its own is not an accessible signal.
+                </p>
               </article>
 
               <article className="card card--4 card--light">

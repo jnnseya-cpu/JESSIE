@@ -345,7 +345,7 @@ export function Radar({
   axes,
   values,
   tone = 'var(--mq-orange)',
-  size = 200,
+  size = 240,
 }: {
   axes: readonly string[];
   values: readonly number[];
@@ -353,7 +353,7 @@ export function Radar({
   size?: number;
 }) {
   const c = size / 2;
-  const rMax = c - 30;
+  const rMax = c - 60; // room for the axis labels
   const step = 360 / axes.length;
   const pts = values.map((v, i) => polar(c, c, (rMax * v) / 100, i * step));
   const poly = pts.map((p) => `${p.x},${p.y}`).join(' ');
@@ -376,6 +376,21 @@ export function Radar({
       {pts.map((p, i) => (
         <circle key={axes[i]} cx={p.x} cy={p.y} r="2.8" style={{ fill: tone }} />
       ))}
+      {/* §21 — a chart without visible labels is not a permitted chart. */}
+      {axes.map((a, i) => {
+        const deg = i * step;
+        const p = polar(c, c, rMax + 12, deg);
+        const anchor = deg < 4 || deg > 356 || Math.abs(deg - 180) < 4
+          ? 'middle'
+          : deg < 180
+            ? 'start'
+            : 'end';
+        return (
+          <text key={a} x={p.x} y={r2(p.y + 3.5)} className="radar__label" textAnchor={anchor}>
+            {a}
+          </text>
+        );
+      })}
     </svg>
   );
 }
@@ -637,5 +652,51 @@ export function ConfidenceCone({
         hidden ingredients or cooking method exactly, so this stays a range.
       </p>
     </div>
+  );
+}
+
+/* ---------------- UK traffic lights ---------------- */
+
+const BAND_TONE = {
+  green: 'var(--mq-positive)',
+  amber: 'var(--mq-monitor)',
+  red: 'var(--mq-action)',
+} as const;
+
+/**
+ * Front-of-pack traffic lights, per 100g. §18.
+ * The band name is printed next to the colour — the colour alone is never
+ * the signal.
+ */
+export function TrafficLights({
+  rows,
+}: {
+  rows: ReadonlyArray<{
+    name: string;
+    grams: number;
+    band: keyof typeof BAND_TONE;
+    of: number;
+  }>;
+}) {
+  return (
+    <ul className="tlights">
+      {rows.map((r) => (
+        <li key={r.name}>
+          <span className="tlights__name">{r.name}</span>
+          <span className="tlights__track">
+            <i
+              style={{
+                width: `${Math.min(100, (r.grams / r.of) * 100)}%`,
+                background: BAND_TONE[r.band],
+              }}
+            />
+          </span>
+          <b>{r.grams}g</b>
+          <span className="tlights__band" style={{ color: BAND_TONE[r.band] }}>
+            {r.band === 'green' ? 'Low' : r.band === 'amber' ? 'Medium' : 'High'}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

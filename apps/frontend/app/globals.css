@@ -1797,8 +1797,9 @@ button:focus-visible {
 
 .radar {
   width: 100%;
-  max-width: 220px;
+  max-width: 250px;
   height: auto;
+  overflow: visible;
 }
 .radar__grid {
   stroke: currentColor;
@@ -3008,5 +3009,57 @@ textarea:focus-visible {
   }
   .ring__key {
     width: 100%;
+  }
+}
+
+.radar__label {
+  font-size: 10.5px;
+  fill: currentColor;
+  opacity: 0.72;
+  font-weight: 500;
+}
+
+/* UK front-of-pack traffic lights */
+.tlights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 11px;
+}
+.tlights li {
+  display: grid;
+  grid-template-columns: 82px 1fr 46px 64px;
+  gap: 12px;
+  align-items: center;
+  font-size: 14.5px;
+}
+.tlights__track {
+  height: 9px;
+  border-radius: 99px;
+  background: var(--track);
+  overflow: hidden;
+}
+.tlights__track i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transform-origin: left;
+  animation: grow 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.tlights b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tlights__band {
+  font-size: 13px;
+  font-weight: 650;
+  text-align: right;
+}
+@media (max-width: 560px) {
+  .tlights li {
+    grid-template-columns: 70px 1fr 42px 52px;
+    font-size: 13.5px;
+    gap: 8px;
   }
 }
