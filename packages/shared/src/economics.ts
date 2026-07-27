@@ -183,6 +183,58 @@ export const STRIPE = {
 
 export type CardMix = 'uk' | 'eea' | 'international';
 
+/**
+ * No charge is ever taken below this. Not a marketing choice — arithmetic.
+ *
+ * Stripe's fixed fee is £0.20 whatever the amount, so it is 10% of a £2
+ * charge and 4% of a £5 one. Below £5 the fixed fee starts to dominate the
+ * percentage rate, small charges attract disproportionate dispute and
+ * refund handling, and a £1.99 top-up costs more to administer than it
+ * contributes. Anything genuinely worth less than £5 is either bundled
+ * into a subscription or given away.
+ *
+ * This is a floor on the *transaction*, not on a per-seat rate: a 10-seat
+ * organisation at £2 a seat is a £20 invoice and clears it comfortably.
+ */
+export const MIN_TRANSACTION_GBP = 5.0;
+
+export class BelowMinimumChargeError extends Error {
+  constructor(readonly attemptedGbp: number) {
+    super(
+      `£${attemptedGbp.toFixed(2)} is below the £${MIN_TRANSACTION_GBP.toFixed(2)} minimum ` +
+        `charge. Stripe's fixed fee alone would be ` +
+        `${((STRIPE.fixedFee / attemptedGbp) * 100).toFixed(1)}% of it. Bundle it into a ` +
+        `subscription, raise it to the minimum, or give it away.`,
+    );
+    this.name = 'BelowMinimumChargeError';
+  }
+}
+
+/** Call before taking any payment. Throws rather than quietly charging. */
+export function assertChargeable(grossGbp: number): void {
+  if (!Number.isFinite(grossGbp) || grossGbp <= 0) {
+    throw new RangeError('a charge must be a positive amount');
+  }
+  if (grossGbp < MIN_TRANSACTION_GBP) throw new BelowMinimumChargeError(grossGbp);
+}
+
+/** What proportion of a charge Stripe's fixed fee alone consumes. */
+export function fixedFeeBurden(grossGbp: number): number {
+  return Number(((STRIPE.fixedFee / grossGbp) * 100).toFixed(2));
+}
+
+/**
+ * ACU top-up denominations. Every one clears the minimum, and the larger
+ * ones carry a bonus that reflects the fixed fee being amortised rather
+ * than a discount invented to drive volume.
+ */
+export const ACU_TOPUP_TIERS = [
+  { gbp: 5, acus: 500, bonusAcus: 0 },
+  { gbp: 10, acus: 1000, bonusAcus: 40 },
+  { gbp: 20, acus: 2000, bonusAcus: 120 },
+  { gbp: 50, acus: 5000, bonusAcus: 400 },
+] as const;
+
 export function stripeFee(grossGbp: number, mix: CardMix = 'uk'): number {
   const pct =
     mix === 'uk'
@@ -611,6 +663,17 @@ export const MODEL_FINDINGS = [
       'A 30% commission on £8.99 is £2.70 — larger than the entire cost of serving that ' +
       'subscriber for a month. Web checkout is the default for exactly this reason, and ' +
       'store purchases are priced as a separate case rather than absorbed silently.',
+  },
+  {
+    key: 'no_small_payments',
+    headline: 'Nothing is charged below £5.',
+    detail:
+      'Stripe takes £0.20 whatever the amount, so a £2 charge loses 10% to the fixed fee ' +
+      'before the percentage rate applies, and small payments attract disproportionate dispute ' +
+      'and refund handling. Anything genuinely worth less than £5 is bundled into a ' +
+      'subscription or given away. assertChargeable() throws rather than quietly taking it, and ' +
+      'the minimum contract size exists partly so a per-seat rate never becomes a charge on ' +
+      'its own.',
   },
   {
     key: 'shock_tolerance',

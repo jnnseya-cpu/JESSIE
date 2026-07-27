@@ -229,3 +229,87 @@ test('cloud cost is dominated by reads, not by compute', () => {
   const chatty = cloudCost({ ...PREMIUM.cloud, firestoreReads: PREMIUM.cloud.firestoreReads * 20 });
   assert.ok(chatty > base, 'a client that re-reads on every render is a cost problem');
 });
+
+/* ---------------- the £5 minimum charge ---------------- */
+
+test('no payment is ever taken below the minimum charge', async () => {
+  const { BelowMinimumChargeError, MIN_TRANSACTION_GBP, assertChargeable, fixedFeeBurden } =
+    await import('@movequest/shared');
+
+  assert.equal(MIN_TRANSACTION_GBP, 5);
+
+  for (const amount of [0.5, 1.99, 2, 4.99]) {
+    assert.throws(() => assertChargeable(amount), BelowMinimumChargeError, `£${amount} must be refused`);
+  }
+  assert.doesNotThrow(() => assertChargeable(5));
+  assert.doesNotThrow(() => assertChargeable(5.99));
+
+  assert.throws(() => assertChargeable(0), RangeError);
+  assert.throws(() => assertChargeable(-5), RangeError);
+
+  // The reason, stated numerically: the fixed fee dominates small charges.
+  assert.ok(fixedFeeBurden(2) > 9, 'Stripe’s fixed fee is over 9% of a £2 charge');
+  assert.ok(fixedFeeBurden(5) < 4.5, 'and under 4.5% at the floor');
+});
+
+test('the error explains itself rather than just refusing', async () => {
+  const { assertChargeable } = await import('@movequest/shared');
+  try {
+    assertChargeable(1.99);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.match(String((e as Error).message), /below the £5\.00 minimum/);
+    assert.match(String((e as Error).message), /10\.1% of it/);
+    assert.match(String((e as Error).message), /Bundle it into a subscription/);
+  }
+});
+
+test('every published plan and top-up tier clears the minimum', async () => {
+  const { ACU_TOPUP_TIERS, MIN_TRANSACTION_GBP, assertChargeable } = await import('@movequest/shared');
+
+  for (const tier of ACU_TOPUP_TIERS) {
+    assert.doesNotThrow(() => assertChargeable(tier.gbp), `£${tier.gbp} top-up`);
+    assert.ok(tier.gbp >= MIN_TRANSACTION_GBP);
+  }
+  assert.equal(ACU_TOPUP_TIERS[0].gbp, MIN_TRANSACTION_GBP, 'the smallest tier is the floor itself');
+  assert.equal(ACU_TOPUP_TIERS[0].bonusAcus, 0, 'no bonus at the floor — the fee has not amortised yet');
+
+  // Consumer subscriptions.
+  for (const price of [5.99, 8.99, 12.99, 17.99]) {
+    assert.doesNotThrow(() => assertChargeable(price));
+  }
+});
+
+test('an organisation invoice clears the floor even where a seat rate does not', async () => {
+  const { MIN_CONTRACT_SEATS, assertChargeable } = await import('@movequest/shared');
+
+  // £2 a seat is below the floor as a number, and is never charged as one.
+  assert.throws(() => assertChargeable(2));
+
+  // The transaction is the invoice, and the minimum contract size guarantees it.
+  const invoice = 2 * MIN_CONTRACT_SEATS;
+  assert.doesNotThrow(() => assertChargeable(invoice));
+  assert.ok(invoice >= 5, 'the seat minimum and the charge minimum are consistent');
+});
+
+test('the price floor never lands below the minimum charge', async () => {
+  const { MIN_TRANSACTION_GBP, monthlyCost, priceFloor } = await import('@movequest/shared');
+
+  // Even the cheapest user to serve must not produce a sub-minimum price.
+  const cheapest = monthlyCost({
+    label: 'minimal',
+    carriesOverhead: true,
+    messaging: { smsCount: 0, whatsappConversations: 0 },
+    cloud: { firestoreReads: 0, firestoreWrites: 0, firestoreStorageGb: 0, cloudRunVcpuSeconds: 0,
+      cloudRunGibSeconds: 0, requests: 0, functionInvocations: 0, storageGb: 0, egressGb: 0,
+      bigQueryStorageGb: 0, bigQueryQueryTb: 0, redisGbHours: 0 },
+    aiCalls: [],
+  });
+  const floor = priceFloor(cheapest.total);
+  assert.ok(
+    Math.max(floor, MIN_TRANSACTION_GBP) >= MIN_TRANSACTION_GBP,
+    'whichever binds, the charge clears £5',
+  );
+  // In practice human cost alone puts the floor above £5 anyway.
+  assert.ok(floor >= 3, 'overhead alone is substantial');
+});

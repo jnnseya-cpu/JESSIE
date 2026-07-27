@@ -8,8 +8,11 @@ import {
   COST_MODEL_DATE,
   COST_MODEL_VERSION,
   COST_PROTECTION_MULTIPLE,
+  ACU_TOPUP_TIERS,
   MIN_CONTRACT_SEATS,
+  MIN_TRANSACTION_GBP,
   MODEL_FINDINGS,
+  fixedFeeBurden,
   OVERHEAD_PER_PAID_USER_MONTH,
   OVERHEAD_TOTAL,
   PROFIT_MULTIPLE,
@@ -607,6 +610,97 @@ export default function Economics() {
                 />
               </article>
             </div>
+          </div>
+        </section>
+
+        {/* ---------------- minimum charge ---------------- */}
+        <section className="section">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow">The floor</p>
+              <h2>Nothing is ever charged below £{MIN_TRANSACTION_GBP.toFixed(2)}.</h2>
+              <p className="lede">
+                Not a marketing choice — arithmetic. Stripe's fee is £
+                {STRIPE.fixedFee.toFixed(2)} whatever the amount, so it is{' '}
+                {fixedFeeBurden(2)}% of a £2 charge and {fixedFeeBurden(5)}% of a £5 one. Small
+                payments also attract disproportionate dispute and refund handling. Anything
+                genuinely worth less than £{MIN_TRANSACTION_GBP.toFixed(2)} is bundled into a
+                subscription or given away, and{' '}
+                <code>assertChargeable()</code> throws rather than quietly taking it.
+              </p>
+            </div>
+
+            <div className="dash">
+              <article className="card card--7 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">What the fixed fee alone consumes</h3>
+                  <span className="card__tag" style={{ color: 'var(--mq-critical)' }}>
+                    before any percentage rate
+                  </span>
+                </div>
+                <CompareBars
+                  rows={[
+                    { label: '£1.00 charge', value: fixedFeeBurden(1), tone: 'var(--mq-critical)', note: 'Refused.' },
+                    { label: '£2.00 charge', value: fixedFeeBurden(2), tone: 'var(--mq-action)', note: 'Refused.' },
+                    { label: '£5.00 charge — the floor', value: fixedFeeBurden(5), tone: 'var(--mq-monitor)', note: 'Accepted. The smallest charge that still makes sense.' },
+                    { label: '£8.99 charge', value: fixedFeeBurden(8.99), tone: 'var(--mq-excellent)', note: 'Comfortable.' },
+                    { label: '£20.00 invoice', value: fixedFeeBurden(20), tone: 'var(--mq-excellent)', note: 'A ten-seat organisation at £2 a seat.' },
+                  ]}
+                  max={25}
+                  unit="%"
+                />
+              </article>
+
+              <article className="card card--5 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">Top-up denominations</h3>
+                  <span className="card__tag">all clear the floor</span>
+                </div>
+                <div className="tablewrap">
+                  <table className="endpoints">
+                    <thead>
+                      <tr>
+                        <th scope="col">Pay</th>
+                        <th scope="col">ACUs</th>
+                        <th scope="col">Bonus</th>
+                        <th scope="col">Fixed fee</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ACU_TOPUP_TIERS.map((t) => (
+                        <tr key={t.gbp}>
+                          <td style={{ fontWeight: 600 }}>£{t.gbp.toFixed(2)}</td>
+                          <td>{t.acus.toLocaleString('en-GB')}</td>
+                          <td style={{ color: t.bonusAcus ? 'var(--mq-excellent)' : undefined }}>
+                            {t.bonusAcus ? `+${t.bonusAcus}` : '—'}
+                          </td>
+                          <td>{fixedFeeBurden(t.gbp)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="card__note">
+                  The bonus on larger tiers is the fixed fee amortising, not a discount invented
+                  to drive volume — which is why there is none at the floor.
+                </p>
+              </article>
+            </div>
+
+            <article className="card card--light" style={{ marginTop: 20 }}>
+              <div className="card__head">
+                <h3 className="card__t">Where the rule bites, and where it does not</h3>
+              </div>
+              <p className="card__note">
+                The floor is on the <strong>transaction</strong>, not on a per-seat rate. A
+                ten-seat organisation at £2 a seat is one £
+                {(2 * MIN_CONTRACT_SEATS).toFixed(2)} invoice and clears it comfortably — the
+                seat rate never becomes a charge on its own. An automatic top-up configured
+                below the floor is raised to it rather than declined, because the person asked
+                for it to happen without their involvement and failing silently at 3am is the
+                wrong behaviour. A manual purchase throws, because somebody is there to read it.
+              </p>
+            </article>
           </div>
         </section>
 

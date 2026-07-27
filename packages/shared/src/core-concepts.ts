@@ -732,6 +732,7 @@ export const PLANS: readonly Plan[] = [
       'Basic progress',
       'Manual movement breaks',
       'Community challenges',
+      'No card, and nothing charged under £5 ever',
     ],
   },
   {

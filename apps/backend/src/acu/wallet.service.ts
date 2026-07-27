@@ -13,6 +13,7 @@ import {
   type CostInput,
   type WalletBucket,
 } from '@movequest/body-command';
+import { MIN_TRANSACTION_GBP, assertChargeable } from '@movequest/shared';
 
 /**
  * The ACU wallet and Cost Governor.
@@ -48,7 +49,7 @@ export interface AutoTopUp {
   enabled: boolean;
   /** Trigger when the balance falls below this. */
   belowAcus: number;
-  /** Amount to purchase, in pounds. */
+  /** Amount to purchase, in pounds. Must clear MIN_TRANSACTION_GBP. */
   amountGbp: number;
 }
 
@@ -176,8 +177,15 @@ export class WalletService {
     );
   }
 
-  /** A purchased top-up. Valid twelve months, spent after subscription ACUs. */
+  /**
+   * A purchased top-up. Valid twelve months, spent after subscription ACUs.
+   *
+   * Throws below the minimum charge rather than taking the money — a
+   * sub-£5 payment loses a disproportionate share to Stripe's fixed fee,
+   * and the honest response is to refuse it rather than quietly absorb it.
+   */
   purchase(walletId: string, amountGbp: number, bonusAcus = 0, now = new Date()) {
+    assertChargeable(amountGbp);
     const wallet = this.wallets.get(walletId);
     if (!wallet) return null;
     const amount = Math.round(amountGbp * ACU_PER_GBP) + bonusAcus;
@@ -325,12 +333,19 @@ export class WalletService {
   }
 
   /** Whether an auto top-up should fire. Returns the amount, or null. */
+  /**
+   * The amount an automatic top-up would charge, or null if none is due.
+   *
+   * A configured amount below the minimum charge is raised to the minimum
+   * rather than declined — the person asked for this to happen without
+   * their involvement, so silently failing at 3am is the wrong behaviour.
+   * A manual purchase throws instead, because somebody is there to read it.
+   */
   autoTopUpDue(walletId: string, now = new Date()): number | null {
     const wallet = this.wallets.get(walletId);
     if (!wallet?.autoTopUp?.enabled) return null;
-    return this.balance(walletId, now) < wallet.autoTopUp.belowAcus
-      ? wallet.autoTopUp.amountGbp
-      : null;
+    if (this.balance(walletId, now) >= wallet.autoTopUp.belowAcus) return null;
+    return Math.max(MIN_TRANSACTION_GBP, wallet.autoTopUp.amountGbp);
   }
 
   /** Expire stale grants. Run on a schedule. */
