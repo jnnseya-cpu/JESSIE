@@ -84,7 +84,10 @@ export const CHARTER = [
   },
   {
     id: 'C6',
-    rule: 'No appearance, weight, BMI or calorie framing at any age, in any mode, in any locale.',
+    rule:
+      'No appearance, weight, BMI or calorie framing is ever surfaced to a user under 18, ' +
+      'in any mode or locale. For adults, body-composition features are opt-in, never a ' +
+      'default, never a comparison between named individuals, and never a leaderboard.',
   },
   {
     id: 'C7',
@@ -98,7 +101,7 @@ export const CHARTER = [
 
 export type CharterRuleId = (typeof CHARTER)[number]['id'];
 
-/** Product capabilities that the Charter forbids outright. */
+/** Product capabilities that the Charter forbids outright, at every age. */
 export const FORBIDDEN_MECHANICS = [
   'paid_streak_restore',
   'streak_expiry_countdown',
@@ -106,7 +109,63 @@ export const FORBIDDEN_MECHANICS = [
   'bottom_rank_display',
   'named_minor_comparison',
   'variable_ratio_minor',
-  'body_composition_framing',
   'cancellation_friction',
+  // Body-composition mechanics banned regardless of age or consent.
+  'body_composition_leaderboard',
+  'lowest_bmi_leaderboard',
+  'public_weight_ranking',
+  'child_weight_loss_contest',
+  'fasting_competition',
+  'calorie_minimisation_game',
+  'exercise_to_erase_food_messaging',
 ] as const;
 export type ForbiddenMechanic = (typeof FORBIDDEN_MECHANICS)[number];
+
+/**
+ * C6, scoped.
+ *
+ * The Charter originally banned weight, BMI and calorie framing at every
+ * age. That made the platform unable to serve a problem that affects
+ * children and adults alike, so the rule is now scoped by audience rather
+ * than removed:
+ *
+ *   - Under 18: an absolute prohibition on *surfacing* any of it. A
+ *     centile assessment may exist for safety and escalation, but a child
+ *     is never shown a weight target, a body score, a comparison or a
+ *     calorie figure. This is unchanged in strength from the original.
+ *
+ *   - Adults: available, but opt-in and never competitive.
+ *
+ * The mechanics above stay banned for everyone, at every age, consent or
+ * no consent. Asserted in charter.test.ts.
+ */
+export const BODY_COMPOSITION_MIN_AGE = 18;
+
+export interface BodySurfacePolicy {
+  /** Whether any weight/BMI/calorie value may be displayed to this user. */
+  mayDisplay: boolean;
+  /** Whether the user may set a body-related target. */
+  mayTarget: boolean;
+  /** Whether the feature must be explicitly opted into. Always true when available. */
+  requiresOptIn: boolean;
+  reason: string;
+}
+
+export function bodySurfacePolicy(age: number, optedIn: boolean): BodySurfacePolicy {
+  if (age < BODY_COMPOSITION_MIN_AGE) {
+    return {
+      mayDisplay: false,
+      mayTarget: false,
+      requiresOptIn: true,
+      reason:
+        'Under 18. Growth, energy, confidence and routine are the frame — never a number ' +
+        'about the body.',
+    };
+  }
+  return {
+    mayDisplay: optedIn,
+    mayTarget: optedIn,
+    requiresOptIn: true,
+    reason: optedIn ? 'Adult, opted in.' : 'Adult, not opted in. Off by default.',
+  };
+}

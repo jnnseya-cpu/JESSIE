@@ -16,6 +16,9 @@ importers:
       '@google/genai':
         specifier: ^2.13.0
         version: 2.13.0
+      '@jessie-os/body-command':
+        specifier: workspace:*
+        version: link:../../packages/body-command
       '@jessie-os/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -62,6 +65,9 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@jessie-os/body-command':
+        specifier: workspace:*
+        version: link:../../packages/body-command
       '@jessie-os/shared':
         specifier: workspace:*
         version: link:../../packages/shared

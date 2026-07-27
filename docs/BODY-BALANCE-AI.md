@@ -2,11 +2,51 @@
 
 **Adaptive Healthy-Weight, Body-Composition and Behaviour Intelligence Module**
 
-> **Status: captured, not built. Blocked on a governance decision — see §0.**
+> **Status: DECIDED and built. Option C — scoped carve-out. See §0.**
 
 ---
 
-## 0. BLOCKING CONFLICT — read first
+## 0. RESOLVED — Option C, scoped carve-out
+
+**Decision:** the OS serves children and adults from one engine, because the problem
+affects both. Charter rule C6 was **scoped by audience rather than removed.**
+
+> *"this OS is for both children and adults as this issues affects both of them,
+> please build them as it described"* — author, directing the resolution
+
+### What C6 now says
+
+| Audience | Rule |
+|---|---|
+| **Under 18** | An absolute prohibition on *surfacing* weight, BMI, calorie or appearance framing. A centile assessment may exist for safety and escalation, but a child is never shown a number, a target, a score or a comparison. **Unchanged in strength from the original.** |
+| **Adults** | Available, opt-in, never a default, never a comparison between named individuals, never a leaderboard. |
+| **Everyone** | Body-composition leaderboards, lowest-BMI rankings, public weight ranking, child weight-loss contests, fasting competitions, calorie-minimisation games and exercise-to-erase-food messaging remain banned outright, at every age, consent or no consent. |
+
+### How it is enforced rather than promised
+
+`bodySurfacePolicy(age, optedIn)` in `packages/shared/src/gamification.ts` is the single
+gate. Under 18 it returns `mayDisplay: false` and `mayTarget: false` **for every value of
+`optedIn`** — the consent switch is not consulted. `BodyService.assess()` calls it before
+returning, so metrics come back `null` rather than being filtered downstream.
+
+Verified end to end: an eleven-year-old requesting `REDUCE` with `optedIntoBodyMetrics:
+true` receives `pathway: "CHILD_GROWTH"`, `metrics: null`, and
+`powersExercised: ["activate_child_safe_mode", "block_weight_loss_plan"]`.
+
+`charter.test.ts` grew from 11 to 14 assertions. Three are new and all concern C6: that a
+minor is never shown a body number whatever the consent state, that adults get it opt-in
+and off by default, and that the competitive mechanics stay banned for everyone.
+
+### What this cost, stated plainly
+
+The original C6 was simpler to defend in procurement: *"we never do this, at any age."*
+The scoped version requires explaining a boundary rather than asserting an absence. That
+is a real trade, and it was the author's call to make. The child-facing half of the
+protection did not weaken.
+
+---
+
+## 0b. The original conflict, for the record
 
 This module is specified against **MoveQuest AI OS**, not JESSIE-OS™, and it collides
 head-on with a shipped, CI-enforced guardrail.

@@ -7,6 +7,7 @@ import {
   BANNED_LEXICON_STRICT,
   CHARTER,
   FORBIDDEN_MECHANICS,
+  bodySurfacePolicy,
   MOVEMENT_VARIANTS,
   SNAP_DURATION_SECONDS,
   evaluatePublishGate,
@@ -52,8 +53,8 @@ test('C5: variable-ratio mechanics are forbidden for minors', () => {
   assert.equal(isMinorMode('standard'), false);
 });
 
-test('C6: no appearance, weight or calorie framing at any age', () => {
-  for (const term of ['weight loss', 'calories', 'fat', 'slim', 'toned']) {
+test('C6: shaming and appearance lexicon stays banned at every age', () => {
+  for (const term of ['weight loss', 'slim', 'toned', 'lazy', 'failure']) {
     assert.ok(
       BANNED_LEXICON.includes(term),
       `"${term}" must be in the banned lexicon`,
@@ -62,6 +63,44 @@ test('C6: no appearance, weight or calorie framing at any age', () => {
   // Kid and Centennial carry the stricter list on top.
   assert.ok(BANNED_LEXICON_STRICT.length > BANNED_LEXICON.length);
   assert.ok(BANNED_LEXICON_STRICT.includes('compete'));
+});
+
+test('C6: a minor is never shown a body number, whatever the consent state', () => {
+  for (const age of [10, 12, 13, 15, 17]) {
+    for (const optedIn of [true, false]) {
+      const policy = bodySurfacePolicy(age, optedIn);
+      assert.equal(policy.mayDisplay, false, `age ${age}, optedIn ${optedIn}`);
+      assert.equal(policy.mayTarget, false, `age ${age}, optedIn ${optedIn}`);
+    }
+  }
+});
+
+test('C6: adults get it opt-in, never on by default', () => {
+  const off = bodySurfacePolicy(34, false);
+  assert.equal(off.mayDisplay, false, 'off unless opted in');
+  assert.equal(off.requiresOptIn, true);
+
+  const on = bodySurfacePolicy(34, true);
+  assert.equal(on.mayDisplay, true);
+  assert.equal(on.mayTarget, true);
+  assert.equal(on.requiresOptIn, true, 'opt-in is required even when granted');
+});
+
+test('C6: competitive body mechanics stay banned for everyone', () => {
+  for (const mechanic of [
+    'body_composition_leaderboard',
+    'lowest_bmi_leaderboard',
+    'public_weight_ranking',
+    'child_weight_loss_contest',
+    'fasting_competition',
+    'calorie_minimisation_game',
+    'exercise_to_erase_food_messaging',
+  ] as const) {
+    assert.ok(
+      FORBIDDEN_MECHANICS.includes(mechanic),
+      `${mechanic} must remain forbidden`,
+    );
+  }
 });
 
 test('Law 3: the five-variant publishing gate cannot be bypassed', () => {
