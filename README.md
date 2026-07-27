@@ -28,17 +28,21 @@ JESSIE/
 │  └─ frontend/         @jessie-os/frontend  — Next.js 14 (App Router) site & consoles
 ├─ packages/
 │  ├─ shared/           @jessie-os/shared        — domain model, contracts, design tokens
-│  └─ body-command/     @jessie-os/body-command  — BodyCommand AI contracts (ISOLATED)
+│  ├─ body-command/     @jessie-os/body-command  — BodyCommand AI: pathways, guardian, ACU maths
+│  └─ foodlens/         @jessie-os/foodlens      — FoodLens 360°: evidence and confidence
+├─ db/
+│  ├─ migrations/       Postgres schema — invariants enforced in the database
+│  └─ test/             constraint tests: every rule proven to reject bad writes
 └─ docs/
    ├─ JESSIE-OS-SPEC.md    — the production specification (v1.0, JS-01)
-   └─ BODY-BALANCE-AI.md   — BodyCommand AI, blocked on a governance decision
+   └─ BODY-BALANCE-AI.md   — BodyCommand AI (C6 resolved: scoped carve-out)
 ```
 
-> **`packages/body-command` is deliberately not imported by anything.** It holds the
-> BodyCommand AI contracts, which are built on BMI, waist and calorie estimation —
-> the exact framing Charter rule C6 forbids. The conflict and its three possible
-> resolutions are documented at `docs/BODY-BALANCE-AI.md` §0. Until that decision is
-> made, the contracts exist and compile, C6 stands, and nothing is wired together.
+> **On C6 and body metrics.** The OS serves children and adults from one engine.
+> Charter rule C6 is scoped by audience, not removed: never surfaced under 18 in any
+> mode under any consent; opt-in and never competitive for adults. `bodySurfacePolicy`
+> is the single gate and does not consult the consent flag below 18. See
+> `docs/BODY-BALANCE-AI.md` §0.
 
 `packages/shared` is the single source of truth. Both applications compile against it, so a
 contract change breaks the build on both sides rather than at runtime.
@@ -114,6 +118,10 @@ and carries the signature line.
 | `GET` | `/movements` · `/movements/gate` | Library and the publishing contract |
 | `POST` | `/movements/:id/check` · `/publish` | Gate dry-run and publish attempt |
 | `POST` | `/prescriptions/next` | **The core call** — the next best Snap |
+| `POST` | `/body/assess` · `/body/plan` | Pathway, safety and the daily plan (all ages) |
+| `GET` | `/body/pathways` · `/scorecard` · `/agents` | The nine pathways, the weighting, the nineteen agents |
+| `GET` | `/acu/policy` · `POST /acu/quote` | Published economics; price an action before running it |
+| `POST` | `/acu/wallets/:id/spend` | Cost Governor — 4× rule, bucket precedence, hard stop |
 
 `POST /prescriptions/next` returns either a Snap or an explicit hold. It is never a hard error:
 
@@ -141,8 +149,19 @@ A build that violates it fails the pipeline — no paid streak restoration, no l
 bottom-of-leaderboard exposure, no body-composition language at any age, in any mode.
 
 ```bash
-pnpm --filter @jessie-os/backend test
-# tests 11 · pass 11 · fail 0
+pnpm test                   # every package
+# charter 14/14 · body-command 25/25 · foodlens 11/11
+```
+
+### The database enforces it too
+
+The schema is not a passive record. A Snap outside 90–300 seconds, a prescription without a
+context decision, a minor without a guardian, a cohort report below k=8, or an ACU debit
+charging under 4× provider cost are all rejected by Postgres itself.
+
+```bash
+DATABASE_URL=postgres://... pnpm db:migrate && pnpm db:test
+# 14 invariants, each proven to reject the write that violates it
 ```
 
 ### Privacy is architecture, not policy
