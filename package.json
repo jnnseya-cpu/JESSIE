@@ -11,6 +11,7 @@
   "scripts": {
     "build": "pnpm --filter @jessie-os/shared build && pnpm --filter @jessie-os/backend build && pnpm --filter @jessie-os/frontend build",
     "build:shared": "pnpm --filter @jessie-os/shared build",
+    "build:body-command": "pnpm --filter @jessie-os/body-command build",
     "build:backend": "pnpm --filter @jessie-os/backend build",
     "build:frontend": "pnpm --filter @jessie-os/frontend build",
     "dev": "pnpm --parallel --filter @jessie-os/backend --filter @jessie-os/frontend dev",

@@ -27,10 +27,18 @@ JESSIE/
 │  ├─ backend/          @jessie-os/backend   — NestJS API + agent runtime
 │  └─ frontend/         @jessie-os/frontend  — Next.js 14 (App Router) site & consoles
 ├─ packages/
-│  └─ shared/           @jessie-os/shared    — domain model, contracts, design tokens
+│  ├─ shared/           @jessie-os/shared        — domain model, contracts, design tokens
+│  └─ body-command/     @jessie-os/body-command  — BodyCommand AI contracts (ISOLATED)
 └─ docs/
-   └─ JESSIE-OS-SPEC.md — the production specification (v1.0, JS-01)
+   ├─ JESSIE-OS-SPEC.md    — the production specification (v1.0, JS-01)
+   └─ BODY-BALANCE-AI.md   — BodyCommand AI, blocked on a governance decision
 ```
+
+> **`packages/body-command` is deliberately not imported by anything.** It holds the
+> BodyCommand AI contracts, which are built on BMI, waist and calorie estimation —
+> the exact framing Charter rule C6 forbids. The conflict and its three possible
+> resolutions are documented at `docs/BODY-BALANCE-AI.md` §0. Until that decision is
+> made, the contracts exist and compile, C6 stands, and nothing is wired together.
 
 `packages/shared` is the single source of truth. Both applications compile against it, so a
 contract change breaks the build on both sides rather than at runtime.
