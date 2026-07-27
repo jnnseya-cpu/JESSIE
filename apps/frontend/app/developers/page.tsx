@@ -29,7 +29,7 @@ const ENDPOINTS: ReadonlyArray<{
   { verb: 'GET', path: '/body/pathways', what: 'The nine pathways and what each permits.' },
   { verb: 'GET', path: '/body/scorecard', what: 'The weighting behind the four readings.' },
   { verb: 'GET', path: '/body/agents', what: 'The nineteen BodyCommand agents and their supervisor.' },
-  { verb: 'GET', path: '/acu/policy', what: 'Published economics — the 4× cost-protection rule.' },
+  { verb: 'GET', path: '/acu/policy', what: 'ACU policy: what is metered, what never is, and how allowances work.' },
   { verb: 'POST', path: '/acu/quote', what: 'Price an action before running it.' },
   { verb: 'POST', path: '/acu/wallets/:id/spend', what: 'Cost Governor: bucket precedence, hard stop at zero.' },
 ];
@@ -47,7 +47,7 @@ const INVARIANTS = [
   'A minor placed in an adult mode cannot exist.',
   'A movement published without review is rejected.',
   `A cohort report below k = ${K_ANONYMITY_THRESHOLD} is rejected.`,
-  'An ACU debit charging under 4× provider cost is rejected.',
+  'An ACU debit priced below its own cost floor is rejected.',
   'Grace tokens outside 0–2 are rejected.',
   'A proxy action without a named acting person is rejected.',
 ];

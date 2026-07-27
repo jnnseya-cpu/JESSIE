@@ -28,7 +28,7 @@ const POSTS = [
     title: 'We moved the rules into PostgreSQL, and it found four bugs the same afternoon',
     body:
       'A Snap outside 90–300 seconds, a minor without a guardian, a cohort report below k = 8, ' +
-      'an ACU debit under the 4× protection rule. Each is now a CHECK constraint with a test ' +
+      'an ACU debit priced below its own floor. Each is now a CHECK constraint with a test ' +
       'that attempts the violating write and asserts the rejection. Application code is where ' +
       'invariants go to be forgotten.',
   },

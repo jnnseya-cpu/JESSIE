@@ -917,12 +917,8 @@ export default function Home() {
               <p className="lede">
                 Indicative pricing, confirmed at launch. Agent Compute Units are shown on every
                 plan and priced before any expensive action runs: you approve the cost, then it
-                happens. The whole cost stack behind these numbers — inference, Google Cloud,
-                messaging, Stripe, VAT and the humans — is published at{' '}
-                <Link href="/economics" style={{ color: 'var(--mq-teal)', fontWeight: 600 }}>
-                  unit economics
-                </Link>
-                .
+                happens. Nothing is ever charged below £5, there are no hidden usage limits, and
+                cancelling is one tap.
               </p>
             </div>
 

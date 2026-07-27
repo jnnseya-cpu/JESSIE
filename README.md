@@ -219,11 +219,32 @@ the floor and AAA is required in Explorer, Independence and Vitality. Pointer ta
 24 × 24 px WCAG minimum by a wide margin — 48px standard, 56px in later-life modes. All motion
 respects `prefers-reduced-motion`, and nothing flashes above 3Hz.
 
+### Unit economics — internal
+
+`packages/shared/src/economics.ts` prices the whole stack: AI inference, Google Cloud and
+Firebase, SMS and WhatsApp, Stripe, VAT, and the human cost of support, content, clinical
+review, compliance and safeguarding. `PROFIT_MULTIPLE = 2` — net revenue must be at least
+twice fully-loaded cost — and it sits on top of the AI provider-protection rule rather than
+replacing it. `MIN_TRANSACTION_GBP = 5.00`: `assertChargeable()` throws rather than taking a
+payment that loses a disproportionate share to fixed fees.
+
+```bash
+pnpm economics            # the full model, in the terminal
+pnpm economics --json     # machine-readable
+```
+
+**This is not published.** Per-user cost, supplier unit rates, overhead composition,
+contribution and margin are commercially sensitive and appear on no public page. What
+customers see is the part that affects them: prices, the £5 floor, the ACU allowance, and a
+quote before any expensive action runs.
+
 ### Public site
 
-17 statically rendered routes: the landing page plus `/how-it-works`, `/industries`,
-`/for-children`, `/for-adults`, `/body-balance`, `/get-started`, `/about`, `/blog`,
-`/developers`, `/growth`, `/contact`, `/status`, `/policies`, `/terms` and `/privacy`.
+24 statically rendered routes: the landing page, one per OS surface (`/mova`,
+`/micro-movement`, `/foodlens`, `/body-balance`, `/challenges`, `/wearables`), plus
+`/how-it-works`, `/industries`, `/for-children`, `/for-adults`, `/get-started`, `/about`,
+`/blog`, `/developers`, `/growth`, `/contact`, `/status`, `/policies`, `/terms` and
+`/privacy`.
 Every chart is hand-drawn SVG with no external dependency, no runtime fetch and no randomness,
 so server output and client hydration are byte-identical.
 

@@ -135,7 +135,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
       },
       {
         name: 'ACU Economics Policy',
-        what: 'How Agent Compute Units are priced, allocated, rolled over and expired, including the 4× cost-protection rule.',
+        what: 'How Agent Compute Units are priced, allocated, rolled over and expired, and what is never metered.',
         when: 'v1.0 · 27 Jul 2026',
       },
       {

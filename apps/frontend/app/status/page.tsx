@@ -79,7 +79,7 @@ const SERVICES: ReadonlyArray<{
   },
   {
     name: 'ACU wallet & billing',
-    sub: 'Quotes, spend controls, top-ups, the 4× cost-protection rule',
+    sub: 'Quotes, spend controls, top-ups and the cost floor',
     state: 'ok',
     history: [...up(30)],
   },
