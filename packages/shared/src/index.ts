@@ -22,6 +22,7 @@ export * from './mova';
 export * from './micromovement';
 export * from './challenges';
 export * from './wearables';
+export * from './economics';
 export * from './agents';
 export * from './ai';
 export * from './api';

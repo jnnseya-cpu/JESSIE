@@ -224,6 +224,7 @@ const FOOT_NAV: ReadonlyArray<{
     heading: 'Resources',
     links: [
       { href: '/developers', label: 'Developers' },
+      { href: '/economics', label: 'Unit economics' },
       { href: '/status', label: 'Platform status' },
       { href: '/policies', label: 'All policies' },
       { href: '/terms', label: 'Terms of Service' },

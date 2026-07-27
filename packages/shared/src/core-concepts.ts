@@ -777,7 +777,7 @@ export const PLANS: readonly Plan[] = [
       'Challenge builder and campaigns',
       'Privacy-protected aggregate analytics',
       'Branded programmes',
-      'Minimum annual contract',
+      'Minimum 10 seats, minimum annual contract',
       'Setup and integration support',
     ],
   },
