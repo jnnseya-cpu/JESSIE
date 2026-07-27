@@ -141,6 +141,7 @@ export function VariantGlyph({ variant }: { variant: string }) {
 const NAV = [
   { href: '/', label: 'Platform' },
   { href: '/how-it-works', label: 'How it works' },
+  { href: '/foodlens', label: 'FoodLens' },
   { href: '/industries', label: 'Industries' },
   { href: '/developers', label: 'Developers' },
   { href: '/about', label: 'About' },
@@ -181,12 +182,22 @@ const FOOT_NAV: ReadonlyArray<{
   links: ReadonlyArray<{ href: string; label: string }>;
 }> = [
   {
+    heading: 'The OS',
+    links: [
+      { href: '/mova', label: 'MOVA AI Coach' },
+      { href: '/micro-movement', label: 'Micro-Movement' },
+      { href: '/foodlens', label: 'FoodLens 360°' },
+      { href: '/body-balance', label: 'BodyCommand' },
+      { href: '/challenges', label: 'Challenges' },
+      { href: '/wearables', label: 'Wearables' },
+    ],
+  },
+  {
     heading: 'Product',
     links: [
       { href: '/how-it-works', label: 'How it works' },
       { href: '/for-children', label: 'For children' },
       { href: '/for-adults', label: 'For adults' },
-      { href: '/body-balance', label: 'Body Balance' },
       { href: '/get-started', label: 'Get started' },
     ],
   },

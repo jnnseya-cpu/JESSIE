@@ -131,6 +131,8 @@ export const NEVER_CLAIM = [
   'exact_calorie_count_from_photo',
   'medical_treatment_advice',
   'that_movement_cancels_out_food',
+  'a_single_composite_health_score',
+  'a_comparison_against_another_named_person',
 ] as const;
 export type ForbiddenClaim = (typeof NEVER_CLAIM)[number];
 

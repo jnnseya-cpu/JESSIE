@@ -134,6 +134,7 @@ const MIX_BARS = [
 /** §34.4 — the six surfaces of the OS. */
 const SURFACES = [
   {
+    href: '/mova',
     name: 'MOVA AI Coach',
     tone: 'var(--mq-purple)',
     grad: 'grad-ai',
@@ -143,6 +144,7 @@ const SURFACES = [
       'a data-only experience.',
   },
   {
+    href: '/micro-movement',
     name: 'Micro-Movement',
     tone: 'var(--mq-teal)',
     grad: 'grad-movement',
@@ -151,6 +153,7 @@ const SURFACES = [
       'body you actually have. Five executable variants on every movement, always.',
   },
   {
+    href: '/foodlens',
     name: 'FoodLens',
     tone: 'var(--mq-orange)',
     grad: 'grad-food',
@@ -159,6 +162,7 @@ const SURFACES = [
       'invented exact figure, and never a calorie number to anyone under 18.',
   },
   {
+    href: '/body-balance',
     name: 'BodyCommand',
     tone: 'var(--mq-magenta)',
     grad: 'grad-ai',
@@ -167,6 +171,7 @@ const SURFACES = [
       'strongest current blocker, and the minimum effective change that would shift it.',
   },
   {
+    href: '/challenges',
     name: 'Challenges',
     tone: 'var(--mq-lime)',
     grad: 'grad-movement',
@@ -175,6 +180,7 @@ const SURFACES = [
       'absent by design, so the fittest person cannot win every event on their own.',
   },
   {
+    href: '/wearables',
     name: 'Wearables',
     tone: 'var(--mq-sky)',
     grad: 'grad-recovery',
@@ -511,11 +517,17 @@ export default function Home() {
 
             <div className="tiles">
               {SURFACES.map((s) => (
-                <article className="tile" key={s.name} style={{ ['--tone' as string]: s.tone }}>
-                  <div className={`tile__band ${s.grad}`} aria-hidden="true" />
+                <Link
+                  className="tile tile--link"
+                  key={s.name}
+                  href={s.href}
+                  style={{ ['--tone' as string]: s.tone }}
+                >
+                  <span className={`tile__band ${s.grad}`} aria-hidden="true" />
                   <h3>{s.name}</h3>
                   <p>{s.body}</p>
-                </article>
+                  <span className="tile__go">Read more →</span>
+                </Link>
               ))}
             </div>
           </div>

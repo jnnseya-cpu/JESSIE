@@ -83,17 +83,6 @@ export const MUST_NEVER_LOOK = [
   'like a generic step counter',
 ] as const;
 
-/** MOVA's context colours. §15. Colour is never the only signal. */
-export const MOVA_STATES = [
-  { state: 'movement', token: 'teal', means: 'Movement coaching' },
-  { state: 'food', token: 'orange', means: 'Food intelligence' },
-  { state: 'body', token: 'purple', means: 'BodyCommand reasoning' },
-  { state: 'recovery', token: 'sky', means: 'Recovery' },
-  { state: 'success', token: 'positive', means: 'Success' },
-  { state: 'attention', token: 'monitor', means: 'Attention' },
-  { state: 'safety', token: 'critical', means: 'Safety escalation only' },
-] as const;
-
 /**
  * Words that must never appear in user-facing copy at any age mode.
  * Enforced by the ethical-copy test in the backend test suite.

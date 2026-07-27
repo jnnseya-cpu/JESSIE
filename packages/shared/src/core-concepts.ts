@@ -360,28 +360,10 @@ export const POINTS_NEVER = [
   'comparison of medical or biometric information',
 ] as const;
 
-/**
- * Team Score = participation + consistency + improvement + mutual support.
- * Capability is absent by design: this is what lets a ten-year-old, a
- * wheelchair user and an eighty-eight-year-old share one leaderboard fairly.
+/*
+ * Team scoring lives in `challenges.ts`, which owns the weights, the
+ * contribution ceiling and the capability guard. It is not duplicated here.
  */
-export const TEAM_SCORE_TERMS = [
-  'participation rate',
-  'consistency',
-  'improvement',
-  'mutual support',
-] as const;
-
-export function teamScore(t: {
-  participationRate: number;
-  consistency: number;
-  improvement: number;
-  mutualSupport: number;
-}): number {
-  return Number(
-    ((t.participationRate + t.consistency + t.improvement + t.mutualSupport) / 4).toFixed(4),
-  );
-}
 
 /** The nine-step loop the whole product runs on. §5.1. */
 export const GAME_LOOP = [

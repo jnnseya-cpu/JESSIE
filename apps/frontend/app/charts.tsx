@@ -700,3 +700,303 @@ export function TrafficLights({
     </ul>
   );
 }
+
+/* ---------------- FoodLens camera ---------------- */
+
+export type Overlay = {
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  confidence: number;
+};
+
+/**
+ * The capture frame, drawn rather than photographed. §18.
+ *
+ * Every box carries its own confidence, because the interesting part of
+ * recognition is not what the model saw — it is how sure it is.
+ */
+export function CameraFrame({
+  overlays,
+  reference,
+}: {
+  overlays: readonly Overlay[];
+  reference?: { label: string; x: number; y: number; w: number };
+}) {
+  return (
+    <div className="cam">
+      <svg viewBox="0 0 360 270" role="img" aria-label="Meal capture with recognised items">
+        <defs>
+          <linearGradient id="mq-plate" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#F59E3D" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#FF6B5E" stopOpacity="0.28" />
+          </linearGradient>
+        </defs>
+
+        <rect width="360" height="270" rx="14" className="cam__bg" />
+        {/* the plate */}
+        <ellipse cx="180" cy="142" rx="118" ry="86" fill="url(#mq-plate)" className="cam__plate" />
+        <ellipse
+          cx="180"
+          cy="142"
+          rx="118"
+          ry="86"
+          fill="none"
+          className="cam__plateline"
+        />
+
+        {/* recognised items */}
+        {overlays.map((o, i) => (
+          <g key={o.label} className="cam__box" style={{ animationDelay: `${i * 140}ms` }}>
+            <rect x={o.x} y={o.y} width={o.w} height={o.h} rx="7" className="cam__rect" />
+            <rect x={o.x} y={o.y - 17} width={o.label.length * 6.1 + 34} height="15" rx="7" className="cam__tagbg" />
+            <text x={o.x + 7} y={o.y - 6} className="cam__tag">
+              {o.label}
+              <tspan className="cam__pct"> {Math.round(o.confidence * 100)}%</tspan>
+            </text>
+          </g>
+        ))}
+
+        {/* portion reference */}
+        {reference && (
+          <g className="cam__ref">
+            <line x1={reference.x} y1={reference.y} x2={reference.x + reference.w} y2={reference.y} />
+            <line x1={reference.x} y1={reference.y - 5} x2={reference.x} y2={reference.y + 5} />
+            <line
+              x1={reference.x + reference.w}
+              y1={reference.y - 5}
+              x2={reference.x + reference.w}
+              y2={reference.y + 5}
+            />
+            <text x={reference.x + reference.w / 2} y={reference.y + 17} textAnchor="middle">
+              {reference.label}
+            </text>
+          </g>
+        )}
+
+        {/* framing corners */}
+        {[
+          [16, 16, 1, 1], [344, 16, -1, 1], [16, 254, 1, -1], [344, 254, -1, -1],
+        ].map(([x, y, sx, sy]) => (
+          <path
+            key={`${x}-${y}`}
+            d={`M ${x} ${y + 20 * sy} L ${x} ${y} L ${x + 20 * sx} ${y}`}
+            className="cam__corner"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ---------------- capture checklist ---------------- */
+
+export function CaptureChecks({
+  items,
+  acceptable,
+}: {
+  items: ReadonlyArray<{ label: string; score: number; hint: string }>;
+  acceptable: number;
+}) {
+  return (
+    <ul className="cchecks">
+      {items.map((i) => {
+        const ok = i.score >= acceptable;
+        return (
+          <li key={i.label} className={ok ? 'is-ok' : 'is-todo'}>
+            <span className="cchecks__mark" aria-hidden="true">
+              {ok ? '✓' : '!'}
+            </span>
+            <span>
+              <b>{i.label}</b>
+              <em>{ok ? 'Good' : i.hint}</em>
+            </span>
+            <span className="cchecks__score">{Math.round(i.score * 100)}%</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/* ---------------- macro rings ---------------- */
+
+/**
+ * Three concentric rings — protein, carbohydrate, fat — as a share of the
+ * meal's energy. Rings rather than a pie because the numbers are shares
+ * of one thing and the eye compares arc length better than wedge area.
+ */
+export function MacroRings({
+  macros,
+  centre,
+  sub,
+}: {
+  macros: ReadonlyArray<{ label: string; pct: number; grams: number; tone: string }>;
+  centre: string;
+  sub: string;
+}) {
+  const c = 90;
+  return (
+    <div className="macro">
+      <svg viewBox="0 0 180 180" role="img" aria-label="Energy from protein, carbohydrate and fat">
+        {macros.map((m, i) => {
+          const r = 76 - i * 20;
+          const circ = 2 * Math.PI * r;
+          return (
+            <g key={m.label} transform={`rotate(-90 ${c} ${c})`}>
+              <circle cx={c} cy={c} r={r} className="macro__track" fill="none" />
+              <circle
+                cx={c}
+                cy={c}
+                r={r}
+                fill="none"
+                className="macro__fill"
+                style={{
+                  stroke: m.tone,
+                  strokeDasharray: `${r2((circ * m.pct) / 100)} ${r2(circ)}`,
+                  animationDelay: `${i * 120}ms`,
+                }}
+              />
+            </g>
+          );
+        })}
+        <text x="90" y="88" className="macro__n" textAnchor="middle">
+          {centre}
+        </text>
+        <text x="90" y="106" className="macro__s" textAnchor="middle">
+          {sub}
+        </text>
+      </svg>
+      <ul className="macro__key">
+        {macros.map((m) => (
+          <li key={m.label}>
+            <i style={{ background: m.tone }} aria-hidden="true" />
+            <span>{m.label}</span>
+            <b>{m.pct}%</b>
+            <em>{m.grams}g</em>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ---------------- plant garden ---------------- */
+
+/**
+ * Distinct plants this week, one leaf each. A count, never a target you
+ * are failing — the empty slots are drawn faintly and carry no red.
+ */
+export function PlantGarden({
+  count,
+  slots = 30,
+  newNames,
+}: {
+  count: number;
+  slots?: number;
+  newNames: readonly string[];
+}) {
+  return (
+    <div className="garden">
+      <div className="garden__grid" role="img" aria-label={`${count} distinct plants this week`}>
+        {Array.from({ length: slots }, (_, i) => (
+          <span
+            key={i}
+            className={`garden__leaf${i < count ? ' is-grown' : ''}`}
+            style={{ animationDelay: `${i * 22}ms` }}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 18V9M10 9C10 5 13 2 17 2c0 4-3 7-7 7ZM10 12C10 9 7.5 6.5 4 6.5c0 3 2.5 5.5 6 5.5Z" />
+            </svg>
+          </span>
+        ))}
+      </div>
+      <p className="garden__new">
+        <strong>{count} distinct plants</strong> this week
+        {newNames.length > 0 && <> · new: {newNames.join(', ')}</>}
+      </p>
+    </div>
+  );
+}
+
+/* ---------------- swap simulator ---------------- */
+
+/**
+ * Before and after for one swap. The "after" bar is drawn with a hatched
+ * tail to show that a meal you have not eaten is less certain than the
+ * one you photographed.
+ */
+export function SwapSim({
+  rows,
+}: {
+  rows: ReadonlyArray<{
+    label: string;
+    before: number;
+    after: number;
+    unit: string;
+    tone: string;
+  }>;
+}) {
+  return (
+    <ul className="swapsim">
+      {rows.map((r) => {
+        const max = Math.max(r.before, r.after) * 1.12;
+        const down = r.after < r.before;
+        return (
+          <li key={r.label}>
+            <span className="swapsim__label">{r.label}</span>
+            <span className="swapsim__bars">
+              <i className="swapsim__before" style={{ width: `${(r.before / max) * 100}%` }} />
+              <i
+                className="swapsim__after"
+                style={{ width: `${(r.after / max) * 100}%`, background: r.tone }}
+              />
+            </span>
+            <span className="swapsim__nums">
+              <s>
+                {r.before}
+                {r.unit}
+              </s>
+              <b style={{ color: r.tone }}>
+                {r.after}
+                {r.unit}
+              </b>
+              <em className={down ? 'is-down' : 'is-up'}>
+                {down ? '↓' : '↑'}
+                {Math.abs(Math.round(((r.after - r.before) / r.before) * 100))}%
+              </em>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/* ---------------- evidence ladder ---------------- */
+
+/**
+ * Which source each figure actually came from. The ladder is ordered
+ * best-first, and the row that is in play is the one that is lit.
+ */
+export function EvidenceLadder({
+  sources,
+  activeIndex,
+}: {
+  sources: ReadonlyArray<{ name: string; level: string }>;
+  activeIndex: number;
+}) {
+  return (
+    <ol className="ladder">
+      {sources.map((s, i) => (
+        <li key={s.name} className={i === activeIndex ? 'is-active' : i < activeIndex ? 'is-better' : ''}>
+          <span className="ladder__rank">{i + 1}</span>
+          <span className="ladder__name">{s.name}</span>
+          <span className="ladder__level">{s.level}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}

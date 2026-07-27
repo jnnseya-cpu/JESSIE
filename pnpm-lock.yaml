@@ -68,6 +68,9 @@ importers:
       '@movequest/body-command':
         specifier: workspace:*
         version: link:../../packages/body-command
+      '@movequest/foodlens':
+        specifier: workspace:*
+        version: link:../../packages/foodlens
       '@movequest/shared':
         specifier: workspace:*
         version: link:../../packages/shared
