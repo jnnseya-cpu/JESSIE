@@ -21,6 +21,7 @@
     "dev": "pnpm --parallel --filter @movequest/backend --filter @movequest/frontend dev",
     "dev:backend": "pnpm --filter @movequest/backend dev",
     "dev:frontend": "pnpm --filter @movequest/frontend dev",
+    "docs:sales": "node scripts/build-sales-docx.js",
     "economics": "node --experimental-strip-types scripts/economics-report.mjs",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
