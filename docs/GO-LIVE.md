@@ -158,17 +158,40 @@ handshake.*
 
 ---
 
-## Step 3 · Get the code onto `main`
+## Step 3 · Decide which branch is production
 
-```bash
-git checkout main
-git merge claude/jessie-os-spec-doc-7audof
-git push origin main
+**This repository has no `main` branch.** Its default branch is
+`claude/jessie-os-spec-doc-7audof`, and that is the only branch on the remote.
+
+This matters more than it sounds, because Vercel's **Production Branch** setting
+defaults to `main`. If `main` does not exist, no deployment is ever promoted to the
+production domain — every build lands as a Preview, and the dashboard reports:
+
+```
+No Production Deployment
+Your Production Domain is not serving traffic.
 ```
 
-Open the repository's **Actions** tab and watch `.github/workflows/ci.yml`.
+Pick one and do it now:
 
-**Done when:** CI is green — build, typecheck, 100 tests, the 14 database invariants
+**Either — point Vercel at the branch you actually use.** Vercel → Settings → Git →
+Production Branch → `claude/jessie-os-spec-doc-7audof`. Fastest, and fine for a pilot.
+
+**Or — create `main` and make it the default.** Better long-term, because a working
+branch named after a task is a poor place for production to live:
+
+```bash
+git checkout -b main
+git push -u origin main
+```
+
+Then GitHub → Settings → Default branch → `main`, and leave Vercel's Production Branch
+at its default.
+
+Either way, open the repository's **Actions** tab afterwards and watch
+`.github/workflows/ci.yml`.
+
+**Done when:** CI is green — build, typecheck, 200 tests, the 14 database invariants
 against a real Postgres, and a live smoke test of the API.
 
 **If CI is red, stop here.** Every step below assumes it passes.
@@ -317,6 +340,11 @@ vercel link          # scope: your account · project: jessmove
 
 **Vercel dashboard → your project → Settings → Build and Deployment → Root
 Directory → `apps/frontend`.** Then redeploy.
+
+While you are in Settings, check **Git → Production Branch** as well. Root Directory
+decides whether the build *works*; Production Branch decides whether a working build
+reaches your domain. Both have to be right, and getting only one produces a green build
+that still leaves the domain dark. See Step 3.
 
 This is a monorepo with five workspace packages. If the Root Directory is anything else,
 Vercel installs the wrong project's dependencies and the build fails with:
@@ -493,7 +521,7 @@ Only once Stripe is fully activated.
 
 - [ ] `bash scripts/smoke.sh https://api.jessmove.com/api` → 22/22
 - [ ] `https://jessmove.com/console` → 10/10, **including the driving hold and the child case**
-- [ ] CI green on `main`
+- [ ] CI green on the production branch
 - [ ] `pnpm db:test` passes against the production database
 - [ ] `https://jessmove.com` loads over HTTPS
 - [ ] `www.jessmove.com` redirects to the apex
