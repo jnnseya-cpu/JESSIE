@@ -341,10 +341,26 @@ vercel link          # scope: your account · project: jessmove
 **Vercel dashboard → your project → Settings → Build and Deployment → Root
 Directory → `apps/frontend`.** Then redeploy.
 
-While you are in Settings, check **Git → Production Branch** as well. Root Directory
-decides whether the build *works*; Production Branch decides whether a working build
-reaches your domain. Both have to be right, and getting only one produces a green build
-that still leaves the domain dark. See Step 3.
+While you are in Settings, two more fields matter:
+
+- **Build and Deployment → Output Directory.** It must be **empty** (the default). If it
+  still says `apps/frontend/.next` from an earlier attempt, the path gets doubled once
+  the Root Directory is `apps/frontend`, and the build succeeds and then fails at the
+  last step with:
+
+  ```
+  Error: The Next.js output directory "apps/frontend/.next" was not found at
+  "/vercel/path0/apps/frontend/apps/frontend/.next"
+  ```
+
+  `apps/frontend/vercel.json` sets `outputDirectory` to `.next`, which overrides the
+  dashboard — but clearing the dashboard override is the cleaner fix and costs one
+  click.
+
+- **Git → Production Branch.** Root Directory decides whether the build *works*;
+  Production Branch decides whether a working build reaches your domain. Both have to
+  be right, and getting only one produces a green build that still leaves the domain
+  dark. See Step 3.
 
 This is a monorepo with five workspace packages. If the Root Directory is anything else,
 Vercel installs the wrong project's dependencies and the build fails with:
