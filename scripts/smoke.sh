@@ -10,7 +10,7 @@ DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNor
 SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
 
 echo "reads"
-for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics; do t GET $p 200; done
+for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries; do t GET $p 200; done
 echo "writes - valid"
 t POST /prescriptions/next 201 "$GOOD" "the core call"
 t POST /prescriptions/next 201 "$DRIVING" "driving: expect a hold"
@@ -30,6 +30,15 @@ t POST /blog/views 201 '{"slug":"the-nudge-we-did-not-send","dwellSeconds":90,"s
 t POST /blog/views 400 '{"slug":"x","dwellSeconds":99999,"scrollPercent":80}' "absurd dwell rejected"
 t POST /blog/posts/rules-in-postgresql/status 400 '{"to":"published","reviewer":"A Person"}' "published -> published refused"
 t POST /blog/posts/rules-in-postgresql/status 400 '{"to":"draft"}' "published -> draft refused"
+
+echo "communication routing"
+t POST /comms/preview 201 '{"event":"payment.successful","to":{"userId":"child","age":12,"presence":"full","consentedChannels":["email","in_app","sms","push"],"inQuietHours":false,"contextHeld":false,"coachingSentToday":0,"dailyCap":4,"hasGuardian":true}}' "adult-only event, age 12"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> deliver',d['plan']['deliver'],'| suppressed',d['plan']['suppressed'])" 2>/dev/null
+t POST /comms/preview 201 '{"event":"privacy.breach_notification","to":{"userId":"a","age":52,"presence":"off","consentedChannels":[],"inQuietHours":true,"contextHeld":true,"coachingSentToday":9,"dailyCap":6,"hasGuardian":false}}' "breach notice, all opted out, 3am"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> deliver',d['plan']['deliver'])" 2>/dev/null
+t POST /comms/send 201 '{"event":"privacy.breach_notification","to":{"userId":"a","age":52,"presence":"off","consentedChannels":[],"inQuietHours":true,"contextHeld":true,"coachingSentToday":9,"dailyCap":6,"hasGuardian":false}}' "send it"
+t POST /comms/preview 404 '{"event":"not.a.real.event","to":{"userId":"a","age":30,"presence":"full","consentedChannels":["in_app"],"inQuietHours":false,"contextHeld":false,"coachingSentToday":0,"dailyCap":6,"hasGuardian":false}}' "unknown event"
+t POST /comms/preview 400 '{"event":"snap.offered","to":{"userId":"a","age":4,"presence":"full","consentedChannels":["in_app"],"inQuietHours":false,"contextHeld":false,"coachingSentToday":0,"dailyCap":6,"hasGuardian":false}}' "age below 10 rejected"
 
 echo "safeguarding"
 t POST /body/assess 201 '{"userId":"child","age":12,"heightCm":150,"weightKg":45,"optedIntoBodyMetrics":true}' "child"

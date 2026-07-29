@@ -27,3 +27,4 @@ export * from './agents';
 export * from './ai';
 export * from './api';
 export * from './blog';
+export * from './communications';

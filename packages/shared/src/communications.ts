@@ -173,7 +173,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('account.mobile_verification_required', 'Mobile verification required', 'Verify your mobile number', 'warning', EIS),
     E('account.age_verification_required', 'Age verification required', 'We need to confirm your age band', 'warning', EI, { mandatory: true }),
     E('account.age_band_assigned', 'Age band assigned', 'Your JESS MOVE mode is set to {{mode}}', 'success', EI),
-    E('account.age_band_changed', 'Age band changed', 'Your mode has changed to {{mode}}', 'info', EI, { mandatory: true }),
+    E('account.age_band_changed', 'Age band changed', 'Your mode has changed to {{mode}}', 'info', EI, { mandatory: true, guardianCopy: true }),
     E('account.verification.successful', 'Verification successful', 'Your account is verified', 'success', EI),
     E('account.verification.failed', 'Verification failed', 'Verification could not be completed', 'warning', EI),
     E('account.verification.expired', 'Verification expired', 'Your verification link expired', 'warning', EI),
@@ -220,7 +220,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('guardian.consent_requested', 'Guardian consent requested', 'Consent needed for {{item}}', 'warning', EI, { mandatory: true }),
     E('guardian.consent_granted', 'Guardian consent granted', 'Consent recorded for {{item}}', 'success', EI),
     E('guardian.consent_withdrawn', 'Guardian consent withdrawn', 'Consent withdrawn for {{item}}', 'warning', EI, { mandatory: true }),
-    E('guardian.weekly_summary', 'Guardian weekly summary', 'This week for {{name}}', 'info', EI),
+    E('guardian.weekly_summary', 'Guardian weekly summary', 'This week for {{name}}', 'info', [...EI, 'whatsapp']),
     E('guardian.safeguarding_notice', 'Safeguarding notice to guardian', 'Something we think you should know', 'critical', EIS, { mandatory: true, quietHoursExempt: true }),
     E('household.member_added', 'Household member added', '{{name}} joined your household', 'info', EI),
     E('household.member_removed', 'Household member removed', '{{name}} left your household', 'info', EI),
@@ -301,17 +301,17 @@ const CATALOGUE_BY_CATEGORY: Readonly<
   'Safety & Clinical': [
     E('safety.screening_required', 'Screening required', 'A few health questions before we start', 'warning', EI, { mandatory: true }),
     E('safety.screening_passed', 'Screening passed', 'You’re cleared for the standard programme', 'success', EI),
-    E('safety.screening_limited', 'Screening limited the programme', 'We’ve limited some movements for now', 'warning', EI, { mandatory: true }),
+    E('safety.screening_limited', 'Screening limited the programme', 'We’ve limited some movements for now', 'warning', EI, { mandatory: true, guardianCopy: true }),
     E('safety.contraindication_matched', 'Contraindication matched', 'We’ve removed some movements from your plan', 'warning', EI, { mandatory: true }),
     E('safety.movement_blocked', 'Movement blocked on safety grounds', 'That one isn’t suitable right now', 'warning', I, { mandatory: true }),
     E('safety.standing_clearance_required', 'Standing clearance required', 'Standing movements need a clearance first', 'warning', EI, { mandatory: true }),
     E('safety.pain_reported', 'Pain reported', 'Thanks for telling us — we’ve adjusted', 'warning', EI, { mandatory: true }),
-    E('safety.stop_advice_issued', 'Stop advice issued', 'Please stop and seek advice', 'critical', EIS, { mandatory: true, quietHoursExempt: true }),
-    E('clinical.red_flag_detected', 'Red-flag pattern detected', 'Something we’d like you to check', 'critical', EIS, { mandatory: true, quietHoursExempt: true }),
-    E('clinical.escalation_opened', 'Clinical escalation opened', 'We’ve flagged this for review', 'critical', EI, { mandatory: true }),
+    E('safety.stop_advice_issued', 'Stop advice issued', 'Please stop and seek advice', 'critical', EIS, { mandatory: true, quietHoursExempt: true, guardianCopy: true }),
+    E('clinical.red_flag_detected', 'Red-flag pattern detected', 'Something we’d like you to check', 'critical', EIS, { mandatory: true, quietHoursExempt: true, guardianCopy: true }),
+    E('clinical.escalation_opened', 'Clinical escalation opened', 'We’ve flagged this for review', 'warning', EI, { mandatory: true, guardianCopy: true }),
     E('clinical.escalation_closed', 'Clinical escalation closed', 'That review is complete', 'info', EI),
-    E('clinical.signposted_to_care', 'Signposted to care', 'Where to get help with this', 'warning', EI, { mandatory: true }),
-    E('safeguarding.flag_raised', 'Safeguarding flag raised', 'A safeguarding review has started', 'critical', EI, { mandatory: true }),
+    E('clinical.signposted_to_care', 'Signposted to care', 'Where to get help with this', 'warning', EI, { mandatory: true, guardianCopy: true }),
+    E('safeguarding.flag_raised', 'Safeguarding flag raised', 'A safeguarding review has started', 'warning', EI, { mandatory: true, guardianCopy: true }),
     E('safeguarding.lead_notified', 'Safeguarding lead notified', 'Designated safeguarding lead notified', 'critical', EIS, { mandatory: true, quietHoursExempt: true }),
   ],
 
@@ -320,7 +320,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('foodlens.capture_unusable', 'Capture unusable', 'We couldn’t read that one — try again', 'warning', I),
     E('foodlens.analysis_ready', 'Analysis ready', 'Your meal analysis is ready', 'success', IP),
     E('foodlens.low_confidence', 'Low confidence result', 'We’re not confident about this one', 'warning', I),
-    E('foodlens.allergen_present', 'Allergen present', 'Contains {{item}}', 'critical', IP, { mandatory: true, quietHoursExempt: true }),
+    E('foodlens.allergen_present', 'Allergen present', 'Contains {{item}}', 'critical', IP, { mandatory: true, quietHoursExempt: true, guardianCopy: true }),
     E('foodlens.allergen_unconfirmed', 'Allergen cannot be confirmed', 'We cannot confirm {{item}} from a photograph', 'warning', I, { mandatory: true }),
     E('foodlens.barcode_verified', 'Barcode verified', 'Verified from the label', 'success', I),
     E('foodlens.swap_simulated', 'Swap simulated', 'Here’s what changing {{item}} does', 'info', I),
@@ -343,7 +343,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
   ],
 
   'Challenges & Crews': [
-    E('challenge.invitation_received', 'Challenge invitation', '{{actor}} invited you to {{item}}', 'info', IP),
+    E('challenge.invitation_received', 'Challenge invitation', '{{actor}} invited you to {{item}}', 'info', [...IP, 'whatsapp']),
     E('challenge.started', 'Challenge started', '{{item}} has started', 'info', IP),
     E('challenge.daily_progress', 'Daily progress', 'Your crew today', 'info', I),
     E('challenge.milestone_reached', 'Milestone reached', 'Your crew hit {{item}}', 'success', IP),
@@ -354,8 +354,8 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('crew.member_left', 'Crew member left', '{{name}} left your crew', 'info', I),
     E('crew.support_received', 'Support received', '{{name}} backed you up', 'success', IP),
     E('crew.matchmaking_complete', 'Matchmaking complete', 'We found you a crew', 'success', EI),
-    E('crew.reported_content', 'Content reported', 'A report has been received', 'warning', EI, { mandatory: true }),
-    E('crew.moderation_action', 'Moderation action taken', 'Action taken on reported content', 'warning', EI, { mandatory: true }),
+    E('crew.reported_content', 'Content reported', 'A report has been received', 'warning', EI, { mandatory: true, guardianCopy: true }),
+    E('crew.moderation_action', 'Moderation action taken', 'Action taken on reported content', 'warning', EI, { mandatory: true, guardianCopy: true }),
   ],
 
   'Wearables & Devices': [
@@ -372,7 +372,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
   ],
 
   'Progress & Insight': [
-    E('insight.weekly_ready', 'Weekly insight ready', 'Your week', 'info', EI),
+    E('insight.weekly_ready', 'Weekly insight ready', 'Your week', 'info', [...EI, 'whatsapp']),
     E('insight.monthly_ready', 'Monthly insight ready', 'Your month', 'info', EI),
     E('insight.streak_milestone', 'Streak milestone', '{{item}} days', 'success', IP),
     E('insight.personal_best', 'Personal best', 'That’s your best {{item}} yet', 'success', IP),
@@ -390,7 +390,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('org.documents_requested', 'Documents requested', 'Documents needed to verify {{enterprise}}', 'warning', EI, { adultOnly: true }),
     E('org.documents_approved', 'Documents approved', 'Your documents were approved', 'success', EI, { adultOnly: true }),
     E('org.activated', 'Organisation activated', '{{enterprise}} is live on JESS MOVE', 'success', EIP, { adultOnly: true }),
-    E('org.seat_invitation', 'Seat invitation', '{{actor}} invited you to {{enterprise}}', 'info', EI, { adultOnly: true }),
+    E('org.seat_invitation', 'Seat invitation', '{{actor}} invited you to {{enterprise}}', 'info', [...EI, 'whatsapp'], { adultOnly: true }),
     E('org.seat_invitation_reminder', 'Invitation reminder', 'Reminder: your invitation to {{enterprise}}', 'info', EI, { adultOnly: true }),
     E('org.seat_accepted', 'Seat accepted', '{{name}} accepted the invitation', 'success', I, { adultOnly: true }),
     E('org.seat_removed', 'Seat removed', 'Your access to {{enterprise}} has ended', 'warning', EI, { adultOnly: true, mandatory: true }),
@@ -406,7 +406,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('partner.approved', 'Partner approved', 'You’re in — your referral link is ready', 'success', EI, { adultOnly: true }),
     E('partner.rejected', 'Partner application declined', 'An update on your application', 'info', EI, { adultOnly: true }),
     E('referral.registered', 'Referral registered', 'Someone signed up through your link', 'info', I, { adultOnly: true }),
-    E('referral.converted', 'Referral converted to paid', 'A referral just became a paying customer', 'success', EIP, { adultOnly: true }),
+    E('referral.converted', 'Referral converted to paid', 'A referral just became a paying customer', 'success', [...EIP, 'whatsapp'], { adultOnly: true }),
     E('referral.held_for_review', 'Referral held for review', 'One referral is being checked', 'warning', EI, { adultOnly: true }),
     E('referral.rejected_fraud', 'Referral rejected', 'A referral did not pass our checks', 'warning', EI, { adultOnly: true, mandatory: true }),
     E('referral.reversed', 'Referral reversed', 'A referral was reversed after a refund', 'warning', EI, { adultOnly: true, mandatory: true }),
@@ -426,7 +426,7 @@ const CATALOGUE_BY_CATEGORY: Readonly<
 
   'Support, Platform & Privacy': [
     E('support.ticket_created', 'Ticket created', 'Support ticket {{number}} created', 'info', EI),
-    E('support.ticket_updated', 'Ticket updated', 'Update on ticket {{number}}', 'info', EI),
+    E('support.ticket_updated', 'Ticket updated', 'Update on ticket {{number}}', 'info', [...EI, 'whatsapp']),
     E('support.ticket_resolved', 'Ticket resolved', 'Ticket {{number}} resolved', 'success', EI),
     E('support.accessibility_request', 'Accessibility request received', 'We’ve received your accessibility request', 'info', EI),
     E('system.maintenance_scheduled', 'Scheduled maintenance', 'Scheduled maintenance on {{date}}', 'info', EI),
@@ -436,12 +436,12 @@ const CATALOGUE_BY_CATEGORY: Readonly<
     E('privacy.consent_request', 'Consent request', 'We need your consent for {{item}}', 'info', EI, { mandatory: true }),
     E('privacy.consent_updated', 'Consent updated', 'Your consent preferences were updated', 'info', EI, { mandatory: true }),
     E('privacy.data_export_ready', 'Data export ready', 'Your data export is ready', 'success', EI, { mandatory: true }),
-    E('privacy.deletion_requested', 'Deletion requested', 'Account deletion requested', 'warning', EI, { mandatory: true }),
+    E('privacy.deletion_requested', 'Deletion requested', 'Account deletion requested', 'warning', EI, { mandatory: true, guardianCopy: true }),
     E('privacy.deletion_completed', 'Deletion completed', 'Your account and data have been deleted', 'info', EI, { mandatory: true }),
     E('privacy.retention_applied', 'Retention rule applied', 'Some older data has been removed', 'info', I, { mandatory: true }),
     E('privacy.dsar_received', 'Subject access request received', 'We received your request', 'info', EI, { mandatory: true }),
     E('privacy.policy_updated', 'Policy updated', 'Our {{item}} has changed', 'info', EI, { mandatory: true }),
-    E('privacy.breach_notification', 'Breach notification', 'An important notice about your data', 'critical', EIS, { mandatory: true, quietHoursExempt: true }),
+    E('privacy.breach_notification', 'Breach notification', 'An important notice about your data', 'critical', EIS, { mandatory: true, quietHoursExempt: true, guardianCopy: true }),
   ],
 };
 
@@ -473,6 +473,7 @@ export function channelCoverage(): Readonly<Record<MessageChannel, number>> {
 export const MANDATORY_EVENTS = EVENT_CATALOGUE.filter((e) => e.mandatory);
 export const ADULT_ONLY_EVENTS = EVENT_CATALOGUE.filter((e) => e.adultOnly);
 export const COACHING_EVENTS = EVENT_CATALOGUE.filter((e) => e.coaching);
+export const GUARDIAN_COPY_EVENTS = EVENT_CATALOGUE.filter((e) => e.guardianCopy);
 
 /* ------------------------------------------------------------------ *
  * Delivery resolution

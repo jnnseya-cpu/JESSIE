@@ -4,6 +4,7 @@ import { AcuModule } from './acu/acu.module';
 import { AiModule } from './ai/ai.module';
 import { BlogModule } from './blog/blog.module';
 import { BodyModule } from './body/body.module';
+import { CommsModule } from './comms/comms.module';
 import { ContextModule } from './context/context.module';
 import { HealthModule } from './health/health.module';
 import { MovementsModule } from './movements/movements.module';
@@ -16,6 +17,7 @@ import { PrescriptionsModule } from './prescriptions/prescriptions.module';
     AiModule,
     BlogModule,
     BodyModule,
+    CommsModule,
     ContextModule,
     MovementsModule,
     PrescriptionsModule,
