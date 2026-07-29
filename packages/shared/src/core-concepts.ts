@@ -160,7 +160,7 @@ export interface ConceptAgent {
 
 /**
  * The twelve conceptual agents. The runtime registry in `agents.ts`
- * decomposes these into twenty-six deployable services with their own tool
+ * decomposes these into twenty-eight deployable services with their own tool
  * allow-lists and cost ceilings; this list is the shape of the system as a
  * person should understand it.
  */

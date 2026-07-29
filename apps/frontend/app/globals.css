@@ -3683,3 +3683,66 @@ textarea:focus-visible {
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* ---------- Blog: article body & index extras ---------- */
+
+/*
+ * Long-form reading measure. 68 characters is the upper end of what stays
+ * comfortable at this size; the section rhythm below is what makes an
+ * 800-word page scannable without a table of contents.
+ */
+.article {
+  max-width: 68ch;
+}
+.article > section + section {
+  margin-top: 40px;
+}
+.article h2 {
+  font-size: clamp(23px, 2.5vw, 29px);
+  letter-spacing: -0.02em;
+  line-height: 1.22;
+  margin: 0 0 16px;
+}
+.article p {
+  margin: 0 0 18px;
+  font-size: 17px;
+  line-height: 1.72;
+  opacity: 0.86;
+}
+.article p:last-child {
+  margin-bottom: 0;
+}
+.article strong {
+  font-weight: 650;
+  opacity: 1;
+}
+
+.article__meta {
+  margin-top: 22px;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  opacity: 0.6;
+}
+
+.post__more {
+  margin-top: 12px !important;
+  font-size: 14.5px;
+  font-weight: 600;
+  opacity: 1 !important;
+}
+.post__more a {
+  color: var(--jm-teal);
+}
+.post h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+.post h3 a:hover {
+  color: var(--jm-teal);
+}
+
+@media (max-width: 680px) {
+  .article p {
+    font-size: 16.5px;
+  }
+}

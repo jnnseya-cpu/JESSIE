@@ -474,7 +474,7 @@ provider selection, the fallback chain, prompt redaction, per-agent cost ceiling
 and the decision log. If a provider refuses or fails, it walks to the next. If all of them
 fail, the app serves your cached plan. **A slow model must never produce a broken app.**
 
-### Twelve agents, twenty-six deployable services
+### Twelve agents, twenty-eight deployable services
 Each owns exactly one decision. Safety can only narrow. Recovery & Fatigue can veto the whole
 day. Engagement Rescue exists because the second-hardest problem in this category is the week
 after the novelty wears off — so it's an agent, not a feature.

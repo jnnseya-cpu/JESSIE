@@ -151,6 +151,37 @@ const PROBES: readonly Probe[] = [
     expect: 201,
     body: { providerCostGbp: 0.004 },
   },
+  {
+    key: 'gaps',
+    method: 'GET',
+    path: '/blog/agent/gaps',
+    label: 'Editorial — which topic cluster is thinnest',
+    note: 'What the SEO agent gets commissioned against next. Emptiest cluster first.',
+    expect: 200,
+  },
+  {
+    key: 'view',
+    method: 'POST',
+    path: '/blog/views',
+    label: 'Record a blog view',
+    note: 'No cookie and no identifier in the payload. The address is hashed server-side with a salt that rotates daily.',
+    expect: 201,
+    body: {
+      slug: 'the-nudge-we-did-not-send',
+      dwellSeconds: 90,
+      scrollPercent: 80,
+      device: 'desktop',
+    },
+  },
+  {
+    key: 'publish',
+    method: 'POST',
+    path: '/blog/posts/rules-in-postgresql/status',
+    label: 'Publish an agent draft with no reviewer',
+    note: 'Must be refused. An agent cannot put words on a health site without a named person having read them.',
+    expect: 400,
+    body: { to: 'published' },
+  },
 ];
 
 type Result = { status: number; ms: number; ok: boolean; text: string } | { error: string };

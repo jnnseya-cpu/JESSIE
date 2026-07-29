@@ -100,7 +100,7 @@ request timeout and the decision log.
 | OpenAI | `openai` | `gpt-4.1-mini` | `gpt-4.1` |
 | Google Gemini | `@google/genai` | `gemini-2.5-flash` | `gemini-2.5-pro` |
 
-Routing follows the agent registry: each of the 26 agents declares a `modelClass`, so
+Routing follows the agent registry: each of the 28 agents declares a `modelClass`, so
 `CLIN` and `STUDIO` route to the frontier tier while `CTX` stays on-device and `NUDGE` is a
 contextual bandit rather than a language model at all.
 

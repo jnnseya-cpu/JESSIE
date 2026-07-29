@@ -1,5 +1,5 @@
 /**
- * §9 — The Agent Registry. Twenty-six agents.
+ * §9 — The Agent Registry. Twenty-eight agents.
  *
  * Orchestration is LangGraph state machines over a NestJS agent runtime.
  * Every agent is a typed node with a declared input contract, output
@@ -37,6 +37,8 @@ export const AGENT_CODES = [
   'SRE',
   'GOV',
   'STEW',
+  'SEO',
+  'COMMS',
 ] as const;
 export type AgentCode = (typeof AGENT_CODES)[number];
 
@@ -95,6 +97,8 @@ export const AGENT_REGISTRY: Readonly<Record<AgentCode, AgentDefinition>> = {
   COMP: { code: 'COMP', name: 'Compliance & Privacy', trigger: 'continuous', output: 'DPIA deltas, retention actions, DSAR fulfilment', escalatesTo: 'human', modelClass: 'deterministic_rules', acuCeiling: 2, timeoutMs: 30000, toolAllowList: ['consent.read', 'retention.apply', 'dsar.fulfil'] },
   SRE: { code: 'SRE', name: 'Reliability & Auto-Repair', trigger: 'telemetry', output: 'Heal, roll back, scale or page', escalatesTo: 'human', modelClass: 'deterministic_rules', acuCeiling: 1, timeoutMs: 15000, toolAllowList: ['telemetry.read', 'deploy.rollback', 'oncall.page'] },
   GOV: { code: 'GOV', name: 'AI Governance', trigger: 'every agent action', output: 'Policy verdict, model-card enforcement, dark-pattern veto', escalatesTo: 'human', modelClass: 'deterministic_rules', acuCeiling: 0, timeoutMs: 2000, toolAllowList: ['policy.evaluate', 'charter.assert'] },
+  SEO: { code: 'SEO', name: 'Editorial & SEO', trigger: 'editorial calendar, topic gap', output: 'Post draft, metadata and a deterministic SEO audit — never a published page', escalatesTo: 'human', modelClass: 'frontier_llm', acuCeiling: 18, timeoutMs: 90000, toolAllowList: ['topic.gap', 'post.draft', 'copy.lint', 'analytics.read'] },
+  COMMS: { code: 'COMMS', name: 'Communication Router', trigger: 'every platform event', output: 'Resolved channel set, held or suppressed, with the reason', escalatesTo: 'GOV', modelClass: 'deterministic_rules', acuCeiling: 0, timeoutMs: 2000, toolAllowList: ['event.resolve', 'template.render', 'delivery.write', 'consent.read'] },
   STEW: { code: 'STEW', name: 'Data Steward', trigger: 'continuous', output: 'Lineage, quality, minimisation, deletion cascade', escalatesTo: 'COMP', modelClass: 'deterministic_rules', acuCeiling: 1, timeoutMs: 30000, toolAllowList: ['lineage.write', 'deletion.cascade'] },
 };
 
