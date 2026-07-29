@@ -6,7 +6,10 @@ import { AppModule } from './app.module';
 import { SignatureInterceptor } from './common/signature.interceptor';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // rawBody keeps the untouched request body available on req.rawBody.
+  // The Stripe webhook signature is computed over the exact bytes Stripe
+  // sent, so a parsed-and-reserialised body would never verify.
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
 
   const prefix = process.env.API_PREFIX ?? 'api';
   app.setGlobalPrefix(prefix);

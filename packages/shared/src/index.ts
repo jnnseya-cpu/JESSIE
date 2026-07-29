@@ -29,3 +29,6 @@ export * from './api';
 export * from './blog';
 export * from './communications';
 export * from './growth';
+export * from './accounts';
+export * from './autosave';
+export * from './billing';

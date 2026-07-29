@@ -10,7 +10,7 @@ DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNor
 SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
 
 echo "reads"
-for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder; do t GET $p 200; done
+for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder /stripe/status /stripe/plans /mail/status /accounts/kinds /accounts/media/rules /accounts/autosave/policy; do t GET $p 200; done
 echo "writes - valid"
 t POST /prescriptions/next 201 "$GOOD" "the core call"
 t POST /prescriptions/next 201 "$DRIVING" "driving: expect a hold"
@@ -50,6 +50,21 @@ python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> v
 t POST /growth/payout 201 '{"balanceGbp":18,"kycComplete":true,"oldestEarningAgeDays":60}' "below the payout floor"
 t POST /growth/trust 400 '{"signals":["not_a_signal"]}' "unknown trust signal rejected"
 t POST /growth/commission 400 '{"paymentReceivedGbp":-5,"kind":"normal","verifiedPaidReferrals":0,"lifetimeAlreadyPaidGbp":0}' "negative revenue rejected"
+
+echo "accounts, autosave and payments"
+t POST /accounts 201 '{"userId":"rb_teen","kind":"minor","age":15,"guardianId":"g1"}' "minor with a guardian"
+t POST /accounts 400 '{"userId":"rb_solo","kind":"minor","age":15}' "minor without a guardian refused"
+t POST /accounts 400 '{"userId":"rb_x","kind":"adult","age":15}' "under-18 cannot hold an adult account"
+t POST /accounts/profiles/rb_teen/autosave 201 '{"age":15,"basedOnVersion":1,"patch":{"displayName":"Robin"}}' "autosave a safe field"
+t POST /accounts/profiles/rb_teen/autosave 400 '{"age":15,"basedOnVersion":2,"patch":{"optedIntoBodyMetrics":true}}' "consent will not autosave"
+t POST /accounts/profiles/rb_teen/autosave 400 '{"age":15,"basedOnVersion":2,"patch":{"dateOfBirth":"2011-01-01"}}' "date of birth is not editable here"
+t POST /accounts/media/check 201 '{"slot":"avatar","age":15,"mimeType":"image/jpeg","bytes":400000,"widthPx":800,"heightPx":800}' "teen photo check"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> ok',d['ok'],'|',d['reasons'][0] if d['reasons'] else '')" 2>/dev/null
+t POST /accounts/media/check 400 '{"slot":"avatar","age":9,"mimeType":"image/jpeg","bytes":400000,"widthPx":800,"heightPx":800}' "age below 10 rejected"
+t POST /stripe/webhook 400 '{"id":"evt_x","type":"invoice.paid"}' "unsigned webhook refused"
+t POST /stripe/checkout 400 '{"userId":"u","plan":"premium_monthly","successUrl":"http://x.test/a","cancelUrl":"http://x.test/b"}' "checkout without a key explains itself"
+t POST /mail/preview 201 '{"event":"account.registration.requested","values":{"name":"Sam"}}' "render an email"
+t POST /mail/preview 400 '{"event":"not.a.real.event"}' "unknown event refused"
 
 echo "safeguarding"
 t POST /body/assess 201 '{"userId":"child","age":12,"heightCm":150,"weightKg":45,"optedIntoBodyMetrics":true}' "child"
