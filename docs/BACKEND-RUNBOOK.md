@@ -17,9 +17,8 @@ https://api.jessmove.com/api/stripe/webhook
 
 Paste that into **Stripe → Developers → Webhooks → Add endpoint**.
 
-> ⚠️ **It will not work yet.** `api.jessmove.com` currently points at Vercel, and the API
-> is not deployed. Do Step 5 first, then come back. While developing, use the local
-> address in Step 4 instead.
+> ⚠️ **It works after Step 5** (a ten-minute, click-only deploy on Vercel). While
+> developing, use the local address in Step 4 instead.
 
 ---
 
@@ -136,44 +135,51 @@ twice.
 
 ---
 
-## 5 · Deploy the API, then use the live URL
+## 5 · Deploy the API — on Vercel, no CLI, no new vendor
 
-The webhook needs a public API. **No CLI required — use Render:**
+The API runs as one Vercel function (`apps/backend/api/index.js`). Same account as the
+website, second project, and `api.jessmove.com` already points at Vercel.
 
-1. [render.com](https://render.com) → sign up with GitHub (free to start).
-2. **New → Blueprint** → pick the `JESSIE` repository. Render reads `render.yaml`
-   from the repo and knows everything else.
-3. It asks for your secret values (Stripe keys, SMTP password, one AI key) — paste
-   them in the dashboard. They are never stored in the repo.
-4. Press deploy. ~5 minutes later you have a URL like
-   `https://jessmove-api.onrender.com`.
+1. vercel.com → **Add New → Project** → pick the same `JESSIE` repository again.
+2. **Root Directory: `apps/backend`** · Framework preset: **Other**. Leave build and
+   output alone — `apps/backend/vercel.json` carries them.
+3. **Environment variables** — paste these into this project (the website's variables
+   do not carry over):
 
-Prove it:
+   | Name | Value |
+   |---|---|
+   | `NODEJS_HELPERS` | `0` ← **required** — without it the Stripe webhook cannot see the raw body |
+   | `CORS_ORIGINS` | `https://jessmove.com,https://www.jessmove.com` |
+   | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, the 5 `STRIPE_PRICE_*` | your values |
+   | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | your values |
+   | one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | your value |
 
-```bash
-bash scripts/smoke.sh https://jessmove-api.onrender.com/api
+4. **Deploy.** You get `https://<project>.vercel.app`. Prove it:
+
+   ```bash
+   bash scripts/smoke.sh https://<project>.vercel.app/api
+   ```
+
+   ✅ `pass=69 fail=0`
+
+5. Project → **Settings → Domains** → add `api.jessmove.com`. The DNS record already
+   points at Vercel, so it attaches and the certificate is automatic.
+
+> **What serverless changes, honestly.** Function instances are created and recycled,
+> so the in-memory stores — demo accounts, wallets, the webhook's duplicate-event
+> memory — reset when an instance does, and two instances do not share them. Right for
+> a pilot; before real customers the database layer (Neon works from Vercel) makes
+> state and idempotency durable.
+
+Once `https://api.jessmove.com/api/health` returns 200, add the endpoint in Stripe →
+Webhooks:
+
+```
+https://api.jessmove.com/api/stripe/webhook
 ```
 
-✅ `pass=69 fail=0`
-
-Then in Render → your service → **Settings → Custom Domains** → add
-`api.jessmove.com`. Render shows you a `CNAME` — add it at Hostinger and the
-certificate is automatic.
-
-*Prefer Google Cloud Run instead? That path is Steps 5–6 of
-[`docs/GO-LIVE.md`](./GO-LIVE.md), and it needs the `gcloud` CLI from
-[cloud.google.com/sdk](https://cloud.google.com/sdk/docs/install). Either works; pick one.*
-
-Two DNS fixes at Hostinger while you are there:
-
-- **`api` currently points at Vercel.** Delete that record, then add the `CNAME` your
-  API host shows you (Render or Cloud Run — whichever you picked above).
-- **`jessmove.com` still points at Hostinger's parking page** (`2.57.91.91`), which is why
-  `www` shows *Not secure*. Replace it with the IPv4 Vercel shows you.
-
-Once `https://api.jessmove.com/api/health` returns 200, add the endpoint in Stripe, copy
-**that** endpoint's signing secret to `STRIPE_WEBHOOK_SECRET` on the API host, and subscribe
-to these ten events:
+Copy **that** endpoint's signing secret into `STRIPE_WEBHOOK_SECRET` on the backend
+Vercel project and redeploy. Subscribe to these ten events:
 
 ```
 checkout.session.completed
@@ -187,6 +193,9 @@ charge.dispute.created
 payment_intent.succeeded
 payment_intent.payment_failed
 ```
+
+*Firebase is not needed for any of this — nothing in the platform uses it. Docker,
+Cloud Run and a VPS remain documented in `docs/GO-LIVE.md` for later scale.*
 
 ---
 
