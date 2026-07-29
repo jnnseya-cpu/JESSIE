@@ -3746,3 +3746,64 @@ textarea:focus-visible {
     font-size: 16.5px;
   }
 }
+
+/* ---------- Data tables (event catalogue, reward ladder, payouts) ---------- */
+
+/*
+ * `.policylist` is a two-column grid built for policy rows. These tables carry
+ * three to five columns, so they need real table layout. `.tablewrap` already
+ * provides the horizontal scroll container, which is what keeps a wide table
+ * from forcing the page body to scroll sideways on a phone.
+ */
+.dtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.dtable th,
+.dtable td {
+  padding: 13px 16px 13px 0;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid var(--jm-divider);
+  line-height: 1.5;
+}
+.dtable tr:last-child td {
+  border-bottom: 1px solid var(--jm-divider);
+}
+.dtable th {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  font-weight: 650;
+  border-top: 0;
+  white-space: nowrap;
+}
+.dtable td:last-child,
+.dtable th:last-child {
+  padding-right: 0;
+}
+.dtable .num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dtable code {
+  font-size: 12.5px;
+  opacity: 0.62;
+}
+.dtable .pills {
+  margin: 0;
+}
+.dtable .pills li {
+  font-size: 12px;
+}
+/* On dark sections the divider needs to be the dark-surface one. */
+.section--ink .dtable th,
+.section--ink .dtable td,
+.card:not(.card--light) .dtable th,
+.card:not(.card--light) .dtable td {
+  border-color: var(--jm-divider-d);
+}

@@ -381,10 +381,10 @@ export default function Communications() {
                     {events.length} events
                   </p>
                   <div className="tablewrap">
-                    <table className="policylist">
+                    <table className="dtable">
                       <tbody>
                         {events.map((e) => (
-                          <tr className="policyrow" key={e.key}>
+                          <tr key={e.key}>
                             <td style={{ minWidth: 210 }}>
                               <strong>{e.name}</strong>
                               <br />

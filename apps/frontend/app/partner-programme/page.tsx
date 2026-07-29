@@ -164,10 +164,10 @@ export default function PartnerProgramme() {
             </div>
 
             <div className="tablewrap">
-              <table className="policylist">
+              <table className="dtable">
                 <tbody>
                   {REWARD_LADDER.map((rung) => (
-                    <tr className="policyrow" key={rung.status}>
+                    <tr key={rung.status}>
                       <td style={{ width: 130 }}>
                         <strong style={{ fontSize: 20 }}>{rung.paidReferrals}</strong>
                         <br />
@@ -240,56 +240,33 @@ export default function PartnerProgramme() {
                   <span className="card__tag">computed at build time</span>
                 </div>
                 <div className="tablewrap">
-                  <table className="policylist">
+                  <table className="dtable">
                     <tbody>
-                      <tr className="policyrow">
+                      <tr>
                         <td>
                           <strong>Payment received</strong>
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)' }}>
-                          {money(WORKED.paymentReceivedGbp)}
-                        </td>
+                        <td className="num">{money(WORKED.paymentReceivedGbp)}</td>
                       </tr>
                       {DEDUCTION_LABELS.map(([key, label]) => (
-                        <tr className="policyrow" key={key}>
+                        <tr key={key}>
                           <td style={{ opacity: 0.75 }}>− {label}</td>
-                          <td
-                            style={{
-                              textAlign: 'right',
-                              fontFamily: 'var(--font-mono)',
-                              opacity: WORKED[key] === 0 ? 0.4 : 0.85,
-                            }}
-                          >
+                          <td className="num" style={{ opacity: WORKED[key] === 0 ? 0.4 : 0.85 }}>
                             {money(WORKED[key])}
                           </td>
                         </tr>
                       ))}
-                      <tr className="policyrow">
+                      <tr>
                         <td>
                           <strong>Verified Net Revenue</strong>
                         </td>
-                        <td
-                          style={{
-                            textAlign: 'right',
-                            fontFamily: 'var(--font-mono)',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {money(net)}
-                        </td>
+                        <td className="num" style={{ fontWeight: 700 }}>{money(net)}</td>
                       </tr>
-                      <tr className="policyrow">
+                      <tr>
                         <td>
                           <strong>Commission at {COMMISSION_RATE * 100}%</strong>
                         </td>
-                        <td
-                          style={{
-                            textAlign: 'right',
-                            fontFamily: 'var(--font-mono)',
-                            fontWeight: 700,
-                            color: 'var(--jm-excellent)',
-                          }}
-                        >
+                        <td className="num" style={{ fontWeight: 700, color: 'var(--jm-excellent)' }}>
                           {money(eligibleResult.commissionGbp)}
                         </td>
                       </tr>
@@ -385,16 +362,14 @@ export default function PartnerProgramme() {
                   <h3 className="card__t">The signals</h3>
                 </div>
                 <div className="tablewrap">
-                  <table className="policylist">
+                  <table className="dtable">
                     <tbody>
                       {TRUST_SIGNALS.map((s) => {
                         const def = TRUST_SIGNAL_DEFINITIONS[s];
                         return (
-                          <tr className="policyrow" key={s}>
+                          <tr key={s}>
                             <td>{def.label}</td>
-                            <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)' }}>
-                              −{def.penalty}
-                            </td>
+                            <td className="num">−{def.penalty}</td>
                             <td style={{ whiteSpace: 'nowrap', width: 120 }}>
                               {def.fatal ? (
                                 <span style={{ color: 'var(--jm-critical)', fontWeight: 600 }}>
@@ -514,21 +489,15 @@ export default function PartnerProgramme() {
                   <span className="card__tag">live function</span>
                 </div>
                 <div className="tablewrap">
-                  <table className="policylist">
+                  <table className="dtable">
                     <tbody>
                       {PAYOUT_EXAMPLES.map((ex) => {
                         const d = payoutDecision(ex.opts);
                         const ok = d.payableGbp > 0;
                         return (
-                          <tr className="policyrow" key={ex.label}>
+                          <tr key={ex.label}>
                             <td>{ex.label}</td>
-                            <td
-                              style={{
-                                fontFamily: 'var(--font-mono)',
-                                color: ok ? 'var(--jm-excellent)' : 'var(--jm-monitor)',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
+                            <td className="num" style={{ color: ok ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}>
                               {ok ? money(d.payableGbp) : '—'}
                             </td>
                             <td style={{ opacity: 0.75 }}>{d.reason}</td>
