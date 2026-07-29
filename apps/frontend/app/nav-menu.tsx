@@ -2,18 +2,21 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * The mobile menu.
  *
- * Below 860px the desktop link row is hidden, and until this component
- * existed nothing replaced it — on a phone, and in the installed app,
- * the site had no navigation beyond the logo. A PWA lives or dies on its
- * phone experience, so this is not cosmetic.
+ * Below 860px the desktop link row is hidden and this replaces it.
  *
- * It is a client component only because it must close itself: Next
- * navigates client-side, so a menu that cannot hear the click stays open
- * over the new page.
+ * The sheet is rendered through a portal onto <body>, not inside the
+ * header, and covers the whole screen with its own close button. That is
+ * not a stylistic choice: the header carries a `backdrop-filter`, and a
+ * filtered ancestor becomes the containing block for fixed-position
+ * descendants — so a sheet living inside the header gets its "full screen"
+ * geometry computed against a 68px bar. Desktop Chrome happened to render
+ * it anyway; real phones did not, and the menu opened underneath the page.
+ * Escaping the header entirely is the fix that cannot regress.
  */
 
 export function MobileMenu({
@@ -24,6 +27,9 @@ export function MobileMenu({
   current: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   // The page behind the sheet must not scroll while the menu is over it.
   useEffect(() => {
@@ -42,6 +48,40 @@ export function MobileMenu({
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  const sheet = (
+    <div className="mnav__sheet" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu">
+      <div className="mnav__sheethead">
+        <span className="mnav__title">Menu</span>
+        <button
+          type="button"
+          className="mnav__toggle"
+          aria-label="Close menu"
+          onClick={() => setOpen(false)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+      <nav aria-label="Primary">
+        {items.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={item.href === current ? 'page' : undefined}
+            className={item.href === current ? 'is-current' : undefined}
+            onClick={() => setOpen(false)}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <Link className="btn btn--primary" href="/get-started" onClick={() => setOpen(false)}>
+        Get started
+      </Link>
+    </div>
+  );
+
   return (
     <div className="mnav">
       <button
@@ -49,39 +89,15 @@ export function MobileMenu({
         className="mnav__toggle"
         aria-expanded={open}
         aria-controls="mobile-menu"
-        aria-label={open ? 'Close menu' : 'Open menu'}
-        onClick={() => setOpen((v) => !v)}
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
       >
-        {/* Drawn lines rather than a glyph, so it renders identically everywhere. */}
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          {open ? (
-            <path d="M6 6l12 12M18 6L6 18" />
-          ) : (
-            <path d="M4 7h16M4 12h16M4 17h16" />
-          )}
+          <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       </button>
 
-      {open && (
-        <div className="mnav__sheet" id="mobile-menu">
-          <nav aria-label="Primary">
-            {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={item.href === current ? 'page' : undefined}
-                className={item.href === current ? 'is-current' : undefined}
-                onClick={() => setOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-          <Link className="btn btn--primary" href="/get-started" onClick={() => setOpen(false)}>
-            Get started
-          </Link>
-        </div>
-      )}
+      {mounted && open && createPortal(sheet, document.body)}
     </div>
   );
 }

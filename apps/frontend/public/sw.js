@@ -19,7 +19,7 @@
  * signal; your data does not appear without a network.
  */
 
-const VERSION = 'jm-v1';
+const VERSION = 'jm-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = '/offline';
