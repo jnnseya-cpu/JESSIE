@@ -935,6 +935,11 @@ export default function Home() {
                     <div className="plancard__cadence">{p.cadence}</div>
                   </div>
                   <p className="plancard__who">{p.forWhom}</p>
+                  <ul className="plancard__means">
+                    {p.priceMeans.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
                   <ul>
                     {p.includes.map((x) => (
                       <li key={x}>{x}</li>

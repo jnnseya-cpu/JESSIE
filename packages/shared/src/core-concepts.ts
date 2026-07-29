@@ -713,6 +713,12 @@ export interface Plan {
   readonly name: string;
   readonly price: string;
   readonly cadence: string;
+  /**
+   * What the price actually means, spelled out — which channel, how many
+   * seats, what moves it. A range with no explanation next to it reads as
+   * vagueness, and a visitor should never have to wonder.
+   */
+  readonly priceMeans: readonly string[];
   readonly forWhom: string;
   readonly includes: readonly string[];
   readonly featured?: boolean;
@@ -724,6 +730,10 @@ export const PLANS: readonly Plan[] = [
     name: 'Free',
     price: '£0',
     cadence: 'forever',
+    priceMeans: [
+      'No card. Nothing charged, ever.',
+      'The AI-driven features live in Premium — Free runs on the pre-authored library.',
+    ],
     forWhom: 'Anyone who wants to see whether their day really does have room.',
     includes: [
       'Basic movement prompts',
@@ -738,8 +748,12 @@ export const PLANS: readonly Plan[] = [
   {
     key: 'premium',
     name: 'Premium',
-    price: '£5.99–£8.99',
-    cadence: 'per month',
+    price: '£5.99',
+    cadence: 'per month on the web',
+    priceMeans: [
+      '£5.99 when you subscribe at jessmove.com — and the installed app counts as the web, so it keeps this price.',
+      '£8.99 only in the Apple and Google app stores, when native apps arrive — their commission, not a different product.',
+    ],
     forWhom: 'One person who wants the full engine pointed at their actual calendar.',
     includes: [
       'Full AI schedule analysis',
@@ -755,8 +769,12 @@ export const PLANS: readonly Plan[] = [
   {
     key: 'family',
     name: 'Family',
-    price: '£12.99–£17.99',
-    cadence: 'per month',
+    price: '£12.99',
+    cadence: 'per month, up to 4 people',
+    priceMeans: [
+      '£12.99 covers four people.',
+      '£17.99 covers six. That is the only difference between the two numbers.',
+    ],
     forWhom: 'Up to six people, from ten years old to a hundred, in one household.',
     includes: [
       'Six profiles across every mode',
@@ -770,8 +788,12 @@ export const PLANS: readonly Plan[] = [
   {
     key: 'organisation',
     name: 'Organisation',
-    price: '£2–£5',
+    price: 'from £2',
     cadence: 'per employee per month',
+    priceMeans: [
+      'From £2 per seat at the 10-seat minimum — the floor, not a teaser.',
+      'Up to £5 per seat depending on sector, seat count and support level. Organisation deals are contracts, so the exact figure is agreed, not picked at checkout.',
+    ],
     forWhom: 'Employers, schools, care providers and councils.',
     includes: [
       'SSO and directory integration',
