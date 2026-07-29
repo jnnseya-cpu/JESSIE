@@ -138,18 +138,41 @@ twice.
 
 ## 5 · Deploy the API, then use the live URL
 
-The webhook needs a public API. Follow **Steps 5–6 of [`docs/GO-LIVE.md`](./GO-LIVE.md)**
-— Cloud Run, then map `api.jessmove.com`.
+The webhook needs a public API. **No CLI required — use Render:**
 
-Two things to fix first, both in Hostinger DNS:
+1. [render.com](https://render.com) → sign up with GitHub (free to start).
+2. **New → Blueprint** → pick the `JESSIE` repository. Render reads `render.yaml`
+   from the repo and knows everything else.
+3. It asks for your secret values (Stripe keys, SMTP password, one AI key) — paste
+   them in the dashboard. They are never stored in the repo.
+4. Press deploy. ~5 minutes later you have a URL like
+   `https://jessmove-api.onrender.com`.
 
-- **`api` currently points at Vercel.** Delete that record. Cloud Run gives you a `CNAME`
-  to `ghs.googlehosted.com`.
+Prove it:
+
+```bash
+bash scripts/smoke.sh https://jessmove-api.onrender.com/api
+```
+
+✅ `pass=69 fail=0`
+
+Then in Render → your service → **Settings → Custom Domains** → add
+`api.jessmove.com`. Render shows you a `CNAME` — add it at Hostinger and the
+certificate is automatic.
+
+*Prefer Google Cloud Run instead? That path is Steps 5–6 of
+[`docs/GO-LIVE.md`](./GO-LIVE.md), and it needs the `gcloud` CLI from
+[cloud.google.com/sdk](https://cloud.google.com/sdk/docs/install). Either works; pick one.*
+
+Two DNS fixes at Hostinger while you are there:
+
+- **`api` currently points at Vercel.** Delete that record, then add the `CNAME` your
+  API host shows you (Render or Cloud Run — whichever you picked above).
 - **`jessmove.com` still points at Hostinger's parking page** (`2.57.91.91`), which is why
   `www` shows *Not secure*. Replace it with the IPv4 Vercel shows you.
 
 Once `https://api.jessmove.com/api/health` returns 200, add the endpoint in Stripe, copy
-**that** endpoint's signing secret to `STRIPE_WEBHOOK_SECRET` on Cloud Run, and subscribe
+**that** endpoint's signing secret to `STRIPE_WEBHOOK_SECRET` on the API host, and subscribe
 to these ten events:
 
 ```

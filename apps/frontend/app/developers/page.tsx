@@ -34,12 +34,6 @@ const ENDPOINTS: ReadonlyArray<{
   { verb: 'POST', path: '/acu/wallets/:id/spend', what: 'Cost Governor: bucket precedence, hard stop at zero.' },
 ];
 
-const GATEWAY = [
-  { p: 'Anthropic', pkg: '@anthropic-ai/sdk', mid: 'claude-sonnet-5', top: 'claude-opus-5' },
-  { p: 'OpenAI', pkg: 'openai', mid: 'gpt-4.1-mini', top: 'gpt-4.1' },
-  { p: 'Google Gemini', pkg: '@google/genai', mid: 'gemini-2.5-flash', top: 'gemini-2.5-pro' },
-];
-
 const INVARIANTS = [
   `A Snap outside ${SNAP_DURATION_SECONDS.min}–${SNAP_DURATION_SECONDS.max} seconds is rejected by the database.`,
   'A prescription without a context decision cannot be written.',
@@ -151,49 +145,40 @@ export default function Developers() {
           <div className="wrap">
             <div className="section__head">
               <p className="eyebrow eyebrow--onDark">The AI gateway</p>
-              <h2>One interface, three providers, no vendor in the call sites.</h2>
+              <h2>One interface. No model vendor in any call site.</h2>
               <p className="lede">
-                Agents never touch a vendor SDK. The gateway owns provider selection, the fallback
-                chain, prompt redaction, the per-agent cost ceiling, the timeout and the decision
-                log. A refusal on one provider walks to the next; when every provider fails, the
-                caller falls back to the cached plan — a slow model must never produce a broken
-                app.
+                Every model call in the platform goes through one gateway, which owns provider
+                selection, the fallback chain, prompt redaction, the per-agent cost ceiling, the
+                timeout and the decision log. A refusal on one provider walks to the next; when
+                every provider fails, the caller falls back to the cached plan — a slow model
+                must never produce a broken app.
               </p>
             </div>
 
-            <div className="tablewrap">
-              <table className="endpoints">
-                <thead>
-                  <tr>
-                    <th scope="col">Provider</th>
-                    <th scope="col">Package</th>
-                    <th scope="col">Mid-tier</th>
-                    <th scope="col">Frontier</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {GATEWAY.map((g) => (
-                    <tr key={g.p}>
-                      <td style={{ fontWeight: 600 }}>{g.p}</td>
-                      <td>
-                        <code>{g.pkg}</code>
-                      </td>
-                      <td>
-                        <code>{g.mid}</code>
-                      </td>
-                      <td>
-                        <code>{g.top}</code>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="dash">
+              <article className="card card--6">
+                <div className="card__head">
+                  <h3 className="card__t">What the gateway guarantees</h3>
+                </div>
+                <ul className="ticks">
+                  <li>Names, calendar titles, clinical notes and free text are redacted before any external call.</li>
+                  <li>Every agent has a hard cost ceiling per invocation, enforced before the call is made.</li>
+                  <li>Timing decisions are a contextual bandit, never a language model.</li>
+                  <li>Model calls are logged with input hashes, not inputs.</li>
+                </ul>
+              </article>
+              <article className="card card--6">
+                <div className="card__head">
+                  <h3 className="card__t">Vendor independence</h3>
+                </div>
+                <p className="card__note">
+                  Which models sit behind the gateway is deployment configuration, not part of
+                  this contract, and can change without any client noticing. Swapping or adding
+                  a provider means implementing <code>ModelProvider</code> and registering it —
+                  no other call site in the platform changes.
+                </p>
+              </article>
             </div>
-
-            <p className="lede" style={{ marginTop: 26 }}>
-              Adding a fourth provider means implementing <code>ModelProvider</code> and
-              registering it. No other call site in the platform changes.
-            </p>
           </div>
         </section>
 
