@@ -2,7 +2,7 @@ import type {
   AiCompletionRequest,
   AiCompletionResponse,
   AiProvider,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 /**
  * Every model vendor sits behind this one interface. Adding a fourth

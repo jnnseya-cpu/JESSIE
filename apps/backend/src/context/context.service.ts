@@ -9,7 +9,7 @@ import {
   type MotionState,
   type PrivacyClass,
   type SignalClass,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 export interface ContextSignals {
   userId: string;

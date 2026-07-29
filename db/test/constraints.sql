@@ -5,7 +5,7 @@
 -- violate a rule from the specification. A constraint that does not
 -- fire here is not enforcement — it is documentation.
 --
--- Run:  psql -d movequest -v ON_ERROR_STOP=1 -f db/test/constraints.sql
+-- Run:  psql -d jessmove -v ON_ERROR_STOP=1 -f db/test/constraints.sql
 -- ============================================================
 
 \set QUIET on

@@ -1,5 +1,5 @@
 /**
- * MOVEQUEST — sales feature list, as a Word document.
+ * JESS MOVE — sales feature list, as a Word document.
  *
  * Built from docs/SALES-FEATURE-LIST.md, laid out for a salesperson to read
  * on screen and to lift paragraphs out of. Brand palette from §4 of the
@@ -131,7 +131,7 @@ const HR = () =>
 
 const BULLET = (text, level = 0) =>
   new Paragraph({
-    numbering: { reference: 'mq-bullets', level },
+    numbering: { reference: 'jm-bullets', level },
     spacing: { after: 70, line: 276 },
     children: [new TextRun({ text, font: FONT, size: 21, color: '1A1A1A' })],
   });
@@ -231,7 +231,7 @@ body.push(
     spacing: { after: 40 },
     children: [
       new TextRun({
-        text: 'MOVEQUEST',
+        text: 'JESS MOVE',
         font: DISPLAY,
         size: 68,
         bold: true,
@@ -277,7 +277,7 @@ body.push(
     CRITICAL,
   ),
   P(
-    'MoveQuest AI — your daily movement and body-balance operating system. ' +
+    'Jess Move AI — your daily movement and body-balance operating system. ' +
       'A general wellness product. It does not diagnose or treat any condition.',
     { size: 17, color: SLATE, after: 0, italics: true },
   ),
@@ -287,7 +287,7 @@ body.push(
 body.push(
   H1('The pitch, in one paragraph'),
   P(
-    'MoveQuest is an AI-powered movement, food and body-balance operating system for people ' +
+    'Jess Move is an AI-powered movement, food and body-balance operating system for people ' +
       'aged 10 to 100. It doesn’t ask anyone to find an hour, join a gym or rebuild their ' +
       'life. It reads the day a person already has — work, school, commute, home — finds the ' +
       'two-minute gaps that are genuinely free, and puts one personalised movement into them. ' +
@@ -298,7 +298,7 @@ body.push(
   ),
   ...PANEL(
     [
-      'The 15-second version: Fitness apps compete for the hour you don’t have. MoveQuest owns ' +
+      'The 15-second version: Fitness apps compete for the hour you don’t have. Jess Move owns ' +
         'the two-minute gaps you didn’t know you had.',
     ],
     TEAL,
@@ -310,7 +310,7 @@ body.push(
       'commit to something that needs an hour, a changing room and a membership. And generic ' +
       '“time to stand” reminders fail because they know nothing about the person’s day: they ' +
       'fire while you’re driving, teaching, holding a baby or in a meeting you cannot leave. ' +
-      'You ignore them, then you turn notifications off. MoveQuest is built for the gap between ' +
+      'You ignore them, then you turn notifications off. Jess Move is built for the gap between ' +
       'what people are told to do and what their day actually permits.',
   ),
 );
@@ -664,7 +664,7 @@ body.push(
   ...FEATURE(
     'Seven providers, none of them required',
     'Apple Health, Health Connect, Fitbit, Garmin, Samsung Health, Oura and Polar. A wearable ' +
-      'improves the estimate; it never gates the product. The floor of MoveQuest is a phone that ' +
+      'improves the estimate; it never gates the product. The floor of Jess Move is a phone that ' +
       'can receive a text message.',
     '3487F7',
   ),
@@ -979,7 +979,7 @@ body.push(
   EYEBROW('Social / organic — under 280 characters', TEAL),
   ...PANEL(
     [
-      'Most fitness apps ask for an hour you don’t have. MoveQuest reads your actual day — work, ' +
+      'Most fitness apps ask for an hour you don’t have. Jess Move reads your actual day — work, ' +
         'commute, home — finds the two-minute gaps that are genuinely free, and puts one movement ' +
         'in them. Ages 10 to 100. Seated, standing, wheelchair, bed. Every body qualifies.',
     ],
@@ -988,7 +988,7 @@ body.push(
   EYEBROW('Employer outreach opener', NAVY),
   ...PANEL(
     [
-      'Your team isn’t refusing to be healthier — they’re in back-to-back meetings. MoveQuest ' +
+      'Your team isn’t refusing to be healthier — they’re in back-to-back meetings. Jess Move ' +
         'finds the gaps their calendar actually has and puts two minutes of movement in them. You ' +
         'get privacy-protected participation reporting. Nobody gets an individual dashboard about ' +
         'anybody.',
@@ -1040,7 +1040,7 @@ body.push(
   ),
   BULLET('Before-and-after body imagery, in any campaign, for any age group.'),
   H2('Always say', TEAL),
-  BULLET('MoveQuest is a general wellness product, not a medical device.'),
+  BULLET('Jess Move is a general wellness product, not a medical device.'),
   BULLET('It does not diagnose or treat, and never contacts emergency services.'),
   BULLET('Stop and seek advice if you feel pain, dizziness or any unusual symptom.'),
   H2('Disclosure', NAVY),
@@ -1057,7 +1057,7 @@ body.push(
   ),
   HR(),
   P(
-    'MOVEQUEST — MoveQuest AI, your daily movement and body-balance operating system. ' +
+    'JESS MOVE — Jess Move AI, your daily movement and body-balance operating system. ' +
       'A general wellness product. It does not diagnose or treat any condition.',
     { size: 17, color: SLATE, italics: true, after: 0 },
   ),
@@ -1068,15 +1068,15 @@ body.push(
    ============================================================ */
 
 const doc = new Document({
-  creator: 'MoveQuest',
-  title: 'MOVEQUEST — Feature List for Sales',
+  creator: 'Jess Move',
+  title: 'JESS MOVE — Feature List for Sales',
   description:
     'Feature list with a selling paragraph per feature, ready-to-use short copy, and the ' +
     'claims that must never be made.',
   numbering: {
     config: [
       {
-        reference: 'mq-bullets',
+        reference: 'jm-bullets',
         levels: [
           {
             level: 0,
@@ -1110,7 +1110,7 @@ const doc = new Document({
               spacing: { after: 0 },
               children: [
                 new TextRun({
-                  text: 'MOVEQUEST · Feature list for sales',
+                  text: 'JESS MOVE · Feature list for sales',
                   font: FONT,
                   size: 15,
                   color: SLATE,
@@ -1147,6 +1147,6 @@ const doc = new Document({
 });
 
 Packer.toBuffer(doc).then((buf) => {
-  fs.writeFileSync('MOVEQUEST-Feature-List-for-Sales.docx', buf);
+  fs.writeFileSync('JESS-MOVE-Feature-List-for-Sales.docx', buf);
   console.log('written', buf.length, 'bytes');
 });

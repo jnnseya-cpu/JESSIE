@@ -1,14 +1,18 @@
 import Link from 'next/link';
-import { BRAND, SIGNATURE_LINE } from '@movequest/shared';
+import { BRAND, SIGNATURE_LINE } from '@jessmove/shared';
 
 /* ---------------- marks and icons (no external assets) ---------------- */
 
 /**
- * The MoveQuest mark. §9.
+ * The Jess Move mark. §9.
  *
- * A quest ring, an M, and a route that rises through it. The route uses
- * the Movement Energy gradient (teal → lime) and finishes above the M —
- * the journey continues past the letter rather than closing on it.
+ * A quest ring, a JM monogram, and a route that rises out through the gap
+ * in the ring. The route uses the Movement Energy gradient (teal → lime)
+ * and finishes above and beyond the M — the journey continues past the
+ * letters rather than closing on them.
+ *
+ * The J and the M are drawn as strokes, not a font, so the mark renders
+ * identically everywhere and needs no webfont to be correct.
  *
  * Deliberately not: a heart, a weighing scale, a running figure, a medical
  * cross, a dumbbell, a footprint, an apple, or a pulse line.
@@ -17,7 +21,7 @@ export function Mark() {
   return (
     <svg className="brand__mark" viewBox="0 0 40 40" aria-hidden="true">
       <defs>
-        <linearGradient id="mq-route" x1="0" y1="1" x2="1" y2="0">
+        <linearGradient id="jm-route" x1="0" y1="1" x2="1" y2="0">
           <stop offset="0%" stopColor="#00A99D" />
           <stop offset="100%" stopColor="#B7E436" />
         </linearGradient>
@@ -32,25 +36,34 @@ export function Mark() {
         strokeWidth="1.8"
         strokeLinecap="round"
       />
-      {/* the M */}
+      {/* the J — stem down, hooking left */}
       <path
-        d="M12 27V16l5 6 5-6v11"
+        d="M13.6 15.4v6.9a2.6 2.6 0 0 1-5.2 0"
         fill="none"
         stroke="#F4FAF9"
-        strokeWidth="2.6"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* the route rising through and beyond it */}
+      {/* the M */}
       <path
-        d="M22 27l4.5-6.5L31 14"
+        d="M17.4 26.4v-11l4.3 5.2 4.3-5.2v11"
         fill="none"
-        stroke="url(#mq-route)"
-        strokeWidth="3"
+        stroke="#F4FAF9"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx="31" cy="14" r="2.6" fill="#B7E436" />
+      {/* the route rising through and beyond the letters */}
+      <path
+        d="M26 26.4l3.2-5.4 2.9-5"
+        fill="none"
+        stroke="url(#jm-route)"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="32.1" cy="16" r="2.4" fill="#B7E436" />
     </svg>
   );
 }

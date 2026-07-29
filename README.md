@@ -1,12 +1,12 @@
-# MOVEQUEST
+# JESS MOVE
 
 **Small Moves. Powerful Change.**
 
-> MoveQuest AI — Your Daily Movement and Body-Balance Operating System.
+> Jess Move AI — Your Daily Movement and Body-Balance Operating System.
 > An AI-powered micro-movement, food intelligence and healthy-lifestyle platform, ages 10 to 100.
 
 Meeting a weekly exercise target does not cancel the risk of spending the rest of the day
-sitting. That gap is the product. MoveQuest ingests a person's schedule, context, capability
+sitting. That gap is the product. Jess Move ingests a person's schedule, context, capability
 and history and answers one question no existing platform answers well:
 
 > *Given everything true about this human right now, what is the single best two-minute movement
@@ -14,8 +14,8 @@ and history and answers one question no existing platform answers well:
 
 | Surface | Name |
 |---|---|
-| Platform / operating system | **MOVEQUEST** |
-| Consumer app | **MoveQuest** |
+| Platform / operating system | **JESS MOVE** |
+| Consumer app | **Jess Move** |
 | AI coach persona | **MOVA** — Movement Optimisation and Vitality Assistant |
 | Atomic unit | a **micro-movement** (90–300 seconds), delivered as a **mission** |
 
@@ -38,19 +38,19 @@ because it governs safeguarding rules rather than preferences.
 ## Repository layout
 
 ```
-MOVEQUEST/
+jessmove/
 ├─ apps/
-│  ├─ backend/          @movequest/backend   — NestJS API + agent runtime
-│  └─ frontend/         @movequest/frontend  — Next.js 14 (App Router) site & consoles
+│  ├─ backend/          @jessmove/backend   — NestJS API + agent runtime
+│  └─ frontend/         @jessmove/frontend  — Next.js 14 (App Router) site & consoles
 ├─ packages/
-│  ├─ shared/           @movequest/shared        — domain model, contracts, design tokens
-│  ├─ body-command/     @movequest/body-command  — BodyCommand AI: pathways, guardian, ACU maths
-│  └─ foodlens/         @movequest/foodlens      — FoodLens 360°: evidence and confidence
+│  ├─ shared/           @jessmove/shared        — domain model, contracts, design tokens
+│  ├─ body-command/     @jessmove/body-command  — BodyCommand AI: pathways, guardian, ACU maths
+│  └─ foodlens/         @jessmove/foodlens      — FoodLens 360°: evidence and confidence
 ├─ db/
 │  ├─ migrations/       Postgres schema — invariants enforced in the database
 │  └─ test/             constraint tests: every rule proven to reject bad writes
 └─ docs/
-   ├─ MOVEQUEST-SPEC.md    — the production specification (v1.0, JS-01)
+   ├─ JESS-MOVE-SPEC.md    — the production specification (v1.0, JS-01)
    └─ BODY-BALANCE-AI.md   — BodyCommand AI (C6 resolved: scoped carve-out)
 ```
 
@@ -83,7 +83,7 @@ pnpm build:shared
 pnpm build:backend
 pnpm build:frontend
 pnpm typecheck              # across the workspace
-pnpm --filter @movequest/backend test    # the Charter CI gate
+pnpm --filter @jessmove/backend test    # the Charter CI gate
 ```
 
 ---
@@ -195,15 +195,15 @@ Canonical tokens live in `packages/shared/src/design.ts` and are mirrored once i
 
 | Token | Hex | Meaning |
 |---|---|---|
-| `--mq-navy` | `#102A43` | Trust, depth, authority. Navigation, headers, dark mode |
-| `--mq-teal` | `#00A99D` | Health, momentum. Primary buttons, completion, progress |
-| `--mq-lime` | `#B7E436` | Energy, achievement. Rewards, streaks, celebration |
-| `--mq-blue` | `#3487F7` | Intelligence, clarity. AI, wearables, data, links |
-| `--mq-purple` | `#7656E8` | Personalisation. BodyCommand, specialist pathways |
-| `--mq-coral` | `#FF6B5E` | Attention without danger. Challenges, missed-action recovery |
-| `--mq-orange` | `#F59E3D` | FoodLens, nutrition, meal insight |
-| `--mq-sky` | `#67C5EB` | Hydration, sleep, breathing, recovery |
-| `--mq-magenta` | `#D84F9A` | Strength, muscle protection, recomposition |
+| `--jm-navy` | `#102A43` | Trust, depth, authority. Navigation, headers, dark mode |
+| `--jm-teal` | `#00A99D` | Health, momentum. Primary buttons, completion, progress |
+| `--jm-lime` | `#B7E436` | Energy, achievement. Rewards, streaks, celebration |
+| `--jm-blue` | `#3487F7` | Intelligence, clarity. AI, wearables, data, links |
+| `--jm-purple` | `#7656E8` | Personalisation. BodyCommand, specialist pathways |
+| `--jm-coral` | `#FF6B5E` | Attention without danger. Challenges, missed-action recovery |
+| `--jm-orange` | `#F59E3D` | FoodLens, nutrition, meal insight |
+| `--jm-sky` | `#67C5EB` | Hydration, sleep, breathing, recovery |
+| `--jm-magenta` | `#D84F9A` | Strength, muscle protection, recomposition |
 
 Health-state colours (`excellent`, `positive`, `monitor`, `action`, `critical`, `information`,
 `specialist`, `unavailable`) are separate from the brand ramp. **Two rules are absolute:**
@@ -252,7 +252,7 @@ so server output and client hydration are byte-identical.
 
 ## Regulatory posture
 
-MOVEQUEST is a **general wellness product — not a medical device.** It does not diagnose or
+JESS MOVE is a **general wellness product — not a medical device.** It does not diagnose or
 treat, does not replace clinical care, and never contacts emergency services. Any move toward
 clinician-prescribed rehabilitation with therapeutic claims (Care Link Pro) triggers a formal
 medical-device classification review **before** release. That is a hard gate on the roadmap.
@@ -264,4 +264,4 @@ citations.
 
 ---
 
-*Authored by MoveQuest. Engineered under NSEYA X-EXECUTE.*
+*Authored by Jess Move. Engineered under NSEYA X-EXECUTE.*

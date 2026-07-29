@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BRAND } from '@movequest/shared';
+import { BRAND } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Platform status — MOVEQUEST',
+  title: 'Platform status — JESS MOVE',
   description:
-    'Current availability of every MoveQuest service, the incident history, and what happens ' +
+    'Current availability of every Jess Move service, the incident history, and what happens ' +
     'to your day when a component fails.',
 };
 
@@ -108,7 +108,7 @@ const INCIDENTS = [
     date: '24 July 2026',
     title: 'Wearable ingestion delays for one provider',
     state: 'Monitoring',
-    tone: 'var(--mq-monitor)',
+    tone: 'var(--jm-monitor)',
     body:
       'Sync from one wearable partner is running 30–90 minutes behind. Readiness scores using ' +
       'that source are correspondingly stale. Prompts continue from calendar and device signal, ' +
@@ -119,7 +119,7 @@ const INCIDENTS = [
     date: '15 July 2026',
     title: 'AI gateway latency during a provider incident',
     state: 'Resolved in 41 minutes',
-    tone: 'var(--mq-excellent)',
+    tone: 'var(--jm-excellent)',
     body:
       'A primary model provider returned elevated errors. The gateway walked to the next link in ' +
       'the fallback chain as designed. Explanations were briefly terse where the mid-tier model ' +
@@ -130,7 +130,7 @@ const INCIDENTS = [
     date: '8 July 2026',
     title: 'Delayed SMS delivery in the lightweight tier',
     state: 'Resolved in 2 hours 12 minutes',
-    tone: 'var(--mq-excellent)',
+    tone: 'var(--jm-excellent)',
     body:
       'A carrier route degraded, delaying T3 messages by up to 25 minutes. Missions whose window ' +
       'had passed were suppressed rather than sent late — a mission that arrives after the gap ' +
@@ -235,7 +235,7 @@ export default function Status() {
             </div>
 
             <div className="tiles">
-              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--mq-teal)' }}>
+              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--jm-teal)' }}>
                 <h3>If the AI gateway fails</h3>
                 <p>
                   The gateway walks the fallback chain across providers. If every provider fails,
@@ -243,21 +243,21 @@ export default function Status() {
                   shorter.
                 </p>
               </article>
-              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--mq-sky)' }}>
+              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--jm-sky)' }}>
                 <h3>If a wearable stops syncing</h3>
                 <p>
                   Readiness falls back to calendar structure, device inactivity and your own
                   check-in. The engine widens its uncertainty rather than pretending to know.
                 </p>
               </article>
-              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--mq-orange)' }}>
+              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--jm-orange)' }}>
                 <h3>If delivery is delayed</h3>
                 <p>
                   A mission whose window has closed is suppressed, not sent late. Arriving after
                   the gap has gone is the exact defect the product exists to avoid.
                 </p>
               </article>
-              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--mq-critical)' }}>
+              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--jm-critical)' }}>
                 <h3>What never degrades</h3>
                 <p>
                   Safety screening, the five-variant requirement, the under-18 body-metric
@@ -277,7 +277,7 @@ export default function Status() {
 
             <p className="lede" style={{ marginTop: 26 }}>
               Report a problem we have not listed:{' '}
-              <Link href="/contact" style={{ color: 'var(--mq-lime)', fontWeight: 600 }}>
+              <Link href="/contact" style={{ color: 'var(--jm-lime)', fontWeight: 600 }}>
                 contact us
               </Link>
               .

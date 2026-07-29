@@ -1,5 +1,5 @@
 /**
- * MOVEQUEST — canonical design tokens. §4–§12 and §36 of the brand and
+ * JESS MOVE — canonical design tokens. §4–§12 and §36 of the brand and
  * visual identity specification.
  *
  * These values are normative. The frontend imports them rather than
@@ -181,13 +181,13 @@ export const SPACING = {
    ============================================================ */
 
 /**
- * WCAG 2.2 AA sets a 24 × 24 CSS pixel minimum pointer target. MoveQuest
+ * WCAG 2.2 AA sets a 24 × 24 CSS pixel minimum pointer target. Jess Move
  * exceeds it: many users are older, moving, or operating one-handed.
  */
 export const TARGET_SIZE_PX = {
   /** The WCAG 2.2 AA floor. Never go below this. */
   wcagMinimum: 24,
-  /** What MoveQuest actually ships. */
+  /** What Jess Move actually ships. */
   standard: 48,
   /** Independence and Vitality modes. */
   laterLife: 56,
@@ -239,7 +239,7 @@ export const CHART_PROHIBITIONS = [
    ============================================================ */
 
 /** The signature line required on every screen, invoice and export. */
-export const SIGNATURE_LINE = 'Powered by MOVEQUEST — Small Moves. Powerful Change.';
+export const SIGNATURE_LINE = 'Powered by JESS MOVE — Small Moves. Powerful Change.';
 
 /**
  * ASCII-safe rendering of the signature line for HTTP headers.
@@ -247,7 +247,7 @@ export const SIGNATURE_LINE = 'Powered by MOVEQUEST — Small Moves. Powerful Ch
  * by Node's header validation, so the full line travels in the response
  * body and this variant travels in the header.
  */
-export const SIGNATURE_LINE_ASCII = 'Powered by MOVEQUEST - Small Moves. Powerful Change.';
+export const SIGNATURE_LINE_ASCII = 'Powered by JESS MOVE - Small Moves. Powerful Change.';
 
 /** Header key carrying the signature line on every API response. */
-export const SIGNATURE_HEADER = 'x-powered-by-movequest';
+export const SIGNATURE_HEADER = 'x-powered-by-jessmove';

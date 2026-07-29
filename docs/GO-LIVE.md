@@ -1,163 +1,164 @@
-# Going live — the real sequence
+# Going live — jessmove.com, step by step
 
-Everything here needs your accounts, your card and your domain, so none of it can be
-done from inside this repository. It is written as a runbook: do the steps in order,
-because several of them depend on the one before.
+This is a runbook. Do the steps in order and do not skip one, because several depend on
+the one before. Every step says **what to do** and **how you know it worked**.
 
-`docs/DEPLOY.md` covers the mechanics. This covers actually getting on the internet.
+Nothing here can be done from inside this repository — it all needs your accounts, your
+card and your domain.
 
-**Time:** about three hours for a first run, most of it waiting for DNS.
-**Cost to start:** roughly £15–30/month plus the domain. Nothing here needs a
-committed-use contract.
+- **Domain:** `jessmove.com`, already bought, at **Hostinger**. It stays there.
+- **Time:** about 3 hours the first time, most of it waiting for DNS and certificates.
+- **Cost:** roughly £15–30/month to start.
+
+`docs/DEPLOY.md` covers the build mechanics. This covers getting on the internet.
 
 ---
 
-## Where everything actually lives
+# Part 1 — Where everything actually lives
 
-Three things get talked about as if they were three deployments. They are not. Only
-**two** things deploy; the third is compiled into both of them.
+## In the repository
 
-| In this repository | Package name | Builds to | Where it goes online |
+People talk about "backend, frontend and shared" as if that is three deployments.
+**It is two.** The third is a library that gets compiled *into* the other two.
+
+| Folder in the repo | Package name | Compiles to | Deploys to |
 |---|---|---|---|
-| `apps/backend` | `@movequest/backend` | `dist/main.js` | **One container**, on Cloud Run or a VPS. This is the API. |
-| `apps/frontend` | `@movequest/frontend` | `.next/` | **Vercel** (or a second container). This is the website. |
-| `packages/shared` | `@movequest/shared` | `dist/index.js` | **Nowhere.** Compiled into both of the above. |
-| `packages/body-command` | `@movequest/body-command` | `dist/index.js` | **Nowhere.** Compiled into the API. |
-| `packages/foodlens` | `@movequest/foodlens` | `dist/index.js` | **Nowhere.** Compiled into the API. |
-| `db/migrations` | — | SQL | Applied **to** the Postgres database, wherever it is hosted. |
+| **`apps/backend`** | `@jessmove/backend` | `dist/main.js` | **A container** — Cloud Run or a VPS. This is the API. |
+| **`apps/frontend`** | `@jessmove/frontend` | `.next/` | **Vercel** — or a second container. This is the website. |
+| **`packages/shared`** | `@jessmove/shared` | `dist/index.js` | **Nowhere.** Compiled into both apps. |
+| **`packages/body-command`** | `@jessmove/body-command` | `dist/index.js` | **Nowhere.** Compiled into the API. |
+| **`packages/foodlens`** | `@jessmove/foodlens` | `dist/index.js` | **Nowhere.** Compiled into the API. |
+| **`db/migrations`** | — | SQL files | Run **against** the Postgres database. |
 
-> **`shared` is not a service and does not need publishing.** It is a workspace
-> library. `pnpm-workspace.yaml` links it by path, both Dockerfiles run
-> `pnpm --filter @movequest/shared build` before building the app that consumes it,
-> and the compiled output ends up inside the app's own bundle. There is no npm
-> registry step, no separate host, no URL. If you ever see instructions telling you to
-> "deploy shared", they are describing a different architecture than this one.
+> ### `shared` does not get deployed. Ever.
+>
+> It is a workspace library, not a service. `pnpm-workspace.yaml` links it by folder
+> path. Both Dockerfiles run `pnpm --filter @jessmove/shared build` *before* building
+> the app that uses it, and the compiled JavaScript ends up inside that app's own
+> bundle.
+>
+> There is no npm publish, no registry, no server and no URL for `shared`. The same is
+> true of `body-command` and `foodlens`. **You deploy two things: the API and the site.**
 
-So the real deployment picture is:
-
-```
-                    ┌──────────────────────────┐
-  movequest.ai ───► │  Next.js site            │  Vercel (or container)
-                    │  apps/frontend           │
-                    └────────────┬─────────────┘
-                                 │  HTTPS, browser → API
-                                 ▼
-                    ┌──────────────────────────┐
-api.movequest.ai ─► │  NestJS API              │  Cloud Run (or container)
-                    │  apps/backend            │
-                    │   + shared               │
-                    │   + body-command         │  ← all three compiled in
-                    │   + foodlens             │
-                    └────────────┬─────────────┘
-                                 │  TCP 5432, TLS
-                                 ▼
-                    ┌──────────────────────────┐
-                    │  Postgres 16             │  Neon / Cloud SQL / VPS
-                    │  db/migrations applied   │
-                    └──────────────────────────┘
-```
-
-**Two routes are documented below.** Pick one before Step 0:
-
-- **Route A — Vercel + Cloud Run.** Steps 0–10. Managed, scales to zero, no server to
-  patch. Hostinger holds the domain and answers DNS only. This is the recommended one.
-- **Route B — one Hostinger VPS.** The appendix at the end. Everything on a single box
-  you already pay Hostinger for, using `docker-compose.yml`. Cheaper and simpler to
-  reason about; you own the patching, the backups and the TLS renewal.
-
-Either way the domain stays at Hostinger. You are not transferring it.
-
----
-
-## Step 0 · Accounts you need first
-
-Open these before you start, because two of them take a day to verify.
-
-| Account | For | Cost | Verification delay |
-|---|---|---|---|
-| ~~Domain registrar~~ | **Done — Hostinger** | already paid | — |
-| GitHub | Source, CI, deploy triggers | free | none |
-| Google Cloud | The API on Cloud Run | pay per use | needs a card |
-| Vercel | The site | free tier is enough to start | none |
-| Neon *or* Cloud SQL | Postgres | £0 → £15/mo | none |
-| Stripe | Payments | 1.5% + 20p | **1–3 days** for full activation |
-| Anthropic / OpenAI / Google AI | Model access | pay per use | usually instant |
-
-Start the **Stripe** application first. It is the only thing here with a real waiting
-period, and you cannot take a payment until it clears.
-
----
-
-## Step 1 · The domain — you already have it
-
-The domain is at **Hostinger**, and it stays there. Nothing below transfers it, and
-you do not need Hostinger hosting — only its DNS zone, which is free with the domain.
-
-Substitute your real domain for `movequest.ai` everywhere in this document.
-
-### 1a · Make sure Hostinger is actually answering DNS
-
-hPanel → **Domains** → your domain → **DNS / Nameservers**.
-
-The nameservers must be Hostinger's own:
+## Online, when you are finished
 
 ```
-ns1.dns-parking.com
-ns2.dns-parking.com
+   Browser
+      │
+      ▼
+┌─────────────────────────┐
+│  jessmove.com           │   apps/frontend  →  Vercel
+│  www.jessmove.com       │
+└───────────┬─────────────┘
+            │  HTTPS
+            ▼
+┌─────────────────────────┐
+│  api.jessmove.com       │   apps/backend   →  Cloud Run
+│    + shared             │
+│    + body-command       │   ← compiled in, not deployed
+│    + foodlens           │
+└───────────┬─────────────┘
+            │  TCP 5432 over TLS
+            ▼
+┌─────────────────────────┐
+│  Postgres 16            │   db/migrations  →  Neon (London)
+└─────────────────────────┘
 ```
 
-If they point somewhere else — Cloudflare, a previous host, a registrar default — then
-the DNS records you add in Hostinger's zone editor will have no effect at all, because
-nothing is asking Hostinger. Either set them back to the two above, or accept that the
-records in Step 5 and Step 6 must be created wherever the nameservers *do* point.
+## Two routes — pick one now
 
-*Using Cloudflare instead is fine and arguably better. Just add the records there, and
-set the proxy to **DNS only** (grey cloud) for `api.` — an orange-cloud proxy in front
-of Cloud Run breaks the managed certificate handshake.*
-
-### 1b · Decide the names now
-
-They get baked into builds later, so deciding them now saves a rebuild:
-
-| Name | Points at | Record you will add |
+| | **Route A** — Vercel + Cloud Run | **Route B** — one Hostinger VPS |
 |---|---|---|
-| `movequest.ai` | the site, on Vercel | `A` on `@` |
-| `www.movequest.ai` | redirect to apex | `CNAME` on `www` |
-| `api.movequest.ai` | the API, on Cloud Run | `CNAME` on `api` |
-| `status.movequest.ai` | optional, later | — |
+| Steps | 1 → 12 below | The appendix at the end |
+| Monthly | £15–30, scales with use | £7–20, flat |
+| Scales to zero when idle | yes | no |
+| You patch the operating system | no | **yes** |
+| Rollback | one command, instant | `git checkout` and rebuild |
+| Tested in this repo | build path tested | **compose path untested** |
 
-> **The gotcha that catches everyone.** The site's build needs the API URL, and the
-> API's CORS config needs the site's origin. Deciding both names *now* breaks the
-> circle — you configure each with the other's final name before either exists, and
-> nothing needs redeploying twice.
-
-### 1c · Delete Hostinger's parking records first
-
-This is the single most common cause of "I added the record and it didn't work".
-
-A fresh Hostinger domain ships with a zone that already contains an `A` record on `@`
-and a `CNAME` on `www` pointing at Hostinger's parking page. Hostinger's editor will
-happily let you add a *second* `A` record on `@`, and then resolvers round-robin
-between your site and a parking page — so it works one refresh in two, which looks
-like a caching problem and is not.
-
-hPanel → **Domains** → your domain → **DNS / Nameservers** → **DNS records**. Before
-adding anything, delete every existing record of type `A`, `AAAA` or `CNAME` on the
-names `@`, `www` and `api`.
-
-**Leave `MX` and any `TXT` records alone** unless you know what they do — deleting the
-`MX` records silently stops email for the domain.
-
-Hostinger's default TTL is `14400` (4 hours). Set it to `300` while you are setting
-things up, so a mistake costs five minutes instead of an afternoon. Raise it once the
-site is live.
+**Route A is recommended and is what Steps 1–12 describe.** Either way, the domain
+stays at Hostinger and Hostinger only answers DNS. You are not transferring it, and you
+do not need a Hostinger hosting plan for Route A.
 
 ---
 
-## Step 2 · Get the code onto GitHub
+# Part 2 — The DNS cheat sheet
 
-The branch is already pushed. Merge it to `main` so CI and the deploy hooks have
-something stable to track.
+Every record you will ever add, in one place. You add them in
+**hPanel → Domains → jessmove.com → DNS / Nameservers → DNS records**.
+
+| # | Type | Name | Value | Added in |
+|---|---|---|---|---|
+| 1 | `TXT` | `@` | `google-site-verification=…` | Step 6 |
+| 2 | `CNAME` | `api` | `ghs.googlehosted.com` | Step 6 |
+| 3 | `A` | `@` | the IPv4 Vercel shows you | Step 8 |
+| 4 | `CNAME` | `www` | `cname.vercel-dns.com` | Step 8 |
+
+Three rules that cause almost every DNS problem people have:
+
+1. **Type the short name only.** Put `api` in the name field, **not**
+   `api.jessmove.com`. Hostinger adds the domain for you. Typing the full name gives
+   you `api.jessmove.com.jessmove.com`, which resolves to nothing and looks fine in the
+   panel.
+2. **Delete Hostinger's parking records first.** See Step 2.
+3. **Set TTL to `300`** while you work. Hostinger defaults to `14400` — four hours per
+   mistake.
+
+---
+
+# Part 3 — The steps
+
+## Step 1 · Open your accounts
+
+Do this first. One of them takes days.
+
+| Account | What for | Cost |
+|---|---|---|
+| ~~Domain~~ | ~~jessmove.com~~ | **done, at Hostinger** |
+| GitHub | source, CI, deploy triggers | free |
+| Google Cloud | the API, on Cloud Run | pay per use, needs a card |
+| Vercel | the website | free tier is enough |
+| Neon | Postgres | free tier is enough |
+| Stripe | payments | 1.5% + 20p |
+| Anthropic / OpenAI / Google AI | model access | pay per use |
+
+**Start the Stripe application right now.** Full activation takes **1–3 days** and you
+cannot take a single payment until it clears. Everything else is instant.
+
+**Done when:** all six are open and Stripe says "under review" or better.
+
+---
+
+## Step 2 · Clean up Hostinger's DNS zone
+
+A fresh Hostinger domain already has an `A` record on `@` and a `CNAME` on `www`
+pointing at a parking page. Hostinger will happily let you add a *second* `A` record on
+`@` alongside it — and then browsers round-robin between your real site and the parking
+page. It works about one refresh in two, which looks like a caching problem and is not.
+
+**Do this:**
+
+1. hPanel → **Domains** → `jessmove.com` → **DNS / Nameservers**.
+2. Confirm the nameservers are Hostinger's own:
+   `ns1.dns-parking.com` and `ns2.dns-parking.com`.
+   If they point anywhere else, records you add here do nothing, because nothing is
+   asking Hostinger.
+3. Scroll to **DNS records**. Delete every `A`, `AAAA` and `CNAME` record on the names
+   `@`, `www` and `api`.
+4. **Do not touch `MX` records.** Deleting them silently stops email for the domain.
+5. Set the TTL field to `300` on anything you add from here on.
+
+**Done when:** `dig +short jessmove.com` returns nothing, or only records you
+recognise.
+
+*Prefer Cloudflare? That is fine and arguably better — point the Hostinger nameservers
+at Cloudflare and add the same records there. One thing matters: set `api` to **DNS
+only** (grey cloud). An orange-cloud proxy in front of Cloud Run breaks the certificate
+handshake.*
+
+---
+
+## Step 3 · Get the code onto `main`
 
 ```bash
 git checkout main
@@ -165,239 +166,240 @@ git merge claude/jessie-os-spec-doc-7audof
 git push origin main
 ```
 
-Check the Actions tab. `.github/workflows/ci.yml` should go green: build, typecheck,
-100 tests, the database invariants against a real Postgres, then a live smoke test of
-the API. **If CI is red, stop here.** Everything downstream assumes it passes.
+Open the repository's **Actions** tab and watch `.github/workflows/ci.yml`.
+
+**Done when:** CI is green — build, typecheck, 100 tests, the 14 database invariants
+against a real Postgres, and a live smoke test of the API.
+
+**If CI is red, stop here.** Every step below assumes it passes.
 
 ---
 
-## Step 3 · The database
+## Step 4 · Create the database
 
-**Recommended for a pilot: Neon.** Serverless Postgres 16, a usable free tier, and no
-VPC configuration — which is the part of Cloud SQL that costs an afternoon.
+Neon, not Cloud SQL, for a pilot. Serverless Postgres 16, a real free tier, and no VPC
+configuration — which is the part of Cloud SQL that costs an afternoon.
 
-1. neon.tech → new project → region **London (eu-west-2)**
-2. Copy the connection string. It looks like
-   `postgres://user:pass@ep-xxx.eu-west-2.aws.neon.tech/movequest?sslmode=require`
-3. Apply the schema and prove the invariants hold:
+1. **neon.tech** → new project → region **London (eu-west-2)**.
+2. Copy the connection string. It looks like:
+   `postgres://user:pass@ep-xxx.eu-west-2.aws.neon.tech/jessmove?sslmode=require`
+3. Apply the schema and prove the safety constraints hold:
 
 ```bash
 export DATABASE_URL='postgres://…?sslmode=require'
 pnpm db:migrate
-pnpm db:test        # 14 invariants, each proven to reject its violating write
+pnpm db:test
 ```
 
-If `db:test` does not print 14 rejections, the schema did not apply cleanly. Fix that
-before going further — those constraints are the last line of defence for the
-safeguarding rules.
+**Done when:** `pnpm db:test` prints **14 rejections** — one per invariant, each proven
+to reject the write that would violate it.
 
-*Switch to Cloud SQL when you have real users and want private IP and point-in-time
-recovery. The connection string is the only thing that changes.*
+If it prints fewer, the schema did not apply cleanly. Fix it now. Those constraints are
+the last line of defence for the safeguarding rules.
 
 ---
 
-## Step 4 · Secrets into Google Cloud
+## Step 5 · Put your secrets in Google Cloud
 
 ```bash
 gcloud auth login
-gcloud projects create movequest-prod --name="MoveQuest"
-gcloud config set project movequest-prod
-# Link billing in the console: console.cloud.google.com/billing
+gcloud projects create jessmove-prod --name="Jess Move"
+gcloud config set project jessmove-prod
+```
 
+Link a billing account at **console.cloud.google.com/billing**, then:
+
+```bash
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
   secretmanager.googleapis.com artifactregistry.googleapis.com
 
-printf '%s' "$DATABASE_URL"      | gcloud secrets create database-url  --data-file=-
-printf '%s' "sk-ant-…"           | gcloud secrets create anthropic-key --data-file=-
-printf '%s' "sk-…"               | gcloud secrets create openai-key    --data-file=-
+printf '%s' "$DATABASE_URL" | gcloud secrets create database-url  --data-file=-
+printf '%s' "sk-ant-…"      | gcloud secrets create anthropic-key --data-file=-
+printf '%s' "sk-…"          | gcloud secrets create openai-key    --data-file=-
 ```
 
-Only create the AI secrets you actually have. The gateway skips unconfigured providers
-rather than failing, so the API starts and serves without any of them — only
-`/ai/complete` degrades.
+Only create the AI secrets you actually have. The gateway **skips** unconfigured
+providers rather than failing, so the API starts and serves normally without any of
+them — only `/ai/complete` degrades.
+
+**Done when:** `gcloud secrets list` shows the secrets you created.
 
 ---
 
-## Step 5 · Deploy the API
+## Step 6 · Deploy the API, and give it `api.jessmove.com`
+
+### 6a · Build and deploy
 
 ```bash
-REGION=europe-west2   # London. Keep data in the UK.
+REGION=europe-west2      # London. Keeps the data in the UK.
 
-gcloud builds submit --tag gcr.io/movequest-prod/api --file Dockerfile.backend .
+gcloud builds submit --tag gcr.io/jessmove-prod/api --file Dockerfile.backend .
 
-gcloud run deploy movequest-api \
-  --image gcr.io/movequest-prod/api \
+gcloud run deploy jessmove-api \
+  --image gcr.io/jessmove-prod/api \
   --region $REGION \
   --allow-unauthenticated \
   --min-instances 0 --max-instances 10 \
   --cpu 1 --memory 512Mi --timeout 60s \
-  --set-env-vars "API_PREFIX=api,CORS_ORIGINS=https://movequest.ai,NODE_ENV=production" \
+  --set-env-vars "API_PREFIX=api,CORS_ORIGINS=https://jessmove.com,NODE_ENV=production" \
   --set-secrets "DATABASE_URL=database-url:latest,ANTHROPIC_API_KEY=anthropic-key:latest"
 ```
 
-`CORS_ORIGINS` is the final site origin from Step 1 — the site does not exist yet, and
-that is fine.
+`CORS_ORIGINS` is the final website address. The website does not exist yet. That is
+fine and deliberate — setting it now means you never have to redeploy the API later.
 
-`--min-instances 0` means you pay nothing when idle and accept a cold start of a few
-seconds. Move to 1 when you have users; it costs roughly £10/month and removes it.
-
-You get a URL like `https://movequest-api-xxxx.a.run.app`. Test it:
+You get back a URL like `https://jessmove-api-xxxx.a.run.app`. Test it:
 
 ```bash
-bash scripts/smoke.sh https://movequest-api-xxxx.a.run.app/api
+bash scripts/smoke.sh https://jessmove-api-xxxx.a.run.app/api
 ```
 
-**22/22 or do not continue.**
+**Done when it prints `pass=22 fail=0`.** Do not continue otherwise.
 
-### Put it on your Hostinger domain
+### 6b · Prove to Google that you own the domain
 
-Google has to see that you own the domain before it will map anything to it.
+Cloud Run will not map a domain you have not verified.
 
-**First, verify ownership.** Open
-[Google Search Console](https://search.google.com/search-console) → add a **Domain**
-property → it gives you one `TXT` record. In Hostinger's DNS records panel:
+1. Open **search.google.com/search-console** → add a **Domain** property →
+   `jessmove.com`.
+2. It gives you one `TXT` record. In Hostinger's DNS records panel add:
 
-| Type | Name | Value | TTL |
-|---|---|---|---|
-| `TXT` | `@` | `google-site-verification=…` (paste what Google gives you) | `300` |
+   | Type | Name | Value | TTL |
+   |---|---|---|---|
+   | `TXT` | `@` | `google-site-verification=…` | `300` |
 
-Hostinger writes `@` as the domain root — if the form rejects `@`, leave the name field
-empty, which means the same thing. Wait two minutes, press **Verify** in Search Console.
+   If the name field rejects `@`, leave it empty — same thing.
+3. Wait two minutes, press **Verify**.
 
-**Then create the mapping:**
+### 6c · Map the domain
 
 ```bash
 gcloud beta run domain-mappings create \
-  --service movequest-api --domain api.movequest.ai --region $REGION
+  --service jessmove-api --domain api.jessmove.com --region $REGION
 ```
 
-It prints the record to add. For a **subdomain** like `api.` it is always a single
-`CNAME`:
+It prints one record. Add it in Hostinger:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
-| `CNAME` | `api` | `ghs.googlehosted.com` (note the trailing dot if Hostinger requires one) | `300` |
+| `CNAME` | `api` | `ghs.googlehosted.com` | `300` |
 
-Add that in Hostinger's DNS records panel. Put **`api`** in the name field, not
-`api.movequest.ai` — Hostinger appends the domain for you, and typing the full name
-produces `api.movequest.ai.movequest.ai`, which resolves to nothing and is invisible
-until you check.
+Remember: the name field gets **`api`**, not `api.jessmove.com`.
 
-Watch it come up:
+Watch the certificate appear:
 
 ```bash
-gcloud beta run domain-mappings describe \
-  --domain api.movequest.ai --region $REGION
+gcloud beta run domain-mappings describe --domain api.jessmove.com --region $REGION
 ```
 
-`CertificateProvisioned` goes `False` → `True`. It takes 15 minutes to a few hours.
-Until then the domain returns a certificate error, which is expected and not a fault.
+`CertificateProvisioned` moves from `False` to `True`. Takes 15 minutes to a few hours.
+Until then the address shows a certificate warning — that is expected, not a fault.
 
-Then re-run the smoke test against `https://api.movequest.ai/api`.
+**Done when:**
+
+```bash
+bash scripts/smoke.sh https://api.jessmove.com/api
+```
+
+prints `pass=22 fail=0`.
 
 ---
 
-## Step 6 · Deploy the site
+## Step 7 · Deploy the website
 
 ```bash
 npm i -g vercel
 vercel login
-vercel link          # scope: your team, project: movequest
+vercel link          # scope: your account · project: jessmove
 ```
 
-Set the API URL **before** the first production build — `NEXT_PUBLIC_*` is inlined at
-build time, not read at runtime:
+**Set the API address before the first production build.** `NEXT_PUBLIC_*` values are
+baked into the JavaScript at build time — they are not read at runtime. Setting this
+afterwards does nothing until you rebuild.
 
 ```bash
 vercel env add NEXT_PUBLIC_API_BASE_URL production
-# paste: https://api.movequest.ai/api
+# paste exactly:  https://api.jessmove.com/api
+
 vercel --prod
 ```
 
-### Point the Hostinger domain at Vercel
-
-Vercel dashboard → your project → **Settings** → **Domains** → add `movequest.ai`,
-then add `www.movequest.ai`. Vercel then shows you the exact records it wants.
-
-**Use the values Vercel shows you, not the ones below.** Vercel has more than one
-anycast address in service — older projects are given `76.76.21.21`, newer ones
-`216.198.79.1` — and the dashboard is the authority for your project. The *shape* is
-always this:
-
-| Type | Name | Value | TTL |
-|---|---|---|---|
-| `A` | `@` | the IPv4 address Vercel displays | `300` |
-| `CNAME` | `www` | `cname.vercel-dns.com` | `300` |
-
-Add both in Hostinger → **Domains** → your domain → **DNS records**.
-
-Back in Vercel, the two domains flip from *Invalid Configuration* to *Valid* within a
-few minutes. Vercel issues the Let's Encrypt certificate itself; there is nothing to
-upload. Set `www.movequest.ai` to **redirect to** `movequest.ai` in the same panel, so
-you have one canonical origin — which matters, because `CORS_ORIGINS` on the API names
-exactly one.
-
-If it stays *Invalid Configuration* for more than ten minutes, check the resolver
-directly rather than trusting a browser:
-
-```bash
-dig +short movequest.ai
-dig +short www.movequest.ai
-dig +short api.movequest.ai
-```
-
-Two IPv4 addresses on the apex means you did not delete Hostinger's parking record —
-go back to Step 1c.
-
-`vercel.json` already carries the workspace-aware build command and the security
-headers, so there is nothing else to configure.
+**Done when:** the `*.vercel.app` URL Vercel prints loads the site, and the graphs
+render.
 
 ---
 
-## Step 7 · Prove the whole thing works
+## Step 8 · Point jessmove.com at Vercel
+
+1. Vercel dashboard → your project → **Settings** → **Domains**.
+2. Add `jessmove.com`. Then add `www.jessmove.com`.
+3. Vercel shows you the exact records it wants. Add them in Hostinger:
+
+   | Type | Name | Value | TTL |
+   |---|---|---|---|
+   | `A` | `@` | **the IPv4 address Vercel displays** | `300` |
+   | `CNAME` | `www` | `cname.vercel-dns.com` | `300` |
+
+> **Use the address Vercel shows you, not one from a guide.** Vercel runs more than one
+> anycast address — older projects get `76.76.21.21`, newer ones `216.198.79.1`. Your
+> dashboard is the authority for your project.
+
+4. Set `www.jessmove.com` to **redirect to** `jessmove.com` in the same panel. You want
+   one canonical address, because `CORS_ORIGINS` on the API names exactly one.
+
+Vercel issues the certificate itself. There is nothing to upload.
+
+**Done when:** both domains read **Valid Configuration** in Vercel, and:
+
+```bash
+dig +short jessmove.com        # one address
+dig +short www.jessmove.com    # cname.vercel-dns.com
+dig +short api.jessmove.com    # ghs.googlehosted.com
+```
+
+**Two addresses on `jessmove.com` means you left a Hostinger parking record behind.**
+Go back to Step 2.
+
+---
+
+## Step 9 · Prove the whole thing actually works
 
 **From a terminal:**
 
 ```bash
-bash scripts/smoke.sh https://api.movequest.ai/api
+bash scripts/smoke.sh https://api.jessmove.com/api
 ```
 
-**From a browser:** open `https://movequest.ai/console`, confirm the API base URL box
-reads `https://api.movequest.ai/api`, and press **Run all checks**. Expect 10/10.
+Expect `pass=22 fail=0`.
 
-That page is the fastest CORS test there is — a CORS failure appears as a readable
-message rather than a silent console error.
+**From a browser:** open `https://jessmove.com/console`, check the API base URL box
+reads `https://api.jessmove.com/api`, and press **Run all checks**. Expect **10/10**.
 
-Two results matter more than the rest, because they are the ones that would be
-embarrassing to get wrong in front of a customer:
+That page is the fastest CORS test there is — a CORS failure shows up as a readable
+message instead of a silent console error.
 
-- **The driving hold** returns `blocks: ["driving"]` as a *success*, not an error.
+**Two results matter more than the other eight**, because they are the ones that would
+be genuinely damaging to get wrong in front of a customer:
+
+- **The driving hold** returns `blocks: ["driving"]` as a **success**, not an error.
 - **The child case** — age 12 with `optedIntoBodyMetrics: true` — still returns
-  `CHILD_GROWTH` and `metrics: null`.
+  `CHILD_GROWTH` with `metrics: null`. The consent switch is not consulted below 18.
 
-If either fails, you have deployed a build that breaks a safeguarding rule. Roll back:
+If either fails you have shipped a build that breaks a safeguarding rule. Roll back
+immediately:
 
 ```bash
-gcloud run services update-traffic movequest-api --to-revisions PREVIOUS=100 --region $REGION
+gcloud run services update-traffic jessmove-api --to-revisions PREVIOUS=100 --region $REGION
 ```
 
 ---
 
-## Step 8 · Continuous deployment
+## Step 10 · Turn on automatic deploys
 
-**Site:** connect the GitHub repo in Vercel. Every push to `main` deploys; every pull
-request gets a preview URL. Nothing else to do.
+**Website:** connect the GitHub repo in Vercel. Every push to `main` deploys; every
+pull request gets its own preview URL. Nothing else to configure.
 
-**API:** a Cloud Build trigger on `main`.
-
-```bash
-gcloud builds triggers create github \
-  --repo-name=jessie --repo-owner=jnnseya-cpu \
-  --branch-pattern='^main$' \
-  --build-config=cloudbuild.yaml
-```
-
-Add `cloudbuild.yaml` at the repo root:
+**API:** add `cloudbuild.yaml` at the repository root:
 
 ```yaml
 steps:
@@ -407,54 +409,69 @@ steps:
     args: ['push', 'gcr.io/$PROJECT_ID/api:$SHORT_SHA']
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
-    args: ['run', 'deploy', 'movequest-api',
+    args: ['run', 'deploy', 'jessmove-api',
            '--image', 'gcr.io/$PROJECT_ID/api:$SHORT_SHA',
            '--region', 'europe-west2']
 ```
 
+then:
+
+```bash
+gcloud builds triggers create github \
+  --repo-name=jessie --repo-owner=jnnseya-cpu \
+  --branch-pattern='^main$' \
+  --build-config=cloudbuild.yaml
+```
+
+**Done when:** a trivial push to `main` produces a new Cloud Run revision and a new
+Vercel deployment without you typing anything.
+
 ---
 
-## Step 9 · Payments
+## Step 11 · Payments
 
 Only once Stripe is fully activated.
 
 1. Create the products and prices in the Stripe dashboard, matching the published
-   plans: Premium £5.99 and £8.99, Family £12.99 and £17.99, Organisation per-seat.
-2. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to Secret Manager and to the
+   plans: Premium £5.99 and £8.99, Family £12.99 and £17.99, Organisation per seat.
+2. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to Secret Manager, then to the
    Cloud Run service.
-3. Point the webhook at `https://api.movequest.ai/api/stripe/webhook`.
+3. Point the Stripe webhook at `https://api.jessmove.com/api/stripe/webhook`.
 4. Test in Stripe's test mode with card `4242 4242 4242 4242` before switching to live
    keys.
 
-> **Not yet built.** The wallet, the ACU arithmetic, the £5 minimum charge and the
-> spend controls all exist and are tested — but the Stripe checkout, webhook handler
-> and subscription lifecycle are not written. Plan a few days of work here. Everything
-> the billing logic needs is already in `apps/backend/src/acu/`.
+> ### This part is not built yet.
+>
+> The wallet, the ACU arithmetic, the £5 minimum charge and the spend controls all
+> exist and are tested. **The Stripe checkout, the webhook handler and the subscription
+> lifecycle are not written.** Budget a few days of development. Everything the billing
+> logic needs is already in `apps/backend/src/acu/`.
 
 ---
 
-## Step 10 · Before you tell anyone
+## Step 12 · The checklist before you tell anyone
 
-- [ ] `scripts/smoke.sh` is 22/22 against production
-- [ ] `/console` is 10/10 in a browser, including the driving hold and the child case
-- [ ] CI is green on `main`
+- [ ] `bash scripts/smoke.sh https://api.jessmove.com/api` → 22/22
+- [ ] `https://jessmove.com/console` → 10/10, **including the driving hold and the child case**
+- [ ] CI green on `main`
 - [ ] `pnpm db:test` passes against the production database
-- [ ] HTTPS works on `movequest.ai`, `www.` redirects to apex, `api.movequest.ai` resolves
-- [ ] `dig +short movequest.ai` returns **one** address — no Hostinger parking record left
-- [ ] Hostinger TTLs raised from `300` back to `3600` or more, now that nothing is changing
-- [ ] The `MX` records in Hostinger's zone are intact, if the domain receives email
+- [ ] `https://jessmove.com` loads over HTTPS
+- [ ] `www.jessmove.com` redirects to the apex
+- [ ] `dig +short jessmove.com` returns **one** address — no parking record left
+- [ ] `MX` records still present, if the domain receives email
+- [ ] Hostinger TTLs raised from `300` back to `3600` or more
 - [ ] `/terms`, `/privacy`, `/policies` and `/status` all load
-- [ ] `/console` is `noindex` (it is, by default — confirm it)
-- [ ] The unit-economics page is **not** reachable — it was removed, confirm no stray link
+- [ ] `/console` is `noindex` — it is by default, confirm it
+- [ ] No unit-economics page is reachable, and nothing links to one
 - [ ] ICO registration done — you are processing UK health data
 - [ ] The Clinical Safety Officer has signed off every health claim on the live site
-- [ ] Uptime check configured in Cloud Monitoring against `/api/health`
+- [ ] Uptime check in Cloud Monitoring against `/api/health`
 - [ ] A budget alert on the GCP billing account, so a runaway agent loop is noticed in
       hours rather than at the end of the month
 
 ---
 
-## What this costs, roughly
+# Part 4 — What it costs
 
 | Item | Monthly |
 |---|---|
@@ -464,55 +481,56 @@ Only once Stripe is fully activated.
 | Neon production tier | £15 |
 | Vercel hobby / pro | £0 / £16 |
 | AI inference, a few hundred users | £5–40 |
-| Domain, already paid at Hostinger | ~£6 amortised |
-| *Route B instead:* Hostinger VPS KVM 2, all-in | £7–20 |
+| `jessmove.com`, already paid | ~£1 amortised |
+| *Route B instead:* Hostinger VPS KVM 2, everything | £7–20 |
 
 **Under £30/month** for a pilot with a few hundred users. The number that moves is AI
-inference, and it is the one the per-agent ACU ceilings exist to bound.
+inference, and it is exactly what the per-agent ACU ceilings exist to bound.
 
 ---
 
-## The four things most likely to go wrong
+# Part 5 — The four things most likely to go wrong
 
-**1 · CORS.** The site loads, every API call fails, and the server logs show nothing
-because the browser blocked the request before it left. `CORS_ORIGINS` must contain
-the exact origin including scheme, with no trailing slash. `/console` diagnoses this in
-one click.
+**1 · The Hostinger parking record.** The site loads correctly about half the time.
+`dig +short jessmove.com` returning two addresses is the tell. Step 2.
 
-**2 · The build-time API URL.** Changing `NEXT_PUBLIC_API_BASE_URL` requires a
-*rebuild*, not a restart. Changing it in the Vercel dashboard does nothing until you
+**2 · CORS.** The site loads, every API call fails, and the server logs show nothing —
+because the browser blocked the request before it ever left. `CORS_ORIGINS` must
+contain the exact origin, with the scheme and no trailing slash: `https://jessmove.com`.
+`/console` diagnoses this in one click.
+
+**3 · The build-time API address.** Changing `NEXT_PUBLIC_API_BASE_URL` needs a
+**rebuild**, not a restart. Editing it in the Vercel dashboard changes nothing until you
 redeploy.
 
-**3 · Cold starts.** With `min-instances 0`, the first request after idle takes a few
-seconds and a demo looks broken. Set `--min-instances 1` before any live demonstration.
-
-**4 · The Hostinger parking record.** Covered in Step 1c and repeated here because it
-is the one that wastes the most time: the zone already has an `A` on `@` and a `CNAME`
-on `www`. Adding yours without deleting theirs gives you a site that loads correctly
-about half the time. `dig +short movequest.ai` returning two addresses is the tell.
+**4 · Cold starts.** With `--min-instances 0` the first request after an idle period
+takes several seconds and a demo looks broken. Set `--min-instances 1` before any live
+demonstration; it costs about £10/month.
 
 ---
 
-## Appendix · Route B — everything on one Hostinger VPS
+# Appendix — Route B: everything on one Hostinger VPS
 
 If you would rather have one machine you can log into, and you are already paying
 Hostinger, this is a legitimate way to go live. `docker-compose.yml` runs the whole
-stack — site, API and Postgres — on a single box.
+stack — website, API and Postgres — on a single box.
 
-**Honest caveat: Docker is not available in the container this repository was
-developed in, so `docker compose up --build` has not been executed end to end here.**
-The Dockerfiles are written against the same build commands that CI runs and that
-produce a working local build, but the compose path itself is unverified. Budget an
-hour for first-run friction, and treat Route A as the tested path.
+> **Honest caveat.** Docker is not available in the container this repository was
+> developed in, so `docker compose up --build` **has not been run end to end here**. The
+> Dockerfiles use the same build commands that CI runs and that produce a working build,
+> but the compose path itself is unverified. Budget an hour for first-run friction.
+> Route A is the tested path.
 
-**What you need:** Hostinger **VPS** (KVM 2 or larger — the Next.js build wants ~2 GB),
-Ubuntu 24.04, with Docker installed. Hostinger offers a Docker template at VPS
-creation, which saves a step. A shared-hosting or Business-hosting plan **cannot** run
-this — it has no Docker and no long-running Node process. This must be a VPS.
+**What you need:** a Hostinger **VPS** — KVM 2 or larger, since the Next.js build wants
+about 2 GB — running Ubuntu 24.04 with Docker. Hostinger offers a Docker template at VPS
+creation, which saves a step.
+
+**Shared hosting and Business hosting cannot run this.** No Docker, no long-running Node
+process. It must be a VPS.
 
 ### B1 · DNS
 
-Same panel, simpler records. Both names point at the one server:
+Simpler than Route A. All three names point at the one server:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
@@ -520,105 +538,87 @@ Same panel, simpler records. Both names point at the one server:
 | `A` | `www` | your VPS IPv4 | `300` |
 | `A` | `api` | your VPS IPv4 | `300` |
 
-Delete the parking records first — Step 1c applies here too.
+Delete the parking records first — Step 2 applies here too.
 
 ### B2 · Get the code on the box
 
 ```bash
 ssh root@YOUR_VPS_IP
-adduser mq && usermod -aG docker,sudo mq && su - mq
+adduser jm && usermod -aG docker,sudo jm && su - jm
 
-git clone https://github.com/jnnseya-cpu/jessie.git movequest
-cd movequest
+git clone https://github.com/jnnseya-cpu/jessie.git jessmove
+cd jessmove
 ```
 
-### B3 · Configure
+### B3 · Configure and start
 
 ```bash
 cat > .env <<'EOF'
-NEXT_PUBLIC_API_BASE_URL=https://api.movequest.ai/api
+NEXT_PUBLIC_API_BASE_URL=https://api.jessmove.com/api
 ANTHROPIC_API_KEY=sk-ant-…
 EOF
 ```
 
-Then edit `docker-compose.yml` and change the API's `CORS_ORIGINS` from
-`http://localhost:3000` to `https://movequest.ai`. Change the Postgres password too —
-`movequest:movequest` is a local development default and must not survive onto a public
-machine.
+Then edit `docker-compose.yml` and make three changes:
+
+1. `CORS_ORIGINS` → `https://jessmove.com` (it ships as `http://localhost:3000`).
+2. Change the Postgres password. `jessmove:jessmove` is a local development default and
+   must not survive onto a public machine.
+3. Bind the ports to localhost only: `'127.0.0.1:4000:4000'` and
+   `'127.0.0.1:3000:3000'`, and **delete the `5432:5432` mapping entirely**. An
+   internet-facing Postgres with a known password is found by scanners in hours.
 
 ```bash
 docker compose up -d --build
 ```
 
-First build takes 5–10 minutes. Postgres applies `db/migrations/0001_core.sql`
-automatically on an empty volume. Prove the invariants hold:
-
-```bash
-docker compose exec -T db psql -U movequest -d movequest -c '\dt'
-```
+The first build takes 5–10 minutes. Postgres applies `db/migrations/0001_core.sql`
+automatically on an empty volume.
 
 ### B4 · TLS and the front door
 
-The containers listen on `:3000` and `:4000` over plain HTTP. Do not expose those.
-Caddy terminates TLS, obtains certificates from Let's Encrypt automatically, and routes
-by hostname:
+The containers speak plain HTTP on `:3000` and `:4000`. Caddy terminates TLS, gets
+certificates from Let's Encrypt on its own, and routes by hostname:
 
 ```bash
 sudo apt install -y caddy
 sudo tee /etc/caddy/Caddyfile <<'EOF'
-movequest.ai, www.movequest.ai {
+jessmove.com, www.jessmove.com {
     reverse_proxy 127.0.0.1:3000
 }
 
-api.movequest.ai {
+api.jessmove.com {
     reverse_proxy 127.0.0.1:4000
 }
 EOF
 sudo systemctl reload caddy
-```
 
-Certificates arrive within a minute of the DNS records resolving. Then lock the ports
-so only Caddy is reachable:
-
-```bash
 sudo ufw allow 22,80,443/tcp && sudo ufw enable
 ```
 
-`ports:` in `docker-compose.yml` binds to all interfaces. Change `'4000:4000'` to
-`'127.0.0.1:4000:4000'` and `'3000:3000'` to `'127.0.0.1:3000:3000'`, and delete the
-`5432:5432` mapping entirely — an internet-facing Postgres with a known password is
-found by scanners in hours, not days.
+Certificates arrive within a minute of the DNS records resolving.
 
 ### B5 · Verify
 
-```bash
-bash scripts/smoke.sh https://api.movequest.ai/api
-```
-
-22/22, then `/console` in a browser for 10/10. Same bar as Route A — Step 7 applies
-unchanged, including the driving hold and the child case.
-
-### B6 · Updates and backups
+Same bar as Route A. Step 9 applies unchanged:
 
 ```bash
-git pull && docker compose up -d --build     # deploy
-docker compose exec -T db pg_dump -U movequest movequest | gzip > ~/backup-$(date +%F).sql.gz
+bash scripts/smoke.sh https://api.jessmove.com/api      # 22/22
 ```
 
-Put that `pg_dump` in a cron job and copy the output off the box. A VPS snapshot is not
-a database backup — it is a point-in-time image that may catch Postgres mid-write.
+then `https://jessmove.com/console` in a browser for 10/10, **including the driving hold
+and the child case**.
 
-### Route A or Route B
+### B6 · Updating and backing up
 
-| | A · Vercel + Cloud Run | B · one Hostinger VPS |
-|---|---|---|
-| Monthly | £5–30, scales with use | £7–20, flat |
-| Scales to zero | yes | no |
-| You patch the OS | no | **yes** |
-| TLS renewal | automatic | automatic, via Caddy |
-| Traffic spike | absorbed | you resize the VPS |
-| Rollback | one command, instant | `git checkout` and rebuild |
-| Verified in this repo | build path tested | **compose path untested** |
+```bash
+# deploy a change
+git pull && docker compose up -d --build
 
-Route A for a product with customers. Route B for a pilot, a demo, or a preference for
-owning the machine.
+# back up the database
+docker compose exec -T db pg_dump -U jessmove jessmove | gzip > ~/backup-$(date +%F).sql.gz
+```
+
+Put that `pg_dump` on a cron job and copy the output **off the box**. A VPS snapshot is
+not a database backup — it is a point-in-time disk image that can catch Postgres
+mid-write.

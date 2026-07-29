@@ -14,25 +14,25 @@ import {
   explain,
   mayDeliver,
   reasonLine,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { CompareBars, Stat } from '../charts';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'MOVA — MOVEQUEST',
+  title: 'MOVA — JESS MOVE',
   description:
     'The AI coach that has to explain itself before it is allowed to speak, can only narrow ' +
     'what safety allowed, and can be switched off entirely without losing a single feature.',
 };
 
 const STATE_TONE: Record<string, string> = {
-  movement: 'var(--mq-teal)',
-  food: 'var(--mq-orange)',
-  body: 'var(--mq-purple)',
-  recovery: 'var(--mq-sky)',
-  success: 'var(--mq-positive)',
-  attention: 'var(--mq-monitor)',
-  safety: 'var(--mq-critical)',
+  movement: 'var(--jm-teal)',
+  food: 'var(--jm-orange)',
+  body: 'var(--jm-purple)',
+  recovery: 'var(--jm-sky)',
+  success: 'var(--jm-positive)',
+  attention: 'var(--jm-monitor)',
+  safety: 'var(--jm-critical)',
 };
 
 /* The trace is built by the engine — if it were incomplete, this page would
@@ -57,7 +57,7 @@ const TRACE = explain({
 const PRESENCE_RETENTION = MOVA_PRESENCE.map((p, i) => ({
   label: PRESENCE_DEFINITIONS[p].label,
   value: 100,
-  tone: ['var(--mq-purple)', 'var(--mq-blue)', 'var(--mq-sky)', 'var(--mq-excellent)'][i],
+  tone: ['var(--jm-purple)', 'var(--jm-blue)', 'var(--jm-sky)', 'var(--jm-excellent)'][i],
   note: PRESENCE_DEFINITIONS[p].what,
 }));
 
@@ -89,7 +89,7 @@ export default function Mova() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-purple)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-purple)' }}>
                 Constraint one — explainability
               </p>
               <h2>“Why this?” is not a feature. It is the precondition.</h2>
@@ -104,7 +104,7 @@ export default function Mova() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">The card you actually see</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-purple)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-purple)' }}>
                     confidence {Math.round(TRACE.confidence * 100)}%
                   </span>
                 </div>
@@ -178,7 +178,7 @@ export default function Mova() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">What each setting keeps</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     all four fully supported
                   </span>
                 </div>
@@ -192,13 +192,13 @@ export default function Mova() {
               <article className="card card--5">
                 <div className="card__head">
                   <h3 className="card__t">Off — data only</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     still yours
                   </span>
                 </div>
                 <ul className="pills pills--ink">
                   {PRESENCE_DEFINITIONS.off.retains.map((r) => (
-                    <li key={r} style={{ borderColor: 'var(--mq-excellent)' }}>
+                    <li key={r} style={{ borderColor: 'var(--jm-excellent)' }}>
                       {r}
                     </li>
                   ))}
@@ -270,7 +270,7 @@ export default function Mova() {
                         {MOVA_PRESENCE.map((p) => (
                           <td key={p}>
                             {mayDeliver(k, p) ? (
-                              <span style={{ color: 'var(--mq-excellent)' }}>
+                              <span style={{ color: 'var(--jm-excellent)' }}>
                                 <Tick />
                               </span>
                             ) : (
@@ -359,7 +359,7 @@ export default function Mova() {
                 <tbody>
                   {MOVA_REFUSES.map((r) => (
                     <tr key={r.ask}>
-                      <td style={{ color: 'var(--mq-coral)', fontWeight: 600 }}>{r.ask}</td>
+                      <td style={{ color: 'var(--jm-coral)', fontWeight: 600 }}>{r.ask}</td>
                       <td>{r.instead}</td>
                     </tr>
                   ))}
@@ -371,13 +371,13 @@ export default function Mova() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">Never sent to a model provider</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
                     redacted at the gateway
                   </span>
                 </div>
                 <ul className="pills pills--ink">
                   {NEVER_SEND_TO_MODEL.map((n) => (
-                    <li key={n} style={{ borderColor: 'var(--mq-critical)' }}>
+                    <li key={n} style={{ borderColor: 'var(--jm-critical)' }}>
                       {n}
                     </li>
                   ))}
@@ -393,13 +393,13 @@ export default function Mova() {
                   k="Can widen safety?"
                   v="Never"
                   sub="MOVA may narrow what the safety layer allowed. It may not widen it, and it cannot invent a movement outside the reviewed library."
-                  tone="var(--mq-critical)"
+                  tone="var(--jm-critical)"
                 />
                 <Stat
                   k="Claims to be human?"
                   v="Never"
                   sub="MOVA speaks in first person and states that it is software whenever asked, in every mode."
-                  tone="var(--mq-purple)"
+                  tone="var(--jm-purple)"
                 />
               </article>
             </div>

@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BRAND, CONSENT_SCOPES, K_ANONYMITY_THRESHOLD } from '@movequest/shared';
+import { BRAND, CONSENT_SCOPES, K_ANONYMITY_THRESHOLD } from '@jessmove/shared';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — MOVEQUEST',
+  title: 'Privacy Policy — JESS MOVE',
   description:
-    'What MoveQuest collects, why, who can see it, and how to get it back or delete it. ' +
+    'What Jess Move collects, why, who can see it, and how to get it back or delete it. ' +
     'Calendar titles never leave your device.',
 };
 
@@ -87,7 +87,7 @@ export default function Privacy() {
               </p>
               <p>
                 Data protection enquiries:{' '}
-                <a href="mailto:privacy@movequest.ai">privacy@movequest.ai</a>.
+                <a href="mailto:privacy@jessmove.com">privacy@jessmove.com</a>.
               </p>
 
               <h2>2. What we collect, and why</h2>
@@ -242,7 +242,7 @@ export default function Privacy() {
                 Under UK GDPR you have the right of access, rectification, erasure, restriction,
                 portability and objection, and the right to withdraw consent at any time. Export
                 and deletion are self-service in your account settings; anything else, write to{' '}
-                <a href="mailto:privacy@movequest.ai">privacy@movequest.ai</a> and we will respond
+                <a href="mailto:privacy@jessmove.com">privacy@jessmove.com</a> and we will respond
                 within one month.
               </p>
               <p>

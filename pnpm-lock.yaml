@@ -16,10 +16,10 @@ importers:
       '@google/genai':
         specifier: ^2.13.0
         version: 2.13.0
-      '@movequest/body-command':
+      '@jessmove/body-command':
         specifier: workspace:*
         version: link:../../packages/body-command
-      '@movequest/shared':
+      '@jessmove/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@nestjs/common':
@@ -65,13 +65,13 @@ importers:
 
   apps/frontend:
     dependencies:
-      '@movequest/body-command':
+      '@jessmove/body-command':
         specifier: workspace:*
         version: link:../../packages/body-command
-      '@movequest/foodlens':
+      '@jessmove/foodlens':
         specifier: workspace:*
         version: link:../../packages/foodlens
-      '@movequest/shared':
+      '@jessmove/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       next:

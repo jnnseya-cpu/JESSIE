@@ -166,7 +166,7 @@ export function ApiConsole() {
 
   // Remember the base URL, so testing a staging host survives a reload.
   useEffect(() => {
-    const saved = window.localStorage.getItem('mq-api-base');
+    const saved = window.localStorage.getItem('jm-api-base');
     if (saved) setBase(saved);
     setReady(true);
   }, []);
@@ -232,7 +232,7 @@ export function ApiConsole() {
             <span
               className="card__tag"
               style={{
-                color: passed === PROBES.length ? 'var(--mq-excellent)' : 'var(--mq-monitor)',
+                color: passed === PROBES.length ? 'var(--jm-excellent)' : 'var(--jm-monitor)',
               }}
             >
               {passed} / {PROBES.length} as expected
@@ -247,7 +247,7 @@ export function ApiConsole() {
             value={ready ? base : DEFAULT_BASE}
             onChange={(e) => {
               setBase(e.target.value);
-              window.localStorage.setItem('mq-api-base', e.target.value);
+              window.localStorage.setItem('jm-api-base', e.target.value);
             }}
             spellCheck={false}
           />
@@ -293,7 +293,7 @@ export function ApiConsole() {
               {r && 'status' in r && (
                 <>
                   <p className="probe__meta">
-                    <strong style={{ color: r.ok ? 'var(--mq-excellent)' : 'var(--mq-critical)' }}>
+                    <strong style={{ color: r.ok ? 'var(--jm-excellent)' : 'var(--jm-critical)' }}>
                       {r.ok ? '✓' : '✗'} {r.status}
                     </strong>{' '}
                     · {r.ms}ms · expected {p.expect}

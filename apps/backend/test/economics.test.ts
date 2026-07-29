@@ -22,11 +22,11 @@ import {
   stress,
   stripeFee,
   type UserCostProfile,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import {
   ACU_PER_GBP as BC_ACU_PER_GBP,
   COST_PROTECTION_MULTIPLE as BC_PROTECTION,
-} from '@movequest/body-command';
+} from '@jessmove/body-command';
 
 /* A modelled Premium subscriber: a full month of real usage. */
 const PREMIUM: UserCostProfile = {
@@ -234,7 +234,7 @@ test('cloud cost is dominated by reads, not by compute', () => {
 
 test('no payment is ever taken below the minimum charge', async () => {
   const { BelowMinimumChargeError, MIN_TRANSACTION_GBP, assertChargeable, fixedFeeBurden } =
-    await import('@movequest/shared');
+    await import('@jessmove/shared');
 
   assert.equal(MIN_TRANSACTION_GBP, 5);
 
@@ -253,7 +253,7 @@ test('no payment is ever taken below the minimum charge', async () => {
 });
 
 test('the error explains itself rather than just refusing', async () => {
-  const { assertChargeable } = await import('@movequest/shared');
+  const { assertChargeable } = await import('@jessmove/shared');
   try {
     assertChargeable(1.99);
     assert.fail('should have thrown');
@@ -265,7 +265,7 @@ test('the error explains itself rather than just refusing', async () => {
 });
 
 test('every published plan and top-up tier clears the minimum', async () => {
-  const { ACU_TOPUP_TIERS, MIN_TRANSACTION_GBP, assertChargeable } = await import('@movequest/shared');
+  const { ACU_TOPUP_TIERS, MIN_TRANSACTION_GBP, assertChargeable } = await import('@jessmove/shared');
 
   for (const tier of ACU_TOPUP_TIERS) {
     assert.doesNotThrow(() => assertChargeable(tier.gbp), `£${tier.gbp} top-up`);
@@ -281,7 +281,7 @@ test('every published plan and top-up tier clears the minimum', async () => {
 });
 
 test('an organisation invoice clears the floor even where a seat rate does not', async () => {
-  const { MIN_CONTRACT_SEATS, assertChargeable } = await import('@movequest/shared');
+  const { MIN_CONTRACT_SEATS, assertChargeable } = await import('@jessmove/shared');
 
   // £2 a seat is below the floor as a number, and is never charged as one.
   assert.throws(() => assertChargeable(2));
@@ -293,7 +293,7 @@ test('an organisation invoice clears the floor even where a seat rate does not',
 });
 
 test('the price floor never lands below the minimum charge', async () => {
-  const { MIN_TRANSACTION_GBP, monthlyCost, priceFloor } = await import('@movequest/shared');
+  const { MIN_TRANSACTION_GBP, monthlyCost, priceFloor } = await import('@jessmove/shared');
 
   // Even the cheapest user to serve must not produce a sub-minimum price.
   const cheapest = monthlyCost({

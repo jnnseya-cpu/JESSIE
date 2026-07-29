@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { BRAND } from '@movequest/shared';
+import { BRAND } from '@jessmove/shared';
 import { AppModule } from './app.module';
 import { SignatureInterceptor } from './common/signature.interceptor';
 

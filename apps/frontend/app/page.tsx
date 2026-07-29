@@ -13,7 +13,7 @@ import {
   SNAP_DURATION_SECONDS,
   TAGLINE,
   VARIANT_LABELS,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import {
   AgeColumns,
   BalanceRing,
@@ -46,12 +46,12 @@ const MODE_TONE: Record<string, string> = {
 
 /** §14 — the six segments of the Body Balance master ring. */
 const BALANCE = [
-  { label: 'Move', value: 82, tone: 'var(--mq-teal)' },
-  { label: 'Food', value: 66, tone: 'var(--mq-orange)' },
-  { label: 'Strength', value: 71, tone: 'var(--mq-magenta)' },
-  { label: 'Recovery', value: 74, tone: 'var(--mq-sky)' },
-  { label: 'Consistency', value: 88, tone: 'var(--mq-lime)' },
-  { label: 'Progress', value: 79, tone: 'var(--mq-purple)' },
+  { label: 'Move', value: 82, tone: 'var(--jm-teal)' },
+  { label: 'Food', value: 66, tone: 'var(--jm-orange)' },
+  { label: 'Strength', value: 71, tone: 'var(--jm-magenta)' },
+  { label: 'Recovery', value: 74, tone: 'var(--jm-sky)' },
+  { label: 'Consistency', value: 88, tone: 'var(--jm-lime)' },
+  { label: 'Progress', value: 79, tone: 'var(--jm-purple)' },
 ];
 
 const COMPLETION = [41, 46, 44, 52, 58, 55, 61, 64, 60, 67, 71, 69, 74, 78];
@@ -64,15 +64,15 @@ const DAY: readonly DaySlot[] = [
 
 const CONVERSION = [
   {
-    label: 'MoveQuest target',
+    label: 'Jess Move target',
     value: Math.round(NUDGE_CONVERSION_TARGET * 100),
-    tone: 'var(--mq-teal)',
+    tone: 'var(--jm-teal)',
     note: 'Prompt to completed micro-movement. The number the whole engine is optimised against.',
   },
   {
     label: 'Generic reminder apps',
     value: 11,
-    tone: 'var(--mq-coral)',
+    tone: 'var(--jm-coral)',
     note: 'Best case for a notification that knows nothing about your day. Worst case is 4%.',
   },
 ];
@@ -116,10 +116,10 @@ const BLOCKERS = [
 ];
 
 const MIX_KEYS = [
-  { name: 'Mobility', tone: 'var(--mq-teal)' },
-  { name: 'Strength', tone: 'var(--mq-magenta)' },
-  { name: 'Balance', tone: 'var(--mq-sky)' },
-  { name: 'Light cardio', tone: 'var(--mq-lime)' },
+  { name: 'Mobility', tone: 'var(--jm-teal)' },
+  { name: 'Strength', tone: 'var(--jm-magenta)' },
+  { name: 'Balance', tone: 'var(--jm-sky)' },
+  { name: 'Light cardio', tone: 'var(--jm-lime)' },
 ];
 const MIX_BARS = [
   { name: 'Mon', parts: [3, 1, 1, 2] },
@@ -136,7 +136,7 @@ const SURFACES = [
   {
     href: '/mova',
     name: 'MOVA AI Coach',
-    tone: 'var(--mq-purple)',
+    tone: 'var(--jm-purple)',
     grad: 'grad-ai',
     body:
       'An assistant, not an avatar of a doctor or a fitness model. MOVA explains why it is ' +
@@ -146,7 +146,7 @@ const SURFACES = [
   {
     href: '/micro-movement',
     name: 'Micro-Movement',
-    tone: 'var(--mq-teal)',
+    tone: 'var(--jm-teal)',
     grad: 'grad-movement',
     body:
       'Two to five minutes, matched to the room you are in, the clothes you are wearing and the ' +
@@ -155,7 +155,7 @@ const SURFACES = [
   {
     href: '/foodlens',
     name: 'FoodLens',
-    tone: 'var(--mq-orange)',
+    tone: 'var(--jm-orange)',
     grad: 'grad-food',
     body:
       'Photograph a meal and get a range, its evidence source and a confidence level — never an ' +
@@ -164,7 +164,7 @@ const SURFACES = [
   {
     href: '/body-balance',
     name: 'BodyCommand',
-    tone: 'var(--mq-magenta)',
+    tone: 'var(--jm-magenta)',
     grad: 'grad-ai',
     body:
       'Nine pathways, of which reduction is one. Trajectory with honest uncertainty, your ' +
@@ -173,7 +173,7 @@ const SURFACES = [
   {
     href: '/challenges',
     name: 'Challenges',
-    tone: 'var(--mq-lime)',
+    tone: 'var(--jm-lime)',
     grad: 'grad-movement',
     body:
       'Team Score is participation, consistency, improvement and mutual support. Capability is ' +
@@ -182,7 +182,7 @@ const SURFACES = [
   {
     href: '/wearables',
     name: 'Wearables',
-    tone: 'var(--mq-sky)',
+    tone: 'var(--jm-sky)',
     grad: 'grad-recovery',
     body:
       'Apple Health, Health Connect, Fitbit, Garmin, Samsung, Oura and Polar — each individually ' +
@@ -289,25 +289,25 @@ export default function Home() {
         <section className="proof">
           <div className="wrap">
             <div className="proof__grid">
-              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--mq-teal)' }}>
+              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--jm-teal)' }}>
                 <div className="proof__n">2–5 min</div>
                 <p className="proof__l">
                   The atomic unit. Not a workout, not a session, not a class.
                 </p>
               </div>
-              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--mq-lime)' }}>
+              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--jm-lime)' }}>
                 <div className="proof__n">{MOVEMENT_VARIANTS.length} variants</div>
                 <p className="proof__l">
                   Required on every published movement. No exceptions, no override.
                 </p>
               </div>
-              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--mq-orange)' }}>
+              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--jm-orange)' }}>
                 <div className="proof__n">10 → 100</div>
                 <p className="proof__l">
                   {AGE_MODES.length} adaptive modes from one engine, each with its own rules.
                 </p>
               </div>
-              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--mq-blue)' }}>
+              <div className="proof__cell" style={{ ['--tone' as string]: 'var(--jm-blue)' }}>
                 <div className="proof__n">k ≥ {K_ANONYMITY_THRESHOLD}</div>
                 <p className="proof__l">
                   Enforced in the query planner. An employer structurally cannot see one person.
@@ -372,7 +372,7 @@ export default function Home() {
                   <h3 className="card__t">Completion rate</h3>
                   <span className="card__tag">14 days</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--mq-teal)' }}>
+                <div className="card__big" style={{ color: 'var(--jm-teal)' }}>
                   {COMPLETION[COMPLETION.length - 1]}%
                 </div>
                 <Spark series={COMPLETION} label="Completion rate over fourteen days" />
@@ -412,19 +412,19 @@ export default function Home() {
                   k="Daily cap"
                   v="2–6"
                   sub="A hard ceiling set by your mode. The engine may never exceed it."
-                  tone="var(--mq-orange)"
+                  tone="var(--jm-orange)"
                 />
                 <Stat
                   k="Weekly escalation"
                   v="≤ 7%"
                   sub="The most it may increase what it asks of you."
-                  tone="var(--mq-lime)"
+                  tone="var(--jm-lime)"
                 />
                 <Stat
                   k="Streak shields"
                   v="0–2"
                   sub="Illness, caring duties, a flare-up. The chain forgives."
-                  tone="var(--mq-sky)"
+                  tone="var(--jm-sky)"
                 />
               </article>
 
@@ -478,7 +478,7 @@ export default function Home() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What a generic reminder knows about you</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-action)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-action)' }}>
                     nothing
                   </span>
                 </div>
@@ -492,7 +492,7 @@ export default function Home() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What {BRAND.app} settles first</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     nine questions
                   </span>
                 </div>
@@ -642,7 +642,7 @@ export default function Home() {
         <section className="section section--tint" id="foodlens">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
                 FoodLens 360°
               </p>
               <h2>Photograph the meal. Get an honest answer.</h2>
@@ -657,7 +657,7 @@ export default function Home() {
               <article className="card card--5 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Energy estimate</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
                     AI visual estimate
                   </span>
                 </div>
@@ -687,7 +687,7 @@ export default function Home() {
                   <span className="card__tag">12 axes</span>
                 </div>
                 <div style={{ display: 'grid', placeItems: 'center' }}>
-                  <Radar axes={WHEEL_LABELS} values={WHEEL_VALUES} tone="var(--mq-orange)" />
+                  <Radar axes={WHEEL_LABELS} values={WHEEL_VALUES} tone="var(--jm-orange)" />
                 </div>
                 <p className="card__note">
                   Twelve dimensions, one of which is the estimate’s own confidence. There is no
@@ -700,13 +700,13 @@ export default function Home() {
                   k="Under 18"
                   v="No figures"
                   sub="Calorie, weight and BMI framing is never shown to a child, in any mode, under any consent setting."
-                  tone="var(--mq-critical)"
+                  tone="var(--jm-critical)"
                 />
                 <Stat
                   k="Never claimed"
                   v="5 things"
                   sub="Allergen absence from appearance, microbial safety from an image, any diagnosis, an exact calorie count from a photo, or that movement cancels out food."
-                  tone="var(--mq-coral)"
+                  tone="var(--jm-coral)"
                 />
               </article>
             </div>
@@ -717,7 +717,7 @@ export default function Home() {
         <section className="section" id="bodycommand">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-magenta)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-magenta)' }}>
                 BodyCommand AI
               </p>
               <h2>Weight is one of nine pathways — and it is yours to choose.</h2>
@@ -733,7 +733,7 @@ export default function Home() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Body trajectory</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-purple)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-purple)' }}>
                     8 weeks · widening cone
                   </span>
                 </div>
@@ -781,7 +781,7 @@ export default function Home() {
                   k="This week"
                   v="68%"
                   sub="of enrolled employees completed at least one movement break."
-                  tone="var(--mq-teal)"
+                  tone="var(--jm-teal)"
                 />
               </article>
               <article className="card card--4" style={{ gap: 14 }}>
@@ -789,7 +789,7 @@ export default function Home() {
                   k="Team Score"
                   v="4 terms"
                   sub="Participation, consistency, improvement and mutual support. Capability is absent by design."
-                  tone="var(--mq-lime)"
+                  tone="var(--jm-lime)"
                 />
               </article>
               <article className="card card--4" style={{ gap: 14 }}>
@@ -797,7 +797,7 @@ export default function Home() {
                   k="Individual view"
                   v="Absent"
                   sub="Not permission-gated. It does not exist in the type system, so no role can produce it."
-                  tone="var(--mq-blue)"
+                  tone="var(--jm-blue)"
                 />
               </article>
             </div>
@@ -805,7 +805,7 @@ export default function Home() {
             <p className="lede" style={{ marginTop: 30 }}>
               An employer never sees health conditions, movement history, heart rate, sleep,
               disability, declined activities, calendar content or an individual risk score.{' '}
-              <Link href="/industries" style={{ color: 'var(--mq-lime)', fontWeight: 600 }}>
+              <Link href="/industries" style={{ color: 'var(--jm-lime)', fontWeight: 600 }}>
                 See the five duties of care →
               </Link>
             </p>

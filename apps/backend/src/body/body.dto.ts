@@ -14,7 +14,7 @@ import {
   ESCALATION_SIGNALS,
   type BodyPathway,
   type EscalationSignal,
-} from '@movequest/body-command';
+} from '@jessmove/body-command';
 
 /**
  * Body assessment input.

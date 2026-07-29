@@ -1,4 +1,4 @@
-# MOVEQUEST — Feature List for Sales
+# JESS MOVE — Feature List for Sales
 
 **Small Moves. Powerful Change.**
 
@@ -11,7 +11,7 @@ sellable in the UK.*
 
 ## The pitch, in one paragraph
 
-MoveQuest is an AI-powered movement, food and body-balance operating system for people aged
+Jess Move is an AI-powered movement, food and body-balance operating system for people aged
 10 to 100. It doesn't ask anyone to find an hour, join a gym or rebuild their life. It reads
 the day a person already has — work, school, commute, home — finds the two-minute gaps that
 are genuinely free, and puts one personalised movement into them. Then it explains why it
@@ -19,7 +19,7 @@ chose that one, adapts to what actually got completed, and stays silent when mov
 possible. It is the difference between a reminder that fires at the wrong moment and a coach
 that knows you're in a meeting.
 
-**The 15-second version:** *Fitness apps compete for the hour you don't have. MoveQuest owns
+**The 15-second version:** *Fitness apps compete for the hour you don't have. Jess Move owns
 the two-minute gaps you didn't know you had.*
 
 ---
@@ -31,7 +31,7 @@ sitting. Most people who aren't moving enough are not refusing to exercise — t
 commit to something that needs an hour, a changing room and a membership. And generic
 "time to stand" reminders fail because they know nothing about the person's day: they fire
 while you're driving, teaching, holding a baby or in a meeting you cannot leave. You ignore
-them, then you turn notifications off. MoveQuest is built for the gap between what people are
+them, then you turn notifications off. Jess Move is built for the gap between what people are
 told to do and what their day actually permits.
 
 ---
@@ -300,7 +300,7 @@ scores only teammates brought back after a lapse. Charity Movement Month has no 
 
 ### Seven providers, none of them required
 Apple Health, Health Connect, Fitbit, Garmin, Samsung Health, Oura and Polar. A wearable
-improves the estimate; it never gates the product. The floor of MoveQuest is a phone that can
+improves the estimate; it never gates the product. The floor of Jess Move is a phone that can
 receive a text message.
 
 ### Two never let your data leave the phone
@@ -550,12 +550,12 @@ a care inspector without changing the story is the position.
 > have.
 
 **Social / organic (under 280 characters)**
-> Most fitness apps ask for an hour you don't have. MoveQuest reads your actual day — work,
+> Most fitness apps ask for an hour you don't have. Jess Move reads your actual day — work,
 > commute, home — finds the two-minute gaps that are genuinely free, and puts one movement in
 > them. Ages 10 to 100. Seated, standing, wheelchair, bed. Every body qualifies.
 
 **Employer outreach opener**
-> Your team isn't refusing to be healthier — they're in back-to-back meetings. MoveQuest finds
+> Your team isn't refusing to be healthier — they're in back-to-back meetings. Jess Move finds
 > the gaps their calendar actually has and puts two minutes of movement in them. You get
 > privacy-protected participation reporting. Nobody gets an individual dashboard about anybody.
 
@@ -589,7 +589,7 @@ and hope they didn't have to spare.
 - Before-and-after body imagery, in any campaign, for any age group.
 
 **Always say:**
-- MoveQuest is a **general wellness product, not a medical device**.
+- Jess Move is a **general wellness product, not a medical device**.
 - It does not diagnose or treat, and never contacts emergency services.
 - Stop and seek advice if you feel pain, dizziness or any unusual symptom.
 
@@ -603,5 +603,5 @@ permitted list, ask before publishing it.
 
 ---
 
-*MOVEQUEST — MoveQuest AI, your daily movement and body-balance operating system.
+*JESS MOVE — Jess Move AI, your daily movement and body-balance operating system.
 A general wellness product. It does not diagnose or treat any condition.*

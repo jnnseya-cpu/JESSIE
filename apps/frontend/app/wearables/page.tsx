@@ -15,12 +15,12 @@ import {
   isStale,
   resolveConflict,
   shouldWidenForDisagreement,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { CompareBars, Stat } from '../charts';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Wearables — MOVEQUEST',
+  title: 'Wearables — JESS MOVE',
   description:
     'Apple Health, Health Connect, Fitbit, Garmin, Samsung, Oura and Polar — each individually ' +
     'revocable, none of them required to start, and nine data types deliberately refused.',
@@ -38,7 +38,7 @@ const LAG = PROVIDERS.map((p) => ({
   label: PROVIDER_DEFINITIONS[p].label,
   value: PROVIDER_DEFINITIONS[p].typicalLagMinutes,
   tone:
-    PROVIDER_DEFINITIONS[p].transport === 'on_device' ? 'var(--mq-excellent)' : 'var(--mq-blue)',
+    PROVIDER_DEFINITIONS[p].transport === 'on_device' ? 'var(--jm-excellent)' : 'var(--jm-blue)',
   note:
     PROVIDER_DEFINITIONS[p].transport === 'on_device'
       ? 'On device — raw data never leaves your phone.'
@@ -75,7 +75,7 @@ export default function Wearables() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-sky)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-sky)' }}>
                 What connects
               </p>
               <h2>Two of them never let your data off the phone.</h2>
@@ -110,9 +110,9 @@ export default function Wearables() {
                           </td>
                           <td>
                             {d.rawDataLeavesDevice ? (
-                              <span style={{ color: 'var(--mq-monitor)' }}>Yes</span>
+                              <span style={{ color: 'var(--jm-monitor)' }}>Yes</span>
                             ) : (
-                              <span style={{ color: 'var(--mq-excellent)' }}>
+                              <span style={{ color: 'var(--jm-excellent)' }}>
                                 <Tick /> No
                               </span>
                             )}
@@ -141,13 +141,13 @@ export default function Wearables() {
                   k="Required to start"
                   v="None"
                   sub={`The lightweight tier reaches any phone that receives a message. ${DELIVERY_TIERS.length} delivery tiers exist precisely so a wearable is never a prerequisite.`}
-                  tone="var(--mq-excellent)"
+                  tone="var(--jm-excellent)"
                 />
                 <Stat
                   k="Stale after"
                   v={`${STALE_AFTER_MINUTES / 60}h`}
                   sub="Past this, a reading is labelled rather than used silently. A confident number from three hours ago is worse than an honest gap."
-                  tone="var(--mq-monitor)"
+                  tone="var(--jm-monitor)"
                 />
               </article>
             </div>
@@ -171,7 +171,7 @@ export default function Wearables() {
                 <article
                   className="tile tile--ink"
                   key={n}
-                  style={{ ['--tone' as string]: 'var(--mq-critical)' }}
+                  style={{ ['--tone' as string]: 'var(--jm-critical)' }}
                 >
                   <div className="tile__n">
                     <Cross /> NEVER
@@ -226,7 +226,7 @@ export default function Wearables() {
                           {s.replace(/_/g, ' ')}
                         </td>
                         <td style={{ opacity: 0.8 }}>{DEGRADATION[s].losesPrecision}</td>
-                        <td style={{ color: 'var(--mq-excellent)' }}>{DEGRADATION[s].stillWorks}</td>
+                        <td style={{ color: 'var(--jm-excellent)' }}>{DEGRADATION[s].stillWorks}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -238,7 +238,7 @@ export default function Wearables() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Four guarantees on disconnecting</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     shown before you connect
                   </span>
                 </div>
@@ -293,7 +293,7 @@ export default function Wearables() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Three sources, one step count</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-monitor)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>
                     {RESOLUTION.disagreementPct}% apart
                   </span>
                 </div>
@@ -321,7 +321,7 @@ export default function Wearables() {
                             {isStale(r) && (
                               <>
                                 {' '}
-                                <span style={{ color: 'var(--mq-monitor)', fontWeight: 600 }}>
+                                <span style={{ color: 'var(--jm-monitor)', fontWeight: 600 }}>
                                   stale
                                 </span>
                               </>
@@ -329,7 +329,7 @@ export default function Wearables() {
                           </td>
                           <td>
                             {r.provider === RESOLUTION.chosen.provider ? (
-                              <span style={{ color: 'var(--mq-excellent)', fontWeight: 600 }}>
+                              <span style={{ color: 'var(--jm-excellent)', fontWeight: 600 }}>
                                 <Tick /> chosen
                               </span>
                             ) : (
@@ -356,13 +356,13 @@ export default function Wearables() {
                       ? 'This exceeds it, so readiness carries a wider band today rather than a false precision.'
                       : 'Within tolerance, so the chosen reading stands as it is.'
                   }`}
-                  tone="var(--mq-monitor)"
+                  tone="var(--jm-monitor)"
                 />
                 <Stat
                   k="Tie-break order"
                   v="3 rules"
                   sub="Freshest, then on-device over cloud, then the provider that natively owns the scope. Deterministic, so the same inputs always give the same answer."
-                  tone="var(--mq-blue)"
+                  tone="var(--jm-blue)"
                 />
               </article>
             </div>

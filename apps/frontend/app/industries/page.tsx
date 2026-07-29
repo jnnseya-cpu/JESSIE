@@ -5,12 +5,12 @@ import {
   DELIVERY_TIER_DEFINITIONS,
   INDUSTRIES,
   K_ANONYMITY_THRESHOLD,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { Donut, Stat } from '../charts';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Industries — MOVEQUEST',
+  title: 'Industries — JESS MOVE',
   description:
     'Workplaces, schools, care providers, councils and families — one engine, five very ' +
     'different duties of care.',
@@ -97,7 +97,7 @@ export default function Industries() {
                 style={{
                   paddingTop: 46,
                   paddingBottom: 46,
-                  borderTop: '1px solid var(--mq-divider)',
+                  borderTop: '1px solid var(--jm-divider)',
                 }}
               >
                 <div className="section__head" style={{ marginBottom: 30 }}>

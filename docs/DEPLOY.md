@@ -1,4 +1,4 @@
-# Deploying MOVEQUEST
+# Deploying JESS MOVE
 
 Three things ship: **shared** (and the two domain packages) as build inputs,
 **backend** as a container, **frontend** as a Next.js app. The packages are not
@@ -20,7 +20,7 @@ docker compose up --build
 | Site | http://localhost:3000 |
 | API | http://localhost:4000/api |
 | API console | http://localhost:3000/console |
-| Postgres | `postgres://movequest:movequest@localhost:5432/movequest` |
+| Postgres | `postgres://jessmove:jessmove@localhost:5432/jessmove` |
 
 The database schema is applied on first boot from `db/migrations/0001_core.sql`.
 
@@ -55,15 +55,15 @@ Fly, Render, ECS, a VM with Docker.
 PROJECT=your-gcp-project
 REGION=europe-west2
 
-gcloud builds submit --tag gcr.io/$PROJECT/movequest-api --file Dockerfile.backend .
+gcloud builds submit --tag gcr.io/$PROJECT/jessmove-api --file Dockerfile.backend .
 
-gcloud run deploy movequest-api \
-  --image gcr.io/$PROJECT/movequest-api \
+gcloud run deploy jessmove-api \
+  --image gcr.io/$PROJECT/jessmove-api \
   --region $REGION \
   --allow-unauthenticated \
   --min-instances 0 --max-instances 10 \
   --cpu 1 --memory 512Mi \
-  --set-env-vars "API_PREFIX=api,CORS_ORIGINS=https://movequest.ai" \
+  --set-env-vars "API_PREFIX=api,CORS_ORIGINS=https://jessmove.com" \
   --set-secrets "ANTHROPIC_API_KEY=anthropic-key:latest,DATABASE_URL=database-url:latest"
 ```
 
@@ -82,7 +82,7 @@ Notes that matter:
 
 ```bash
 vercel link
-vercel env add NEXT_PUBLIC_API_BASE_URL production   # https://api.movequest.ai/api
+vercel env add NEXT_PUBLIC_API_BASE_URL production   # https://api.jessmove.com/api
 vercel --prod
 ```
 
@@ -95,9 +95,9 @@ vercel --prod
 
 ```bash
 docker build -f Dockerfile.frontend \
-  --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.movequest.ai/api \
-  -t movequest-site .
-docker run -p 3000:3000 movequest-site
+  --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.jessmove.com/api \
+  -t jessmove-site .
+docker run -p 3000:3000 jessmove-site
 ```
 
 ---

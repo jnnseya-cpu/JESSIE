@@ -6,7 +6,7 @@ import {
   DEFAULT_MODELS,
   type AiCompletionRequest,
   type AiProvider,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { toAcu, type ModelProvider } from '../provider.interface';
 
 @Injectable()

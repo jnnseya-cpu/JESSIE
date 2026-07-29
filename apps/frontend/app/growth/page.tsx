@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BRAND, POINTS_NEVER } from '@movequest/shared';
+import { BRAND, POINTS_NEVER } from '@jessmove/shared';
 import { CompareBars, Spark, Stat } from '../charts';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Growth & Influencers — MOVEQUEST',
+  title: 'Growth & Influencers — JESS MOVE',
   description:
     'The creator and partner programme: what you may say, what you may never say, how ' +
     'attribution works, and how referrals are paid.',

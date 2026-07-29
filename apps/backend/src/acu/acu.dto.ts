@@ -9,7 +9,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { MIN_TRANSACTION_GBP } from '@movequest/shared';
+import { MIN_TRANSACTION_GBP } from '@jessmove/shared';
 
 /**
  * Money in, money out. Every bound here exists because the alternative is

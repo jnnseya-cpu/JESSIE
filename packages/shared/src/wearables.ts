@@ -42,11 +42,11 @@ export type DataScope = (typeof DATA_SCOPES)[number];
 export interface ProviderDefinition {
   readonly provider: Provider;
   readonly label: string;
-  /** Scopes MoveQuest will ever ask this provider for. */
+  /** Scopes Jess Move will ever ask this provider for. */
   readonly requests: readonly DataScope[];
   /** How the connection is made. */
   readonly transport: 'on_device' | 'oauth_cloud';
-  /** Typical delay between a reading and MoveQuest seeing it. */
+  /** Typical delay between a reading and Jess Move seeing it. */
   readonly typicalLagMinutes: number;
   /** Whether the person's raw data leaves their device at all. */
   readonly rawDataLeavesDevice: boolean;

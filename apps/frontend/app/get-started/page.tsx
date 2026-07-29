@@ -11,12 +11,12 @@ import {
   ONBOARDING_STEPS,
   PLANS,
   SNAP_DURATION_SECONDS,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { AgeColumns } from '../charts';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Get started — MOVEQUEST',
+  title: 'Get started — JESS MOVE',
   description:
     'Five steps to a seven-day starter plan. Choose an account type, set a readiness baseline, ' +
     'describe a real day, connect nothing you do not want to.',

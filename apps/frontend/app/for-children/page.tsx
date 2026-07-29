@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { AGE_MODE_DEFINITIONS, BODY_COMPOSITION_MIN_AGE } from '@movequest/shared';
+import { AGE_MODE_DEFINITIONS, BODY_COMPOSITION_MIN_AGE } from '@jessmove/shared';
 import { Cross, Footer, Nav, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'For children and families — MOVEQUEST',
+  title: 'For children and families — JESS MOVE',
   description:
     'Movement and healthy-weight support for ages 10 to 17, built so a child is never shown a ' +
     'weight target, a body score or a comparison.',
@@ -203,7 +203,7 @@ export default function ForChildren() {
             <div className="compare">
               <article className="panel">
                 <h3>{explorer.label} · {explorer.minAge}–{explorer.maxAge}</h3>
-                <p style={{ color: 'var(--mq-text-2)', marginBottom: 18 }}>{explorer.register}</p>
+                <p style={{ color: 'var(--jm-text-2)', marginBottom: 18 }}>{explorer.register}</p>
                 <ul>
                   <li><Tick /><span>Guardian account required; no standalone profile</span></li>
                   <li><Tick /><span>{explorer.dailyCap} nudges a day, hard ceiling</span></li>
@@ -215,7 +215,7 @@ export default function ForChildren() {
 
               <article className="panel">
                 <h3>{teen.label} · {teen.minAge}–{teen.maxAge}</h3>
-                <p style={{ color: 'var(--mq-text-2)', marginBottom: 18 }}>{teen.register}</p>
+                <p style={{ color: 'var(--jm-text-2)', marginBottom: 18 }}>{teen.register}</p>
                 <ul>
                   <li><Tick /><span>Self-registration with age assurance</span></li>
                   <li><Tick /><span>Guardian visibility is configurable and disclosed to the teen — never covert</span></li>
@@ -236,10 +236,10 @@ export default function ForChildren() {
               Below that, the product is about growing, moving and feeling capable.
             </p>
             <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:schools@movequest.ai">
+              <a className="btn btn--primary" href="mailto:schools@jessmove.com">
                 Talk to us about schools
               </a>
-              <a className="btn btn--ghost" href="mailto:hello@movequest.ai">
+              <a className="btn btn--ghost" href="mailto:hello@jessmove.com">
                 Request access
               </a>
             </div>

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BRAND, CHART_REQUIREMENTS, CLINICAL_BOUNDARY } from '@movequest/shared';
+import { BRAND, CHART_REQUIREMENTS, CLINICAL_BOUNDARY } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'All policies — MOVEQUEST',
+  title: 'All policies — JESS MOVE',
   description:
     'Every published policy, standard and register in one index — legal, clinical, ' +
     'safeguarding, accessibility, AI and commercial.',
@@ -15,7 +15,7 @@ type Row = { name: string; what: string; when: string; href?: string };
 const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] }> = [
   {
     group: 'Legal',
-    tone: 'var(--mq-blue)',
+    tone: 'var(--jm-blue)',
     rows: [
       {
         name: 'Terms of Service',
@@ -48,7 +48,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'Safety & clinical',
-    tone: 'var(--mq-critical)',
+    tone: 'var(--jm-critical)',
     rows: [
       {
         name: 'Clinical Safety Statement',
@@ -74,7 +74,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'People & safeguarding',
-    tone: 'var(--mq-orange)',
+    tone: 'var(--jm-orange)',
     rows: [
       {
         name: 'Safeguarding Policy',
@@ -100,7 +100,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'AI & data',
-    tone: 'var(--mq-purple)',
+    tone: 'var(--jm-purple)',
     rows: [
       {
         name: 'Responsible AI Statement',
@@ -126,7 +126,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'Commercial',
-    tone: 'var(--mq-teal)',
+    tone: 'var(--jm-teal)',
     rows: [
       {
         name: 'Ethical Gamification Charter',
@@ -226,8 +226,8 @@ export default function Policies() {
               <Tick />
               <span>
                 Requests for any document not linked above:{' '}
-                <a href="mailto:hello@movequest.ai" style={{ color: 'var(--mq-lime)' }}>
-                  hello@movequest.ai
+                <a href="mailto:hello@jessmove.com" style={{ color: 'var(--jm-lime)' }}>
+                  hello@jessmove.com
                 </a>
               </span>
             </div>

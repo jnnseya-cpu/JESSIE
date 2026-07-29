@@ -5,7 +5,7 @@ import {
   MOVEMENT_VARIANTS,
   VARIANT_LABELS,
   type Movement,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { MovementsService } from './movements.service';
 
 @Controller('movements')

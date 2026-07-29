@@ -1,4 +1,4 @@
-# MOVEQUEST — the whole stack, locally.
+# JESS MOVE — the whole stack, locally.
 #
 #   docker compose up --build
 #
@@ -9,16 +9,16 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: movequest
-      POSTGRES_PASSWORD: movequest
-      POSTGRES_DB: movequest
+      POSTGRES_USER: jessmove
+      POSTGRES_PASSWORD: jessmove
+      POSTGRES_DB: jessmove
     ports: ['5432:5432']
     volumes:
       - db:/var/lib/postgresql/data
       # Applied in filename order on an empty data directory.
       - ./db/migrations/0001_core.sql:/docker-entrypoint-initdb.d/0001_core.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U movequest -d movequest']
+      test: ['CMD-SHELL', 'pg_isready -U jessmove -d jessmove']
       interval: 5s
       timeout: 3s
       retries: 12
@@ -32,7 +32,7 @@ services:
       PORT: 4000
       API_PREFIX: api
       CORS_ORIGINS: http://localhost:3000
-      DATABASE_URL: postgres://movequest:movequest@db:5432/movequest
+      DATABASE_URL: postgres://jessmove:jessmove@db:5432/jessmove
       # Optional. The gateway skips unconfigured providers rather than failing.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

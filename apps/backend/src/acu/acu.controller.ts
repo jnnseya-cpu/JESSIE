@@ -17,7 +17,7 @@ import {
   ZERO_ACU_ACTIONS,
   requiredAcus,
   type CostInput,
-} from '@movequest/body-command';
+} from '@jessmove/body-command';
 import { WalletService, type SpendControls, type SpendRequest } from './wallet.service';
 
 @Controller('acu')

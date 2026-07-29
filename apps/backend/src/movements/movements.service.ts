@@ -6,7 +6,7 @@ import {
   evaluatePublishGate,
   type Movement,
   type PublishGateFailure,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 /**
  * Library service. Enforces the five-variant publishing gate. §11.

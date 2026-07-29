@@ -1,5 +1,5 @@
 -- ============================================================
--- MOVEQUEST — core schema (specification §20)
+-- JESS MOVE — core schema (specification §20)
 --
 -- Every tenant-scoped table carries tenant_id and is covered by
 -- row-level security. The Workforce API role is granted on
@@ -400,25 +400,25 @@ ALTER TABLE sessions            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE workforce_reports   ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_users ON users
-  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('jessmove.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_rx ON prescriptions
-  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('jessmove.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_sessions ON sessions
-  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('jessmove.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_reports ON workforce_reports
-  USING (tenant_id = current_setting('movequest.tenant_id', true)::uuid);
+  USING (tenant_id = current_setting('jessmove.tenant_id', true)::uuid);
 
 -- §16.3 — the workforce role. Granted on aggregates only.
 -- The absence of a grant on `sessions` is the control: individual
 -- visibility does not exist rather than being permission-gated.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'movequest_workforce') THEN
-    CREATE ROLE movequest_workforce NOLOGIN;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'jessmove_workforce') THEN
+    CREATE ROLE jessmove_workforce NOLOGIN;
   END IF;
 END $$;
 
-GRANT SELECT ON workforce_reports TO movequest_workforce;
-REVOKE ALL ON sessions, prescriptions, users, nudges, sparks_ledger FROM movequest_workforce;
+GRANT SELECT ON workforce_reports TO jessmove_workforce;
+REVOKE ALL ON sessions, prescriptions, users, nudges, sparks_ledger FROM jessmove_workforce;
 
 COMMIT;

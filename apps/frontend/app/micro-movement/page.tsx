@@ -19,12 +19,12 @@ import {
   selectVariant,
   suppressForRepetition,
   type MovementEnvironment,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { CompareBars, Spark, Stat } from '../charts';
 import { Cross, Footer, Nav, PageHero, SkipLink, Tick, VariantGlyph } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Micro-Movement — MOVEQUEST',
+  title: 'Micro-Movement — JESS MOVE',
   description:
     'Two to five minutes, matched to the room, the clothes and the body. Five executable ' +
     'variants on every movement, and every refusal names its own reason.',
@@ -179,7 +179,7 @@ export default function MicroMovement() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-teal)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-teal)' }}>
                 The narrowing
               </p>
               <h2>Four movements. Four real rooms.</h2>
@@ -216,12 +216,12 @@ export default function MicroMovement() {
                           return (
                             <td key={r.name} title={fit.fits ? 'Available' : fit.blockedBy.join(' ')}>
                               {fit.fits ? (
-                                <span style={{ color: 'var(--mq-excellent)' }}>
+                                <span style={{ color: 'var(--jm-excellent)' }}>
                                   <Tick /> Available
                                 </span>
                               ) : (
                                 <span style={{ opacity: 0.8 }}>
-                                  <span style={{ color: 'var(--mq-action)' }}>
+                                  <span style={{ color: 'var(--jm-action)' }}>
                                     <Cross />
                                   </span>{' '}
                                   <small>{fit.blockedBy[0]}</small>
@@ -333,7 +333,7 @@ export default function MicroMovement() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">Selection only ever moves down the ladder</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     gentlest first
                   </span>
                 </div>
@@ -366,7 +366,7 @@ export default function MicroMovement() {
                         <tr key={row.label}>
                           <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.label}</td>
                           <td>
-                            <strong style={{ color: 'var(--mq-teal)' }}>
+                            <strong style={{ color: 'var(--jm-teal)' }}>
                               {VARIANT_LABELS[row.pick.variant]}
                             </strong>
                             <br />
@@ -402,10 +402,10 @@ export default function MicroMovement() {
                   <h3 className="card__t">Eight weeks, computed by the engine</h3>
                   <span className="card__tag">seconds per micro-movement</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--mq-teal)' }}>
+                <div className="card__big" style={{ color: 'var(--jm-teal)' }}>
                   {DOSE_SERIES[DOSE_SERIES.length - 1]}s
                 </div>
-                <Spark series={DOSE_SERIES} label="Prescribed dose over eight weeks" tone="var(--mq-teal)" />
+                <Spark series={DOSE_SERIES} label="Prescribed dose over eight weeks" tone="var(--jm-teal)" />
                 <p className="card__note">
                   Weeks four and five dip. Completion had slipped below 60%, so{' '}
                   <code>calibrateDose()</code> reduced the ask — and the recovery afterwards is
@@ -418,19 +418,19 @@ export default function MicroMovement() {
                   k="Duration"
                   v={`${SNAP_DURATION_SECONDS.min}–${SNAP_DURATION_SECONDS.max}s`}
                   sub="Clamped to your mode's window. A good run never produces a five-minute block in Vitality Mode."
-                  tone="var(--mq-teal)"
+                  tone="var(--jm-teal)"
                 />
                 <Stat
                   k="Weekly ceiling"
                   v={`${Math.round(MAX_WEEKLY_ESCALATION * 100)}%`}
                   sub="The most the ask may grow. There is no override and no 'challenge yourself' toggle."
-                  tone="var(--mq-lime)"
+                  tone="var(--jm-lime)"
                 />
                 <Stat
                   k="Repetition window"
                   v="20h"
                   sub={String(suppressForRepetition(4, 0).because)}
-                  tone="var(--mq-orange)"
+                  tone="var(--jm-orange)"
                 />
               </article>
             </div>

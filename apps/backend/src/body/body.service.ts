@@ -14,8 +14,8 @@ import {
   type SafetyAssessment,
   type ScoreInput,
   type TwinState,
-} from '@movequest/body-command';
-import { bodySurfacePolicy, modeForAge, type AgeMode } from '@movequest/shared';
+} from '@jessmove/body-command';
+import { bodySurfacePolicy, modeForAge, type AgeMode } from '@jessmove/shared';
 
 /**
  * BodyCommand, wired for both children and adults.

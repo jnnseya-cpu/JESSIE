@@ -14,12 +14,12 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: movequest
-          POSTGRES_PASSWORD: movequest
-          POSTGRES_DB: movequest
+          POSTGRES_USER: jessmove
+          POSTGRES_PASSWORD: jessmove
+          POSTGRES_DB: jessmove
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U movequest"
+          --health-cmd "pg_isready -U jessmove"
           --health-interval 5s --health-timeout 3s --health-retries 12
 
     steps:
@@ -46,7 +46,7 @@ jobs:
 
       - name: Database invariants
         env:
-          DATABASE_URL: postgres://movequest:movequest@localhost:5432/movequest
+          DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
         run: |
           sudo apt-get install -y --no-install-recommends postgresql-client
           pnpm db:migrate

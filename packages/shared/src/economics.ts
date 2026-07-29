@@ -1,5 +1,5 @@
 /**
- * MOVEQUEST — unit economics.
+ * JESS MOVE — unit economics.
  *
  * The existing Cost Governor protects one thing: that £1 of direct AI
  * provider spend earns at least £4 of customer revenue. That rule is real

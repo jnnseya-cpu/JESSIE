@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { K_ANONYMITY_THRESHOLD, SNAP_DURATION_SECONDS } from '@movequest/shared';
+import { K_ANONYMITY_THRESHOLD, SNAP_DURATION_SECONDS } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Developers — MOVEQUEST',
+  title: 'Developers — JESS MOVE',
   description:
-    'The MOVEQUEST API: the envelope, the endpoints, the AI gateway, the invariants the ' +
+    'The JESS MOVE API: the envelope, the endpoints, the AI gateway, the invariants the ' +
     'database enforces, and the rules a client may not work around.',
 };
 
@@ -83,7 +83,7 @@ export default function Developers() {
               <p className="lede">
                 Base path <code>/api</code>. Every response carries the signature line — the full
                 line in <code>meta.poweredBy</code>, and an ASCII-safe rendering in the{' '}
-                <code>x-powered-by-movequest</code> header, because HTTP header values must be
+                <code>x-powered-by-jessmove</code> header, because HTTP header values must be
                 latin1.
               </p>
             </div>

@@ -1,5 +1,5 @@
 /**
- * The core concepts. Everything in MOVEQUEST is built around, for and to
+ * The core concepts. Everything in JESS MOVE is built around, for and to
  * achieve what is described here.
  *
  * The product is not a fitness reminder. It is a Movement Operating System

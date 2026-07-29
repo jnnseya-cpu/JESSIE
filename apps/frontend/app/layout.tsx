@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from 'next';
-import { BRAND, SIGNATURE_LINE, TAGLINE } from '@movequest/shared';
+import { BRAND, SIGNATURE_LINE, TAGLINE } from '@jessmove/shared';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: `${BRAND.platform} — ${TAGLINE}`,
   description:
-    `${BRAND.descriptor}. MoveQuest finds realistic movement opportunities across work, home ` +
+    `${BRAND.descriptor}. Jess Move finds realistic movement opportunities across work, home ` +
     'and commute, then turns them into personalised missions that fit the day you already have. ' +
     'Six adaptive modes, ages 10 to 100.',
   applicationName: BRAND.platform,
-  authors: [{ name: 'MoveQuest' }],
+  authors: [{ name: 'Jess Move' }],
   keywords: [
     'micro-movement',
     'movement operating system',

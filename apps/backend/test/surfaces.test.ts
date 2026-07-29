@@ -31,7 +31,7 @@ import {
   shouldWidenForDisagreement,
   suppressForRepetition,
   teamScore,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 /* ---------------- MOVA ---------------- */
 

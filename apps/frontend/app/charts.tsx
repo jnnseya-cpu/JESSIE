@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 
 /**
- * MOVEQUEST — data visualisation primitives.
+ * JESS MOVE — data visualisation primitives.
  *
  * Every chart here is hand-drawn SVG with no external dependency, no
  * runtime data fetch and no randomness, so the markup the server renders
@@ -118,7 +118,7 @@ export function BalanceRing({
 export function Spark({
   series,
   label,
-  tone = 'var(--mq-teal)',
+  tone = 'var(--jm-teal)',
   band,
 }: {
   series: readonly number[];
@@ -344,7 +344,7 @@ export function AgeColumns({
 export function Radar({
   axes,
   values,
-  tone = 'var(--mq-orange)',
+  tone = 'var(--jm-orange)',
   size = 240,
 }: {
   axes: readonly string[];
@@ -431,7 +431,7 @@ export function Heatmap({
   rows,
   cols,
   values,
-  tone = 'var(--mq-teal)',
+  tone = 'var(--jm-teal)',
   label,
 }: {
   rows: readonly string[];
@@ -490,7 +490,7 @@ export function FanChart({
   expected,
   spread,
   label,
-  tone = 'var(--mq-purple)',
+  tone = 'var(--jm-purple)',
 }: {
   expected: readonly number[];
   /** half-width of the cone at each point, same length as `expected` */
@@ -658,9 +658,9 @@ export function ConfidenceCone({
 /* ---------------- UK traffic lights ---------------- */
 
 const BAND_TONE = {
-  green: 'var(--mq-positive)',
-  amber: 'var(--mq-monitor)',
-  red: 'var(--mq-action)',
+  green: 'var(--jm-positive)',
+  amber: 'var(--jm-monitor)',
+  red: 'var(--jm-action)',
 } as const;
 
 /**
@@ -729,7 +729,7 @@ export function CameraFrame({
     <div className="cam">
       <svg viewBox="0 0 360 270" role="img" aria-label="Meal capture with recognised items">
         <defs>
-          <linearGradient id="mq-plate" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="jm-plate" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#F59E3D" stopOpacity="0.22" />
             <stop offset="100%" stopColor="#FF6B5E" stopOpacity="0.28" />
           </linearGradient>
@@ -737,7 +737,7 @@ export function CameraFrame({
 
         <rect width="360" height="270" rx="14" className="cam__bg" />
         {/* the plate */}
-        <ellipse cx="180" cy="142" rx="118" ry="86" fill="url(#mq-plate)" className="cam__plate" />
+        <ellipse cx="180" cy="142" rx="118" ry="86" fill="url(#jm-plate)" className="cam__plate" />
         <ellipse
           cx="180"
           cy="142"

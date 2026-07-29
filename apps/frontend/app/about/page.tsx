@@ -10,11 +10,11 @@ import {
   PROMISE,
   ROADMAP,
   THESIS,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'About — MOVEQUEST',
+  title: 'About — JESS MOVE',
   description:
     'Why a movement operating system exists, what it refuses to be, and the route from a ' +
     'validation MVP to a national platform.',
@@ -58,7 +58,7 @@ export default function About() {
                 <div className="tile__n">NOVELTY</div>
                 <p>{THESIS.novelty}</p>
               </article>
-              <article className="tile" style={{ ['--tone' as string]: 'var(--mq-critical)' }}>
+              <article className="tile" style={{ ['--tone' as string]: 'var(--jm-critical)' }}>
                 <div className="tile__n">RISK</div>
                 <p>{THESIS.risk}</p>
               </article>
@@ -105,7 +105,7 @@ export default function About() {
                   Below 18 the answer is different and it is not negotiable: no weight, BMI,
                   calorie or appearance framing is shown to a child in any mode, under any consent
                   setting. Growth, energy, confidence and routine are the frame instead.{' '}
-                  <Link href="/body-balance" style={{ color: 'var(--mq-purple)', fontWeight: 600 }}>
+                  <Link href="/body-balance" style={{ color: 'var(--jm-purple)', fontWeight: 600 }}>
                     How Body Balance works →
                   </Link>
                 </p>
@@ -151,7 +151,7 @@ export default function About() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">In the MVP</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     build
                   </span>
                 </div>
@@ -164,7 +164,7 @@ export default function About() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Deliberately excluded</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-coral)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-coral)' }}>
                     later
                   </span>
                 </div>

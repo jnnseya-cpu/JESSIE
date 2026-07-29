@@ -4,13 +4,13 @@
  */
 export const BRAND = {
   /** The platform. Enterprise, procurement, technical and investor contexts. */
-  platform: 'MOVEQUEST',
+  platform: 'JESS MOVE',
   /** The full product name. */
-  fullName: 'MoveQuest AI — Your Daily Movement and Body-Balance Operating System',
+  fullName: 'Jess Move AI — Your Daily Movement and Body-Balance Operating System',
   /** What it is, in one line, for someone who has never heard of it. */
   descriptor: 'AI-powered micro-movement, food intelligence and healthy-lifestyle platform',
   /** The application a person opens, receives or speaks to. */
-  app: 'MoveQuest',
+  app: 'Jess Move',
   /** The AI coach persona. Speaks in first person. Never claims to be human. */
   coach: 'MOVA',
   /** What MOVA stands for. */
@@ -39,7 +39,7 @@ export const TAGLINES_SUPPORTING: readonly string[] = [
 
 /** The flagship product promise. §2. */
 export const FLAGSHIP_PROMISE =
-  'MoveQuest learns how you live and turns everyday moments into personalised ' +
+  'Jess Move learns how you live and turns everyday moments into personalised ' +
   'opportunities to move, eat better, recover and progress.';
 
 /** The six brand personality characteristics. §3. */

@@ -1,7 +1,7 @@
 /**
- * @movequest/shared
+ * @jessmove/shared
  *
- * The single source of truth for the MOVEQUEST domain model.
+ * The single source of truth for the JESS MOVE domain model.
  * Both the backend (NestJS) and the frontend (Next.js) compile against
  * this package, so a change to a contract breaks the build on both
  * sides rather than at runtime.

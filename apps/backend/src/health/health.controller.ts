@@ -6,7 +6,7 @@ import {
   AGE_MODES,
   MOVEMENT_VARIANTS,
   type HealthReport,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
 
 @Controller()

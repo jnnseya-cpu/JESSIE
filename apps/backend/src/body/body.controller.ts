@@ -9,8 +9,8 @@ import {
   SCORE_DIMENSIONS,
   SCORE_LABELS,
   SCORE_WEIGHTS,
-} from '@movequest/body-command';
-import { BODY_COMPOSITION_MIN_AGE } from '@movequest/shared';
+} from '@jessmove/body-command';
+import { BODY_COMPOSITION_MIN_AGE } from '@jessmove/shared';
 import { BodyService, type BodyAssessmentRequest } from './body.service';
 
 @Controller('body')

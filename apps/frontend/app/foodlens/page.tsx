@@ -32,7 +32,7 @@ import {
   simulateSwap,
   spreadForCapture,
   trafficLightsPer100g,
-} from '@movequest/foodlens';
+} from '@jessmove/foodlens';
 import {
   CameraFrame,
   CaptureChecks,
@@ -51,7 +51,7 @@ import {
 import { Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'FoodLens 360° — MOVEQUEST',
+  title: 'FoodLens 360° — JESS MOVE',
   description:
     'Photograph a meal and get a range, its evidence source and a confidence level. ' +
     'Twelve dimensions, no composite health score, and never a calorie figure to anyone under 18.',
@@ -96,13 +96,13 @@ const PLATE = normalisePlate({
 });
 
 const PLATE_TONES: Record<string, string> = {
-  protein: 'var(--mq-magenta)',
-  starchy_carbohydrate: 'var(--mq-orange)',
-  vegetables_and_salad: 'var(--mq-excellent)',
-  fats_and_sauces: 'var(--mq-coral)',
-  dairy: 'var(--mq-sky)',
-  fruit: 'var(--mq-purple)',
-  discretionary: 'var(--mq-unavailable)',
+  protein: 'var(--jm-magenta)',
+  starchy_carbohydrate: 'var(--jm-orange)',
+  vegetables_and_salad: 'var(--jm-excellent)',
+  fats_and_sauces: 'var(--jm-coral)',
+  dairy: 'var(--jm-sky)',
+  fruit: 'var(--jm-purple)',
+  discretionary: 'var(--jm-unavailable)',
 };
 
 const WHEEL_LABELS: Record<string, string> = {
@@ -228,9 +228,9 @@ const allergenRows = UK_ALLERGENS.map((a) => ({
 }));
 
 const BAND_TONE: Record<string, string> = {
-  strong: 'var(--mq-excellent)',
-  workable: 'var(--mq-monitor)',
-  thin: 'var(--mq-action)',
+  strong: 'var(--jm-excellent)',
+  workable: 'var(--jm-monitor)',
+  thin: 'var(--jm-action)',
 };
 
 const LIGHT_WORD: Record<string, string> = { green: 'Low', amber: 'Medium', red: 'High' };
@@ -265,7 +265,7 @@ export default function FoodLens() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
                 Stage one — capture
               </p>
               <h2>The camera earns the estimate before the shutter fires.</h2>
@@ -280,7 +280,7 @@ export default function FoodLens() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">{MEAL.name}</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
                     4 items recognised
                   </span>
                 </div>
@@ -366,7 +366,7 @@ export default function FoodLens() {
         <section className="section section--tint">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
                 Stage three — the result
               </p>
               <h2>Meal Intelligence is about the analysis, not the food.</h2>
@@ -423,7 +423,7 @@ export default function FoodLens() {
               <article className="card card--5 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Energy</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
                     {confidenceFor('ai_visual_estimate')} confidence
                   </span>
                 </div>
@@ -443,9 +443,9 @@ export default function FoodLens() {
                 </div>
                 <MacroRings
                   macros={[
-                    { label: 'Protein', pct: macros.proteinPct, grams: MEAL.grams.proteinG, tone: 'var(--mq-magenta)' },
-                    { label: 'Carbohydrate', pct: macros.carbohydratePct, grams: MEAL.grams.carbohydrateG, tone: 'var(--mq-orange)' },
-                    { label: 'Fat', pct: macros.fatPct, grams: MEAL.grams.fatG, tone: 'var(--mq-coral)' },
+                    { label: 'Protein', pct: macros.proteinPct, grams: MEAL.grams.proteinG, tone: 'var(--jm-magenta)' },
+                    { label: 'Carbohydrate', pct: macros.carbohydratePct, grams: MEAL.grams.carbohydrateG, tone: 'var(--jm-orange)' },
+                    { label: 'Fat', pct: macros.fatPct, grams: MEAL.grams.fatG, tone: 'var(--jm-coral)' },
                   ]}
                   centre={`${agreement.impliedKcal}`}
                   sub="implied kcal"
@@ -534,7 +534,7 @@ export default function FoodLens() {
                   <Radar
                     axes={WHEEL_DIMENSIONS.map((d) => WHEEL_LABELS[d])}
                     values={WHEEL_VALUES}
-                    tone="var(--mq-orange)"
+                    tone="var(--jm-orange)"
                     size={300}
                   />
                 </div>
@@ -543,13 +543,13 @@ export default function FoodLens() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What a food may be called</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     exhaustive list
                   </span>
                 </div>
                 <ul className="pills">
                   {PERMITTED_FRAMINGS.map((f) => (
-                    <li key={f} style={{ borderColor: 'var(--mq-excellent)' }}>
+                    <li key={f} style={{ borderColor: 'var(--jm-excellent)' }}>
                       {f.replace(/_/g, ' ')}
                     </li>
                   ))}
@@ -559,13 +559,13 @@ export default function FoodLens() {
                   <h3 className="card__t" style={{ fontSize: 17 }}>
                     And what it may never be called
                   </h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
                     <Cross /> banned
                   </span>
                 </div>
                 <ul className="pills">
                   {BANNED_FRAMINGS.map((f) => (
-                    <li key={f} style={{ borderColor: 'var(--mq-critical)' }}>
+                    <li key={f} style={{ borderColor: 'var(--jm-critical)' }}>
                       {f}
                     </li>
                   ))}
@@ -651,17 +651,17 @@ export default function FoodLens() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Level 2 simulated</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
                     grill instead of deep-fry
                   </span>
                 </div>
                 <SwapSim
                   rows={[
-                    { label: 'Energy', before: energy.likely, after: swap.after.energyKcal, unit: ' kcal', tone: 'var(--mq-excellent)' },
-                    { label: 'Saturates', before: MEAL.saturatesG, after: swap.after.saturatesG, unit: 'g', tone: 'var(--mq-excellent)' },
-                    { label: 'Salt', before: MEAL.saltG, after: swap.after.saltG, unit: 'g', tone: 'var(--mq-monitor)' },
-                    { label: 'Fibre', before: MEAL.fibreG, after: swap.after.fibreG, unit: 'g', tone: 'var(--mq-excellent)' },
-                    { label: 'Protein', before: MEAL.grams.proteinG, after: swap.after.proteinG, unit: 'g', tone: 'var(--mq-magenta)' },
+                    { label: 'Energy', before: energy.likely, after: swap.after.energyKcal, unit: ' kcal', tone: 'var(--jm-excellent)' },
+                    { label: 'Saturates', before: MEAL.saturatesG, after: swap.after.saturatesG, unit: 'g', tone: 'var(--jm-excellent)' },
+                    { label: 'Salt', before: MEAL.saltG, after: swap.after.saltG, unit: 'g', tone: 'var(--jm-monitor)' },
+                    { label: 'Fibre', before: MEAL.fibreG, after: swap.after.fibreG, unit: 'g', tone: 'var(--jm-excellent)' },
+                    { label: 'Protein', before: MEAL.grams.proteinG, after: swap.after.proteinG, unit: 'g', tone: 'var(--jm-magenta)' },
                   ]}
                 />
                 <p className="card__note">
@@ -717,14 +717,14 @@ export default function FoodLens() {
                   <h3 className="card__t">This meal against your median</h3>
                   <span className="card__tag">14 days</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--mq-orange)' }}>
+                <div className="card__big" style={{ color: 'var(--jm-orange)' }}>
                   {pattern.deltaPct > 0 ? '+' : ''}
                   {pattern.deltaPct}%
                 </div>
                 <Spark
                   series={ENERGY_HISTORY.map((p) => p.value)}
                   label="Evening meal energy over fourteen days"
-                  tone="var(--mq-orange)"
+                  tone="var(--jm-orange)"
                 />
                 <p className="card__note">
                   Your median evening meal is {pattern.median} kcal. This one is{' '}
@@ -742,7 +742,7 @@ export default function FoodLens() {
                   rows={SALT_HEAT_DAYS}
                   cols={SALT_HEAT_MEALS}
                   values={SALT_HEAT}
-                  tone="var(--mq-coral)"
+                  tone="var(--jm-coral)"
                   label="Salt intake by day and meal"
                 />
                 <p className="card__note">
@@ -754,7 +754,7 @@ export default function FoodLens() {
               <article className="card card--12 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Plant diversity</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     {PLANT_GROUPS.length} groups
                   </span>
                 </div>
@@ -781,7 +781,7 @@ export default function FoodLens() {
                 <article
                   className="tile tile--ink"
                   key={c}
-                  style={{ ['--tone' as string]: 'var(--mq-critical)' }}
+                  style={{ ['--tone' as string]: 'var(--jm-critical)' }}
                 >
                   <div className="tile__n">NEVER {String(i + 1).padStart(2, '0')}</div>
                   <p>{c.replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase())}.</p>
@@ -810,7 +810,7 @@ export default function FoodLens() {
                   k="Under 18"
                   v="No figures"
                   sub="No calorie, weight or BMI framing reaches a child, in any mode, under any consent setting. bodySurfacePolicy does not consult the switch below 18."
-                  tone="var(--mq-critical)"
+                  tone="var(--jm-critical)"
                 />
               </article>
             </div>

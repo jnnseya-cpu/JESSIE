@@ -23,7 +23,7 @@ import {
   type LocationClass,
   type MotionState,
   type SignalClass,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 /**
  * The request bodies, as validated classes rather than interfaces.
@@ -39,7 +39,7 @@ import {
  */
 
 /*
- * The permitted values are imported from @movequest/shared rather than
+ * The permitted values are imported from @jessmove/shared rather than
  * restated here. Hand-copying them is how a DTO silently drifts from the
  * domain it is supposed to guard.
  */

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ACCOUNT_TYPES, BRAND } from '@movequest/shared';
+import { ACCOUNT_TYPES, BRAND } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Contact — MOVEQUEST',
+  title: 'Contact — JESS MOVE',
   description:
     'Talk to us about a pilot, a partnership, API access, safeguarding, accessibility or ' +
     'a data request.',
@@ -14,42 +14,42 @@ const CHANNELS = [
   {
     h: 'Pilots & partnerships',
     p: 'Employers, schools, care groups, councils and integrated care boards.',
-    a: 'partners@movequest.ai',
+    a: 'partners@jessmove.com',
   },
   {
     h: 'General enquiries',
     p: 'Anything that does not fit a box below.',
-    a: 'hello@movequest.ai',
+    a: 'hello@jessmove.com',
   },
   {
     h: 'API & integrations',
     p: 'Keys, the OpenAPI document, agent contract cards, webhooks.',
-    a: 'developers@movequest.ai',
+    a: 'developers@jessmove.com',
   },
   {
     h: 'Privacy & data requests',
     p: 'Access, export, correction, deletion and objection under UK GDPR.',
-    a: 'privacy@movequest.ai',
+    a: 'privacy@jessmove.com',
   },
   {
     h: 'Safeguarding',
     p: 'Concerns about a child or an at-risk adult using the platform. Monitored daily.',
-    a: 'safeguarding@movequest.ai',
+    a: 'safeguarding@jessmove.com',
   },
   {
     h: 'Accessibility',
     p: 'Something we have made harder than it needs to be. We treat these as defects.',
-    a: 'access@movequest.ai',
+    a: 'access@jessmove.com',
   },
   {
     h: 'Clinical safety',
     p: 'Reports of unsafe content, or questions for the Clinical Safety Officer.',
-    a: 'clinical@movequest.ai',
+    a: 'clinical@jessmove.com',
   },
   {
     h: 'Press & speaking',
     p: 'Interviews, briefings and conference requests.',
-    a: 'press@movequest.ai',
+    a: 'press@jessmove.com',
   },
 ];
 
@@ -79,7 +79,7 @@ export default function Contact() {
                   <span className="card__tag">2 working days</span>
                 </div>
 
-                <form action="mailto:hello@movequest.ai" method="post" encType="text/plain">
+                <form action="mailto:hello@jessmove.com" method="post" encType="text/plain">
                   <div className="formgrid">
                     <div className="field">
                       <label htmlFor="name">Your name</label>
@@ -175,7 +175,7 @@ export default function Contact() {
               <h2>Two things we cannot do.</h2>
             </div>
             <div className="tiles">
-              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--mq-critical)' }}>
+              <article className="tile tile--ink" style={{ ['--tone' as string]: 'var(--jm-critical)' }}>
                 <h3>We are not an emergency service.</h3>
                 <p>
                   {BRAND.platform} never contacts emergency services and cannot respond to an
@@ -197,7 +197,7 @@ export default function Contact() {
               <Tick />
               <span>
                 Registered in England. Full corporate and regulatory details on{' '}
-                <Link href="/policies" style={{ color: 'var(--mq-teal)' }}>
+                <Link href="/policies" style={{ color: 'var(--jm-teal)' }}>
                   All policies
                 </Link>
                 .

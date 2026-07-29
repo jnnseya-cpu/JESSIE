@@ -15,12 +15,12 @@ import {
   REWARD_ASSETS,
   SNAP_DURATION_SECONDS,
   TEAM_SCORE_TERMS,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { CompareBars, DayTimeline, Spark, Stat, type DaySlot } from '../charts';
 import { Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'How it works — MOVEQUEST',
+  title: 'How it works — JESS MOVE',
   description:
     'The Movement Opportunity Engine, the twelve agents, the game loop, and how a two-minute ' +
     'gap becomes a completed Snap.',
@@ -96,7 +96,7 @@ export default function HowItWorks() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">The formula</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     fires at ≥ {OPPORTUNITY_THRESHOLD}
                   </span>
                 </div>
@@ -105,12 +105,12 @@ export default function HowItWorks() {
                 </p>
                 <ul className="pills">
                   {OPPORTUNITY_MULTIPLIERS.map((f) => (
-                    <li key={f} style={{ borderColor: 'var(--mq-teal)' }}>
+                    <li key={f} style={{ borderColor: 'var(--jm-teal)' }}>
                       × {f.replace(/([A-Z])/g, ' $1').toLowerCase()}
                     </li>
                   ))}
                   {OPPORTUNITY_PENALTIES.map((f) => (
-                    <li key={f} style={{ borderColor: 'var(--mq-coral)' }}>
+                    <li key={f} style={{ borderColor: 'var(--jm-coral)' }}>
                       − {f.replace(/([A-Z])/g, ' $1').toLowerCase()}
                     </li>
                   ))}
@@ -231,7 +231,7 @@ export default function HowItWorks() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What earns points</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                     <Tick /> permitted
                   </span>
                 </div>
@@ -244,13 +244,13 @@ export default function HowItWorks() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What never earns points</h3>
-                  <span className="card__tag" style={{ color: 'var(--mq-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
                     <Cross /> banned
                   </span>
                 </div>
                 <ul className="pills">
                   {POINTS_NEVER.map((p) => (
-                    <li key={p} style={{ borderColor: 'var(--mq-critical)' }}>
+                    <li key={p} style={{ borderColor: 'var(--jm-critical)' }}>
                       {p}
                     </li>
                   ))}
@@ -286,7 +286,7 @@ export default function HowItWorks() {
                 </div>
                 <ul className="pills">
                   {GAME_WORLDS.map((w) => (
-                    <li key={w} style={{ borderColor: 'var(--mq-orange)' }}>
+                    <li key={w} style={{ borderColor: 'var(--jm-orange)' }}>
                       {w}
                     </li>
                   ))}
@@ -332,14 +332,14 @@ export default function HowItWorks() {
                   k="Under 18"
                   v="Never"
                   sub="No weight, BMI, calorie or appearance framing, in any mode, under any consent setting."
-                  tone="var(--mq-critical)"
+                  tone="var(--jm-critical)"
                 />
               </article>
             </div>
 
             <p className="lede" style={{ marginTop: 30 }}>
               The full pathway model, the safety gate and the scorecard are documented on{' '}
-              <Link href="/body-balance" style={{ color: 'var(--mq-teal)', fontWeight: 600 }}>
+              <Link href="/body-balance" style={{ color: 'var(--jm-teal)', fontWeight: 600 }}>
                 Body Balance
               </Link>
               .

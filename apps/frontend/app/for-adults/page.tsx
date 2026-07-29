@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { AGE_MODE_DEFINITIONS } from '@movequest/shared';
+import { AGE_MODE_DEFINITIONS } from '@jessmove/shared';
 import { Footer, Nav, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'For adults — MOVEQUEST',
+  title: 'For adults — JESS MOVE',
   description:
     'Movement and body-balance support for ages 18 to 100 — nine pathways, of which reduction ' +
     'is only one.',
@@ -94,7 +94,7 @@ export default function ForAdults() {
                     <h3>
                       {def.label} · {def.minAge}–{def.maxAge}
                     </h3>
-                    <p style={{ color: 'var(--mq-text-2)', marginBottom: 18 }}>{def.register}</p>
+                    <p style={{ color: 'var(--jm-text-2)', marginBottom: 18 }}>{def.register}</p>
                     <ul>
                       {points.map((p) => (
                         <li key={p}>
@@ -180,7 +180,7 @@ export default function ForAdults() {
               dependence on willpower.
             </p>
             <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:hello@movequest.ai">
+              <a className="btn btn--primary" href="mailto:hello@jessmove.com">
                 Request access
               </a>
               <a className="btn btn--ghost" href="/body-balance">

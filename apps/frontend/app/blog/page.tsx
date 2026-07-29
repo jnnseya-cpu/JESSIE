@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Footer, Nav, PageHero, SkipLink } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Blog — MOVEQUEST',
+  title: 'Blog — JESS MOVE',
   description:
     'Engineering notes, product decisions and the arguments behind them — including the ones ' +
     'we lost.',
@@ -139,7 +139,7 @@ export default function Blog() {
             <p className="lede" style={{ marginTop: 40 }}>
               Full articles publish alongside the public beta. Until then, the specification and
               the source are the honest version of all of this —{' '}
-              <Link href="/developers" style={{ color: 'var(--mq-purple)', fontWeight: 600 }}>
+              <Link href="/developers" style={{ color: 'var(--jm-purple)', fontWeight: 600 }}>
                 see the developer reference
               </Link>
               .
@@ -159,7 +159,7 @@ export default function Blog() {
                 Join the list
               </Link>
               <Link className="btn btn--ghost" href="/about">
-                About MOVEQUEST
+                About JESS MOVE
               </Link>
             </div>
           </div>

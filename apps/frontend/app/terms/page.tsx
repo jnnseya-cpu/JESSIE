@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BRAND, CLINICAL_BOUNDARY, SNAP_DURATION_SECONDS } from '@movequest/shared';
+import { BRAND, CLINICAL_BOUNDARY, SNAP_DURATION_SECONDS } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — MOVEQUEST',
+  title: 'Terms of Service — JESS MOVE',
   description:
-    'The agreement between you and MOVEQUEST: what the service is, what it is not, and what ' +
+    'The agreement between you and JESS MOVE: what the service is, what it is not, and what ' +
     'each of us is responsible for.',
 };
 
@@ -210,7 +210,7 @@ export default function Terms() {
               bring proceedings in your local courts.
             </p>
             <p>
-              Complaints go to <a href="mailto:hello@movequest.ai">hello@movequest.ai</a>. We
+              Complaints go to <a href="mailto:hello@jessmove.com">hello@jessmove.com</a>. We
               answer within two working days.
             </p>
 

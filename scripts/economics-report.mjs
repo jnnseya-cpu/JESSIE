@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * INTERNAL — MoveQuest unit-economics report.
+ * INTERNAL — Jess Move unit-economics report.
  *
  * The model is not published. It exposes per-user cost, supplier unit
  * rates, overhead composition, contribution and margin — none of which
  * belongs on a public website. It lives here so the team can read it, and
- * it runs against the same `@movequest/shared` engine the product uses, so
+ * it runs against the same `@jessmove/shared` engine the product uses, so
  * it cannot drift from the rules the code actually enforces.
  *
  *   pnpm economics
@@ -33,7 +33,7 @@ import {
   priceAction,
   revenueSplit,
   stress,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 const json = process.argv.includes('--json');
 const gbp = (n) => `£${n.toFixed(2)}`;
@@ -173,7 +173,7 @@ const h = (t) => {
 };
 
 console.log('');
-console.log('  MOVEQUEST — UNIT ECONOMICS · INTERNAL, NOT FOR PUBLICATION');
+console.log('  JESS MOVE — UNIT ECONOMICS · INTERNAL, NOT FOR PUBLICATION');
 console.log(`  Cost model v${COST_MODEL_VERSION} · ${COST_MODEL_DATE}`);
 
 h('rules');

@@ -9,7 +9,7 @@ import {
   type ContextDecision,
   type MovementCategory,
   type MovementVariant,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { ContextService, type ContextSignals } from '../context/context.service';
 
 export interface PrescriptionRequest {

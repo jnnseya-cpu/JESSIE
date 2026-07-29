@@ -11,18 +11,18 @@ import {
   contribution,
   isWinnableByMedianTeam,
   teamScore,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 import { CompareBars, Donut, Stat } from '../charts';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
 
 export const metadata: Metadata = {
-  title: 'Challenges — MOVEQUEST',
+  title: 'Challenges — JESS MOVE',
   description:
     'Team Score is participation, consistency, improvement and mutual support. Capability is ' +
     'absent by design, so the fittest person cannot win every event on their own.',
 };
 
-const TERM_TONE = ['var(--mq-teal)', 'var(--mq-lime)', 'var(--mq-blue)', 'var(--mq-purple)'];
+const TERM_TONE = ['var(--jm-teal)', 'var(--jm-lime)', 'var(--jm-blue)', 'var(--jm-purple)'];
 
 /* Two teams, scored by the engine. */
 const ATHLETIC_TEAM = teamScore({
@@ -57,13 +57,13 @@ const COMPARISON = [
   {
     label: 'Three marathon runners, nobody else moving',
     value: ATHLETIC_TEAM,
-    tone: 'var(--mq-coral)',
+    tone: 'var(--jm-coral)',
     note: 'High individual capability. Low participation, low support. Loses.',
   },
   {
     label: 'Twelve people doing two minutes most days',
     value: ORDINARY_TEAM,
-    tone: 'var(--mq-teal)',
+    tone: 'var(--jm-teal)',
     note: 'Nobody exceptional. Everybody in. Wins comfortably.',
   },
 ];
@@ -97,7 +97,7 @@ export default function Challenges() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--mq-lime)' }}>
+              <p className="eyebrow" style={{ color: 'var(--jm-lime)' }}>
                 Team Score
               </p>
               <h2>Four terms, and none of them is output.</h2>
@@ -165,13 +165,13 @@ export default function Challenges() {
             <article className="card">
               <div className="card__head">
                 <h3 className="card__t">Rejected field names</h3>
-                <span className="card__tag" style={{ color: 'var(--mq-critical)' }}>
+                <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
                   <Cross /> throws
                 </span>
               </div>
               <ul className="pills pills--ink">
                 {CAPABILITY_FIELDS.map((f) => (
-                  <li key={f} style={{ borderColor: 'var(--mq-critical)' }}>
+                  <li key={f} style={{ borderColor: 'var(--jm-critical)' }}>
                     {f}
                   </li>
                 ))}
@@ -202,13 +202,13 @@ export default function Challenges() {
                   k="Contribution ceiling"
                   v={`${Math.round(CONTRIBUTION_CEILING * 100)}%`}
                   sub={`No individual may supply more than this share of a team's total. Our simulated superstar on a two-person team was capped at ${Math.round(SUPERSTAR.share * 100)}%.`}
-                  tone="var(--mq-lime)"
+                  tone="var(--jm-lime)"
                 />
                 <Stat
                   k="Median team reaches"
                   v={String(MEDIAN_TEAM.medianTeamReaches)}
                   sub={`Against a target of 60. A challenge a team of entirely median people cannot win is not shipped — ${MEDIAN_TEAM.winnable ? 'this one passes' : 'this one would be rejected'}.`}
-                  tone="var(--mq-teal)"
+                  tone="var(--jm-teal)"
                 />
               </article>
             </div>
@@ -260,11 +260,11 @@ export default function Challenges() {
             <article className="card card--light" style={{ marginTop: 26 }}>
               <div className="card__head">
                 <h3 className="card__t">What your absence costs your team</h3>
-                <span className="card__tag" style={{ color: 'var(--mq-excellent)' }}>
+                <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
                   measured
                 </span>
               </div>
-              <div className="card__big" style={{ color: 'var(--mq-excellent)' }}>
+              <div className="card__big" style={{ color: 'var(--jm-excellent)' }}>
                 {WITHDRAWAL_COST_TO_TEAM}
               </div>
               <p className="card__note">

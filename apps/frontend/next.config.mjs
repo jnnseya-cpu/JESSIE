@@ -5,9 +5,9 @@ const nextConfig = {
   // source maps and future TS-source consumption working. These were stale
   // (@jessie-os/*) after the rebrand and matched nothing.
   transpilePackages: [
-    '@movequest/shared',
-    '@movequest/body-command',
-    '@movequest/foodlens',
+    '@jessmove/shared',
+    '@jessmove/body-command',
+    '@jessmove/foodlens',
   ],
   poweredByHeader: false,
   // `output: 'standalone'` would produce a smaller image, but in this pnpm

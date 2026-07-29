@@ -12,8 +12,8 @@ import {
   requiredAcus,
   type CostInput,
   type WalletBucket,
-} from '@movequest/body-command';
-import { MIN_TRANSACTION_GBP, assertChargeable } from '@movequest/shared';
+} from '@jessmove/body-command';
+import { MIN_TRANSACTION_GBP, assertChargeable } from '@jessmove/shared';
 
 /**
  * The ACU wallet and Cost Governor.

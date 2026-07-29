@@ -17,7 +17,7 @@ import {
   suppressBelowThreshold,
   K_ANONYMITY_THRESHOLD,
   type Movement,
-} from '@movequest/shared';
+} from '@jessmove/shared';
 
 /**
  * §13.6 / §27 — the Ethical Gamification Charter is asserted here.
