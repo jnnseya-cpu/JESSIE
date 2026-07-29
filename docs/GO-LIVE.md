@@ -444,6 +444,44 @@ dig +short api.jessmove.com    # ghs.googlehosted.com
 **Two addresses on `jessmove.com` means you left a Hostinger parking record behind.**
 Go back to Step 2.
 
+### 8a · "Not secure" on a site that loads
+
+If the site appears but the browser shows **Not secure** with `https` struck through, the
+page is being served but the certificate does not cover the hostname. It is a
+certificate problem, not a deployment problem — and on this setup it is almost always
+caused by the *other* hostname.
+
+Vercel issues one certificate covering every domain attached to the project. If
+`www.jessmove.com` points at Vercel but `jessmove.com` still points somewhere else, the
+apex fails its validation, the certificate order cannot complete, and **`www` is left
+without a valid certificate even though `www` itself is configured correctly**.
+
+Check both, and compare them:
+
+```bash
+dig +short jessmove.com          # must be the IPv4 Vercel shows you
+dig +short www.jessmove.com      # must resolve to Vercel too
+```
+
+If the apex returns something in Hostinger's range — a single address like `2.57.91.91`
+is the parking page — that is your cause. Delete that `A` record on `@` and add the one
+Vercel displays, then press **Refresh** on the domain in Vercel → Settings → Domains.
+The certificate is usually issued within a few minutes of both names resolving.
+
+### 8b · Do not point `api` at Vercel
+
+`api.jessmove.com` belongs to Cloud Run, not Vercel. If it resolves to the same
+addresses as `www`, it has been added to the Vercel project by mistake — remove it
+there, and make it a `CNAME` to `ghs.googlehosted.com` as Step 6c describes. Until
+Cloud Run's domain mapping exists, the correct state for `api` is **no record at all**.
+
+### 8c · Pick a canonical origin and keep the API in step
+
+Whichever of `jessmove.com` and `www.jessmove.com` you make canonical, `CORS_ORIGINS` on
+the Cloud Run service must name **that exact origin**. If the site ends up living on
+`www` while the API allows only the apex, every request from the browser is blocked
+before it leaves, the server logs show nothing, and it looks like the API is down.
+
 ---
 
 ## Step 9 · Prove the whole thing actually works
