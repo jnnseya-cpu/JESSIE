@@ -1,9 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // The shared package is TypeScript source consumed across the workspace.
-  transpilePackages: ['@jessie-os/shared', '@jessie-os/body-command'],
+  // Workspace packages are consumed as built JS, but naming them here keeps
+  // source maps and future TS-source consumption working. These were stale
+  // (@jessie-os/*) after the rebrand and matched nothing.
+  transpilePackages: [
+    '@movequest/shared',
+    '@movequest/body-command',
+    '@movequest/foodlens',
+  ],
   poweredByHeader: false,
+  // `output: 'standalone'` would produce a smaller image, but in this pnpm
+  // workspace it emits a tree whose static assets the server does not resolve.
+  // Rather than ship a Dockerfile that cannot be verified here, the image runs
+  // the ordinary Next production server. Revisit when it can be tested.
 };
 
 export default nextConfig;

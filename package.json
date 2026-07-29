@@ -21,8 +21,12 @@
     "dev": "pnpm --parallel --filter @movequest/backend --filter @movequest/frontend dev",
     "dev:backend": "pnpm --filter @movequest/backend dev",
     "dev:frontend": "pnpm --filter @movequest/frontend dev",
+    "docker:up": "docker compose up --build",
     "docs:sales": "node scripts/build-sales-docx.js",
     "economics": "node --experimental-strip-types scripts/economics-report.mjs",
+    "smoke": "bash scripts/smoke.sh",
+    "start:backend": "node apps/backend/dist/main.js",
+    "start:frontend": "pnpm --filter @movequest/frontend start",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   }

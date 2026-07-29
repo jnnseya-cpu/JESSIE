@@ -1,3 +1,10 @@
+import {
+  CostQuoteDto,
+  CreateWalletDto,
+  SpendDto,
+  SubscriptionDepositDto,
+  TopUpDto,
+} from './acu.dto';
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import {
   ACU_ACTIONS,
@@ -36,7 +43,7 @@ export class AcuController {
 
   /** Price an action before running it. */
   @Post('quote')
-  quote(@Body() cost: CostInput) {
+  quote(@Body() cost: CostQuoteDto) {
     const acus = requiredAcus(cost);
     return {
       acus,
@@ -46,11 +53,8 @@ export class AcuController {
   }
 
   @Post('wallets')
-  create(
-    @Body()
-    body: { subjectType: 'user' | 'family' | 'organisation'; subjectId: string; controls?: SpendControls },
-  ) {
-    return this.wallets.create(body.subjectType, body.subjectId, body.controls);
+  create(@Body() body: CreateWalletDto) {
+    return this.wallets.create(body.subjectType, body.subjectId);
   }
 
   @Get('wallets/:id')
@@ -68,18 +72,18 @@ export class AcuController {
   }
 
   @Post('wallets/:id/subscription')
-  deposit(@Param('id') id: string, @Body() body: { amountPaidGbp: number }) {
+  deposit(@Param('id') id: string, @Body() body: SubscriptionDepositDto) {
     const grant = this.wallets.depositSubscription(id, body.amountPaidGbp);
     return grant ?? { skipped: 'rollover cap reached' };
   }
 
   @Post('wallets/:id/topup')
-  topup(@Param('id') id: string, @Body() body: { amountGbp: number; bonusAcus?: number }) {
+  topup(@Param('id') id: string, @Body() body: TopUpDto) {
     return this.wallets.purchase(id, body.amountGbp, body.bonusAcus ?? 0);
   }
 
   @Post('wallets/:id/spend')
-  spend(@Param('id') id: string, @Body() body: Omit<SpendRequest, 'walletId'>) {
+  spend(@Param('id') id: string, @Body() body: SpendDto) {
     return this.wallets.spend({ ...body, walletId: id });
   }
 }

@@ -1,3 +1,4 @@
+import { BodyAssessmentDto } from './body.dto';
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   BC_AGENTS,
@@ -49,13 +50,13 @@ export class BodyController {
    * alike; what comes back differs by age.
    */
   @Post('assess')
-  assess(@Body() request: BodyAssessmentRequest) {
+  assess(@Body() request: BodyAssessmentDto) {
     return this.body.assess(request);
   }
 
   /** The daily plan — at most six actions, guardian-approved. */
   @Post('plan')
-  plan(@Body() request: BodyAssessmentRequest) {
+  plan(@Body() request: BodyAssessmentDto) {
     return this.body.plan(request);
   }
 }

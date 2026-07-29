@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: movequest
+          POSTGRES_PASSWORD: movequest
+          POSTGRES_DB: movequest
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U movequest"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Database invariants
+        env:
+          DATABASE_URL: postgres://movequest:movequest@localhost:5432/movequest
+        run: |
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          pnpm db:migrate
+          pnpm db:test
+
+      - name: Smoke test the API
+        run: |
+          node apps/backend/dist/main.js &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4000/api/health >/dev/null && break
+            sleep 1
+          done
+          bash scripts/smoke.sh

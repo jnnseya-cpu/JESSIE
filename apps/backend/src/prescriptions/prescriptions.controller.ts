@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { PrescriptionsService, type PrescriptionRequest } from './prescriptions.service';
+import { PrescriptionsService } from './prescriptions.service';
+import { PrescriptionRequestDto } from './prescriptions.dto';
 
 @Controller('prescriptions')
 export class PrescriptionsController {
@@ -10,7 +11,7 @@ export class PrescriptionsController {
    * Returns either a Snap or an explicit hold — never a hard error.
    */
   @Post('next')
-  next(@Body() body: PrescriptionRequest) {
+  next(@Body() body: PrescriptionRequestDto) {
     return this.prescriptions.next(body);
   }
 }

@@ -1,0 +1,62 @@
+# MOVEQUEST — the whole stack, locally.
+#
+#   docker compose up --build
+#
+# Site on :3000, API on :4000, Postgres on :5432 with the schema applied
+# and the constraint tests run on first boot.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: movequest
+      POSTGRES_PASSWORD: movequest
+      POSTGRES_DB: movequest
+    ports: ['5432:5432']
+    volumes:
+      - db:/var/lib/postgresql/data
+      # Applied in filename order on an empty data directory.
+      - ./db/migrations/0001_core.sql:/docker-entrypoint-initdb.d/0001_core.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U movequest -d movequest']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: api
+      CORS_ORIGINS: http://localhost:3000
+      DATABASE_URL: postgres://movequest:movequest@db:5432/movequest
+      # Optional. The gateway skips unconfigured providers rather than failing.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_DEFAULT_PROVIDER: ${AI_DEFAULT_PROVIDER:-anthropic}
+      AI_FALLBACK_ORDER: ${AI_FALLBACK_ORDER:-anthropic,openai,gemini}
+    ports: ['4000:4000']
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  site:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Inlined at build time — rebuild the image to change it.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:4000/api}
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports: ['3000:3000']
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  db:
