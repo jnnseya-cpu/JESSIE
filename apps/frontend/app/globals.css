@@ -3807,3 +3807,45 @@ textarea:focus-visible {
 .card:not(.card--light) .dtable td {
   border-color: var(--jm-divider-d);
 }
+
+/* ---------- PWA prompts ---------- */
+
+/*
+ * Bottom-anchored so it never covers the navigation, and inset by the safe
+ * area so it clears the home indicator on an installed iPhone.
+ */
+.pwa {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  width: min(520px, calc(100vw - 32px));
+  padding: 18px 20px 20px;
+  border-radius: var(--radius);
+  background: var(--jm-navy);
+  color: #eef6f5;
+  border: 1px solid var(--jm-divider-d);
+  box-shadow: 0 18px 46px rgba(16, 42, 67, 0.34);
+  animation: pwa-in 240ms ease-out;
+}
+@keyframes pwa-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pwa { animation: none; }
+}
+.pwa p {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.55;
+  opacity: 0.88;
+}
+.pwa strong { opacity: 1; }
+.pwa__row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pwa .btn { font-size: 14.5px; padding: 10px 16px; }
