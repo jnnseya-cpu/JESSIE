@@ -1,6 +1,6 @@
 B=${1:-http://localhost:4000/api}
 pass=0; fail=0
-t(){ if [ "$1" = GET ]; then c=$(curl -s -o /tmp/r.json -w "%{http_code}" "$B$2");
+t(){ if [ "$1" = GET ] || [ "$1" = DELETE ]; then c=$(curl -s -o /tmp/r.json -w "%{http_code}" -X "$1" "$B$2");
   else c=$(curl -s -o /tmp/r.json -w "%{http_code}" -X "$1" -H 'content-type: application/json' -d "$4" "$B$2"); fi
   if [ "$c" = "$3" ]; then pass=$((pass+1)); printf "  ok    %-4s %-32s %s  %s\n" "$1" "$2" "$c" "$5";
   else fail=$((fail+1)); printf "  FAIL  %-4s %-32s got %s want %s\n" "$1" "$2" "$c" "$3"; head -c 200 /tmp/r.json; echo; fi }
@@ -65,6 +65,11 @@ t POST /stripe/webhook 400 '{"id":"evt_x","type":"invoice.paid"}' "unsigned webh
 t POST /stripe/checkout 400 '{"userId":"u","plan":"premium_monthly","successUrl":"http://x.test/a","cancelUrl":"http://x.test/b"}' "checkout without a key explains itself"
 t POST /mail/preview 201 '{"event":"account.registration.requested","values":{"name":"Sam"}}' "render an email"
 t POST /mail/preview 400 '{"event":"not.a.real.event"}' "unknown event refused"
+t POST /accounts/seed 201 '{}' "seed one account of every kind"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    ->',len(d['personas']),'personas')" 2>/dev/null
+t POST /accounts/seed 201 '{}' "seeding twice adds nothing"
+t DELETE /accounts/profiles/demo_child 200 '' "delete one account"
+t DELETE /accounts/profiles/nobody 404 '' "deleting a stranger is a 404"
 
 echo "safeguarding"
 t POST /body/assess 201 '{"userId":"child","age":12,"heightCm":150,"weightKg":45,"optedIntoBodyMetrics":true}' "child"

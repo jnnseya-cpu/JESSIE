@@ -330,12 +330,83 @@ export class ProfilesService {
     return { slot, media, version: profile.version, exifStripped: true };
   }
 
+  /**
+   * Deletes an account, its profile and its change log.
+   *
+   * A real deletion, not a flag — this is the developer reset, and a
+   * "deleted" account that still occupies its handle makes testing
+   * confusing. Production account closure is a different thing entirely:
+   * a 30-day `closing` grace period, because closure is the one
+   * irreversible action somebody takes while upset.
+   */
+  remove(userId: string): { removed: string; freedHandle: string | null } {
+    const profile = this.profiles.get(userId);
+    if (!this.accounts.has(userId) && !profile) {
+      throw new NotFoundException(`no account "${userId}"`);
+    }
+    const handle = profile?.handle ?? null;
+    this.accounts.delete(userId);
+    this.profiles.delete(userId);
+    this.changeLog.delete(userId);
+    return { removed: userId, freedHandle: handle };
+  }
+
+  /** Wipes everything. Guarded at the controller, not here. */
+  reset(): { removed: number } {
+    const removed = this.accounts.size;
+    this.accounts.clear();
+    this.profiles.clear();
+    this.changeLog.clear();
+    return { removed };
+  }
+
+  /**
+   * A demo cast — one account of every kind, so the platform can be tried
+   * from each side without hand-rolling nine POSTs. Idempotent: existing
+   * personas are left alone rather than erroring.
+   */
+  seed(): { created: string[]; existing: string[] } {
+    const cast: { userId: string; kind: AccountKind; age: number; guardianId?: string }[] = [
+      { userId: 'demo_admin', kind: 'platform_staff', age: 41 },
+      { userId: 'demo_support', kind: 'support_agent', age: 33 },
+      { userId: 'demo_adult', kind: 'adult', age: 34 },
+      { userId: 'demo_later_life', kind: 'adult', age: 74 },
+      { userId: 'demo_guardian', kind: 'guardian', age: 44 },
+      { userId: 'demo_teen', kind: 'minor', age: 15, guardianId: 'demo_guardian' },
+      { userId: 'demo_child', kind: 'minor', age: 11, guardianId: 'demo_guardian' },
+      { userId: 'demo_household', kind: 'household_owner', age: 38 },
+      { userId: 'demo_org_admin', kind: 'organisation_admin', age: 47 },
+      { userId: 'demo_org_member', kind: 'organisation_member', age: 29 },
+      { userId: 'demo_professional', kind: 'professional', age: 36 },
+      { userId: 'demo_partner', kind: 'growth_partner', age: 31 },
+    ];
+
+    const created: string[] = [];
+    const existing: string[] = [];
+
+    for (const member of cast) {
+      if (this.accounts.has(member.userId)) {
+        existing.push(member.userId);
+        continue;
+      }
+      this.createAccount(member.userId, member.kind, member.age, member.guardianId);
+      created.push(member.userId);
+    }
+
+    return { created, existing };
+  }
+
   list() {
     return [...this.profiles.values()].map((p) => ({
       userId: p.userId,
       accountKind: p.accountKind,
+      age: this.accounts.get(p.userId)?.age ?? null,
+      guardianId: this.accounts.get(p.userId)?.guardianId ?? null,
+      displayName: p.displayName,
       handle: p.handle,
       visibility: p.visibility,
+      avatar: p.avatar.kind,
+      cover: p.cover.kind,
       version: p.version,
     }));
   }

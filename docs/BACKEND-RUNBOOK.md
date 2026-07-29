@@ -38,7 +38,7 @@ pnpm --filter @jessmove/backend start
 bash scripts/smoke.sh http://localhost:4000/api
 ```
 
-✅ `pass=65 fail=0`
+✅ `pass=69 fail=0`
 
 *(`health` saying `degraded` is normal — it means no AI key, not a fault.)*
 
@@ -199,7 +199,7 @@ pnpm db:migrate && pnpm db:test
 ## Done when
 
 - [ ] `pnpm -r test` → 279 pass
-- [ ] `scripts/smoke.sh` → 65/65
+- [ ] `scripts/smoke.sh` → 69/69
 - [ ] `/api/stripe/status` → no missing Price IDs
 - [ ] `/api/mail/status` → `configured: true`
 - [ ] A test email arrives, not in spam

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import {
   ACCOUNT_KINDS,
   ACCOUNT_KIND_DEFINITIONS,
@@ -104,6 +104,54 @@ export class AccountsController {
   @Get('profiles')
   list() {
     return this.profiles.list();
+  }
+
+  /**
+   * Delete one account outright.
+   *
+   * This is the developer reset, not the product's account closure. Real
+   * closure is a 30-day `closing` grace period — see ACCOUNT_STATE_TRANSITIONS
+   * — because closing an account is the one irreversible thing somebody
+   * does while upset, and a month to reconsider costs nothing.
+   */
+  @Delete('profiles/:userId')
+  remove(@Param('userId') userId: string) {
+    return this.profiles.remove(userId);
+  }
+
+  /**
+   * Wipe every account.
+   *
+   * Refused when NODE_ENV is production unless ALLOW_ACCOUNT_RESET is
+   * explicitly set. A reset endpoint that works in production is a reset
+   * endpoint that eventually runs there.
+   */
+  @Post('reset')
+  reset() {
+    const production = process.env.NODE_ENV === 'production';
+    const allowed = process.env.ALLOW_ACCOUNT_RESET === 'true';
+    if (production && !allowed) {
+      throw new BadRequestException(
+        'refused in production — set ALLOW_ACCOUNT_RESET=true if you genuinely mean it',
+      );
+    }
+    return { ...this.profiles.reset(), environment: process.env.NODE_ENV ?? 'development' };
+  }
+
+  /**
+   * Create one account of every kind, so the platform can be tried from
+   * each side. Idempotent — running it twice adds nothing.
+   */
+  @Post('seed')
+  seed() {
+    const result = this.profiles.seed();
+    return {
+      ...result,
+      personas: this.profiles.list(),
+      note:
+        'Try any of these at /try on the site. There is no authentication yet, so this is a ' +
+        'role-switching harness rather than a login.',
+    };
   }
 
   @Get('profiles/:userId')

@@ -239,6 +239,7 @@ const FOOT_NAV: ReadonlyArray<{
     links: [
       { href: '/developers', label: 'Developers' },
       { href: '/communications', label: 'Communication events' },
+      { href: '/try', label: 'Try it as…' },
       { href: '/status', label: 'Platform status' },
       { href: '/policies', label: 'All policies' },
       { href: '/terms', label: 'Terms of Service' },
