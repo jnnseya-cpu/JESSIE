@@ -313,6 +313,46 @@ vercel login
 vercel link          # scope: your account · project: jessmove
 ```
 
+### 7a · Set the Root Directory first — this is the one that bites
+
+**Vercel dashboard → your project → Settings → Build and Deployment → Root
+Directory → `apps/frontend`.** Then redeploy.
+
+This is a monorepo with five workspace packages. If the Root Directory is anything else,
+Vercel installs the wrong project's dependencies and the build fails with:
+
+```
+Warning: Could not identify Next.js version, ensure it is defined as a project dependency.
+Error: No Next.js version detected.
+```
+
+That message is misleading — `next` **is** a dependency, in
+`apps/frontend/package.json`. Vercel was looking somewhere else. If the install log lists
+`@nestjs/common` and `openai`, the Root Directory is pointing at `apps/backend`, which is
+the API and has no Next.js in it by design.
+
+Two consequences worth knowing:
+
+- Vercel reads `vercel.json` **from the Root Directory**, not from the repository root.
+  The config that matters is `apps/frontend/vercel.json`, and it is the only one in the
+  repository.
+- Leave **"Include source files outside of the Root Directory"** switched on. It is the
+  default, and the build needs it — `apps/frontend` imports three workspace packages that
+  live outside its own folder.
+
+The build command in that file compiles the three workspace packages before running
+`next build`, which is why `shared`, `body-command` and `foodlens` need no deployment of
+their own:
+
+```
+pnpm --filter @jessmove/shared build
+  && pnpm --filter @jessmove/body-command build
+  && pnpm --filter @jessmove/foodlens build
+  && next build
+```
+
+### 7b · Set the API address, then build
+
 **Set the API address before the first production build.** `NEXT_PUBLIC_*` values are
 baked into the JavaScript at build time — they are not read at runtime. Setting this
 afterwards does nothing until you rebuild.
