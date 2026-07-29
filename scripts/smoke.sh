@@ -10,7 +10,7 @@ DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNor
 SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
 
 echo "reads"
-for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries; do t GET $p 200; done
+for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder; do t GET $p 200; done
 echo "writes - valid"
 t POST /prescriptions/next 201 "$GOOD" "the core call"
 t POST /prescriptions/next 201 "$DRIVING" "driving: expect a hold"
@@ -39,6 +39,17 @@ python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> d
 t POST /comms/send 201 '{"event":"privacy.breach_notification","to":{"userId":"a","age":52,"presence":"off","consentedChannels":[],"inQuietHours":true,"contextHeld":true,"coachingSentToday":9,"dailyCap":6,"hasGuardian":false}}' "send it"
 t POST /comms/preview 404 '{"event":"not.a.real.event","to":{"userId":"a","age":30,"presence":"full","consentedChannels":["in_app"],"inQuietHours":false,"contextHeld":false,"coachingSentToday":0,"dailyCap":6,"hasGuardian":false}}' "unknown event"
 t POST /comms/preview 400 '{"event":"snap.offered","to":{"userId":"a","age":4,"presence":"full","consentedChannels":["in_app"],"inQuietHours":false,"contextHeld":false,"coachingSentToday":0,"dailyCap":6,"hasGuardian":false}}' "age below 10 rejected"
+
+echo "growth partner programme"
+t POST /growth/commission 201 '{"paymentReceivedGbp":2400,"taxGbp":400,"paymentFeesGbp":58.4,"refundsGbp":120,"kind":"approved_influencer","verifiedPaidReferrals":0,"lifetimeAlreadyPaidGbp":0}' "influencer, paid on net"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> net',d['netRevenueGbp'],'| commission',d['commissionGbp'])" 2>/dev/null
+t POST /growth/commission 201 '{"paymentReceivedGbp":2400,"kind":"normal","verifiedPaidReferrals":13,"lifetimeAlreadyPaidGbp":0}' "13 referrals: no cash yet"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> commission',d['commissionGbp'],'| eligible',d['eligible'])" 2>/dev/null
+t POST /growth/trust 201 '{"signals":["same_payment_card"]}' "shared card is disqualifying"
+python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> verdict',d['verdict'])" 2>/dev/null
+t POST /growth/payout 201 '{"balanceGbp":18,"kycComplete":true,"oldestEarningAgeDays":60}' "below the payout floor"
+t POST /growth/trust 400 '{"signals":["not_a_signal"]}' "unknown trust signal rejected"
+t POST /growth/commission 400 '{"paymentReceivedGbp":-5,"kind":"normal","verifiedPaidReferrals":0,"lifetimeAlreadyPaidGbp":0}' "negative revenue rejected"
 
 echo "safeguarding"
 t POST /body/assess 201 '{"userId":"child","age":12,"heightCm":150,"weightKg":45,"optedIntoBodyMetrics":true}' "child"

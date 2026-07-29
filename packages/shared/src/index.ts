@@ -28,3 +28,4 @@ export * from './ai';
 export * from './api';
 export * from './blog';
 export * from './communications';
+export * from './growth';

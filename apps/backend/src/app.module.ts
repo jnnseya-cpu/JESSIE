@@ -6,6 +6,7 @@ import { BlogModule } from './blog/blog.module';
 import { BodyModule } from './body/body.module';
 import { CommsModule } from './comms/comms.module';
 import { ContextModule } from './context/context.module';
+import { GrowthModule } from './growth/growth.module';
 import { HealthModule } from './health/health.module';
 import { MovementsModule } from './movements/movements.module';
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
@@ -19,6 +20,7 @@ import { PrescriptionsModule } from './prescriptions/prescriptions.module';
     BodyModule,
     CommsModule,
     ContextModule,
+    GrowthModule,
     MovementsModule,
     PrescriptionsModule,
     HealthModule,

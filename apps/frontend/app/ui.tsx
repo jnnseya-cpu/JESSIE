@@ -230,6 +230,7 @@ const FOOT_NAV: ReadonlyArray<{
       { href: '/about', label: 'About' },
       { href: '/blog', label: 'Blog' },
       { href: '/growth', label: 'Growth & Influencers' },
+      { href: '/partner-programme', label: 'Growth Partner Programme' },
       { href: '/contact', label: 'Contact' },
     ],
   },
