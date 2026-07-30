@@ -28,6 +28,19 @@ import { WalletService } from '../acu/wallet.service';
 
 const STRIPE_API = 'https://api.stripe.com/v1';
 
+/**
+ * The slice of the fetch Response this service reads, declared locally.
+ * Which global `Response` type the compiler resolves varies by toolchain
+ * (Vercel's NestJS builder resolves Express's, which has none of these);
+ * naming the shape here makes the build independent of that choice.
+ */
+interface FetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly statusText: string;
+  json(): Promise<unknown>;
+}
+
 export interface SubscriptionRecord {
   subscriptionId: string;
   customerId: string;
@@ -98,7 +111,7 @@ export class StripeService {
     const body = new URLSearchParams(params).toString();
     const url = method === 'GET' ? `${STRIPE_API}${path}?${body}` : `${STRIPE_API}${path}`;
 
-    const response = await fetch(url, {
+    const response = (await fetch(url, {
       method,
       headers: {
         authorization: `Bearer ${this.secretKey()}`,
@@ -107,7 +120,7 @@ export class StripeService {
         'idempotency-key': `${path}:${body}`.slice(0, 255),
       },
       body: method === 'POST' ? body : undefined,
-    });
+    })) as unknown as FetchResponse;
 
     const json = (await response.json()) as Record<string, unknown>;
     if (!response.ok) {
