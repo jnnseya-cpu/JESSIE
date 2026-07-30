@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { StorageService } from '../storage/storage.service';
+import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
 import {
   ACCOUNT_KIND_DEFINITIONS,
   AVATAR_CONSTRAINT,
@@ -60,6 +62,8 @@ const emptyMedia = (kind: ProfileMedia['kind']): ProfileMedia => ({
 
 @Injectable()
 export class ProfilesService {
+  constructor(private readonly storage: StorageService) {}
+
   private readonly accounts = new Map<string, Account>();
   private readonly profiles = new Map<string, Profile>();
   /** Field-level record of what has changed since a given version. */
@@ -309,16 +313,47 @@ export class ProfilesService {
     };
   }
 
-  /** Attach an already-validated upload. Lands in `pending`, always. */
-  attachUpload(userId: string, slot: 'avatar' | 'cover', age: number, candidate: ImageCandidate) {
-    const check = this.checkUpload(slot, age, candidate);
+  /**
+   * The real upload. Dimensions are sniffed from the bytes rather than
+   * taken from the client, metadata is stripped before storage, and the
+   * result lands in `pending` moderation — always.
+   */
+  async attachUpload(
+    userId: string,
+    slot: 'avatar' | 'cover',
+    age: number,
+    mimeType: string,
+    bytes: Buffer,
+  ) {
+    const sniffed = sniffImage(bytes);
+    if (!sniffed.format) {
+      throw new BadRequestException('that file is not a JPEG, PNG or WebP image');
+    }
+    const expected = `image/${sniffed.format}`;
+    if (expected !== mimeType) {
+      throw new BadRequestException(
+        `the file's bytes say ${expected} but the declared type is ${mimeType} — refused, because a mismatch is how a disguised file gets in`,
+      );
+    }
+
+    const check = this.checkUpload(slot, age, {
+      mimeType,
+      bytes: bytes.length,
+      widthPx: sniffed.widthPx,
+      heightPx: sniffed.heightPx,
+    });
     if (!check.ok) throw new BadRequestException(check.reasons.join('; '));
+
+    const stripped = stripImageMetadata(bytes);
+    const key = randomUUID();
+    const stored = await this.storage.put(key, stripped, mimeType);
 
     const profile = this.profile(userId);
     const mutable = profile as unknown as Record<string, unknown>;
     const media: ProfileMedia = {
       kind: 'photo',
-      assetId: randomUUID(),
+      assetId: key,
+      url: stored.url,
       preset: null,
       moderation: 'pending',
       updatedAt: now(),
@@ -327,7 +362,15 @@ export class ProfilesService {
     mutable.version = profile.version + 1;
     mutable.updatedAt = now();
 
-    return { slot, media, version: profile.version, exifStripped: true };
+    return {
+      slot,
+      media,
+      version: profile.version,
+      storage: stored.driver,
+      sniffed: { widthPx: sniffed.widthPx, heightPx: sniffed.heightPx, format: sniffed.format },
+      bytesRemoved: bytes.length - stripped.length,
+      exifStripped: true,
+    };
   }
 
   /**

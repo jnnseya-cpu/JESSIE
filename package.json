@@ -16,7 +16,7 @@
     "build:frontend": "pnpm --filter @jessmove/frontend build",
     "build:shared": "pnpm --filter @jessmove/shared build",
     "clean": "rm -rf packages/*/dist apps/backend/dist apps/frontend/.next node_modules/.cache",
-    "db:migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/migrations/0001_core.sql",
+    "db:migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/migrations/0001_core.sql -f db/migrations/0002_identity.sql",
     "db:test": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/test/constraints.sql",
     "dev": "pnpm --parallel --filter @jessmove/backend --filter @jessmove/frontend dev",
     "dev:backend": "pnpm --filter @jessmove/backend dev",

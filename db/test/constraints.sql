@@ -154,4 +154,46 @@ VALUES ('11111111-1111-1111-1111-111111111111',
 
 SELECT 'ok   — a valid Snap, context decision and k=12 report all insert';
 
+
+-- ------------------------------------------------------------
+-- 0002 — identity
+-- ------------------------------------------------------------
+
+SELECT must_reject(
+  $q$ INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+      VALUES ('t_1','kid@example.com','x','adult',15,NULL,'Kid') $q$,
+  'an under-18 cannot hold an adult account');
+
+SELECT must_reject(
+  $q$ INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+      VALUES ('t_2','kid2@example.com','x','minor',15,NULL,'Kid') $q$,
+  'a minor without a guardian link is rejected');
+
+SELECT must_reject(
+  $q$ INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+      VALUES ('t_3','MiXeD@Example.com','x','adult',30,NULL,'Cased') $q$,
+  'a non-lowercase email is rejected');
+
+SELECT must_reject(
+  $q$ INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+      VALUES ('t_4','self@example.com','x','minor',15,'t_4','Self') $q$,
+  'nobody is their own guardian');
+
+SELECT must_reject(
+  $q$ INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+      VALUES ('t_5','young@example.com','x','minor',8,'g_1','Too young') $q$,
+  'an age below 10 is rejected');
+
+INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+VALUES ('t_ok_g','guardian@example.com','x','guardian',44,NULL,'A Guardian');
+INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+VALUES ('t_ok_m','teen@example.com','x','minor',15,'t_ok_g','A Teen');
+
+SELECT must_reject(
+  $q$ INSERT INTO app_users (user_id,email,password_hash,kind,age,guardian_id,display_name)
+      VALUES ('t_6','TEEN@example.com','x','adult',30,NULL,'Duplicate') $q$,
+  'a duplicate email is rejected regardless of case');
+
+SELECT 'ok   — a guardian and a linked minor both insert';
+
 ROLLBACK;

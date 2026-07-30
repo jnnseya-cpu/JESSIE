@@ -9,7 +9,7 @@ async function bootstrap(): Promise<void> {
   // rawBody keeps the untouched request body available on req.rawBody.
   // The Stripe webhook signature is computed over the exact bytes Stripe
   // sent, so a parsed-and-reserialised body would never verify.
-  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true, bodyParser: false });
   configureApp(app);
   app.enableShutdownHooks();
 

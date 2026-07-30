@@ -44,6 +44,14 @@ export class MediaCheckDto {
   @IsInt() @Min(0) @Max(50_000) heightPx!: number;
 }
 
+export class UploadMediaDto {
+  @IsIn(['avatar', 'cover']) slot!: 'avatar' | 'cover';
+  @IsInt() @Min(10) @Max(120) age!: number;
+  @IsString() @MaxLength(100) mimeType!: string;
+  /** The file, base64-encoded. ~15MB of base64 covers the 10MB cover limit. */
+  @IsString() @MinLength(8) @MaxLength(15_000_000) dataBase64!: string;
+}
+
 export class CreateAccountDto {
   @IsString() @MaxLength(120) userId!: string;
   @IsIn(ACCOUNT_KINDS) kind!: AccountKind;

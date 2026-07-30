@@ -37,7 +37,7 @@ pnpm --filter @jessmove/backend start
 bash scripts/smoke.sh http://localhost:4000/api
 ```
 
-✅ `pass=69 fail=0`
+✅ `pass=71 fail=0`
 
 *(`health` saying `degraded` is normal — it means no AI key, not a fault.)*
 
@@ -160,7 +160,7 @@ website, second project, and `api.jessmove.com` already points at Vercel.
    bash scripts/smoke.sh https://<project>.vercel.app/api
    ```
 
-   ✅ `pass=69 fail=0`
+   ✅ `pass=71 fail=0`
 
 5. Project → **Settings → Domains** → add `api.jessmove.com`. The DNS record already
    points at Vercel, so it attaches and the certificate is automatic.
@@ -215,23 +215,68 @@ Open the `url`, pay with `4242 4242 4242 4242`, any future expiry, any CVC.
 
 ---
 
-## 7 · Database (optional for now)
+## 7 · Storage — both kinds, inside Vercel
 
-Without `DATABASE_URL` everything works in memory and nothing survives a restart.
+Backend Vercel project → **Storage** tab:
+
+1. **Create a Postgres database** (Neon, through Vercel — still your Vercel account and
+   bill). Connect it to the project: `DATABASE_URL` injects itself. Then apply the
+   schema from your machine:
+
+   ```bash
+   export DATABASE_URL='<the value Vercel shows>'
+   pnpm db:migrate && pnpm db:test
+   ```
+
+   ✅ **21 rejections** — every safeguarding rule proven to refuse its violating write,
+   including the identity rules: an under-18 cannot hold an adult account, a minor
+   without a guardian is refused, a duplicate email is refused regardless of case.
+
+2. **Create a Blob store** and connect it: `BLOB_READ_WRITE_TOKEN` injects itself, and
+   profile pictures start landing in Vercel Blob instead of memory. Every upload has
+   its dimensions read from the bytes, its EXIF (including GPS) stripped before
+   storage, and starts in `pending` moderation.
+
+Check both from outside:
 
 ```bash
-export DATABASE_URL='postgres://…?sslmode=require'
-pnpm db:migrate && pnpm db:test
+curl -s https://api.jessmove.com/api/accounts/storage/status   # driver: vercel-blob
+curl -s https://api.jessmove.com/api/auth/status               # userStore: postgres
 ```
 
-✅ 14 rejections.
+---
+
+## 8 · Auth
+
+Two environment variables on the backend project:
+
+| Name | Value |
+|---|---|
+| `AUTH_SECRET` | 32+ random characters — `openssl rand -base64 48` makes one |
+| `COOKIE_DOMAIN` | `.jessmove.com` |
+
+That enables `/account` on the site: register, sign in, sign out. The rules it
+enforces, all server-side:
+
+- **Age decides the kind.** Under 18 registers as a minor; the signup form cannot ask
+  for, and the database cannot store, an under-18 adult. Elevated kinds (staff, org
+  admin) are never self-service.
+- **A minor needs a guardian email and starts dark** until the guardian confirms.
+- **One login error message.** Wrong email and wrong password are the same sentence and
+  take the same time, so the form does not leak which emails exist.
+- **The session is an httpOnly cookie** signed with `AUTH_SECRET` — page JavaScript
+  never sees the token. Passwords are scrypt-hashed with per-user salts.
+
+`AUTH_ENFORCE=true` additionally locks the protected endpoints to signed-in sessions —
+leave it off while /try and /console are in use, and turn it on before real users.
+`/auth/status` always reports which mode you are in.
 
 ---
 
 ## Done when
 
-- [ ] `pnpm -r test` → 279 pass
-- [ ] `scripts/smoke.sh` → 69/69
+- [ ] `pnpm -r test` → 295 pass
+- [ ] `scripts/smoke.sh` → 71/71
 - [ ] `/api/stripe/status` → no missing Price IDs
 - [ ] `/api/mail/status` → `configured: true`
 - [ ] A test email arrives, not in spam
@@ -241,15 +286,16 @@ pnpm db:migrate && pnpm db:test
 
 ---
 
-## Not built yet
+## What is still in memory
 
-Three gaps, said plainly:
+Honest ledger, updated:
 
-1. **Object storage for profile pictures.** Validation, EXIF-stripping and moderation
-   state are done; the bytes are not written anywhere yet.
-2. **The repository layer.** Services keep state in memory. The Postgres schema exists and
-   its invariants are tested, but the services do not read from it.
-3. **Authentication.** No login, no sessions, no tokens. Fine for a private pilot,
-   **not acceptable in front of real users.**
-
-The first two are plumbing. The third is a gate before any public launch.
+- ~~Object storage~~ **Done.** Uploads are sniffed, stripped of EXIF/GPS, and stored in
+  Vercel Blob (memory locally). Pending moderation, always.
+- ~~Authentication~~ **Done.** Registration, login, sessions, guardian gating — users in
+  Postgres when `DATABASE_URL` is set, and registration survives restarts.
+- **Still memory:** profiles' editable fields, wallets, and the webhook's duplicate-event
+  memory. The user record is durable; the rest of a profile is not yet. That is the next
+  slice of the repository layer, and the schema it lands in already exists and is tested.
+- **Guardian confirmation email flow** — the link is recorded and the account held; the
+  confirmation email itself is the next piece of the comms wiring.

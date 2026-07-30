@@ -450,6 +450,8 @@ export interface ProfileMedia {
   readonly kind: AvatarKind | CoverKind;
   /** Set for uploads. Null when the kind is illustrated, pattern, initials or none. */
   readonly assetId: string | null;
+  /** Where the stored object is served from. Only uploads have one. */
+  readonly url?: string | null;
   /** Set for curated choices. Null for uploads. */
   readonly preset: string | null;
   readonly moderation: ModerationState;

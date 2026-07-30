@@ -33,7 +33,7 @@ import { configureApp } from './setup';
 let cached: Promise<Express> | null = null;
 
 async function bootstrap(): Promise<Express> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true, bodyParser: false });
   configureApp(app);
   await app.init();
   return app.getHttpAdapter().getInstance() as Express;

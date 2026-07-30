@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ACCOUNT_KINDS,
   ACCOUNT_KIND_DEFINITIONS,
@@ -24,12 +25,22 @@ import {
   profilePolicy,
   type ViewerRelationship,
 } from '@jessmove/shared';
-import { CreateAccountDto, MediaCheckDto, SaveDto } from './accounts.dto';
+import { CreateAccountDto, MediaCheckDto, SaveDto, UploadMediaDto } from './accounts.dto';
+import { StorageService } from '../storage/storage.service';
 import { ProfilesService } from './profiles.service';
 
 @Controller('accounts')
 export class AccountsController {
-  constructor(private readonly profiles: ProfilesService) {}
+  constructor(
+    private readonly profiles: ProfilesService,
+    private readonly storage: StorageService,
+  ) {}
+
+  /** Which storage driver is live. Safe to expose; carries no secret. */
+  @Get('storage/status')
+  storageStatus() {
+    return this.storage.status();
+  }
 
   /** Every account kind, what it may do and what verifies it. */
   @Get('kinds')
@@ -186,13 +197,28 @@ export class AccountsController {
     });
   }
 
+  /**
+   * The real upload. Dimensions come from the bytes, not the request;
+   * metadata is stripped before storage; the result is pending moderation.
+   */
   @Post('profiles/:userId/media')
-  attach(@Param('userId') userId: string, @Body() body: MediaCheckDto) {
-    return this.profiles.attachUpload(userId, body.slot, body.age, {
-      mimeType: body.mimeType,
-      bytes: body.bytes,
-      widthPx: body.widthPx,
-      heightPx: body.heightPx,
-    });
+  async attach(@Param('userId') userId: string, @Body() body: UploadMediaDto) {
+    let bytes: Buffer;
+    try {
+      bytes = Buffer.from(body.dataBase64, 'base64');
+    } catch {
+      throw new BadRequestException('dataBase64 is not valid base64');
+    }
+    if (bytes.length === 0) throw new BadRequestException('the file is empty');
+    return this.profiles.attachUpload(userId, body.slot, body.age, body.mimeType, bytes);
+  }
+
+  /** Serves memory-driver objects in development. 404 under Vercel Blob. */
+  @Get('media/local/:key')
+  local(@Param('key') key: string, @Res() res: Response) {
+    const hit = this.storage.local(key);
+    res.setHeader('content-type', hit.contentType);
+    res.setHeader('cache-control', 'private, max-age=60');
+    res.send(hit.bytes);
   }
 }
