@@ -137,22 +137,26 @@ twice.
 
 ## 5 · Deploy the API — on Vercel, no CLI, no new vendor
 
-The API runs as one Vercel function (`apps/backend/api/index.js`). Same account as the
-website, second project, and `api.jessmove.com` already points at Vercel.
+Vercel detects NestJS on its own now: it finds `src/main.ts`, builds it, and runs the
+whole API as one function. Same account as the website, second project, and
+`api.jessmove.com` already points at Vercel.
 
 1. vercel.com → **Add New → Project** → pick the same `JESSIE` repository again.
-2. **Root Directory: `apps/backend`** · Framework preset: **Other**. Leave build and
-   output alone — `apps/backend/vercel.json` carries them.
+2. **Root Directory: `apps/backend`** · Framework preset: **NestJS** if it's offered,
+   otherwise **Other** — detection works either way. Leave build and output alone —
+   `apps/backend/vercel.json` carries them.
 3. **Environment variables** — paste these into this project (the website's variables
    do not carry over):
 
    | Name | Value |
    |---|---|
-   | `NODEJS_HELPERS` | `0` ← **required** — without it the Stripe webhook cannot see the raw body |
    | `CORS_ORIGINS` | `https://jessmove.com,https://www.jessmove.com` |
    | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, the 5 `STRIPE_PRICE_*` | your values |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | your values |
    | one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | your value |
+
+   *(If you added `NODEJS_HELPERS=0` earlier: it belonged to the old deployment shape.
+   It is harmless — leave it or delete it, nothing changes.)*
 
 4. **Deploy.** You get `https://<project>.vercel.app`. Prove it:
 

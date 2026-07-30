@@ -6,10 +6,10 @@ import { SignatureInterceptor } from './common/signature.interceptor';
  * Everything that makes the app the JESS MOVE API, independent of how it
  * is served.
  *
- * Two entry points call this: `main.ts` (a long-running server — local,
- * Docker, a VPS) and `serverless.ts` (one Vercel function). Splitting the
- * configuration out is what stops the two from drifting: a pipe added in
- * one place used to be a pipe silently missing from the other.
+ * `main.ts` is the only entry point — locally it listens on :4000, and on
+ * Vercel the platform's NestJS support finds `src/main.ts`, builds it, and
+ * runs the same listening server as a function. One entry point, one
+ * configuration, nothing to drift.
  */
 export function configureApp(app: INestApplication): INestApplication {
   // Uploads arrive as base64 inside JSON; the 12mb ceiling covers the 10MB
