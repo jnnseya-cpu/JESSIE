@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { NEVER_CLAIM } from '@jessmove/foodlens';
 import {
   AGE_MODES,
   AGE_MODE_DEFINITIONS,
   BRAND,
   CONSENT_SCOPES,
+  EVALUATED_SAFETY_RULES,
   FLAGSHIP_PROMISE,
   K_ANONYMITY_THRESHOLD,
   MOVEMENT_VARIANTS,
@@ -277,8 +279,8 @@ export default function Home() {
               <div className="snapcard__foot">
                 <Tick />
                 <span>
-                  14 safety rules evaluated · calendar titles never left your device · expires
-                  15:00
+                  {EVALUATED_SAFETY_RULES.length} safety rules evaluated · calendar titles never
+                  left your device · expires 15:00
                 </span>
               </div>
             </div>
@@ -704,8 +706,8 @@ export default function Home() {
                 />
                 <Stat
                   k="Never claimed"
-                  v="5 things"
-                  sub="Allergen absence from appearance, microbial safety from an image, any diagnosis, an exact calorie count from a photo, or that movement cancels out food."
+                  v={`${NEVER_CLAIM.length} things`}
+                  sub="Allergen absence from appearance, microbial safety from an image, any diagnosis, an exact calorie count from a photo, medical treatment advice, that movement cancels out food, a composite health score, or a comparison against another person."
                   tone="var(--jm-coral)"
                 />
               </article>

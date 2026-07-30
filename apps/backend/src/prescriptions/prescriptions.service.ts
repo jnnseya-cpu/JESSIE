@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
   AGE_MODE_DEFINITIONS,
+  EVALUATED_SAFETY_RULES,
   MAX_WEEKLY_ESCALATION,
   SNAP_DURATION_SECONDS,
   sparksFor,
@@ -117,7 +118,7 @@ export class PrescriptionsService {
       dose: { durationSeconds, rounds: durationSeconds > 180 ? 2 : 1, tempo: 'slow' },
       expectedRpe,
       why: this.explain(decision, durationSeconds),
-      safety: { verdict: 'allow', substitutedFrom: null, rulesEvaluated: 14 },
+      safety: { verdict: 'allow', substitutedFrom: null, rulesEvaluated: EVALUATED_SAFETY_RULES.length },
       sparksEstimate: sparksFor({
         durationSeconds,
         rpe: expectedRpe,

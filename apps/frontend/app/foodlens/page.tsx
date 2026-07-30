@@ -773,7 +773,7 @@ export default function FoodLens() {
           <div className="wrap">
             <div className="section__head">
               <p className="eyebrow eyebrow--onDark">The boundary</p>
-              <h2>Seven things FoodLens will never claim.</h2>
+              <h2>{NEVER_CLAIM.length} things FoodLens will never claim.</h2>
             </div>
 
             <div className="tiles">

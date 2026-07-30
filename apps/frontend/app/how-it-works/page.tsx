@@ -264,7 +264,7 @@ export default function HowItWorks() {
 
             <h3 style={{ margin: '44px 0 14px', fontSize: 22 }}>Team Score</h3>
             <p className="lede" style={{ marginBottom: 18 }}>
-              {TEAM_SCORE_TERMS.join(' + ')}. Physical capability is absent by design — that is
+              {TEAM_SCORE_TERMS.map((t) => t.label).join(' + ')}. Physical capability is absent by design — that is
               what lets a ten-year-old, a wheelchair user and an eighty-eight-year-old share one
               leaderboard fairly.
             </p>

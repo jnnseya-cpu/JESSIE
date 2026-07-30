@@ -105,3 +105,27 @@ export function completionRate(snaps: readonly Snap[]): number {
   );
   return completed.length / delivered.length;
 }
+
+/**
+ * The safety rules the prescription path evaluates on every single call —
+ * enumerated so the number the product quotes ("14 safety rules
+ * evaluated") is the length of this list rather than a figure that can
+ * drift from the code. Rules 1–8 are the hard blocks in the context
+ * evaluation; 9–14 are applied by the prescription service itself.
+ */
+export const EVALUATED_SAFETY_RULES = [
+  { id: 'driving_or_cycling', rule: 'Never prompt someone who is driving or cycling.' },
+  { id: 'on_call', rule: 'Never prompt during a call.' },
+  { id: 'in_lesson', rule: 'Never prompt a pupil during a lesson.' },
+  { id: 'clinically_flagged_rest', rule: 'Never prompt during clinically flagged rest.' },
+  { id: 'sleep_window', rule: 'Never prompt between 22:00 and 06:00.' },
+  { id: 'quiet_hours', rule: 'Never prompt inside the user’s own quiet hours.' },
+  { id: 'daily_cap', rule: 'Never exceed the mode’s daily cap.' },
+  { id: 'cooldown_interval', rule: 'Never re-prompt inside the minimum interval.' },
+  { id: 'consent_basis', rule: 'No consented signal, no prompt — defer, never guess.' },
+  { id: 'permitted_variants_only', rule: 'Only variants the capability profile permits; never widened.' },
+  { id: 'no_uninvited_progression', rule: 'Never promote to a harder variant to drive progression.' },
+  { id: 'rpe_ceiling', rule: 'Prescribed effort never exceeds RPE 4.' },
+  { id: 'duration_range', rule: '90–300 seconds, inside the mode’s range, escalating ≤7% a week.' },
+  { id: 'expiry', rule: 'Every prescription expires, so a stale prompt cannot fire.' },
+] as const;
