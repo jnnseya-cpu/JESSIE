@@ -8,6 +8,7 @@ import { BlogModule } from './blog/blog.module';
 import { BodyModule } from './body/body.module';
 import { CommsModule } from './comms/comms.module';
 import { ContextModule } from './context/context.module';
+import { DbModule } from './db/db.module';
 import { GrowthModule } from './growth/growth.module';
 import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
@@ -26,6 +27,7 @@ import { StripeModule } from './stripe/stripe.module';
     BodyModule,
     CommsModule,
     ContextModule,
+    DbModule,
     GrowthModule,
     MailModule,
     MovementsModule,

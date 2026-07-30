@@ -37,7 +37,7 @@ pnpm --filter @jessmove/backend start
 bash scripts/smoke.sh http://localhost:4000/api
 ```
 
-✅ `pass=71 fail=0`
+✅ `pass=73 fail=0`
 
 *(`health` saying `degraded` is normal — it means no AI key, not a fault.)*
 
@@ -160,7 +160,7 @@ website, second project, and `api.jessmove.com` already points at Vercel.
    bash scripts/smoke.sh https://<project>.vercel.app/api
    ```
 
-   ✅ `pass=71 fail=0`
+   ✅ `pass=73 fail=0`
 
 5. Project → **Settings → Domains** → add `api.jessmove.com`. The DNS record already
    points at Vercel, so it attaches and the certificate is automatic.
@@ -219,30 +219,39 @@ Open the `url`, pay with `4242 4242 4242 4242`, any future expiry, any CVC.
 
 Backend Vercel project → **Storage** tab:
 
-1. **Create a Postgres database** (Neon, through Vercel — still your Vercel account and
-   bill). Connect it to the project: `DATABASE_URL` injects itself. Then apply the
-   schema from your machine:
+Both live **inside Vercel** — same dashboard, same account, same bill. Nothing new to
+sign up for.
 
-   ```bash
-   export DATABASE_URL='<the value Vercel shows>'
-   pnpm db:migrate && pnpm db:test
-   ```
+1. **Create a Postgres database** and connect it to the backend project:
+   `DATABASE_URL` injects itself. Press **Redeploy** (Deployments → ⋯ → Redeploy).
 
-   ✅ **21 rejections** — every safeguarding rule proven to refuse its violating write,
-   including the identity rules: an under-18 cannot hold an adult account, a minor
-   without a guardian is refused, a duplicate email is refused regardless of case.
+   **That's it — there is no terminal step.** The backend applies its own schema on
+   startup and records what it did. Open these in your browser to see the proof:
+
+   | Open | Expect |
+   |---|---|
+   | `https://api.jessmove.com/api/db/status` | `"upToDate": true` and both migrations listed |
+   | `https://api.jessmove.com/api/db/verify` | `"passed": 21, "allEnforced": true` |
+
+   The second one replays every safeguarding rule against the live database — an
+   under-18 cannot hold an adult account, a minor without a guardian is refused, a
+   duplicate email is refused regardless of case, a report under k=8 is refused —
+   and rolls itself back, so it never touches real data.
 
 2. **Create a Blob store** and connect it: `BLOB_READ_WRITE_TOKEN` injects itself, and
    profile pictures start landing in Vercel Blob instead of memory. Every upload has
    its dimensions read from the bytes, its EXIF (including GPS) stripped before
    storage, and starts in `pending` moderation.
 
-Check both from outside:
+Check the rest from the browser too:
 
-```bash
-curl -s https://api.jessmove.com/api/accounts/storage/status   # driver: vercel-blob
-curl -s https://api.jessmove.com/api/auth/status               # userStore: postgres
 ```
+https://api.jessmove.com/api/accounts/storage/status   → driver: vercel-blob
+https://api.jessmove.com/api/auth/status               → userStore: postgres
+```
+
+*(For developers with a local database: `pnpm db:migrate && pnpm db:test` still exist,
+now pure Node — no psql needed.)*
 
 ---
 
@@ -276,7 +285,7 @@ leave it off while /try and /console are in use, and turn it on before real user
 ## Done when
 
 - [ ] `pnpm -r test` → 295 pass
-- [ ] `scripts/smoke.sh` → 71/71
+- [ ] `scripts/smoke.sh` → 73/73
 - [ ] `/api/stripe/status` → no missing Price IDs
 - [ ] `/api/mail/status` → `configured: true`
 - [ ] A test email arrives, not in spam
