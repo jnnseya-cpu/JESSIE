@@ -1,5 +1,5 @@
 /**
- * §9 — The Agent Registry. Twenty-eight agents.
+ * §9 — The Agent Registry. Twenty-nine agents.
  *
  * Orchestration is LangGraph state machines over a NestJS agent runtime.
  * Every agent is a typed node with a declared input contract, output
@@ -39,6 +39,7 @@ export const AGENT_CODES = [
   'STEW',
   'SEO',
   'COMMS',
+  'LENS',
 ] as const;
 export type AgentCode = (typeof AGENT_CODES)[number];
 
@@ -100,9 +101,11 @@ export const AGENT_REGISTRY: Readonly<Record<AgentCode, AgentDefinition>> = {
   SEO: { code: 'SEO', name: 'Editorial & SEO', trigger: 'editorial calendar, topic gap', output: 'Post draft, metadata and a deterministic SEO audit — never a published page', escalatesTo: 'human', modelClass: 'frontier_llm', acuCeiling: 18, timeoutMs: 90000, toolAllowList: ['topic.gap', 'post.draft', 'copy.lint', 'analytics.read'] },
   COMMS: { code: 'COMMS', name: 'Communication Router', trigger: 'every platform event', output: 'Resolved channel set, held or suppressed, with the reason', escalatesTo: 'GOV', modelClass: 'deterministic_rules', acuCeiling: 0, timeoutMs: 2000, toolAllowList: ['event.resolve', 'template.render', 'delivery.write', 'consent.read'] },
   STEW: { code: 'STEW', name: 'Data Steward', trigger: 'continuous', output: 'Lineage, quality, minimisation, deletion cascade', escalatesTo: 'COMP', modelClass: 'deterministic_rules', acuCeiling: 1, timeoutMs: 30000, toolAllowList: ['lineage.write', 'deletion.cascade'] },
+  LENS: { code: 'LENS', name: 'FoodLens Vision', trigger: 'meal photograph', output: 'Detected items with per-item confidence — never a claim from the forbidden list', escalatesTo: 'GOV', modelClass: 'frontier_llm', acuCeiling: 12, timeoutMs: 30000, toolAllowList: ['food.recognise', 'label.read'] },
 };
 
 /** Runtime guard: an agent may never call a tool outside its allow-list. */
 export function isToolPermitted(code: AgentCode, tool: string): boolean {
   return AGENT_REGISTRY[code].toolAllowList.includes(tool);
 }
+

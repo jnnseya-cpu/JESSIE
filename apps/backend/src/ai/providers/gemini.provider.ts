@@ -49,12 +49,21 @@ export class GeminiProvider implements ModelProvider {
       .map((m) => m.content)
       .join('\n\n');
 
-    const contents = request.messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
+    const nonSystem = request.messages.filter((m) => m.role !== 'system');
+    const lastUserIndex = nonSystem.map((m) => m.role).lastIndexOf('user');
+    const contents = nonSystem.map((m, i) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts:
+        // Vision input rides on the final user message.
+        i === lastUserIndex && request.images?.length
+          ? [
+              ...request.images.map((img) => ({
+                inlineData: { mimeType: img.mediaType, data: img.dataBase64 },
+              })),
+              { text: m.content },
+            ]
+          : [{ text: m.content }],
+    }));
 
     const response = await this.client.models.generateContent({
       model,

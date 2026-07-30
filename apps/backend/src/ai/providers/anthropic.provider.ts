@@ -48,12 +48,28 @@ export class AnthropicProvider implements ModelProvider {
       .map((m) => m.content)
       .join('\n\n');
 
-    const messages = request.messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }));
+    const nonSystem = request.messages.filter((m) => m.role !== 'system');
+    const lastUserIndex = nonSystem.map((m) => m.role).lastIndexOf('user');
+    const messages = nonSystem.map((m, i) => {
+      // Vision input rides on the final user message.
+      if (i === lastUserIndex && request.images?.length) {
+        return {
+          role: 'user' as const,
+          content: [
+            ...request.images.map((img) => ({
+              type: 'image' as const,
+              source: {
+                type: 'base64' as const,
+                media_type: img.mediaType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+                data: img.dataBase64,
+              },
+            })),
+            { type: 'text' as const, text: m.content },
+          ],
+        };
+      }
+      return { role: m.role as 'user' | 'assistant', content: m.content };
+    });
 
     const response = await this.client.messages.create(
       {

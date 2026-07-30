@@ -17,6 +17,7 @@
     "@anthropic-ai/sdk": "^0.115.0",
     "@google/genai": "^2.13.0",
     "@jessmove/body-command": "workspace:*",
+    "@jessmove/foodlens": "workspace:*",
     "@jessmove/shared": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",

@@ -37,7 +37,7 @@ pnpm --filter @jessmove/backend start
 bash scripts/smoke.sh http://localhost:4000/api
 ```
 
-✅ `pass=73 fail=0`
+✅ `pass=80 fail=0`
 
 *(`health` saying `degraded` is normal — it means no AI key, not a fault.)*
 
@@ -158,13 +158,29 @@ whole API as one function. Same account as the website, second project, and
    *(If you added `NODEJS_HELPERS=0` earlier: it belonged to the old deployment shape.
    It is harmless — leave it or delete it, nothing changes.)*
 
+   **Optional, when you want live wearable connections** — each pair switches one
+   provider's OAuth on; until then `/wearables/providers` says exactly what is missing:
+
+   | Provider | Variables |
+   |---|---|
+   | Fitbit | `FITBIT_CLIENT_ID`, `FITBIT_CLIENT_SECRET` |
+   | Oura | `OURA_CLIENT_ID`, `OURA_CLIENT_SECRET` |
+   | Polar | `POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET` |
+
+   Apple Health, Health Connect and Samsung Health are on-device — the phone app pushes
+   consented samples to `/wearables/ingest`, no keys needed. Garmin requires their
+   partner programme and the API says so rather than pretending.
+
+   **FoodLens photo analysis** goes live with the same AI key as everything else —
+   `POST /foodlens/analyze` answers in `sandbox` mode without one, `live` with one.
+
 4. **Deploy.** You get `https://<project>.vercel.app`. Prove it:
 
    ```bash
    bash scripts/smoke.sh https://<project>.vercel.app/api
    ```
 
-   ✅ `pass=73 fail=0`
+   ✅ `pass=80 fail=0`
 
 5. Project → **Settings → Domains** → add `api.jessmove.com`. The DNS record already
    points at Vercel, so it attaches and the certificate is automatic.
@@ -289,7 +305,7 @@ leave it off while /try and /console are in use, and turn it on before real user
 ## Done when
 
 - [ ] `pnpm -r test` → 295 pass
-- [ ] `scripts/smoke.sh` → 73/73
+- [ ] `scripts/smoke.sh` → 80/80
 - [ ] `/api/stripe/status` → no missing Price IDs
 - [ ] `/api/mail/status` → `configured: true`
 - [ ] A test email arrives, not in spam

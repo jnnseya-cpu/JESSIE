@@ -10,13 +10,16 @@ DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNor
 SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
 
 echo "reads"
-for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder /stripe/status /stripe/plans /mail/status /accounts/kinds /accounts/media/rules /accounts/autosave/policy /auth/status /accounts/storage/status /db/status /db/verify; do t GET $p 200; done
+for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder /stripe/status /stripe/plans /mail/status /accounts/kinds /accounts/media/rules /accounts/autosave/policy /auth/status /accounts/storage/status /db/status /db/verify /wearables/providers /foodlens/policy; do t GET $p 200; done
 echo "writes - valid"
 t POST /prescriptions/next 201 "$GOOD" "the core call"
 t POST /prescriptions/next 201 "$DRIVING" "driving: expect a hold"
 t POST /body/assess 201 '{"userId":"u_1","age":34,"heightCm":178,"weightKg":88,"waistCm":95,"optedIntoBodyMetrics":true}'
 t POST /body/plan 201 '{"userId":"u_1","age":34,"heightCm":178,"weightKg":88,"optedIntoBodyMetrics":true}'
 t POST /acu/quote 201 '{"providerCostGbp":0.004}'
+t POST /foodlens/analyze 201 '{"age":34,"declaredKcal":690,"declaredItems":[{"name":"chicken","confidencePct":94}],"grams":{"proteinG":41,"carbohydrateG":86,"fatG":27}}' "foodlens sandbox analysis"
+t POST /foodlens/analyze 201 '{"age":15,"declaredKcal":690}' "foodlens under-18: kcal withheld"
+t POST /wearables/ingest 201 '{"userId":"u_1","provider":"apple_health","age":34,"samples":[{"scope":"steps","value":4200,"ageMinutes":10}]}' "on-device wearable push"
 echo "writes - validation must reject"
 t POST /prescriptions/next 400 '{}' "empty body"
 t POST /prescriptions/next 400 '{"userId":"u","mode":"nonsense","availableSeconds":900,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{}}' "bad mode"
@@ -25,6 +28,8 @@ t POST /body/assess 400 '{"userId":"u","age":34,"weightKg":9000}' "impossible we
 t POST /body/assess 400 '{"userId":"u","age":3}' "under-10"
 t POST /acu/quote 400 '{"providerCostGbp":-5}' "negative cost"
 t POST /acu/quote 400 '{"providerCostGbp":0.01,"junkField":1}' "unknown field"
+t POST /wearables/ingest 400 '{"userId":"u_1","provider":"apple_health","age":34,"samples":[{"scope":"blood_glucose","value":5.4,"ageMinutes":1}]}' "never-ingested scope refused"
+t POST /foodlens/analyze 400 '{"age":34,"mimeType":"image/jpeg","dataBase64":"bm90LWFuLWltYWdl"}' "non-image bytes refused"
 echo "editorial gate"
 t POST /blog/views 201 '{"slug":"the-nudge-we-did-not-send","dwellSeconds":90,"scrollPercent":80,"device":"desktop"}' "record a view"
 t POST /blog/views 400 '{"slug":"x","dwellSeconds":99999,"scrollPercent":80}' "absurd dwell rejected"

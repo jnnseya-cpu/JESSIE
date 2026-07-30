@@ -9,7 +9,9 @@ import { BodyModule } from './body/body.module';
 import { CommsModule } from './comms/comms.module';
 import { ContextModule } from './context/context.module';
 import { DbModule } from './db/db.module';
+import { FoodlensModule } from './foodlens/foodlens.module';
 import { GrowthModule } from './growth/growth.module';
+import { WearablesModule } from './wearables/wearables.module';
 import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { MovementsModule } from './movements/movements.module';
@@ -28,7 +30,9 @@ import { StripeModule } from './stripe/stripe.module';
     CommsModule,
     ContextModule,
     DbModule,
+    FoodlensModule,
     GrowthModule,
+    WearablesModule,
     MailModule,
     MovementsModule,
     PrescriptionsModule,

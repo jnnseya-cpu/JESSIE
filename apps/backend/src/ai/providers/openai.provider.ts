@@ -49,10 +49,23 @@ export class OpenAiProvider implements ModelProvider {
       {
         model,
         max_completion_tokens: request.maxTokens ?? 4096,
-        messages: request.messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        messages: request.messages.map((m, i, all) => {
+          // Vision input rides on the final user message.
+          const lastUser = all.map((x) => x.role).lastIndexOf('user');
+          if (i === lastUser && request.images?.length) {
+            return {
+              role: 'user' as const,
+              content: [
+                ...request.images.map((img) => ({
+                  type: 'image_url' as const,
+                  image_url: { url: `data:${img.mediaType};base64,${img.dataBase64}` },
+                })),
+                { type: 'text' as const, text: m.content },
+              ],
+            };
+          }
+          return { role: m.role, content: m.content };
+        }),
         ...(request.jsonSchema
           ? {
               response_format: {

@@ -29,10 +29,23 @@ export interface AiMessage {
   content: string;
 }
 
+/**
+ * An image attached to a completion — FoodLens is the canonical caller.
+ * Always metadata-stripped before it reaches this type: the gateway's
+ * redaction guarantee covers pixels' EXIF exactly as it covers text.
+ */
+export interface AiImage {
+  /** image/jpeg, image/png or image/webp — matching the sniffed bytes. */
+  readonly mediaType: string;
+  readonly dataBase64: string;
+}
+
 export interface AiCompletionRequest {
   /** Which agent is calling. Drives cost ceiling and tool allow-list. */
   agent: AgentCode;
   messages: AiMessage[];
+  /** Optional vision input, attached to the final user message. */
+  images?: readonly AiImage[];
   /** Overrides the routing policy for this call. */
   provider?: AiProvider;
   model?: string;

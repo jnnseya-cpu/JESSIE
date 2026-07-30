@@ -1,3 +1,4 @@
+import type { AgentCode } from './agents';
 /**
  * The core concepts. Everything in JESS MOVE is built around, for and to
  * achieve what is described here.
@@ -156,17 +157,20 @@ export interface ConceptAgent {
   readonly name: string;
   readonly role: string;
   readonly does: readonly string[];
+  /** The runtime registry agents this public agent is a view of. */
+  readonly registryCodes: readonly AgentCode[];
 }
 
 /**
  * The twelve conceptual agents. The runtime registry in `agents.ts`
- * decomposes these into twenty-eight deployable services with their own tool
- * allow-lists and cost ceilings; this list is the shape of the system as a
- * person should understand it.
+ * decomposes these into twenty-nine deployable services with their own tool
+ * allow-lists and cost ceilings; each entry names the registry codes it is
+ * a view of, and a test holds the mapping to real registered agents.
  */
 export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   {
     n: 1,
+    registryCodes: ['SIA'],
     name: 'Daily Rhythm',
     role: 'Builds a living model of the day',
     does: [
@@ -177,6 +181,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 2,
+    registryCodes: ['RX'],
     name: 'Micro-Movement Coach',
     role: 'Selects the single most suitable activity',
     does: [
@@ -187,6 +192,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 3,
+    registryCodes: ['CTX', 'SIA'],
     name: 'Sedentary Pattern Detector',
     role: 'Finds inactivity trends, not just timer expiry',
     does: [
@@ -197,6 +203,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 4,
+    registryCodes: ['HAB', 'NUDGE'],
     name: 'Behaviour & Motivation',
     role: 'Learns why a person accepts, ignores or abandons a prompt',
     does: [
@@ -207,6 +214,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 5,
+    registryCodes: ['SAFE'],
     name: 'Movement Safety',
     role: 'Screens every activity before it reaches a person',
     does: [
@@ -217,6 +225,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 6,
+    registryCodes: ['ADA', 'LOC'],
     name: 'Accessibility',
     role: 'Transforms the experience to the individual',
     does: [
@@ -227,6 +236,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 7,
+    registryCodes: ['GAM'],
     name: 'Gamification Director',
     role: 'Generates missions, rewards and challenges',
     does: [
@@ -237,6 +247,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 8,
+    registryCodes: ['FUSE', 'INS'],
     name: 'Recovery & Fatigue',
     role: 'Stops the platform becoming intrusive',
     does: [
@@ -247,6 +258,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 9,
+    registryCodes: ['CREW'],
     name: 'Team Challenge',
     role: 'Builds inclusive group competition',
     does: [
@@ -257,6 +269,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 10,
+    registryCodes: ['WORK'],
     name: 'Corporate Wellbeing',
     role: 'Produces anonymised organisational insight',
     does: [
@@ -267,6 +280,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 11,
+    registryCodes: ['CREW', 'GUARD'],
     name: 'Family Wellbeing',
     role: 'Connects generations through shared activity',
     does: [
@@ -277,6 +291,7 @@ export const CONCEPT_AGENTS: readonly ConceptAgent[] = [
   },
   {
     n: 12,
+    registryCodes: ['GROW', 'NUDGE'],
     name: 'Engagement Rescue',
     role: 'Detects disengagement before abandonment',
     does: [

@@ -19,6 +19,9 @@ importers:
       '@jessmove/body-command':
         specifier: workspace:*
         version: link:../../packages/body-command
+      '@jessmove/foodlens':
+        specifier: workspace:*
+        version: link:../../packages/foodlens
       '@jessmove/shared':
         specifier: workspace:*
         version: link:../../packages/shared
