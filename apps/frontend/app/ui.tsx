@@ -153,12 +153,12 @@ export function VariantGlyph({ variant }: { variant: string }) {
 /* ---------------- chrome ---------------- */
 
 const NAV = [
-  { href: '/', label: 'Platform' },
-  { href: '/how-it-works', label: 'How it works' },
+  { href: '/', label: 'The OS' },
+  { href: '/how-it-works', label: 'The Engine' },
   { href: '/foodlens', label: 'FoodLens' },
-  { href: '/industries', label: 'Industries' },
-  { href: '/developers', label: 'Developers' },
-  { href: '/about', label: 'About' },
+  { href: '/industries', label: 'Who it’s for' },
+  { href: '/developers', label: 'The API' },
+  { href: '/about', label: 'Why Jess Move' },
 ];
 
 export function Nav({ current }: { current: string }) {
@@ -185,7 +185,7 @@ export function Nav({ current }: { current: string }) {
           Sign in
         </Link>
         <Link className="btn btn--primary nav__cta" href="/get-started">
-          Get started
+          Start free
         </Link>
         <MobileMenu items={NAV} current={current} />
       </div>

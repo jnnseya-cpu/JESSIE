@@ -85,7 +85,7 @@ export function MobileMenu({
         Sign in / Create account
       </Link>
       <Link className="btn btn--primary" href="/get-started" onClick={() => setOpen(false)}>
-        Get started
+        Start free
       </Link>
     </div>
   );
