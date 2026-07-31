@@ -26,7 +26,7 @@ import {
  * API uses. Nothing is illustrated.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api';
+import { apiBase } from '../api-base';
 
 interface Persona {
   userId: string;
@@ -63,7 +63,7 @@ const PROBE_EVENTS = [
 ];
 
 export function TryConsole() {
-  const [base, setBase] = useState(API_BASE);
+  const [base, setBase] = useState(() => apiBase());
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);

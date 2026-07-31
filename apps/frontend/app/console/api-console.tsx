@@ -186,11 +186,10 @@ const PROBES: readonly Probe[] = [
 
 type Result = { status: number; ms: number; ok: boolean; text: string } | { error: string };
 
-const DEFAULT_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api';
+import { apiBase } from '../api-base';
 
 export function ApiConsole() {
-  const [base, setBase] = useState(DEFAULT_BASE);
+  const [base, setBase] = useState(() => apiBase());
   const [results, setResults] = useState<Record<string, Result>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -275,7 +274,7 @@ export function ApiConsole() {
           <input
             id="base"
             type="url"
-            value={ready ? base : DEFAULT_BASE}
+            value={ready ? base : apiBase()}
             onChange={(e) => {
               setBase(e.target.value);
               window.localStorage.setItem('jm-api-base', e.target.value);

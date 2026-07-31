@@ -3930,12 +3930,36 @@ textarea:focus-visible {
   margin-top: 20px;
   justify-content: center;
 }
+
+/* Sign in — always one step from any page, on both layouts. */
+.nav__signin {
+  color: rgba(244, 250, 249, 0.85);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.18s ease;
+}
+.nav__signin:hover {
+  color: var(--jm-bg);
+}
+.mnav__sheet .mnav__signin {
+  display: block;
+  color: var(--jm-teal);
+  text-decoration: none;
+  font-size: 19px;
+  font-weight: 600;
+  padding: 15px 6px;
+  border-bottom: 1px solid var(--jm-divider-d);
+}
+
 @media (max-width: 860px) {
   .mnav {
     display: block;
   }
-  /* The header CTA yields its space to the toggle; the sheet carries it. */
-  .nav__cta {
+  /* The header CTA and sign-in yield their space to the toggle; the sheet carries them. */
+  .nav__cta,
+  .nav__signin {
     display: none;
   }
 }

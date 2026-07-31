@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
  * read is a token an injected script can read.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api';
+import { apiBase } from '../api-base';
 
 interface Me {
   userId: string;
@@ -37,7 +37,7 @@ export function AccountPanel() {
 
   const api = useCallback(
     (path: string, body?: object) =>
-      fetch(`${API_BASE.replace(/\/$/, '')}${path}`, {
+      fetch(`${apiBase()}${path}`, {
         method: body ? 'POST' : 'GET',
         credentials: 'include', // the cookie travels; the page never holds the token
         headers: body ? { 'content-type': 'application/json' } : undefined,

@@ -76,6 +76,14 @@ export function MobileMenu({
           </Link>
         ))}
       </nav>
+      <Link
+        href="/account"
+        className="mnav__signin"
+        aria-current={current === '/account' ? 'page' : undefined}
+        onClick={() => setOpen(false)}
+      >
+        Sign in / Create account
+      </Link>
       <Link className="btn btn--primary" href="/get-started" onClick={() => setOpen(false)}>
         Get started
       </Link>

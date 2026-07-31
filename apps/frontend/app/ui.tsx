@@ -181,6 +181,9 @@ export function Nav({ current }: { current: string }) {
             </Link>
           ))}
         </nav>
+        <Link className="nav__signin" href="/account">
+          Sign in
+        </Link>
         <Link className="btn btn--primary nav__cta" href="/get-started">
           Get started
         </Link>
