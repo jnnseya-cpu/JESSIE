@@ -84,23 +84,26 @@ for testing before the mailbox exists.
 ## 3 · Stripe keys
 
 **Create 5 prices** in Stripe → Products. On each one set metadata **`plan`** to the key
-below, or invoices arrive and grant nothing.
+below — that metadata is the whole wiring: the backend discovers the prices from Stripe
+by it, so there are no price IDs to copy anywhere, and changing a price in Stripe takes
+effect on its own within five minutes.
 
-| Plan | Price | metadata `plan` | .env variable |
-|---|---|---|---|
-| Premium monthly | £5.99 | `premium_monthly` | `STRIPE_PRICE_PREMIUM_MONTHLY` |
-| Premium annual | £59.99 | `premium_annual` | `STRIPE_PRICE_PREMIUM_ANNUAL` |
-| Family monthly | £12.99 | `family_monthly` | `STRIPE_PRICE_FAMILY_MONTHLY` |
-| Family annual | £129.99 | `family_annual` | `STRIPE_PRICE_FAMILY_ANNUAL` |
-| Org per seat | £2.00 | `organisation_seat` | `STRIPE_PRICE_ORG_SEAT` |
+| Plan | Price | metadata `plan` |
+|---|---|---|
+| Premium monthly | £5.99 | `premium_monthly` |
+| Premium annual | £59.99 | `premium_annual` |
+| Family monthly | £12.99 | `family_monthly` |
+| Family annual | £129.99 | `family_annual` |
+| Org per seat | £2.00 | `organisation_seat` |
 
 ```bash
-# .env
+# .env — only the two keys; prices are found via their metadata
 STRIPE_SECRET_KEY=sk_test_…
 STRIPE_WEBHOOK_SECRET=whsec_…
-STRIPE_PRICE_PREMIUM_MONTHLY=price_…
-# …one per plan
 ```
+
+*(A `STRIPE_PRICE_*` variable still works as an explicit override if you ever need to
+pin one price ID — you don't by default.)*
 
 ```bash
 curl -s localhost:4000/api/stripe/status
@@ -151,7 +154,7 @@ whole API as one function. Same account as the website, second project, and
    | Name | Value |
    |---|---|
    | `CORS_ORIGINS` | `https://jessmove.com,https://www.jessmove.com` |
-   | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, the 5 `STRIPE_PRICE_*` | your values |
+   | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | your values — prices are discovered from Stripe by their `plan` metadata, no price IDs needed |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | your values |
    | one of `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | your value |
 

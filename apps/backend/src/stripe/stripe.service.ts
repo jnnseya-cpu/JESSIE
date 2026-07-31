@@ -11,6 +11,7 @@ import {
   type SubscriptionState,
 } from '@jessmove/shared';
 import { WalletService } from '../acu/wallet.service';
+import { PRICE_CACHE_MS, matchPricesByPlan, type StripePriceLike } from './prices.logic';
 
 /**
  * Stripe, over `fetch`.
@@ -56,6 +57,9 @@ export interface SubscriptionRecord {
 export class StripeService {
   private readonly logger = new Logger(StripeService.name);
 
+  /** Prices discovered from Stripe by their `plan` metadata. */
+  private priceCache: { at: number; byPlan: Map<BillingPlan, string> } | null = null;
+
   /** Processed event ids. Stripe retries for days; every event is idempotent. */
   private readonly seenEvents = new Set<string>();
   private readonly subscriptions = new Map<string, SubscriptionRecord>();
@@ -78,22 +82,58 @@ export class StripeService {
     return this.secretKey().startsWith('sk_');
   }
 
-  status() {
-    const missingPrices = Object.values(PLAN_DEFINITIONS)
-      .filter((p) => !this.config.get<string>(p.priceEnvVar))
-      .map((p) => p.priceEnvVar);
+  async status() {
+    const discovered = await this.discoverPrices();
+    const prices = Object.entries(PLAN_DEFINITIONS).map(([plan, def]) => {
+      const envId = this.config.get<string>(def.priceEnvVar);
+      const found = envId ?? discovered.get(plan as BillingPlan) ?? null;
+      return {
+        plan,
+        priceId: found,
+        source: envId ? 'env_override' : found ? 'stripe_metadata' : null,
+      };
+    });
 
     return {
       secretKeyConfigured: this.configured(),
       webhookSecretConfigured: this.webhookSecret().startsWith('whsec_'),
       mode: this.secretKey().startsWith('sk_live') ? 'live' : this.configured() ? 'test' : 'none',
-      missingPriceIds: missingPrices,
+      prices,
+      missingPriceIds: prices.filter((p) => !p.priceId).map((p) => p.plan),
+      pricesManagedIn:
+        'Stripe. Set metadata plan=<key> on each price (Products → price → Edit metadata); ' +
+        'discovery refreshes within five minutes. STRIPE_PRICE_* env variables remain as optional overrides.',
       eventsProcessed: this.seenEvents.size,
       subscriptions: this.subscriptions.size,
       note: this.configured()
         ? 'Ready. The webhook still needs STRIPE_WEBHOOK_SECRET to accept anything.'
         : 'No key set. Checkout returns 400 with an explanation; everything else keeps working.',
     };
+  }
+
+  /** Env override first, then discovery by metadata. Null means neither. */
+  private async priceIdFor(plan: BillingPlan): Promise<string | null> {
+    const envId = this.config.get<string>(PLAN_DEFINITIONS[plan].priceEnvVar);
+    if (envId) return envId;
+    return (await this.discoverPrices()).get(plan) ?? null;
+  }
+
+  private async discoverPrices(): Promise<Map<BillingPlan, string>> {
+    if (!this.configured()) return new Map();
+    if (this.priceCache && Date.now() - this.priceCache.at < PRICE_CACHE_MS) {
+      return this.priceCache.byPlan;
+    }
+    try {
+      const json = await this.call('/prices', { active: 'true', limit: '100' }, 'GET');
+      const byPlan = matchPricesByPlan((json.data as StripePriceLike[]) ?? []);
+      this.priceCache = { at: Date.now(), byPlan };
+      return byPlan;
+    } catch (err) {
+      this.logger.warn(
+        `price discovery failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return this.priceCache?.byPlan ?? new Map();
+    }
   }
 
   /** Form-encoded, because that is what the Stripe API takes. */
@@ -138,10 +178,11 @@ export class StripeService {
     cancelUrl: string;
   }) {
     const definition = PLAN_DEFINITIONS[opts.plan];
-    const priceId = this.config.get<string>(definition.priceEnvVar);
+    const priceId = await this.priceIdFor(opts.plan);
     if (!priceId) {
       throw new BadRequestException(
-        `${definition.priceEnvVar} is not set — create the price in Stripe and add its ID`,
+        `No active Stripe price carries metadata plan=${opts.plan}. Set it in Stripe ` +
+          `(Products → the price → Edit metadata), or set ${definition.priceEnvVar} as an override.`,
       );
     }
 
