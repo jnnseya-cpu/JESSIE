@@ -51,9 +51,9 @@ You own `jessmove.com` at Hostinger, so create a mailbox there and use it:
 # .env
 SMTP_HOST=smtp.hostinger.com
 SMTP_PORT=465
-SMTP_USER=no-reply@jessmove.com     # the full address
+SMTP_USER=jess@jessmove.com     # the full address
 SMTP_PASS=<that mailbox's password>
-SMTP_FROM=JESS MOVE <no-reply@jessmove.com>
+SMTP_FROM=JESS MOVE <jess@jessmove.com>
 ```
 
 Restart, then:

@@ -99,7 +99,7 @@ SMTP_HOST=smtp.your-provider.com
 SMTP_PORT=587                 # 587 STARTTLS · 465 implicit TLS
 SMTP_USER=apikey              # provider-specific; often literally "apikey"
 SMTP_PASS=…
-SMTP_FROM=JESS MOVE <no-reply@jessmove.com>
+SMTP_FROM=JESS MOVE <jess@jessmove.com>
 ```
 
 > **Hostinger email works here.** `smtp.hostinger.com`, port `465`, `SMTP_USER` is the
@@ -365,7 +365,7 @@ SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
-SMTP_FROM=JESS MOVE <no-reply@jessmove.com>
+SMTP_FROM=JESS MOVE <jess@jessmove.com>
 
 # ---- Stripe ----
 STRIPE_SECRET_KEY=

@@ -188,12 +188,12 @@ const smtpConfig = {
   secure: false,
   user: 'u',
   pass: 'p',
-  from: 'JESS MOVE <no-reply@jessmove.com>',
+  from: 'JESS MOVE <jess@jessmove.com>',
 };
 
 test('a plain message carries the headers a mail server needs', () => {
   const msg = buildMessage(smtpConfig, { to: 'a@b.com', subject: 'Hello', text: 'Body' }, 'bnd');
-  assert.match(msg, /^From: JESS MOVE <no-reply@jessmove\.com>\r\n/);
+  assert.match(msg, /^From: JESS MOVE <jess@jessmove\.com>\r\n/);
   assert.match(msg, /\r\nTo: a@b\.com\r\n/);
   assert.match(msg, /\r\nSubject: Hello\r\n/);
   assert.match(msg, /\r\nMIME-Version: 1\.0\r\n/);

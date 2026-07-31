@@ -57,7 +57,7 @@ export class MailService {
       secure: port === 465,
       user,
       pass,
-      from: this.config.get<string>('SMTP_FROM') ?? `${BRAND.platform} <no-reply@jessmove.com>`,
+      from: this.config.get<string>('SMTP_FROM') ?? `${BRAND.platform} <jess@jessmove.com>`,
     };
   }
 
