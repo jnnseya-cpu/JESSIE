@@ -20,9 +20,13 @@ export interface Sample {
   readonly ageMinutes: number;
 }
 
-export type SampleVerdict =
-  | { readonly ok: true; readonly scope: DataScope }
-  | { readonly ok: false; readonly why: string };
+export interface SampleVerdict {
+  readonly ok: boolean;
+  /** Set when ok — the validated scope. */
+  readonly scope?: DataScope;
+  /** Set when refused — the reason, always human-readable. */
+  readonly why?: string;
+}
 
 /**
  * Field names that pattern-match the never-ingested list. A provider SDK

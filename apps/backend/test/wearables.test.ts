@@ -28,7 +28,7 @@ test('every never-ingested category is refused, however it is spelled', () => {
       [...FULL_GRANT],
     );
     assert.equal(verdict.ok, false, `${name} must be refused`);
-    if (!verdict.ok) assert.match(verdict.why, /never-ingested/);
+    if (!verdict.ok) assert.match(verdict.why ?? '', /never-ingested/);
   }
 });
 
@@ -45,7 +45,7 @@ test('a scope a provider is never asked for is refused for that provider', () =>
     'workouts',
   ]);
   assert.equal(verdict.ok, false);
-  if (!verdict.ok) assert.match(verdict.why, /never asked/);
+  if (!verdict.ok) assert.match(verdict.why ?? '', /never asked/);
 });
 
 test('body measurements are refused under 18, whatever was granted', () => {
@@ -56,7 +56,7 @@ test('body measurements are refused under 18, whatever was granted', () => {
     ['body_measurements'],
   );
   assert.equal(verdict.ok, false);
-  if (!verdict.ok) assert.match(verdict.why, /under 18/);
+  if (!verdict.ok) assert.match(verdict.why ?? '', /under 18/);
 });
 
 test('a revoked scope is refused even though the provider supports it', () => {
@@ -64,7 +64,7 @@ test('a revoked scope is refused even though the provider supports it', () => {
     'steps',
   ]);
   assert.equal(verdict.ok, false);
-  if (!verdict.ok) assert.match(verdict.why, /revoked/);
+  if (!verdict.ok) assert.match(verdict.why ?? '', /revoked/);
 });
 
 test('a valid consented sample is accepted', () => {

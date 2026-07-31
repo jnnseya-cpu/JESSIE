@@ -222,8 +222,8 @@ export class WearablesService {
 
     for (const sample of samples) {
       const verdict = judgeSample(sample, provider, age, connection.grantedScopes);
-      if (!verdict.ok) {
-        refused.push({ scope: sample.scope, why: verdict.why });
+      if (!verdict.ok || !verdict.scope) {
+        refused.push({ scope: sample.scope, why: verdict.why ?? 'refused' });
         continue;
       }
       const list = this.readings.get(userId) ?? [];
