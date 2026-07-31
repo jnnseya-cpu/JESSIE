@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { MobileSession } from './nav-session';
 
 /**
  * The mobile menu.
@@ -76,17 +77,7 @@ export function MobileMenu({
           </Link>
         ))}
       </nav>
-      <Link
-        href="/account"
-        className="mnav__signin"
-        aria-current={current === '/account' ? 'page' : undefined}
-        onClick={() => setOpen(false)}
-      >
-        Sign in / Create account
-      </Link>
-      <Link className="btn btn--primary" href="/get-started" onClick={() => setOpen(false)}>
-        Start free
-      </Link>
+      <MobileSession onNavigate={() => setOpen(false)} />
     </div>
   );
 

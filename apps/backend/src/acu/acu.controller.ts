@@ -59,6 +59,17 @@ export class AcuController {
     return this.wallets.create(body.subjectType, body.subjectId);
   }
 
+  /** A person's own wallet, found or created by their user id. */
+  @Get('balance/:userId')
+  balanceFor(@Param('userId') userId: string) {
+    const wallet = this.wallets.forSubject('user', userId);
+    return {
+      walletId: wallet.id,
+      balance: this.wallets.balance(wallet.id),
+      grants: wallet.grants.filter((g) => g.remaining > 0),
+    };
+  }
+
   @Get('wallets/:id')
   balance(@Param('id') id: string) {
     const wallet = this.wallets.get(id);

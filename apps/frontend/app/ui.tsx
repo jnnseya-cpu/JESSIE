@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MobileMenu } from './nav-menu';
+import { NavSession } from './nav-session';
 import { BRAND, SIGNATURE_LINE } from '@jessmove/shared';
 
 /* ---------------- marks and icons (no external assets) ---------------- */
@@ -181,12 +182,7 @@ export function Nav({ current }: { current: string }) {
             </Link>
           ))}
         </nav>
-        <Link className="nav__signin" href="/account">
-          Sign in
-        </Link>
-        <Link className="btn btn--primary nav__cta" href="/get-started">
-          Start free
-        </Link>
+        <NavSession />
         <MobileMenu items={NAV} current={current} />
       </div>
     </header>

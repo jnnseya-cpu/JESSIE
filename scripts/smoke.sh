@@ -10,7 +10,7 @@ DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNor
 SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
 
 echo "reads"
-for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder /stripe/status /stripe/plans /mail/status /accounts/kinds /accounts/media/rules /accounts/autosave/policy /auth/status /accounts/storage/status /db/status /db/verify /wearables/providers /foodlens/policy /push/status; do t GET $p 200; done
+for p in /health /system /ai/providers /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /acu/balance/u_smoke /blog/policy /blog/posts /blog/agent/gaps /blog/analytics /comms/policy /comms/catalogue /comms/stats /comms/deliveries /growth/programme /growth/ladder /stripe/status /stripe/plans /mail/status /accounts/kinds /accounts/media/rules /accounts/autosave/policy /auth/status /accounts/storage/status /db/status /db/verify /wearables/providers /foodlens/policy /push/status; do t GET $p 200; done
 echo "writes - valid"
 t POST /prescriptions/next 201 "$GOOD" "the core call"
 t POST /prescriptions/next 201 "$DRIVING" "driving: expect a hold"

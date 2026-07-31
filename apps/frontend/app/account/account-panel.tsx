@@ -96,6 +96,58 @@ export function AccountPanel() {
     [],
   );
 
+  const [wallet, setWallet] = useState<{ balance: number } | null>(null);
+  const [grantTarget, setGrantTarget] = useState('');
+  const [grantAmount, setGrantAmount] = useState('500');
+  const [adminResult, setAdminResult] = useState<string | null>(null);
+
+  const loadWallet = useCallback(
+    async (userId: string) => {
+      try {
+        const res = await api(`/acu/balance/${userId}`);
+        if (res.ok) setWallet(((await res.json()).data as { balance: number }) ?? null);
+      } catch {
+        setWallet(null);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const grantAcu = async () => {
+    setAdminResult('granting…');
+    try {
+      const res = await api('/acu/grant', {
+        userId: grantTarget.trim(),
+        acus: Number(grantAmount),
+        note: 'admin grant from /account',
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      setAdminResult(`done — ${grantTarget.trim()} now holds ${json.data.balance} ACU`);
+      if (me && grantTarget.trim() === me.userId) void loadWallet(me.userId);
+    } catch (e) {
+      setAdminResult(`failed: ${(e as Error).message}`);
+    }
+  };
+
+  const testPush = async () => {
+    if (!me) return;
+    setAdminResult('sending…');
+    try {
+      const res = await api('/push/test', { userId: me.userId });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      setAdminResult(
+        json.data.sent > 0
+          ? `sent to ${json.data.sent} device${json.data.sent === 1 ? '' : 's'} — close the app and watch the phone`
+          : `nothing sent — ${json.data.note ?? 'enable notifications on a device first'}`,
+      );
+    } catch (e) {
+      setAdminResult(`failed: ${(e as Error).message}`);
+    }
+  };
+
   const refresh = useCallback(async () => {
     try {
       const statusRes = await api('/auth/status');
@@ -110,6 +162,14 @@ export function AccountPanel() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (me) {
+      void loadWallet(me.userId);
+      if (!grantTarget) setGrantTarget(me.userId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.userId]);
 
   const submit = async (): Promise<void> => {
     setBusy(true);
@@ -160,6 +220,7 @@ export function AccountPanel() {
 
   if (me) {
     return (
+      <>
       <article className="card card--light">
         <div className="card__head">
           <h3 className="card__t">Signed in</h3>
@@ -198,6 +259,66 @@ export function AccountPanel() {
           Sign out
         </button>
       </article>
+
+      <article className="card card--light">
+        <div className="card__head">
+          <h3 className="card__t">Your AI allowance</h3>
+          <span className="card__tag">ACU</span>
+        </div>
+        <div className="metric">
+          <span className="metric__k">Balance</span>
+          <span className="metric__v">{wallet ? `${wallet.balance} ACU` : '…'}</span>
+        </div>
+        <p className="card__note">
+          Every AI action is priced before it runs and paid from this balance — there is no
+          surprise bill, and at zero the AI features pause while everything else continues.
+        </p>
+      </article>
+
+      <article className="card card--light">
+        <div className="card__head">
+          <h3 className="card__t">Quick links</h3>
+        </div>
+        <p className="card__note">
+          <a href="/try">Try it as…</a> · <a href="/console">API console</a> ·{' '}
+          <a href="/status">Platform status</a>
+        </p>
+      </article>
+
+      {me.kind === 'platform_staff' && (
+        <article className="card card--light">
+          <div className="card__head">
+            <h3 className="card__t">Admin</h3>
+            <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>platform staff only</span>
+          </div>
+
+          <label>
+            Grant ACU to user ID
+            <input value={grantTarget} onChange={(e) => setGrantTarget(e.target.value)} placeholder="u_…" />
+          </label>
+          <label>
+            Amount
+            <input value={grantAmount} onChange={(e) => setGrantAmount(e.target.value)} inputMode="numeric" />
+          </label>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+            <button className="btn btn--dark" type="button" onClick={() => void grantAcu()}>
+              Grant ACU
+            </button>
+            <button className="btn btn--dark" type="button" onClick={() => void testPush()}>
+              Send me a test notification
+            </button>
+          </div>
+          {adminResult && <p className="card__note" style={{ marginTop: 10 }}>{adminResult}</p>}
+          <p className="card__note" style={{ marginTop: 10 }}>
+            Live checks:{' '}
+            <a href="https://api.jessmove.com/api/health" target="_blank" rel="noreferrer">health</a> ·{' '}
+            <a href="https://api.jessmove.com/api/db/verify" target="_blank" rel="noreferrer">21 database rules</a> ·{' '}
+            <a href="https://api.jessmove.com/api/stripe/status" target="_blank" rel="noreferrer">Stripe</a> ·{' '}
+            <a href="https://api.jessmove.com/api/push/status" target="_blank" rel="noreferrer">push</a>
+          </p>
+        </article>
+      )}
+    </>
     );
   }
 
