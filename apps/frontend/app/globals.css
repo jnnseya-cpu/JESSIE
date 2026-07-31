@@ -368,6 +368,16 @@ button:focus-visible {
   border-color: rgba(244, 250, 249, 0.45);
 }
 
+/* A ghost button on a light card inverts: navy text, visible border.
+   The default ghost colours are for dark sections and vanish here. */
+.card--light .btn--ghost {
+  color: var(--jm-navy);
+  border-color: rgba(11, 37, 64, 0.35);
+}
+.card--light .btn--ghost:hover {
+  border-color: var(--jm-navy);
+}
+
 .btn--dark {
   background: var(--jm-navy);
   color: var(--jm-bg);
