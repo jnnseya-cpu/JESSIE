@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
   ACU_PER_GBP,
@@ -93,10 +93,109 @@ export type SpendResult =
       message: string;
     };
 
+interface PgPoolLike {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+  end: () => Promise<void>;
+}
+
+/** Revives a snapshot row: JSON dates come back as strings. */
+export function reviveWallet(data: unknown): Wallet {
+  const w = data as Wallet;
+  return {
+    ...w,
+    grants: (w.grants ?? []).map((g) => ({
+      ...g,
+      grantedAt: new Date(g.grantedAt),
+      expiresAt: new Date(g.expiresAt),
+    })),
+  };
+}
+
 @Injectable()
-export class WalletService {
+export class WalletService implements OnModuleDestroy {
   private readonly logger = new Logger(WalletService.name);
   private readonly wallets = new Map<string, Wallet>();
+  private pool: PgPoolLike | null = null;
+
+  constructor() {
+    const url = process.env.DATABASE_URL;
+    if (url) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
+      this.pool = new Pool({
+        connectionString: url,
+        max: 2,
+        ssl: url.includes('sslmode=require') || url.includes('vercel')
+          ? { rejectUnauthorized: true }
+          : undefined,
+      });
+      this.logger.log('wallets: postgres write-through');
+    } else {
+      this.logger.warn('wallets: in-memory — balances will not survive a restart');
+    }
+  }
+
+  driver(): 'postgres' | 'memory' {
+    return this.pool ? 'postgres' : 'memory';
+  }
+
+  /**
+   * Write-through: every mutation lands the wallet as a snapshot row.
+   * The spend rules stay in this class where they are unit-tested; the
+   * row is what makes a granted balance outlive the process.
+   */
+  private async persist(wallet: Wallet): Promise<void> {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        `INSERT INTO app_wallets (id, subject_type, subject_id, data, updated_at)
+         VALUES ($1, $2, $3, $4, now())
+         ON CONFLICT (id) DO UPDATE SET data = $4, updated_at = now()`,
+        [wallet.id, wallet.subjectType, wallet.subjectId, JSON.stringify(wallet)],
+      );
+    } catch (err) {
+      this.logger.error(
+        `wallet persist failed for ${wallet.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /** Loads a wallet into memory by id if this instance has not seen it. */
+  private async hydrate(walletId: string): Promise<void> {
+    if (!this.pool || this.wallets.has(walletId)) return;
+    try {
+      const result = await this.pool.query('SELECT data FROM app_wallets WHERE id = $1', [walletId]);
+      if (result.rows[0]) {
+        const wallet = reviveWallet(result.rows[0].data);
+        this.wallets.set(wallet.id, wallet);
+      }
+    } catch (err) {
+      this.logger.error(`wallet hydrate failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private async hydrateBySubject(
+    subjectType: Wallet['subjectType'],
+    subjectId: string,
+  ): Promise<void> {
+    if (!this.pool) return;
+    const inMemory = [...this.wallets.values()].some(
+      (w) => w.subjectType === subjectType && w.subjectId === subjectId,
+    );
+    if (inMemory) return;
+    try {
+      const result = await this.pool.query(
+        'SELECT data FROM app_wallets WHERE subject_type = $1 AND subject_id = $2',
+        [subjectType, subjectId],
+      );
+      if (result.rows[0]) {
+        const wallet = reviveWallet(result.rows[0].data);
+        this.wallets.set(wallet.id, wallet);
+      }
+    } catch (err) {
+      this.logger.error(`wallet hydrate failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   create(
     subjectType: Wallet['subjectType'],
@@ -113,15 +212,18 @@ export class WalletService {
       spentThisMonth: 0,
     };
     this.wallets.set(wallet.id, wallet);
+    void this.persist(wallet);
     return wallet;
   }
 
-  get(walletId: string): Wallet | undefined {
+  async get(walletId: string): Promise<Wallet | undefined> {
+    await this.hydrate(walletId);
     return this.wallets.get(walletId);
   }
 
   /** The subject's wallet, created on first use. */
-  forSubject(subjectType: Wallet['subjectType'], subjectId: string): Wallet {
+  async forSubject(subjectType: Wallet['subjectType'], subjectId: string): Promise<Wallet> {
+    await this.hydrateBySubject(subjectType, subjectId);
     const existing = [...this.wallets.values()].find(
       (w) => w.subjectType === subjectType && w.subjectId === subjectId,
     );
@@ -134,15 +236,25 @@ export class WalletService {
    * expires like any promotional grant, and the note lands on the grant
    * record so nobody wonders where the balance came from.
    */
-  promotionalGrant(walletId: string, acus: number, note = 'admin_grant', now = new Date()): AcuGrant | null {
-    const wallet = this.wallets.get(walletId);
+  async promotionalGrant(walletId: string, acus: number, note = 'admin_grant', now = new Date()): Promise<AcuGrant | null> {
+    const wallet = await this.get(walletId);
     if (!wallet) return null;
     return this.grant(wallet, 'promotional', Math.round(acus), now, note);
   }
 
+  /**
+   * A subscription allowance from a paid invoice — the webhook's grant.
+   * The amount is the plan's published allowance, not a recalculation.
+   */
+  async depositAllowance(walletId: string, acus: number, sourceRef: string, now = new Date()): Promise<AcuGrant | null> {
+    const wallet = await this.get(walletId);
+    if (!wallet) return null;
+    return this.grant(wallet, 'subscription', Math.round(acus), now, sourceRef);
+  }
+
   /** Live balance across all unexpired grants. */
-  balance(walletId: string, now = new Date()): number {
-    const wallet = this.wallets.get(walletId);
+  async balance(walletId: string, now = new Date()): Promise<number> {
+    const wallet = await this.get(walletId);
     if (!wallet) return 0;
     return wallet.grants
       .filter((g) => g.expiresAt > now && g.remaining > 0)
@@ -154,12 +266,12 @@ export class WalletService {
    * Rollover is capped at three allocations, so an unused wallet does
    * not accumulate an unbounded liability.
    */
-  depositSubscription(
+  async depositSubscription(
     walletId: string,
     amountPaidGbp: number,
     now = new Date(),
-  ): AcuGrant | null {
-    const wallet = this.wallets.get(walletId);
+  ): Promise<AcuGrant | null> {
+    const wallet = await this.get(walletId);
     if (!wallet) return null;
 
     const allocation = monthlyAcuAllocation(amountPaidGbp);
@@ -185,8 +297,8 @@ export class WalletService {
    * delivered in twelve monthly deposits so the year's allowance cannot
    * be consumed at once.
    */
-  depositAnnualMonth(walletId: string, annualAmountPaidGbp: number, now = new Date()) {
-    const wallet = this.wallets.get(walletId);
+  async depositAnnualMonth(walletId: string, annualAmountPaidGbp: number, now = new Date()) {
+    const wallet = await this.get(walletId);
     if (!wallet) return null;
     return this.grant(
       wallet,
@@ -204,9 +316,9 @@ export class WalletService {
    * sub-£5 payment loses a disproportionate share to Stripe's fixed fee,
    * and the honest response is to refuse it rather than quietly absorb it.
    */
-  purchase(walletId: string, amountGbp: number, bonusAcus = 0, now = new Date()) {
+  async purchase(walletId: string, amountGbp: number, bonusAcus = 0, now = new Date()) {
     assertChargeable(amountGbp);
-    const wallet = this.wallets.get(walletId);
+    const wallet = await this.get(walletId);
     if (!wallet) return null;
     const amount = Math.round(amountGbp * ACU_PER_GBP) + bonusAcus;
     return this.grant(wallet, 'purchased', amount, now, `topup_${amountGbp}gbp`);
@@ -232,6 +344,7 @@ export class WalletService {
       sourceRef,
     };
     wallet.grants.push(grant);
+    void this.persist(wallet);
     return grant;
   }
 
@@ -242,8 +355,8 @@ export class WalletService {
    * A refusal is never an error state — non-AI features continue and the
    * message says so.
    */
-  spend(request: SpendRequest, now = new Date()): SpendResult {
-    const wallet = this.wallets.get(request.walletId);
+  async spend(request: SpendRequest, now = new Date()): Promise<SpendResult> {
+    const wallet = await this.get(request.walletId);
     const acusRequired = requiredAcus(request.cost);
     const customerChargeGbp = acusRequired / ACU_PER_GBP;
 
@@ -257,7 +370,7 @@ export class WalletService {
       };
     }
 
-    const balance = this.balance(request.walletId, now);
+    const balance = await this.balance(request.walletId, now);
 
     // The profitability guard. This should be impossible via requiredAcus,
     // so a breach means the pricing path was bypassed.
@@ -326,6 +439,7 @@ export class WalletService {
 
     wallet.spentToday += acusRequired;
     wallet.spentThisMonth += acusRequired;
+    await this.persist(wallet);
 
     return {
       allowed: true,
@@ -361,10 +475,10 @@ export class WalletService {
    * their involvement, so silently failing at 3am is the wrong behaviour.
    * A manual purchase throws instead, because somebody is there to read it.
    */
-  autoTopUpDue(walletId: string, now = new Date()): number | null {
-    const wallet = this.wallets.get(walletId);
+  async autoTopUpDue(walletId: string, now = new Date()): Promise<number | null> {
+    const wallet = await this.get(walletId);
     if (!wallet?.autoTopUp?.enabled) return null;
-    if (this.balance(walletId, now) >= wallet.autoTopUp.belowAcus) return null;
+    if ((await this.balance(walletId, now)) >= wallet.autoTopUp.belowAcus) return null;
     return Math.max(MIN_TRANSACTION_GBP, wallet.autoTopUp.amountGbp);
   }
 
@@ -380,5 +494,9 @@ export class WalletService {
       }
     }
     return expired;
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.pool?.end();
   }
 }

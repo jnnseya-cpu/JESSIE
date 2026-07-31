@@ -60,15 +60,63 @@ export class StripeService {
   /** Prices discovered from Stripe by their `plan` metadata. */
   private priceCache: { at: number; byPlan: Map<BillingPlan, string> } | null = null;
 
-  /** Processed event ids. Stripe retries for days; every event is idempotent. */
+  /**
+   * Processed event ids. Stripe retries for days; every event is
+   * idempotent. The set is the fast path; with DATABASE_URL set, ids
+   * also land in processed_events so a replay finds them whichever
+   * instance receives it, however long after.
+   */
   private readonly seenEvents = new Set<string>();
+  private pool: {
+    query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+  } | null = null;
   private readonly subscriptions = new Map<string, SubscriptionRecord>();
   private readonly customerToUser = new Map<string, string>();
 
   constructor(
     private readonly config: ConfigService,
     private readonly wallets: WalletService,
-  ) {}
+  ) {
+    const url = process.env.DATABASE_URL;
+    if (url) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Pool } = require('pg') as { Pool: new (o: object) => NonNullable<typeof this.pool> };
+      this.pool = new Pool({
+        connectionString: url,
+        max: 2,
+        ssl: url.includes('sslmode=require') || url.includes('vercel')
+          ? { rejectUnauthorized: true }
+          : undefined,
+      } as unknown as object);
+    }
+  }
+
+  /** Fast path memory, durable path processed_events. */
+  private async wasSeen(id: string): Promise<boolean> {
+    if (this.seenEvents.has(id)) return true;
+    if (!this.pool) return false;
+    try {
+      const result = await this.pool.query('SELECT 1 FROM processed_events WHERE event_id = $1', [id]);
+      return result.rows.length > 0;
+    } catch (err) {
+      this.logger.warn(`event dedupe read failed: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
+    }
+  }
+
+  /** Recorded only after processing, so a crash mid-event lets Stripe retry. */
+  private async recordSeen(id: string, type: string): Promise<void> {
+    this.seenEvents.add(id);
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        'INSERT INTO processed_events (event_id, kind) VALUES ($1, $2) ON CONFLICT (event_id) DO NOTHING',
+        [id, type],
+      );
+    } catch (err) {
+      this.logger.warn(`event dedupe write failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   private secretKey(): string {
     return this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
@@ -268,24 +316,24 @@ export class StripeService {
    * moved. Unknown types are `ignored`, never an error — a 4xx makes
    * Stripe retry forever and then disable the endpoint.
    */
-  applyEvent(event: Record<string, unknown>): {
+  async applyEvent(event: Record<string, unknown>): Promise<{
     id: string;
     type: string;
     outcome: 'applied' | 'duplicate' | 'ignored';
     detail: string;
-  } {
+  }> {
     const id = String(event.id ?? '');
     const type = String(event.type ?? '');
 
     if (!id) throw new BadRequestException('the event has no id');
 
-    if (this.seenEvents.has(id)) {
+    if (await this.wasSeen(id)) {
       return { id, type, outcome: 'duplicate', detail: 'Already processed. Nothing repeated.' };
     }
 
     if (!isHandled(type)) {
       // Recorded as seen so a retry of the same unknown event is cheap.
-      this.seenEvents.add(id);
+      await this.recordSeen(id, type);
       return { id, type, outcome: 'ignored', detail: 'Not an event this platform acts on.' };
     }
 
@@ -342,9 +390,13 @@ export class StripeService {
         const allowance = plan ? PLAN_DEFINITIONS[plan]?.acuAllowance : undefined;
         const paidGbp = fromMinorUnits(Number(object.amount_paid ?? 0));
 
-        detail = userId && allowance
-          ? `Granted ${allowance} ACU to ${userId} for ${plan} (£${paidGbp.toFixed(2)} paid).`
-          : `Invoice paid, £${paidGbp.toFixed(2)}. No plan metadata, so no allowance granted — check the price's metadata.`;
+        if (userId && plan && allowance) {
+          const wallet = await this.wallets.forSubject('user', userId);
+          await this.wallets.depositAllowance(wallet.id, allowance, `invoice_${plan}_${id}`);
+          detail = `Granted ${allowance} ACU to ${userId} for ${plan} (£${paidGbp.toFixed(2)} paid).`;
+        } else {
+          detail = `Invoice paid, £${paidGbp.toFixed(2)}. No plan metadata, so no allowance granted — check the price's metadata.`;
+        }
         break;
       }
 
@@ -361,12 +413,12 @@ export class StripeService {
 
       case 'charge.refunded': {
         const refunded = fromMinorUnits(Number(object.amount_refunded ?? 0));
-        detail = `Refund of £${refunded.toFixed(2)} recorded. The matching allowance is reversed and any partner commission on this customer is flagged.`;
+        detail = `Refund of £${refunded.toFixed(2)} recorded for review.`;
         break;
       }
 
       case 'charge.dispute.created': {
-        detail = 'Dispute opened. Entitlement frozen, flagged for review, partner commission reversed.';
+        detail = 'Dispute opened and recorded for review.';
         break;
       }
 
@@ -374,6 +426,8 @@ export class StripeService {
         const metadata = (object.metadata ?? {}) as Record<string, string>;
         const amount = fromMinorUnits(Number(object.amount_received ?? object.amount ?? 0));
         if (metadata.kind === 'acu_topup' && userId) {
+          const wallet = await this.wallets.forSubject('user', userId);
+          await this.wallets.purchase(wallet.id, amount);
           detail = `Top-up of £${amount.toFixed(2)} credited to ${userId}.`;
         } else {
           detail = `Payment of £${amount.toFixed(2)} succeeded. Not a top-up, so nothing credited.`;
@@ -387,7 +441,7 @@ export class StripeService {
       }
     }
 
-    this.seenEvents.add(id);
+    await this.recordSeen(id, type);
     return { id, type, outcome: 'applied', detail };
   }
 }

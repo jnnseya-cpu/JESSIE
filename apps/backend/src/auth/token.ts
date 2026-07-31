@@ -79,3 +79,55 @@ export function verifyToken(
   if (typeof payload.age !== 'number') return null;
   return payload;
 }
+
+/* ------------------------------------------------------------------ *
+ * Single-purpose action tokens — the guardian confirmation link.
+ * Same construction as the session token (HMAC over a JSON body, one
+ * algorithm, no negotiation), but carrying an action name so a token
+ * minted for one purpose can never be replayed for another.
+ * ------------------------------------------------------------------ */
+
+export interface ActionPayload {
+  readonly v: 1;
+  readonly act: string;
+  readonly data: Record<string, string>;
+  readonly exp: number;
+}
+
+export function issueActionToken(
+  action: string,
+  data: Record<string, string>,
+  secret: string,
+  ttlSeconds: number,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): string {
+  const payload: ActionPayload = { v: 1, act: action, data, exp: nowSeconds + ttlSeconds };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${body}.${sign(body, secret)}`;
+}
+
+export function verifyActionToken(
+  action: string,
+  token: string,
+  secret: string,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): Record<string, string> | null {
+  if (!secret) return null;
+  const dot = token.lastIndexOf('.');
+  if (dot <= 0) return null;
+  const body = token.slice(0, dot);
+  const given = Buffer.from(token.slice(dot + 1));
+  const expected = Buffer.from(sign(body, secret));
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+
+  let payload: ActionPayload;
+  try {
+    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as ActionPayload;
+  } catch {
+    return null;
+  }
+  if (payload.v !== 1 || payload.act !== action) return null;
+  if (typeof payload.exp !== 'number' || payload.exp <= nowSeconds) return null;
+  if (typeof payload.data !== 'object' || payload.data === null) return null;
+  return payload.data;
+}

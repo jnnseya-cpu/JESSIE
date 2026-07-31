@@ -8,8 +8,15 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import type { AccountKind } from '@jessmove/shared';
 import { ProfilesService } from '../accounts/profiles.service';
+import { MailService } from '../mail/mail.service';
 import { hashPassword, verifyPassword } from './password';
-import { issueToken, verifyToken, type SessionPayload } from './token';
+import {
+  issueActionToken,
+  issueToken,
+  verifyActionToken,
+  verifyToken,
+  type SessionPayload,
+} from './token';
 import { UserStore } from './user-store';
 
 /**
@@ -42,6 +49,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly users: UserStore,
     private readonly profiles: ProfilesService,
+    private readonly mail: MailService,
   ) {}
 
   private secret(): string {
@@ -137,8 +145,50 @@ export class AuthService {
     // platform uses, so every account rule applies to signups too.
     this.profiles.createAccount(userId, kind, input.age, guardianId ?? undefined);
 
+    if (isMinor && input.guardianEmail) {
+      // Best-effort: a mail outage must not block a registration. The
+      // account stays dark either way until the link is clicked.
+      void this.sendGuardianRequest(userId, input.displayName, input.guardianEmail).catch(() => {});
+    }
+
     const token = issueToken({ uid: userId, kind, age: input.age }, this.secret());
     return { token, userId, kind, pendingGuardian: isMinor };
+  }
+
+  private apiPublicUrl(): string {
+    return (process.env.API_PUBLIC_URL ?? 'https://api.jessmove.com/api').replace(/\/$/, '');
+  }
+
+  private async sendGuardianRequest(
+    minorId: string,
+    minorName: string,
+    guardianEmail: string,
+  ): Promise<void> {
+    const token = issueActionToken(
+      'guardian_confirm',
+      { m: minorId, g: guardianEmail.toLowerCase() },
+      this.secret(),
+      7 * 24 * 3600,
+    );
+    const link = `${this.apiPublicUrl()}/auth/guardian/confirm?token=${token}`;
+    await this.mail.send('guardian.link_requested', guardianEmail, { name: minorName },
+      `${minorName} (under 18) has registered on JESS MOVE and named you as their guardian.\n\n` +
+      `Their account stays inactive until you confirm. If you agree to be their guardian, ` +
+      `open this link:\n\n${link}\n\nThe link works for 7 days. If you don't recognise ` +
+      `this request, ignore this email and nothing happens.`,
+    );
+  }
+
+  /** The guardian's click. Returns the confirmed minor, or null for a bad link. */
+  async confirmGuardian(token: string): Promise<{ minorName: string } | null> {
+    const data = verifyActionToken('guardian_confirm', token, this.secret());
+    if (!data?.m) return null;
+    const updated = await this.users.confirmGuardian(data.m);
+    if (!updated) return null;
+    void this.mail
+      .send('guardian.link_confirmed', data.g ?? '', { name: updated.displayName })
+      .catch(() => {});
+    return { minorName: updated.displayName };
   }
 
   async login(email: string, password: string): Promise<{ token: string; userId: string; kind: AccountKind }> {
@@ -190,6 +240,7 @@ export class AuthService {
       kind: user.kind,
       age: user.age,
       guardianLinked: user.guardianId !== null && !user.guardianId.startsWith('pending:'),
+      guardianConfirmed: user.guardianConfirmed,
       sessionExpires: new Date(payload.exp * 1000).toISOString(),
     };
   }

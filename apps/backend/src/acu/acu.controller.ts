@@ -61,22 +61,22 @@ export class AcuController {
 
   /** A person's own wallet, found or created by their user id. */
   @Get('balance/:userId')
-  balanceFor(@Param('userId') userId: string) {
-    const wallet = this.wallets.forSubject('user', userId);
+  async balanceFor(@Param('userId') userId: string) {
+    const wallet = await this.wallets.forSubject('user', userId);
     return {
       walletId: wallet.id,
-      balance: this.wallets.balance(wallet.id),
+      balance: await this.wallets.balance(wallet.id),
       grants: wallet.grants.filter((g) => g.remaining > 0),
     };
   }
 
   @Get('wallets/:id')
-  balance(@Param('id') id: string) {
-    const wallet = this.wallets.get(id);
+  async balance(@Param('id') id: string) {
+    const wallet = await this.wallets.get(id);
     if (!wallet) return { found: false };
     return {
       found: true,
-      balance: this.wallets.balance(id),
+      balance: await this.wallets.balance(id),
       grants: wallet.grants.filter((g) => g.remaining > 0),
       controls: wallet.controls,
       spentToday: wallet.spentToday,
@@ -85,8 +85,8 @@ export class AcuController {
   }
 
   @Post('wallets/:id/subscription')
-  deposit(@Param('id') id: string, @Body() body: SubscriptionDepositDto) {
-    const grant = this.wallets.depositSubscription(id, body.amountPaidGbp);
+  async deposit(@Param('id') id: string, @Body() body: SubscriptionDepositDto) {
+    const grant = await this.wallets.depositSubscription(id, body.amountPaidGbp);
     return grant ?? { skipped: 'rollover cap reached' };
   }
 
@@ -102,14 +102,14 @@ export class AcuController {
    */
   @AdminOnly()
   @Post('grant')
-  grant(@Body() body: GrantAcuDto) {
-    const wallet = this.wallets.forSubject('user', body.userId);
-    const granted = this.wallets.promotionalGrant(
+  async grant(@Body() body: GrantAcuDto) {
+    const wallet = await this.wallets.forSubject('user', body.userId);
+    const granted = await this.wallets.promotionalGrant(
       wallet.id,
       body.acus,
       body.note ?? 'admin_testing_grant',
     );
-    return { walletId: wallet.id, granted, balance: this.wallets.balance(wallet.id) };
+    return { walletId: wallet.id, granted, balance: await this.wallets.balance(wallet.id) };
   }
 
   @Post('wallets/:id/spend')

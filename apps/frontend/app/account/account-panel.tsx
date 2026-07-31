@@ -19,6 +19,7 @@ interface Me {
   kind: string;
   age: number;
   guardianLinked: boolean;
+  guardianConfirmed: boolean;
   sessionExpires: string;
 }
 
@@ -232,8 +233,12 @@ export function AccountPanel() {
         {me.kind === 'minor' && (
           <div className="metric">
             <span className="metric__k">Guardian</span>
-            <span className="metric__v" style={{ color: me.guardianLinked ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}>
-              {me.guardianLinked ? 'linked' : 'awaiting confirmation'}
+            <span className="metric__v" style={{ color: me.guardianConfirmed ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}>
+              {me.guardianConfirmed
+                ? 'confirmed'
+                : me.guardianLinked
+                  ? 'linked — confirmation email sent, awaiting their click'
+                  : 'awaiting guardian — a confirmation email has been sent'}
             </span>
           </div>
         )}

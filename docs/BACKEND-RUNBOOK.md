@@ -340,8 +340,18 @@ Honest ledger, updated:
   Vercel Blob (memory locally). Pending moderation, always.
 - ~~Authentication~~ **Done.** Registration, login, sessions, guardian gating — users in
   Postgres when `DATABASE_URL` is set, and registration survives restarts.
-- **Still memory:** profiles' editable fields, wallets, and the webhook's duplicate-event
-  memory. The user record is durable; the rest of a profile is not yet. That is the next
-  slice of the repository layer, and the schema it lands in already exists and is tested.
-- **Guardian confirmation email flow** — the link is recorded and the account held; the
-  confirmation email itself is the next piece of the comms wiring.
+- ~~ACU wallets~~ **Done.** Every grant and spend writes through to Postgres
+  (`app_wallets`, `0004_state.sql`) — a granted balance survives restarts and instance
+  recycling. Proven by granting 500 ACU, killing the process and reading the balance
+  back from a fresh one.
+- ~~Webhook duplicate-event memory~~ **Done.** Processed Stripe event ids land in
+  `processed_events`; a replayed event grants nothing twice, whichever instance
+  receives it. `invoice.paid` and top-ups now actually credit the wallet, not just
+  describe doing so.
+- ~~Guardian confirmation email~~ **Done.** A minor's registration emails the guardian
+  a 7-day signed link; clicking it activates the account, resolves a pending guardian
+  to their real account, and notifies them. `/auth/me` reports `guardianConfirmed`.
+- **Still memory:** profiles' editable display fields and demo/try personas — cosmetic
+  state that reseeds in seconds. Everything with money, safety or identity attached is
+  durable. Two instances can, in a rare race, overwrite each other's wallet snapshot;
+  SQL-transactional spending is the hardening step beyond pilot scale.

@@ -27,6 +27,8 @@ export interface UserRecord {
   readonly kind: AccountKind;
   readonly age: number;
   readonly guardianId: string | null;
+  /** Set by the guardian confirmation link. Minors start unconfirmed. */
+  readonly guardianConfirmed: boolean;
   readonly displayName: string;
   readonly createdAt: string;
 }
@@ -46,21 +48,18 @@ interface PgPoolLike {
   end: () => Promise<void>;
 }
 
+const COLUMNS =
+  'user_id, email, password_hash, kind, age, guardian_id, guardian_confirmed, display_name, created_at';
+
 const CREATE_SQL = `
   INSERT INTO app_users (user_id, email, password_hash, kind, age, guardian_id, display_name)
   VALUES ($1, lower($2), $3, $4, $5, $6, $7)
-  RETURNING user_id, email, password_hash, kind, age, guardian_id, display_name, created_at
+  RETURNING ${COLUMNS}
 `;
 
-const BY_EMAIL_SQL = `
-  SELECT user_id, email, password_hash, kind, age, guardian_id, display_name, created_at
-  FROM app_users WHERE email = lower($1)
-`;
+const BY_EMAIL_SQL = `SELECT ${COLUMNS} FROM app_users WHERE email = lower($1)`;
 
-const BY_ID_SQL = `
-  SELECT user_id, email, password_hash, kind, age, guardian_id, display_name, created_at
-  FROM app_users WHERE user_id = $1
-`;
+const BY_ID_SQL = `SELECT ${COLUMNS} FROM app_users WHERE user_id = $1`;
 
 function rowToUser(row: Record<string, unknown>): UserRecord {
   return {
@@ -70,6 +69,7 @@ function rowToUser(row: Record<string, unknown>): UserRecord {
     kind: row.kind as AccountKind,
     age: Number(row.age),
     guardianId: row.guardian_id == null ? null : String(row.guardian_id),
+    guardianConfirmed: Boolean(row.guardian_confirmed),
     displayName: String(row.display_name),
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
@@ -119,7 +119,12 @@ export class UserStore implements OnModuleDestroy {
       return rowToUser(result.rows[0]!);
     }
 
-    const record: UserRecord = { ...user, email: user.email.toLowerCase(), createdAt: new Date().toISOString() };
+    const record: UserRecord = {
+      ...user,
+      email: user.email.toLowerCase(),
+      guardianConfirmed: false,
+      createdAt: new Date().toISOString(),
+    };
     this.memory.set(user.userId, record);
     return record;
   }
@@ -142,6 +147,34 @@ export class UserStore implements OnModuleDestroy {
   }
 
   /**
+   * The guardian confirmation link's write: resolves a pending guardian
+   * email to a real account when one now exists, and marks the link
+   * confirmed. Idempotent — clicking the link twice changes nothing.
+   */
+  async confirmGuardian(minorId: string): Promise<UserRecord | null> {
+    const minor = await this.byId(minorId);
+    if (!minor) return null;
+
+    let guardianId = minor.guardianId;
+    if (guardianId?.startsWith('pending:')) {
+      const guardian = await this.byEmail(guardianId.slice('pending:'.length));
+      if (guardian) guardianId = guardian.userId;
+    }
+
+    if (this.pool) {
+      const result = await this.pool.query(
+        `UPDATE app_users SET guardian_id = $2, guardian_confirmed = true
+         WHERE user_id = $1 RETURNING ${COLUMNS}`,
+        [minorId, guardianId],
+      );
+      return result.rows[0] ? rowToUser(result.rows[0]) : null;
+    }
+    const updated: UserRecord = { ...minor, guardianId, guardianConfirmed: true };
+    this.memory.set(minorId, updated);
+    return updated;
+  }
+
+  /**
    * Changes an account's kind. Only the ADMIN_EMAILS bootstrap calls
    * this; the database's own constraints still apply, so an under-18
    * can never be promoted to anything.
@@ -149,8 +182,7 @@ export class UserStore implements OnModuleDestroy {
   async setKind(userId: string, kind: AccountKind): Promise<UserRecord | null> {
     if (this.pool) {
       const result = await this.pool.query(
-        `UPDATE app_users SET kind = $2 WHERE user_id = $1
-         RETURNING user_id, email, password_hash, kind, age, guardian_id, display_name, created_at`,
+        `UPDATE app_users SET kind = $2 WHERE user_id = $1 RETURNING ${COLUMNS}`,
         [userId, kind],
       );
       return result.rows[0] ? rowToUser(result.rows[0]) : null;
