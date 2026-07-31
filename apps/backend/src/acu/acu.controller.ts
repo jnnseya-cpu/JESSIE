@@ -1,6 +1,7 @@
 import {
   CostQuoteDto,
   CreateWalletDto,
+  GrantAcuDto,
   SpendDto,
   SubscriptionDepositDto,
   TopUpDto,
@@ -18,6 +19,7 @@ import {
   requiredAcus,
   type CostInput,
 } from '@jessmove/body-command';
+import { AdminOnly } from '../auth/auth.guard';
 import { WalletService, type SpendControls, type SpendRequest } from './wallet.service';
 
 @Controller('acu')
@@ -80,6 +82,23 @@ export class AcuController {
   @Post('wallets/:id/topup')
   topup(@Param('id') id: string, @Body() body: TopUpDto) {
     return this.wallets.purchase(id, body.amountGbp, body.bonusAcus ?? 0);
+  }
+
+  /**
+   * Admin: hand an account a promotional testing allowance. Open while
+   * AUTH_ENFORCE is off (pilot); locked to platform staff the moment
+   * enforcement is on.
+   */
+  @AdminOnly()
+  @Post('grant')
+  grant(@Body() body: GrantAcuDto) {
+    const wallet = this.wallets.forSubject('user', body.userId);
+    const granted = this.wallets.promotionalGrant(
+      wallet.id,
+      body.acus,
+      body.note ?? 'admin_testing_grant',
+    );
+    return { walletId: wallet.id, granted, balance: this.wallets.balance(wallet.id) };
   }
 
   @Post('wallets/:id/spend')

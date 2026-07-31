@@ -141,6 +141,27 @@ export class UserStore implements OnModuleDestroy {
     return this.memory.get(userId) ?? null;
   }
 
+  /**
+   * Changes an account's kind. Only the ADMIN_EMAILS bootstrap calls
+   * this; the database's own constraints still apply, so an under-18
+   * can never be promoted to anything.
+   */
+  async setKind(userId: string, kind: AccountKind): Promise<UserRecord | null> {
+    if (this.pool) {
+      const result = await this.pool.query(
+        `UPDATE app_users SET kind = $2 WHERE user_id = $1
+         RETURNING user_id, email, password_hash, kind, age, guardian_id, display_name, created_at`,
+        [userId, kind],
+      );
+      return result.rows[0] ? rowToUser(result.rows[0]) : null;
+    }
+    const existing = this.memory.get(userId);
+    if (!existing) return null;
+    const updated: UserRecord = { ...existing, kind };
+    this.memory.set(userId, updated);
+    return updated;
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end();
   }

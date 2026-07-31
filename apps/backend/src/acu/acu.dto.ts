@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -94,4 +95,22 @@ export class CreateWalletDto {
 
   @IsString()
   subjectId!: string;
+}
+
+export class GrantAcuDto {
+  /** The account receiving the allowance. */
+  @IsString()
+  @MaxLength(64)
+  userId!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(100000)
+  acus!: number;
+
+  /** Recorded on the grant, e.g. "pilot testing allowance". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  note?: string;
 }

@@ -120,6 +120,26 @@ export class WalletService {
     return this.wallets.get(walletId);
   }
 
+  /** The subject's wallet, created on first use. */
+  forSubject(subjectType: Wallet['subjectType'], subjectId: string): Wallet {
+    const existing = [...this.wallets.values()].find(
+      (w) => w.subjectType === subjectType && w.subjectId === subjectId,
+    );
+    return existing ?? this.create(subjectType, subjectId);
+  }
+
+  /**
+   * An administrator-issued promotional allowance — how a pilot tester
+   * gets ACU without a payment. Spent first (promotional precedence),
+   * expires like any promotional grant, and the note lands on the grant
+   * record so nobody wonders where the balance came from.
+   */
+  promotionalGrant(walletId: string, acus: number, note = 'admin_grant', now = new Date()): AcuGrant | null {
+    const wallet = this.wallets.get(walletId);
+    if (!wallet) return null;
+    return this.grant(wallet, 'promotional', Math.round(acus), now, note);
+  }
+
   /** Live balance across all unexpired grants. */
   balance(walletId: string, now = new Date()): number {
     const wallet = this.wallets.get(walletId);

@@ -98,7 +98,14 @@ export class AuthService {
     }
 
     const isMinor = input.age < 18;
-    const kind: AccountKind = isMinor ? 'minor' : 'adult';
+    // The one exception to "signup produces adult or minor": an email on
+    // the ADMIN_EMAILS allow-list registers as platform staff. The list
+    // lives in deployment configuration, never in a request.
+    const kind: AccountKind = isMinor
+      ? 'minor'
+      : this.isAdminEmail(input.email)
+        ? 'platform_staff'
+        : 'adult';
 
     let guardianId: string | null = null;
     if (isMinor) {
@@ -148,8 +155,25 @@ export class AuthService {
       throw new UnauthorizedException('that email and password combination is not right');
     }
 
-    const token = issueToken({ uid: user.userId, kind: user.kind, age: user.age }, this.secret());
-    return { token, userId: user.userId, kind: user.kind };
+    // An existing adult account whose email joined ADMIN_EMAILS is
+    // promoted at sign-in — the bootstrap for the first administrator.
+    // Adults only: a minor's kind is never touched.
+    let kind = user.kind;
+    if (kind === 'adult' && this.isAdminEmail(user.email)) {
+      const promoted = await this.users.setKind(user.userId, 'platform_staff');
+      if (promoted) kind = promoted.kind;
+    }
+
+    const token = issueToken({ uid: user.userId, kind, age: user.age }, this.secret());
+    return { token, userId: user.userId, kind };
+  }
+
+  private isAdminEmail(email: string): boolean {
+    return (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(email.trim().toLowerCase());
   }
 
   verify(token: string): SessionPayload | null {
