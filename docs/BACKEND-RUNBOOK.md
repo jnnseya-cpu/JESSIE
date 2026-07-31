@@ -37,7 +37,7 @@ pnpm --filter @jessmove/backend start
 bash scripts/smoke.sh http://localhost:4000/api
 ```
 
-✅ `pass=80 fail=0`
+✅ `pass=81 fail=0`
 
 *(`health` saying `degraded` is normal — it means no AI key, not a fault.)*
 
@@ -177,13 +177,27 @@ whole API as one function. Same account as the website, second project, and
    **FoodLens photo analysis** goes live with the same AI key as everything else —
    `POST /foodlens/analyze` answers in `sandbox` mode without one, `live` with one.
 
+   **Background notifications (Web Push)** — three variables switch them on; generate a
+   keypair with `node -e "const {generateVapidKeys}=require('./apps/backend/dist/push/webpush.logic');console.log(generateVapidKeys())"`:
+
+   | Name | Value |
+   |---|---|
+   | `VAPID_PUBLIC_KEY` | the generated public key |
+   | `VAPID_PRIVATE_KEY` | the generated private key — secret, server-only |
+   | `VAPID_SUBJECT` | `mailto:jess@jessmove.com` |
+
+   Then any signed-in person presses **Enable notifications** on /account, and
+   `POST /push/test {"userId":"u_…"}` proves delivery on a locked phone. Subscriptions
+   live in Postgres (`0003_push.sql`, self-applied). On iPhone, notifications require
+   the app installed to the home screen — an iOS rule, not ours.
+
 4. **Deploy.** You get `https://<project>.vercel.app`. Prove it:
 
    ```bash
    bash scripts/smoke.sh https://<project>.vercel.app/api
    ```
 
-   ✅ `pass=80 fail=0`
+   ✅ `pass=81 fail=0`
 
 5. Project → **Settings → Domains** → add `api.jessmove.com`. The DNS record already
    points at Vercel, so it attaches and the certificate is automatic.
@@ -308,7 +322,7 @@ leave it off while /try and /console are in use, and turn it on before real user
 ## Done when
 
 - [ ] `pnpm -r test` → 295 pass
-- [ ] `scripts/smoke.sh` → 80/80
+- [ ] `scripts/smoke.sh` → 81/81
 - [ ] `/api/stripe/status` → no missing Price IDs
 - [ ] `/api/mail/status` → `configured: true`
 - [ ] A test email arrives, not in spam

@@ -35,6 +35,56 @@ export function AccountPanel() {
   const [age, setAge] = useState('');
   const [guardianEmail, setGuardianEmail] = useState('');
 
+  const [push, setPush] = useState<
+    'checking' | 'unsupported' | 'off' | 'busy' | 'on' | 'denied' | 'unconfigured'
+  >('checking');
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPush('unsupported');
+      return;
+    }
+    void navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPush(sub ? 'on' : 'off'))
+      .catch(() => setPush('off'));
+  }, []);
+
+  /** The applicationServerKey format PushManager wants. */
+  const keyBytes = (b64u: string) => {
+    const pad = '='.repeat((4 - (b64u.length % 4)) % 4);
+    const raw = atob((b64u + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  };
+
+  const enablePush = async (userId: string) => {
+    setPush('busy');
+    try {
+      const status = (await (await fetch(`${apiBase()}/push/status`)).json()) as {
+        data: { configured: boolean; publicKey: string | null };
+      };
+      if (!status.data.configured || !status.data.publicKey) {
+        setPush('unconfigured');
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: keyBytes(status.data.publicKey),
+      });
+      const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      await api('/push/subscribe', {
+        userId,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+      });
+      setPush('on');
+    } catch {
+      setPush(Notification.permission === 'denied' ? 'denied' : 'off');
+    }
+  };
+
   const api = useCallback(
     (path: string, body?: object) =>
       fetch(`${apiBase()}${path}`, {
@@ -127,6 +177,23 @@ export function AccountPanel() {
           </div>
         )}
         <div className="metric"><span className="metric__k">Session ends</span><span className="metric__v">{new Date(me.sessionExpires).toLocaleDateString('en-GB')}</span></div>
+        <div className="metric"><span className="metric__k">User ID</span><span className="metric__v"><code>{me.userId}</code></span></div>
+        <div className="metric">
+          <span className="metric__k">Movement alerts</span>
+          <span className="metric__v">
+            {push === 'on' && 'on — arrives even when the app is closed'}
+            {push === 'off' && (
+              <button className="btn btn--dark" type="button" onClick={() => void enablePush(me.userId)}>
+                Enable notifications
+              </button>
+            )}
+            {push === 'busy' && 'asking your browser…'}
+            {push === 'denied' && 'blocked in browser settings — allow notifications for jessmove.com to turn on'}
+            {push === 'unsupported' && 'this browser cannot receive them — on iPhone, install the app to your home screen first'}
+            {push === 'unconfigured' && 'not switched on for this deployment yet'}
+            {push === 'checking' && '…'}
+          </span>
+        </div>
         <button className="btn btn--dark" type="button" onClick={() => void logout()} style={{ alignSelf: 'flex-start', marginTop: 12 }}>
           Sign out
         </button>

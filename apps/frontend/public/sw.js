@@ -19,7 +19,7 @@
  * signal; your data does not appear without a network.
  */
 
-const VERSION = 'jm-v2';
+const VERSION = 'jm-v3';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = '/offline';
@@ -159,4 +159,48 @@ self.addEventListener('fetch', (event) => {
    update. Reloading under them mid-task is rude, so it is never automatic. */
 self.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') self.skipWaiting();
+});
+
+/* ------------------------------------------------------------------ *
+ * Background notifications.
+ *
+ * This is how Jess Move reaches a person whose app is closed: the
+ * server encrypts a payload to this device's own subscription keys and
+ * the push service wakes this worker. userVisibleOnly means every push
+ * shows a notification — no silent background work, by design.
+ * ------------------------------------------------------------------ */
+
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Jess Move', body: 'You have a movement window.', url: '/' };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    /* an unparseable payload still shows the default */
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: payload.url },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? '/';
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const win of wins) {
+        if ('focus' in win) {
+          await win.focus();
+          if ('navigate' in win) await win.navigate(url);
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
 });

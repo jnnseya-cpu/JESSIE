@@ -16,6 +16,7 @@ import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { MovementsModule } from './movements/movements.module';
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
+import { PushModule } from './push/push.module';
 import { StripeModule } from './stripe/stripe.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { StripeModule } from './stripe/stripe.module';
     MailModule,
     MovementsModule,
     PrescriptionsModule,
+    PushModule,
     StripeModule,
     HealthModule,
   ],
