@@ -43,13 +43,26 @@ export class MailService {
 
   constructor(private readonly config: ConfigService) {}
 
-  private smtp(): SmtpConfig | null {
-    const host = this.config.get<string>('SMTP_HOST');
-    const user = this.config.get<string>('SMTP_USER');
-    const pass = this.config.get<string>('SMTP_PASS');
-    if (!host || !user || !pass) return null;
+  /**
+   * Reads a variable, treating two classic dashboard slips as "not set":
+   * surrounding whitespace, and a value that is literally the variable's
+   * own name (the copy-paste that once dialled a server called
+   * "SMTP_HOST" for a full afternoon).
+   */
+  private cleanVar(key: string): string | undefined {
+    const value = this.config.get<string>(key)?.trim();
+    return value && value !== key ? value : undefined;
+  }
 
-    const port = Number(this.config.get<string>('SMTP_PORT') ?? 587);
+  private smtp(): SmtpConfig | null {
+    // The platform's mailbox lives at Hostinger by design, so the host
+    // has a sane default and only the credentials are truly required.
+    const host = this.cleanVar('SMTP_HOST') ?? 'smtp.hostinger.com';
+    const user = this.cleanVar('SMTP_USER');
+    const pass = this.cleanVar('SMTP_PASS');
+    if (!user || !pass) return null;
+
+    const port = Number(this.cleanVar('SMTP_PORT') ?? 587);
     return {
       host,
       port,
@@ -57,7 +70,7 @@ export class MailService {
       secure: port === 465,
       user,
       pass,
-      from: this.config.get<string>('SMTP_FROM') ?? `${BRAND.platform} <jess@jessmove.com>`,
+      from: this.cleanVar('SMTP_FROM') ?? `${BRAND.platform} <jess@jessmove.com>`,
     };
   }
 
