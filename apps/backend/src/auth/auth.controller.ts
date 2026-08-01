@@ -77,8 +77,19 @@ export class AuthController {
     return this.auth.status();
   }
 
+  /** The dated, signed form token both doors require. */
+  @Get('challenge')
+  challenge() {
+    return this.auth.issueChallenge();
+  }
+
   @Post('register')
-  async register(@Body() body: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() body: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'register');
     const result = await this.auth.register(body);
     this.setCookie(res, result.token);
     return {
@@ -92,7 +103,12 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() body: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'login');
     const result = await this.auth.login(body.email, body.password);
     this.setCookie(res, result.token);
     return { userId: result.userId, kind: result.kind };

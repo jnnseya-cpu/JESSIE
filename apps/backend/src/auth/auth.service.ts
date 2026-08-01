@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -92,6 +93,48 @@ export class AuthService {
     if (!this.configured()) {
       throw new BadRequestException(
         'authentication is not configured on this deployment — set AUTH_SECRET (32+ random characters)',
+      );
+    }
+  }
+
+  /** A signed, dated proof that a form was served. Costs nothing to honour. */
+  issueChallenge(): { token: string } {
+    return {
+      token: issueActionToken('human_check', { t: String(Math.floor(Date.now() / 1000)) }, this.secret(), 1800),
+    };
+  }
+
+  /**
+   * Humans-only, without a CAPTCHA vendor: the form token must exist, be
+   * ours, and be older than a bot's instant submit; the honeypot must be
+   * empty (the DTO enforces that); and each IP gets a sliding window.
+   * Every refusal is the same flat sentence — no oracle for scripts.
+   */
+  private readonly attempts = new Map<string, number[]>();
+
+  assertHuman(challenge: string | undefined, ip: string, kind: 'register' | 'login'): void {
+    if (!this.configured()) return;
+
+    const flat = new BadRequestException(
+      'that submission did not look like a person — reload the page and try again',
+    );
+    if (!challenge) throw flat;
+    const data = verifyActionToken('human_check', challenge, this.secret());
+    if (!data?.t) throw flat;
+    const ageSeconds = Math.floor(Date.now() / 1000) - Number(data.t);
+    // A password manager plus a fast human needs ~2s; a script needs ~0.
+    if (ageSeconds < (kind === 'register' ? 3 : 2)) throw flat;
+
+    const key = `${kind}:${ip}`;
+    const now = Date.now();
+    const windowMs = 10 * 60 * 1000;
+    const recent = (this.attempts.get(key) ?? []).filter((t) => now - t < windowMs);
+    recent.push(now);
+    this.attempts.set(key, recent);
+    if (recent.length > (kind === 'register' ? 5 : 12)) {
+      throw new HttpException(
+        'too many attempts from this connection — wait a few minutes',
+        429,
       );
     }
   }

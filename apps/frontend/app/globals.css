@@ -4550,3 +4550,42 @@ textarea:focus-visible {
   border-radius: 999px;
   padding: 8px 14px;
 }
+
+/* Password fields with the show/hide eye */
+.pwfield {
+  position: relative;
+  display: block;
+}
+.pwfield input {
+  padding-right: 48px;
+}
+.pwfield__eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: rgba(244, 250, 249, 0.55);
+  cursor: pointer;
+}
+.pwfield__eye:hover {
+  color: var(--jm-teal);
+}
+.acct__dangerrow .pwfield {
+  flex: 0 1 260px;
+}
+
+/* The honeypot: physically present, humanly invisible. */
+.hpfield {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

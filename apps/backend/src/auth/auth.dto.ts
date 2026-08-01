@@ -1,6 +1,16 @@
 import { IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
-export class RegisterDto {
+/** Humans-only proof, shared by both doors. */
+export class HumanCheck {
+  /** Signed challenge issued by GET /auth/challenge. */
+  @IsString() @MaxLength(2048) challenge!: string;
+
+  /** Honeypot. Humans never see it; anything in it fails validation. */
+  @IsOptional() @IsString() @MaxLength(0) website?: string;
+}
+
+
+export class RegisterDto extends HumanCheck {
   @IsEmail() email!: string;
 
   /** Length is the only rule. Composition rules push people to Password1! */
@@ -14,7 +24,7 @@ export class RegisterDto {
   @IsOptional() @IsEmail() guardianEmail?: string;
 }
 
-export class LoginDto {
+export class LoginDto extends HumanCheck {
   @IsEmail() email!: string;
   @IsString() @MinLength(1) @MaxLength(200) password!: string;
 }
