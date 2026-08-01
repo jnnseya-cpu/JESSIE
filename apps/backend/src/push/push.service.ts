@@ -159,10 +159,12 @@ export class PushService implements OnModuleDestroy {
         this.subject(),
       );
       try {
+        // The body is raw encrypted bytes. Which BodyInit type the compiler
+        // resolves varies by toolchain, so the cast stays deliberately wide.
         const response = (await fetch(sub.endpoint, {
           method: 'POST',
           headers: request.headers,
-          body: new Uint8Array(request.body),
+          body: new Uint8Array(request.body) as unknown as string,
         })) as unknown as FetchResponse;
         if (response.ok) {
           sent += 1;

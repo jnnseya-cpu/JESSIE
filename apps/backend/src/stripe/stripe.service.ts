@@ -42,6 +42,10 @@ interface FetchResponse {
   json(): Promise<unknown>;
 }
 
+interface DedupePool {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+}
+
 export interface SubscriptionRecord {
   subscriptionId: string;
   customerId: string;
@@ -67,9 +71,7 @@ export class StripeService {
    * instance receives it, however long after.
    */
   private readonly seenEvents = new Set<string>();
-  private pool: {
-    query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
-  } | null = null;
+  private pool: DedupePool | null = null;
   private readonly subscriptions = new Map<string, SubscriptionRecord>();
   private readonly customerToUser = new Map<string, string>();
 
@@ -80,14 +82,14 @@ export class StripeService {
     const url = process.env.DATABASE_URL;
     if (url) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => NonNullable<typeof this.pool> };
+      const { Pool } = require('pg') as { Pool: new (o: object) => DedupePool };
       this.pool = new Pool({
         connectionString: url,
         max: 2,
         ssl: url.includes('sslmode=require') || url.includes('vercel')
           ? { rejectUnauthorized: true }
           : undefined,
-      } as unknown as object);
+      });
     }
   }
 

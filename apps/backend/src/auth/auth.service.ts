@@ -280,9 +280,10 @@ export class AuthService {
       mimeType,
     );
 
-    const updated = await this.users.setMedia(payload.uid, {
-      [slot === 'avatar' ? 'avatarUrl' : 'coverUrl']: stored.url,
-    });
+    const updated = await this.users.setMedia(
+      payload.uid,
+      slot === 'avatar' ? { avatarUrl: stored.url } : { coverUrl: stored.url },
+    );
     return {
       slot,
       url: stored.url,
