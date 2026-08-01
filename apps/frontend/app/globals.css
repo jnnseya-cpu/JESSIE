@@ -337,6 +337,10 @@ button:focus-visible {
   font-weight: 600;
   text-decoration: none;
   border: 1px solid transparent;
+  /* A <button> keeps the browser's white default unless told otherwise —
+     which turned every ghost button into white-on-white. Links never
+     showed it, so the bug only appeared on real buttons. */
+  background: transparent;
   cursor: pointer;
   transition:
     transform 0.16s ease,
