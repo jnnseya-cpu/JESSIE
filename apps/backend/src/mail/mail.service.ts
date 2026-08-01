@@ -65,9 +65,38 @@ export class MailService {
     return this.smtp() !== null;
   }
 
+  /**
+   * Per-variable X-ray for the status endpoint. Values that are not
+   * secrets are shown as-is; the password is described, never shown.
+   * `isOwnName` catches the classic paste slip where a variable's value
+   * is its own name.
+   */
+  private variableReport(): Record<string, unknown> {
+    const inspect = (key: string, secret: boolean) => {
+      const fromConfig = this.config.get<string>(key);
+      const fromEnv = process.env[key];
+      return {
+        present: Boolean(fromConfig),
+        length: fromConfig?.length ?? 0,
+        isOwnName: fromConfig === key,
+        hasWhitespace: fromConfig ? /^\s|\s$/.test(fromConfig) : false,
+        ...(secret ? {} : { value: fromConfig ?? null }),
+        matchesProcessEnv: fromConfig === fromEnv,
+      };
+    };
+    return {
+      SMTP_HOST: inspect('SMTP_HOST', false),
+      SMTP_PORT: inspect('SMTP_PORT', false),
+      SMTP_USER: inspect('SMTP_USER', false),
+      SMTP_FROM: inspect('SMTP_FROM', false),
+      SMTP_PASS: inspect('SMTP_PASS', true),
+    };
+  }
+
   status() {
     const smtp = this.smtp();
     return {
+      variables: this.variableReport(),
       configured: smtp !== null,
       host: smtp?.host ?? null,
       port: smtp?.port ?? null,
