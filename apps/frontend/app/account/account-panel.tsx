@@ -104,6 +104,30 @@ export function AccountPanel() {
   const [grantAmount, setGrantAmount] = useState('500');
   const [adminResult, setAdminResult] = useState<string | null>(null);
 
+  interface FoundUser {
+    userId: string;
+    displayName: string;
+    email: string;
+    kind: string;
+    age: number;
+  }
+  const [userQuery, setUserQuery] = useState('');
+  const [results, setResults] = useState<FoundUser[] | null>(null);
+  const [selected, setSelected] = useState<FoundUser | null>(null);
+
+  const searchUsers = async () => {
+    setAdminResult(null);
+    setSelected(null);
+    try {
+      const res = await api(`/auth/admin/users?q=${encodeURIComponent(userQuery.trim())}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      setResults(json.data.users as FoundUser[]);
+    } catch (e) {
+      setAdminResult(`search failed: ${(e as Error).message}`);
+    }
+  };
+
   const loadWallet = useCallback(
     async (userId: string) => {
       try {
@@ -118,17 +142,22 @@ export function AccountPanel() {
   );
 
   const grantAcu = async () => {
+    const target = selected?.userId ?? (userQuery.trim().startsWith('u_') ? userQuery.trim() : grantTarget.trim());
+    if (!target) {
+      setAdminResult('find a person first — search by name or email, then click them');
+      return;
+    }
     setAdminResult('granting…');
     try {
       const res = await api('/acu/grant', {
-        userId: grantTarget.trim(),
+        userId: target,
         acus: Number(grantAmount),
         note: 'admin grant from /account',
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? `${res.status}`);
-      setAdminResult(`done — ${grantTarget.trim()} now holds ${json.data.balance} ACU`);
-      if (me && grantTarget.trim() === me.userId) void loadWallet(me.userId);
+      setAdminResult(`done — ${selected ? selected.displayName : target} now holds ${json.data.balance} ACU`);
+      if (me && target === me.userId) void loadWallet(me.userId);
     } catch (e) {
       setAdminResult(`failed: ${(e as Error).message}`);
     }
@@ -501,14 +530,47 @@ export function AccountPanel() {
               </h3>
               <div className="acct__adminform">
                 <label>
-                  <span>Grant ACU to user ID</span>
-                  <input value={grantTarget} onChange={(e) => setGrantTarget(e.target.value)} placeholder="u_…" />
+                  <span>Find a person — name, email or user ID</span>
+                  <input
+                    value={userQuery}
+                    onChange={(e) => setUserQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void searchUsers();
+                      }
+                    }}
+                    placeholder="e.g. Kim, or kim@example.com"
+                  />
                 </label>
                 <label>
                   <span>Amount</span>
                   <input value={grantAmount} onChange={(e) => setGrantAmount(e.target.value)} inputMode="numeric" />
                 </label>
               </div>
+              <div className="acct__adminrow" style={{ marginTop: 10 }}>
+                <button className="btn acct__ghostbtn" type="button" onClick={() => void searchUsers()}>
+                  Search
+                </button>
+                {selected && (
+                  <span className="acct__selecteduser">
+                    {selected.displayName} · {selected.email} · {selected.kind.replace(/_/g, ' ')}, {selected.age}
+                  </span>
+                )}
+              </div>
+              {results && !selected && (
+                <ul className="acct__results">
+                  {results.length === 0 && <li className="acct__results-empty">Nobody matches that.</li>}
+                  {results.map((u) => (
+                    <li key={u.userId}>
+                      <button type="button" onClick={() => { setSelected(u); setResults(null); }}>
+                        <span>{u.displayName}</span>
+                        <em>{u.email} · {u.kind.replace(/_/g, ' ')}, {u.age}</em>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <div className="acct__adminrow">
                 <button className="btn btn--primary" type="button" onClick={() => void grantAcu()}>
                   Grant ACU

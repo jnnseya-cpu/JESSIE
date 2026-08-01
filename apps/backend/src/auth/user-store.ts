@@ -247,6 +247,33 @@ export class UserStore implements OnModuleDestroy {
     return this.memory.delete(userId);
   }
 
+  /**
+   * Admin search over name and email. Case-insensitive substring, capped,
+   * newest first — enough to find the person in front of you, not an
+   * export surface.
+   */
+  async search(query: string, limit = 10): Promise<UserRecord[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    if (this.pool) {
+      const result = await this.pool.query(
+        `SELECT ${COLUMNS} FROM app_users
+         WHERE email ILIKE $1 OR display_name ILIKE $1 OR user_id = $2
+         ORDER BY created_at DESC LIMIT $3`,
+        [`%${q}%`, query.trim(), limit],
+      );
+      return result.rows.map(rowToUser);
+    }
+    return [...this.memory.values()]
+      .filter(
+        (u) =>
+          u.email.includes(q) ||
+          u.displayName.toLowerCase().includes(q) ||
+          u.userId === query.trim(),
+      )
+      .slice(0, limit);
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end();
   }

@@ -310,6 +310,18 @@ export class AuthService {
     return { deleted: true };
   }
 
+  /** Admin: find an account by name, email or exact id. Safe fields only. */
+  async searchUsers(query: string) {
+    const found = await this.users.search(query);
+    return found.map((u) => ({
+      userId: u.userId,
+      displayName: u.displayName,
+      email: u.email,
+      kind: u.kind,
+      age: u.age,
+    }));
+  }
+
   async me(payload: SessionPayload) {
     const user = await this.users.byId(payload.uid);
     if (!user) throw new UnauthorizedException('this session belongs to no known account');

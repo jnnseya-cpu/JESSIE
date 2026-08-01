@@ -4498,3 +4498,55 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* Admin people search */
+.acct__results {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 1px solid rgba(244, 250, 249, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.acct__results li + li {
+  border-top: 1px solid rgba(244, 250, 249, 0.08);
+}
+.acct__results button {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #f4faf9;
+  font: inherit;
+  text-align: left;
+  transition: background 0.14s ease;
+}
+.acct__results button:hover {
+  background: rgba(45, 212, 191, 0.08);
+}
+.acct__results span {
+  font-weight: 600;
+  font-size: 15px;
+}
+.acct__results em {
+  font-style: normal;
+  font-size: 13px;
+  color: rgba(244, 250, 249, 0.55);
+}
+.acct__results-empty {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: rgba(244, 250, 249, 0.55);
+}
+.acct__selecteduser {
+  font-size: 14px;
+  color: var(--jm-teal);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  border-radius: 999px;
+  padding: 8px 14px;
+}

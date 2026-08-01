@@ -13,6 +13,7 @@ import {
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { DeleteAccountDto, LoginDto, MediaUploadDto, RegisterDto, UpdateNameDto } from './auth.dto';
+import { AdminOnly } from './auth.guard';
 import { SESSION_TTL_SECONDS } from './token';
 import { tokenFrom } from './auth.guard';
 
@@ -59,6 +60,15 @@ export class AuthController {
       `You are now the confirmed guardian for ${result.minorName}. Their JESS MOVE account is active, ` +
         'with every under-18 protection on: no calorie, weight or appearance framing, ever.',
     );
+  }
+
+  /** Admin: find an account by name, email or exact id. */
+  @AdminOnly()
+  @Get('admin/users')
+  async adminUsers(@Req() req: Request, @Query('q') q?: string) {
+    this.session(req);
+    if (!q || q.trim().length < 2) return { users: [] };
+    return { users: await this.auth.searchUsers(q) };
   }
 
   /** Whether auth is configured, which user store is live, and enforcement. */
