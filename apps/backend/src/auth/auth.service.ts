@@ -9,6 +9,9 @@ import { randomUUID } from 'node:crypto';
 import type { AccountKind } from '@jessmove/shared';
 import { ProfilesService } from '../accounts/profiles.service';
 import { MailService } from '../mail/mail.service';
+import { PushService } from '../push/push.service';
+import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
+import { StorageService } from '../storage/storage.service';
 import { hashPassword, verifyPassword } from './password';
 import {
   issueActionToken,
@@ -50,6 +53,8 @@ export class AuthService {
     private readonly users: UserStore,
     private readonly profiles: ProfilesService,
     private readonly mail: MailService,
+    private readonly storage: StorageService,
+    private readonly push: PushService,
   ) {}
 
   private secret(): string {
@@ -230,6 +235,80 @@ export class AuthService {
     return verifyToken(token, this.secret());
   }
 
+  async updateName(payload: SessionPayload, displayName: string) {
+    const updated = await this.users.updateDisplayName(payload.uid, displayName.trim());
+    if (!updated) throw new UnauthorizedException('this session belongs to no known account');
+    return { displayName: updated.displayName };
+  }
+
+  /**
+   * A profile picture or cover. Same discipline as every image on the
+   * platform: format sniffed from the bytes, mime mismatch refused,
+   * EXIF/GPS stripped before storage — and never for an under-18,
+   * whatever the consent settings say.
+   */
+  async attachMedia(
+    payload: SessionPayload,
+    slot: 'avatar' | 'cover',
+    mimeType: string,
+    dataBase64: string,
+  ) {
+    const user = await this.users.byId(payload.uid);
+    if (!user) throw new UnauthorizedException('this session belongs to no known account');
+    if (user.age < 18) {
+      throw new BadRequestException(
+        'No photographic media on under-18 accounts, in any mode, under any consent setting.',
+      );
+    }
+
+    const bytes = Buffer.from(dataBase64, 'base64');
+    if (bytes.length === 0) throw new BadRequestException('The image is empty.');
+    const sniffed = sniffImage(bytes);
+    if (!sniffed.format) {
+      throw new BadRequestException('Those bytes are not a JPEG, PNG or WebP photograph.');
+    }
+    if (mimeType !== `image/${sniffed.format}`) {
+      throw new BadRequestException(
+        `Declared ${mimeType} but the bytes are image/${sniffed.format} — refused as a disguised file.`,
+      );
+    }
+
+    const clean = stripImageMetadata(bytes);
+    const stored = await this.storage.put(
+      `${slot}-${payload.uid}-${randomUUID()}`,
+      clean,
+      mimeType,
+    );
+
+    const updated = await this.users.setMedia(payload.uid, {
+      [slot === 'avatar' ? 'avatarUrl' : 'coverUrl']: stored.url,
+    });
+    return {
+      slot,
+      url: stored.url,
+      bytesRemoved: bytes.length - clean.length,
+      avatarUrl: updated?.avatarUrl ?? null,
+      coverUrl: updated?.coverUrl ?? null,
+    };
+  }
+
+  /** The danger zone. Password re-entry required; gone means gone. */
+  async deleteAccount(payload: SessionPayload, password: string): Promise<{ deleted: true }> {
+    const user = await this.users.byId(payload.uid);
+    if (!user) throw new UnauthorizedException('this session belongs to no known account');
+    const ok = await verifyPassword(password, user.passwordHash);
+    if (!ok) throw new UnauthorizedException('that password is not right');
+
+    try {
+      this.profiles.remove(payload.uid);
+    } catch {
+      /* no in-memory profile on this instance — the durable rows are what matter */
+    }
+    await this.push.deleteForUser(payload.uid).catch(() => {});
+    await this.users.delete(payload.uid);
+    return { deleted: true };
+  }
+
   async me(payload: SessionPayload) {
     const user = await this.users.byId(payload.uid);
     if (!user) throw new UnauthorizedException('this session belongs to no known account');
@@ -241,6 +320,8 @@ export class AuthService {
       age: user.age,
       guardianLinked: user.guardianId !== null && !user.guardianId.startsWith('pending:'),
       guardianConfirmed: user.guardianConfirmed,
+      avatarUrl: user.avatarUrl,
+      coverUrl: user.coverUrl,
       sessionExpires: new Date(payload.exp * 1000).toISOString(),
     };
   }

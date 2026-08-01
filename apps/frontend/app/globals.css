@@ -3998,3 +3998,130 @@ textarea:focus-visible {
 .plancard__means li::before {
   content: none;
 }
+
+/* ---------- The signed-in profile header ---------- */
+
+.profilehead {
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(11, 37, 64, 0.1);
+  padding-bottom: 18px;
+}
+.profilehead__cover {
+  height: 148px;
+  background: linear-gradient(120deg, var(--jm-navy), #14486f 55%, var(--jm-teal));
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.profilehead__coverbtn {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(11, 37, 64, 0.72);
+  color: #f4faf9;
+}
+.profilehead__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  padding: 0 20px;
+  margin-top: -44px;
+  flex-wrap: wrap;
+}
+.profilehead__avatarwrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.profilehead__avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  object-fit: cover;
+  display: block;
+  background: var(--jm-navy);
+}
+.profilehead__avatar--initials {
+  display: grid;
+  place-items: center;
+  color: #f4faf9;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.profilehead__avatarbtn {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: var(--jm-navy);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.profilehead__id {
+  padding-bottom: 6px;
+  min-width: 0;
+}
+.profilehead__id h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  color: var(--jm-navy);
+}
+.profilehead__id p {
+  margin: 0;
+  font-size: 14.5px;
+  color: rgba(11, 37, 64, 0.65);
+  overflow-wrap: anywhere;
+}
+.profilehead__kind {
+  text-transform: capitalize;
+  color: var(--jm-teal-ink, #0f766e);
+  font-weight: 600;
+}
+.profilehead__editbtn {
+  border: none;
+  background: none;
+  color: var(--jm-teal-ink, #0f766e);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.profilehead__editrow {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.profilehead__editrow input {
+  font-size: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 37, 64, 0.3);
+}
+
+/* ---------- Danger zone ---------- */
+
+.dangerzone {
+  border: 1px solid rgba(214, 69, 69, 0.45);
+}
+.dangerzone__btn {
+  background: #d64545;
+  color: #ffffff;
+}
+.dangerzone__btn:hover {
+  background: #bb3535;
+}

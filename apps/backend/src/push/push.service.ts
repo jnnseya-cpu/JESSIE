@@ -180,6 +180,25 @@ export class PushService implements OnModuleDestroy {
     return { sent, expired, failures };
   }
 
+  /** Account deletion's sweep: every device this user registered. */
+  async deleteForUser(userId: string): Promise<number> {
+    if (this.pool) {
+      const result = await this.pool.query(
+        'DELETE FROM push_subscriptions WHERE user_id = $1 RETURNING endpoint',
+        [userId],
+      );
+      return result.rows.length;
+    }
+    let removed = 0;
+    for (const [endpoint, sub] of this.memory) {
+      if (sub.userId === userId) {
+        this.memory.delete(endpoint);
+        removed += 1;
+      }
+    }
+    return removed;
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end();
   }

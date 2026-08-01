@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  Patch,
   Post,
   Query,
   Res,
@@ -11,7 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './auth.dto';
+import { DeleteAccountDto, LoginDto, MediaUploadDto, RegisterDto, UpdateNameDto } from './auth.dto';
 import { SESSION_TTL_SECONDS } from './token';
 import { tokenFrom } from './auth.guard';
 
@@ -102,9 +103,35 @@ export class AuthController {
 
   @Get('me')
   async me(@Req() req: Request) {
+    return this.auth.me(this.session(req));
+  }
+
+  @Patch('me')
+  async updateMe(@Req() req: Request, @Body() body: UpdateNameDto) {
+    return this.auth.updateName(this.session(req), body.displayName);
+  }
+
+  @Post('me/media')
+  async media(@Req() req: Request, @Body() body: MediaUploadDto) {
+    return this.auth.attachMedia(this.session(req), body.slot, body.mimeType, body.dataBase64);
+  }
+
+  /** The danger zone. Deletes the account and ends the session. */
+  @Post('me/delete')
+  async deleteMe(
+    @Req() req: Request,
+    @Body() body: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.deleteAccount(this.session(req), body.password);
+    res.clearCookie('jm_session', { domain: process.env.COOKIE_DOMAIN, path: '/' });
+    return result;
+  }
+
+  private session(req: Request) {
     const token = tokenFrom(req);
     const session = token ? this.auth.verify(token) : null;
     if (!session) throw new UnauthorizedException('no valid session');
-    return this.auth.me(session);
+    return session;
   }
 }

@@ -30,6 +30,8 @@ export interface UserRecord {
   /** Set by the guardian confirmation link. Minors start unconfirmed. */
   readonly guardianConfirmed: boolean;
   readonly displayName: string;
+  readonly avatarUrl: string | null;
+  readonly coverUrl: string | null;
   readonly createdAt: string;
 }
 
@@ -49,7 +51,7 @@ interface PgPoolLike {
 }
 
 const COLUMNS =
-  'user_id, email, password_hash, kind, age, guardian_id, guardian_confirmed, display_name, created_at';
+  'user_id, email, password_hash, kind, age, guardian_id, guardian_confirmed, display_name, avatar_url, cover_url, created_at';
 
 const CREATE_SQL = `
   INSERT INTO app_users (user_id, email, password_hash, kind, age, guardian_id, display_name)
@@ -70,6 +72,8 @@ function rowToUser(row: Record<string, unknown>): UserRecord {
     age: Number(row.age),
     guardianId: row.guardian_id == null ? null : String(row.guardian_id),
     guardianConfirmed: Boolean(row.guardian_confirmed),
+    avatarUrl: row.avatar_url == null ? null : String(row.avatar_url),
+    coverUrl: row.cover_url == null ? null : String(row.cover_url),
     displayName: String(row.display_name),
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
@@ -123,6 +127,8 @@ export class UserStore implements OnModuleDestroy {
       ...user,
       email: user.email.toLowerCase(),
       guardianConfirmed: false,
+      avatarUrl: null,
+      coverUrl: null,
       createdAt: new Date().toISOString(),
     };
     this.memory.set(user.userId, record);
@@ -192,6 +198,53 @@ export class UserStore implements OnModuleDestroy {
     const updated: UserRecord = { ...existing, kind };
     this.memory.set(userId, updated);
     return updated;
+  }
+
+  async updateDisplayName(userId: string, displayName: string): Promise<UserRecord | null> {
+    if (this.pool) {
+      const result = await this.pool.query(
+        `UPDATE app_users SET display_name = $2 WHERE user_id = $1 RETURNING ${COLUMNS}`,
+        [userId, displayName],
+      );
+      return result.rows[0] ? rowToUser(result.rows[0]) : null;
+    }
+    const existing = this.memory.get(userId);
+    if (!existing) return null;
+    const updated: UserRecord = { ...existing, displayName };
+    this.memory.set(userId, updated);
+    return updated;
+  }
+
+  async setMedia(
+    userId: string,
+    media: { avatarUrl?: string | null; coverUrl?: string | null },
+  ): Promise<UserRecord | null> {
+    const existing = await this.byId(userId);
+    if (!existing) return null;
+    const avatarUrl = media.avatarUrl !== undefined ? media.avatarUrl : existing.avatarUrl;
+    const coverUrl = media.coverUrl !== undefined ? media.coverUrl : existing.coverUrl;
+    if (this.pool) {
+      const result = await this.pool.query(
+        `UPDATE app_users SET avatar_url = $2, cover_url = $3 WHERE user_id = $1 RETURNING ${COLUMNS}`,
+        [userId, avatarUrl, coverUrl],
+      );
+      return result.rows[0] ? rowToUser(result.rows[0]) : null;
+    }
+    const updated: UserRecord = { ...existing, avatarUrl, coverUrl };
+    this.memory.set(userId, updated);
+    return updated;
+  }
+
+  /** The danger zone's write. Gone means gone. */
+  async delete(userId: string): Promise<boolean> {
+    if (this.pool) {
+      const result = await this.pool.query(
+        'DELETE FROM app_users WHERE user_id = $1 RETURNING user_id',
+        [userId],
+      );
+      return result.rows.length > 0;
+    }
+    return this.memory.delete(userId);
   }
 
   async onModuleDestroy(): Promise<void> {

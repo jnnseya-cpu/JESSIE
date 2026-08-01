@@ -20,6 +20,8 @@ interface Me {
   age: number;
   guardianLinked: boolean;
   guardianConfirmed: boolean;
+  avatarUrl: string | null;
+  coverUrl: string | null;
   sessionExpires: string;
 }
 
@@ -149,6 +151,90 @@ export function AccountPanel() {
     }
   };
 
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [uploading, setUploading] = useState<'avatar' | 'cover' | null>(null);
+  const [profileNote, setProfileNote] = useState<string | null>(null);
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteNote, setDeleteNote] = useState<string | null>(null);
+
+  const patchName = async () => {
+    setProfileNote('saving…');
+    try {
+      const res = await fetch(`${apiBase()}/auth/me`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ displayName: newName.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      setEditingName(false);
+      setProfileNote(null);
+      await refresh();
+    } catch (e) {
+      setProfileNote(`could not save: ${(e as Error).message}`);
+    }
+  };
+
+  const uploadMedia = (slot: 'avatar' | 'cover') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 10_000_000) {
+        setProfileNote('That photo is over 10MB — choose a smaller one.');
+        return;
+      }
+      setUploading(slot);
+      setProfileNote(null);
+      try {
+        const buffer = await file.arrayBuffer();
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        const res = await api('/auth/me/media', {
+          slot,
+          mimeType: file.type,
+          dataBase64: btoa(binary),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+        setProfileNote(
+          json.data.bytesRemoved > 0
+            ? `saved — ${json.data.bytesRemoved} bytes of hidden metadata (EXIF/GPS) were stripped first`
+            : 'saved',
+        );
+        await refresh();
+      } catch (e) {
+        setProfileNote(`upload failed: ${(e as Error).message}`);
+      } finally {
+        setUploading(null);
+      }
+    };
+    input.click();
+  };
+
+  const deleteAccount = async () => {
+    setDeleteNote('deleting…');
+    try {
+      const res = await api('/auth/me/delete', { password: deletePassword });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      setDeleteNote(null);
+      setDeleteArmed(false);
+      await refresh();
+    } catch (e) {
+      setDeleteNote(`failed: ${(e as Error).message}`);
+    }
+  };
+
   const refresh = useCallback(async () => {
     try {
       const statusRes = await api('/auth/status');
@@ -220,16 +306,105 @@ export function AccountPanel() {
   }
 
   if (me) {
+    const initials = me.displayName
+      .split(/\s+/)
+      .map((w) => w[0] ?? '')
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+    const canPhoto = me.age >= 18;
+
     return (
       <>
+      {/* ---- Profile header: cover, avatar, name ---- */}
+      <article className="profilehead">
+        <div
+          className="profilehead__cover"
+          style={me.coverUrl ? { backgroundImage: `url(${me.coverUrl})` } : undefined}
+        >
+          {canPhoto && (
+            <button
+              type="button"
+              className="profilehead__coverbtn"
+              onClick={() => uploadMedia('cover')}
+              disabled={uploading !== null}
+            >
+              {uploading === 'cover' ? 'Uploading…' : me.coverUrl ? 'Change cover' : 'Add cover'}
+            </button>
+          )}
+        </div>
+        <div className="profilehead__row">
+          <div className="profilehead__avatarwrap">
+            {me.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="profilehead__avatar" src={me.avatarUrl} alt="" />
+            ) : (
+              <div className="profilehead__avatar profilehead__avatar--initials">{initials}</div>
+            )}
+            {canPhoto && (
+              <button
+                type="button"
+                className="profilehead__avatarbtn"
+                onClick={() => uploadMedia('avatar')}
+                disabled={uploading !== null}
+                aria-label={me.avatarUrl ? 'Change profile picture' : 'Add profile picture'}
+              >
+                {uploading === 'avatar' ? '…' : '📷'}
+              </button>
+            )}
+          </div>
+          <div className="profilehead__id">
+            {editingName ? (
+              <span className="profilehead__editrow">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  maxLength={40}
+                  aria-label="Display name"
+                />
+                <button className="btn btn--dark" type="button" onClick={() => void patchName()}>
+                  Save
+                </button>
+                <button className="btn btn--ghost" type="button" onClick={() => setEditingName(false)}>
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <h2>
+                {me.displayName}{' '}
+                <button
+                  type="button"
+                  className="profilehead__editbtn"
+                  onClick={() => {
+                    setNewName(me.displayName);
+                    setEditingName(true);
+                  }}
+                >
+                  edit
+                </button>
+              </h2>
+            )}
+            <p>
+              <span className="profilehead__kind">{me.kind.replace('_', ' ')}</span> · {me.email} ·
+              age {me.age}
+            </p>
+          </div>
+        </div>
+        {!canPhoto && (
+          <p className="card__note" style={{ margin: '10px 20px 0' }}>
+            Profile photographs are not available under 18 — in any mode, under any consent
+            setting. Your initials stand for you instead.
+          </p>
+        )}
+        {profileNote && <p className="card__note" style={{ margin: '10px 20px 0' }}>{profileNote}</p>}
+      </article>
+
+      {/* ---- Account facts ---- */}
       <article className="card card--light">
         <div className="card__head">
-          <h3 className="card__t">Signed in</h3>
+          <h3 className="card__t">Account</h3>
           <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>{me.kind}</span>
         </div>
-        <div className="metric"><span className="metric__k">Name</span><span className="metric__v">{me.displayName}</span></div>
-        <div className="metric"><span className="metric__k">Email</span><span className="metric__v">{me.email}</span></div>
-        <div className="metric"><span className="metric__k">Age</span><span className="metric__v">{me.age}</span></div>
         {me.kind === 'minor' && (
           <div className="metric">
             <span className="metric__k">Guardian</span>
@@ -242,8 +417,8 @@ export function AccountPanel() {
             </span>
           </div>
         )}
-        <div className="metric"><span className="metric__k">Session ends</span><span className="metric__v">{new Date(me.sessionExpires).toLocaleDateString('en-GB')}</span></div>
         <div className="metric"><span className="metric__k">User ID</span><span className="metric__v"><code>{me.userId}</code></span></div>
+        <div className="metric"><span className="metric__k">Session ends</span><span className="metric__v">{new Date(me.sessionExpires).toLocaleDateString('en-GB')}</span></div>
         <div className="metric">
           <span className="metric__k">Movement alerts</span>
           <span className="metric__v">
@@ -317,12 +492,60 @@ export function AccountPanel() {
           <p className="card__note" style={{ marginTop: 10 }}>
             Live checks:{' '}
             <a href="https://api.jessmove.com/api/health" target="_blank" rel="noreferrer">health</a> ·{' '}
-            <a href="https://api.jessmove.com/api/db/verify" target="_blank" rel="noreferrer">21 database rules</a> ·{' '}
+            <a href="https://api.jessmove.com/api/db/verify" target="_blank" rel="noreferrer">database rules</a> ·{' '}
             <a href="https://api.jessmove.com/api/stripe/status" target="_blank" rel="noreferrer">Stripe</a> ·{' '}
             <a href="https://api.jessmove.com/api/push/status" target="_blank" rel="noreferrer">push</a>
           </p>
         </article>
       )}
+
+      {/* ---- Danger zone ---- */}
+      <article className="card card--light dangerzone">
+        <div className="card__head">
+          <h3 className="card__t">Danger zone</h3>
+          <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>permanent</span>
+        </div>
+        {!deleteArmed ? (
+          <>
+            <p className="card__note">
+              Deleting your account removes your sign-in, your profile media, your notification
+              devices and your session — permanently. Your name disappears; nothing keeps
+              working in the background.
+            </p>
+            <button
+              className="btn dangerzone__btn"
+              type="button"
+              onClick={() => setDeleteArmed(true)}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              Delete this account…
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="card__note">
+              <strong>This cannot be undone.</strong> Type your password to confirm.
+            </p>
+            <label>
+              Password
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+              />
+            </label>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+              <button className="btn dangerzone__btn" type="button" onClick={() => void deleteAccount()}>
+                Permanently delete
+              </button>
+              <button className="btn btn--ghost" type="button" onClick={() => { setDeleteArmed(false); setDeletePassword(''); setDeleteNote(null); }}>
+                Keep my account
+              </button>
+            </div>
+            {deleteNote && <p className="card__note" style={{ marginTop: 10 }}>{deleteNote}</p>}
+          </>
+        )}
+      </article>
     </>
     );
   }

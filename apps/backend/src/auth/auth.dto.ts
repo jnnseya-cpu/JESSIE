@@ -1,4 +1,4 @@
-import { IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail() email!: string;
@@ -17,4 +17,24 @@ export class RegisterDto {
 export class LoginDto {
   @IsEmail() email!: string;
   @IsString() @MinLength(1) @MaxLength(200) password!: string;
+}
+
+export class UpdateNameDto {
+  @IsString() @MinLength(2) @MaxLength(40) displayName!: string;
+}
+
+export class MediaUploadDto {
+  @IsIn(['avatar', 'cover'])
+  slot!: 'avatar' | 'cover';
+
+  @IsIn(['image/jpeg', 'image/png', 'image/webp'])
+  mimeType!: string;
+
+  @IsString()
+  @MaxLength(15_000_000)
+  dataBase64!: string;
+}
+
+export class DeleteAccountDto {
+  @IsString() @MinLength(10) @MaxLength(200) password!: string;
 }
