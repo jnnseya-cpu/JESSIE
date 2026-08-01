@@ -48,3 +48,13 @@ export class MediaUploadDto {
 export class DeleteAccountDto {
   @IsString() @MinLength(10) @MaxLength(200) password!: string;
 }
+
+
+export class ForgotDto extends HumanCheck {
+  @IsEmail() email!: string;
+}
+
+export class ResetDto {
+  @IsString() @MaxLength(2048) token!: string;
+  @IsString() @MinLength(10) @MaxLength(200) password!: string;
+}

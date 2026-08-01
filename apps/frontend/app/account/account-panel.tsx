@@ -76,7 +76,8 @@ function PasswordInput(props: {
 }
 
 export function AccountPanel() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [notice, setNotice] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [status, setStatus] = useState<{ configured: boolean; userStore: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -352,6 +353,13 @@ export function AccountPanel() {
     setError(null);
     try {
       const human = { challenge, ...(honeypot ? { website: honeypot } : {}) };
+      if (mode === 'forgot') {
+        const res = await api('/auth/forgot', { ...human, email });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+        setNotice(json.data.note ?? 'If that address has an account, a reset link is on its way.');
+        return;
+      }
       const body =
         mode === 'register'
           ? {
@@ -712,7 +720,7 @@ export function AccountPanel() {
   return (
     <article className="acct-auth">
       <div className="acct-auth__head">
-        <h3>{mode === 'login' ? 'Sign in' : 'Create your account'}</h3>
+        <h3>{mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create your account' : 'Reset your password'}</h3>
         {status?.userStore === 'memory' && <span className="acct-auth__tag">dev store</span>}
       </div>
 
@@ -732,6 +740,7 @@ export function AccountPanel() {
           <label htmlFor="email">Email</label>
           <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
         </div>
+        {mode !== 'forgot' && (
         <div className="field">
           <label htmlFor="password">Password</label>
           <PasswordInput
@@ -744,6 +753,7 @@ export function AccountPanel() {
           />
           {mode === 'register' && <span className="field__hint">At least 10 characters. Length is the only rule.</span>}
         </div>
+        )}
         {/* Honeypot: off-screen for people, irresistible to scripts. */}
         <div className="hpfield" aria-hidden="true">
           <label htmlFor="website">Website</label>
@@ -774,11 +784,19 @@ export function AccountPanel() {
           </>
         )}
 
+        {mode === 'forgot' && (
+          <span className="field__hint">
+            We’ll email you a link that works for 30 minutes. The answer is the same whether or
+            not an account exists — this form never confirms email addresses.
+          </span>
+        )}
+
         {error && <p className="probe__err">{error}</p>}
+        {notice && <p className="acct-auth__notice">{notice}</p>}
 
         <div className="pwa__row" style={{ marginTop: 8 }}>
           <button className="btn btn--primary" type="submit" disabled={busy}>
-            {busy ? 'Working…' : mode === 'login' ? 'Sign in' : 'Create account'}
+            {busy ? 'Working…' : mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : 'Email me a reset link'}
           </button>
           <button
             className="btn btn--ghost"
@@ -786,11 +804,25 @@ export function AccountPanel() {
             onClick={() => {
               setMode(mode === 'login' ? 'register' : 'login');
               setError(null);
+              setNotice(null);
             }}
           >
             {mode === 'login' ? 'I need an account' : 'I already have one'}
           </button>
         </div>
+        {mode === 'login' && (
+          <button
+            className="acct-auth__forgot"
+            type="button"
+            onClick={() => {
+              setMode('forgot');
+              setError(null);
+              setNotice(null);
+            }}
+          >
+            Forgot your password?
+          </button>
+        )}
       </form>
     </article>
   );

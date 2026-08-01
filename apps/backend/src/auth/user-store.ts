@@ -200,6 +200,20 @@ export class UserStore implements OnModuleDestroy {
     return updated;
   }
 
+  async setPassword(userId: string, passwordHash: string): Promise<boolean> {
+    if (this.pool) {
+      const result = await this.pool.query(
+        'UPDATE app_users SET password_hash = $2 WHERE user_id = $1 RETURNING user_id',
+        [userId, passwordHash],
+      );
+      return result.rows.length > 0;
+    }
+    const existing = this.memory.get(userId);
+    if (!existing) return false;
+    this.memory.set(userId, { ...existing, passwordHash });
+    return true;
+  }
+
   async updateDisplayName(userId: string, displayName: string): Promise<UserRecord | null> {
     if (this.pool) {
       const result = await this.pool.query(

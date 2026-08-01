@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { DeleteAccountDto, LoginDto, MediaUploadDto, RegisterDto, UpdateNameDto } from './auth.dto';
+import { DeleteAccountDto, ForgotDto, LoginDto, MediaUploadDto, RegisterDto, ResetDto, UpdateNameDto } from './auth.dto';
 import { AdminOnly } from './auth.guard';
 import { SESSION_TTL_SECONDS } from './token';
 import { tokenFrom } from './auth.guard';
@@ -112,6 +112,19 @@ export class AuthController {
     const result = await this.auth.login(body.email, body.password);
     this.setCookie(res, result.token);
     return { userId: result.userId, kind: result.kind };
+  }
+
+  @Post('forgot')
+  async forgot(@Body() body: ForgotDto, @Req() req: Request) {
+    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'forgot');
+    return this.auth.forgotPassword(body.email);
+  }
+
+  @Post('reset')
+  async reset(@Body() body: ResetDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.resetPassword(body.token, body.password);
+    this.setCookie(res, result.token);
+    return { reset: true, userId: result.userId };
   }
 
   @Post('logout')

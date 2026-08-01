@@ -112,7 +112,7 @@ export class AuthService {
    */
   private readonly attempts = new Map<string, number[]>();
 
-  assertHuman(challenge: string | undefined, ip: string, kind: 'register' | 'login'): void {
+  assertHuman(challenge: string | undefined, ip: string, kind: 'register' | 'login' | 'forgot'): void {
     if (!this.configured()) return;
 
     const flat = new BadRequestException(
@@ -123,7 +123,7 @@ export class AuthService {
     if (!data?.t) throw flat;
     const ageSeconds = Math.floor(Date.now() / 1000) - Number(data.t);
     // A password manager plus a fast human needs ~2s; a script needs ~0.
-    if (ageSeconds < (kind === 'register' ? 3 : 2)) throw flat;
+    if (ageSeconds < (kind === 'login' ? 2 : 3)) throw flat;
 
     const key = `${kind}:${ip}`;
     const now = Date.now();
@@ -131,7 +131,7 @@ export class AuthService {
     const recent = (this.attempts.get(key) ?? []).filter((t) => now - t < windowMs);
     recent.push(now);
     this.attempts.set(key, recent);
-    if (recent.length > (kind === 'register' ? 5 : 12)) {
+    if (recent.length > (kind === 'login' ? 12 : 5)) {
       throw new HttpException(
         'too many attempts from this connection — wait a few minutes',
         429,
@@ -237,6 +237,56 @@ export class AuthService {
       `open this link:\n\n${link}\n\nThe link works for 7 days. If you don't recognise ` +
       `this request, ignore this email and nothing happens.`,
     );
+  }
+
+  private sitePublicUrl(): string {
+    return (process.env.SITE_PUBLIC_URL ?? 'https://www.jessmove.com').replace(/\/$/, '');
+  }
+
+  /**
+   * Forgot password. One flat answer whether or not the address has an
+   * account — the form must never confirm which emails exist.
+   */
+  async forgotPassword(email: string): Promise<{ note: string }> {
+    this.assertConfigured();
+    const user = await this.users.byEmail(email);
+    if (user) {
+      const token = issueActionToken('password_reset', { u: user.userId }, this.secret(), 1800);
+      const link = `${this.sitePublicUrl()}/account/reset?token=${token}`;
+      void this.mail
+        .send('password.reset_link', user.email, { name: user.displayName },
+          `Hi ${user.displayName},\n\nSomeone asked to reset the password for this JESS MOVE ` +
+          `account. If that was you, open this link — it works for 30 minutes:\n\n${link}\n\n` +
+          `If it wasn't you, ignore this email; your password stays as it is.`,
+        )
+        .catch(() => {});
+    }
+    return { note: 'If that address has an account, a reset link is on its way.' };
+  }
+
+  /** The link's second half: a new password, then straight back in. */
+  async resetPassword(token: string, newPassword: string): Promise<{ token: string; userId: string }> {
+    this.assertConfigured();
+    const data = verifyActionToken('password_reset', token, this.secret());
+    if (!data?.u) {
+      throw new BadRequestException('that reset link is not valid — it may have expired (30 minutes)');
+    }
+    let passwordHash: string;
+    try {
+      passwordHash = await hashPassword(newPassword);
+    } catch {
+      throw new BadRequestException('a password needs at least 10 characters');
+    }
+    const ok = await this.users.setPassword(data.u, passwordHash);
+    if (!ok) throw new BadRequestException('that account no longer exists');
+
+    const user = await this.users.byId(data.u);
+    if (!user) throw new BadRequestException('that account no longer exists');
+    void this.mail
+      .send('password.reset.successful', user.email, { name: user.displayName })
+      .catch(() => {});
+    const session = issueToken({ uid: user.userId, kind: user.kind, age: user.age }, this.secret());
+    return { token: session, userId: user.userId };
   }
 
   /** The guardian's click. Returns the confirmed minor, or null for a bad link. */

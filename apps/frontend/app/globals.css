@@ -4589,3 +4589,26 @@ textarea:focus-visible {
   height: 1px;
   overflow: hidden;
 }
+
+/* Forgot / notice affordances on the auth card */
+.acct-auth__forgot {
+  border: none;
+  background: none;
+  color: rgba(45, 212, 191, 0.85);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 14px;
+  border-bottom: 1px solid rgba(45, 212, 191, 0.35);
+  justify-self: start;
+}
+.acct-auth__forgot:hover {
+  color: var(--jm-teal);
+}
+.acct-auth__notice {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--jm-teal);
+}
