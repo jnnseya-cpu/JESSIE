@@ -154,6 +154,18 @@ export class AuthService {
       // Best-effort: a mail outage must not block a registration. The
       // account stays dark either way until the link is clicked.
       void this.sendGuardianRequest(userId, input.displayName, input.guardianEmail).catch(() => {});
+    } else {
+      // Adults are welcomed straight away. A minor's inbox hears nothing
+      // until their guardian has confirmed — that email is sent from the
+      // confirmation click, not from here.
+      void this.mail
+        .send('account.registration.received', input.email, { name: input.displayName },
+          `Welcome to JESS MOVE, ${input.displayName}.\n\n` +
+          `Your account is live. Sign in any time at https://www.jessmove.com/account — ` +
+          `your movement coaching, food intelligence and progress all live there.\n\n` +
+          `Small Moves. Powerful Change.`,
+        )
+        .catch(() => {});
     }
 
     const token = issueToken({ uid: userId, kind, age: input.age }, this.secret());
@@ -192,6 +204,14 @@ export class AuthService {
     if (!updated) return null;
     void this.mail
       .send('guardian.link_confirmed', data.g ?? '', { name: updated.displayName })
+      .catch(() => {});
+    // Now — and only now — the minor's own inbox hears from us.
+    void this.mail
+      .send('account.registration.received', updated.email, { name: updated.displayName },
+        `Hi ${updated.displayName} — your guardian has confirmed your JESS MOVE account, ` +
+        `so it's live now.\n\nSign in at https://www.jessmove.com/account and have a look ` +
+        `around. Small moves. Powerful change.`,
+      )
       .catch(() => {});
     return { minorName: updated.displayName };
   }
