@@ -16,15 +16,15 @@ export default function Account() {
       <main id="main">
         <PageHero
           crumb="Account"
-          eyebrow="Sign in"
+          eyebrow="Your space"
           title="Your account."
           lede={
             'One account from ten to a hundred. Under 18 it activates when a parent or ' +
             'guardian confirms — a rule the server enforces, not a checkbox.'
           }
         />
-        <section className="section">
-          <div className="wrap" style={{ maxWidth: 560 }}>
+        <section className="section acct-canvas">
+          <div className="wrap" style={{ maxWidth: 1080 }}>
             <AccountPanel />
           </div>
         </section>

@@ -292,12 +292,12 @@ export function AccountPanel() {
 
   if (status && !status.configured) {
     return (
-      <article className="card card--light">
-        <div className="card__head">
-          <h3 className="card__t">Accounts are not enabled on this deployment</h3>
-          <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>not configured</span>
+      <article className="acct-auth">
+        <div className="acct-auth__head">
+          <h3>Accounts are not enabled on this deployment</h3>
+          <span className="acct-auth__tag">not configured</span>
         </div>
-        <p className="card__note">
+        <p className="acct__note" style={{ margin: 0 }}>
           The API needs <code>AUTH_SECRET</code> set — 32 or more random characters — before
           anyone can register. Nothing else changes; the rest of the site works without it.
         </p>
@@ -313,250 +313,279 @@ export function AccountPanel() {
       .slice(0, 2)
       .toUpperCase();
     const canPhoto = me.age >= 18;
+    const kindLabel = me.kind.replace(/_/g, ' ');
 
     return (
-      <>
-      {/* ---- Profile header: cover, avatar, name ---- */}
-      <article className="profilehead">
-        <div
-          className="profilehead__cover"
-          style={me.coverUrl ? { backgroundImage: `url(${me.coverUrl})` } : undefined}
-        >
-          {canPhoto && (
-            <button
-              type="button"
-              className="profilehead__coverbtn"
-              onClick={() => uploadMedia('cover')}
-              disabled={uploading !== null}
-            >
-              {uploading === 'cover' ? 'Uploading…' : me.coverUrl ? 'Change cover' : 'Add cover'}
-            </button>
-          )}
-        </div>
-        <div className="profilehead__row">
-          <div className="profilehead__avatarwrap">
-            {me.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="profilehead__avatar" src={me.avatarUrl} alt="" />
-            ) : (
-              <div className="profilehead__avatar profilehead__avatar--initials">{initials}</div>
-            )}
+      <div className="acct">
+        {/* ---- Identity ---- */}
+        <section className="acct__hero">
+          <div
+            className="acct__cover"
+            style={me.coverUrl ? { backgroundImage: `url(${me.coverUrl})` } : undefined}
+          >
             {canPhoto && (
               <button
                 type="button"
-                className="profilehead__avatarbtn"
-                onClick={() => uploadMedia('avatar')}
+                className="acct__coverbtn"
+                onClick={() => uploadMedia('cover')}
                 disabled={uploading !== null}
-                aria-label={me.avatarUrl ? 'Change profile picture' : 'Add profile picture'}
               >
-                {uploading === 'avatar' ? '…' : '📷'}
+                {uploading === 'cover' ? 'Uploading…' : me.coverUrl ? 'Change cover' : 'Add cover'}
               </button>
             )}
           </div>
-          <div className="profilehead__id">
-            {editingName ? (
-              <span className="profilehead__editrow">
-                <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  maxLength={40}
-                  aria-label="Display name"
-                />
-                <button className="btn btn--dark" type="button" onClick={() => void patchName()}>
-                  Save
-                </button>
-                <button className="btn btn--ghost" type="button" onClick={() => setEditingName(false)}>
-                  Cancel
-                </button>
-              </span>
-            ) : (
-              <h2>
-                {me.displayName}{' '}
+          <div className="acct__idrow">
+            <div className="acct__avatarwrap">
+              {me.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="acct__avatar" src={me.avatarUrl} alt="" />
+              ) : (
+                <div className="acct__avatar acct__avatar--initials">{initials}</div>
+              )}
+              {canPhoto && (
                 <button
                   type="button"
-                  className="profilehead__editbtn"
-                  onClick={() => {
-                    setNewName(me.displayName);
-                    setEditingName(true);
-                  }}
+                  className="acct__avatarbtn"
+                  onClick={() => uploadMedia('avatar')}
+                  disabled={uploading !== null}
+                  aria-label={me.avatarUrl ? 'Change profile picture' : 'Add profile picture'}
+                  title={me.avatarUrl ? 'Change profile picture' : 'Add profile picture'}
                 >
-                  edit
+                  {uploading === 'avatar' ? '…' : '＋'}
                 </button>
-              </h2>
-            )}
-            <p>
-              <span className="profilehead__kind">{me.kind.replace('_', ' ')}</span> · {me.email} ·
-              age {me.age}
-            </p>
-          </div>
-        </div>
-        {!canPhoto && (
-          <p className="card__note" style={{ margin: '10px 20px 0' }}>
-            Profile photographs are not available under 18 — in any mode, under any consent
-            setting. Your initials stand for you instead.
-          </p>
-        )}
-        {profileNote && <p className="card__note" style={{ margin: '10px 20px 0' }}>{profileNote}</p>}
-      </article>
-
-      {/* ---- Account facts ---- */}
-      <article className="card card--light">
-        <div className="card__head">
-          <h3 className="card__t">Account</h3>
-          <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>{me.kind}</span>
-        </div>
-        {me.kind === 'minor' && (
-          <div className="metric">
-            <span className="metric__k">Guardian</span>
-            <span className="metric__v" style={{ color: me.guardianConfirmed ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}>
-              {me.guardianConfirmed
-                ? 'confirmed'
-                : me.guardianLinked
-                  ? 'linked — confirmation email sent, awaiting their click'
-                  : 'awaiting guardian — a confirmation email has been sent'}
-            </span>
-          </div>
-        )}
-        <div className="metric"><span className="metric__k">User ID</span><span className="metric__v"><code>{me.userId}</code></span></div>
-        <div className="metric"><span className="metric__k">Session ends</span><span className="metric__v">{new Date(me.sessionExpires).toLocaleDateString('en-GB')}</span></div>
-        <div className="metric">
-          <span className="metric__k">Movement alerts</span>
-          <span className="metric__v">
-            {push === 'on' && 'on — arrives even when the app is closed'}
-            {push === 'off' && (
-              <button className="btn btn--dark" type="button" onClick={() => void enablePush(me.userId)}>
-                Enable notifications
-              </button>
-            )}
-            {push === 'busy' && 'asking your browser…'}
-            {push === 'denied' && 'blocked in browser settings — allow notifications for jessmove.com to turn on'}
-            {push === 'unsupported' && 'this browser cannot receive them — on iPhone, install the app to your home screen first'}
-            {push === 'unconfigured' && 'not switched on for this deployment yet'}
-            {push === 'checking' && '…'}
-          </span>
-        </div>
-        <button className="btn btn--dark" type="button" onClick={() => void logout()} style={{ alignSelf: 'flex-start', marginTop: 12 }}>
-          Sign out
-        </button>
-      </article>
-
-      <article className="card card--light">
-        <div className="card__head">
-          <h3 className="card__t">Your AI allowance</h3>
-          <span className="card__tag">ACU</span>
-        </div>
-        <div className="metric">
-          <span className="metric__k">Balance</span>
-          <span className="metric__v">{wallet ? `${wallet.balance} ACU` : '…'}</span>
-        </div>
-        <p className="card__note">
-          Every AI action is priced before it runs and paid from this balance — there is no
-          surprise bill, and at zero the AI features pause while everything else continues.
-        </p>
-      </article>
-
-      <article className="card card--light">
-        <div className="card__head">
-          <h3 className="card__t">Quick links</h3>
-        </div>
-        <p className="card__note">
-          <a href="/try">Try it as…</a> · <a href="/console">API console</a> ·{' '}
-          <a href="/status">Platform status</a>
-        </p>
-      </article>
-
-      {me.kind === 'platform_staff' && (
-        <article className="card card--light">
-          <div className="card__head">
-            <h3 className="card__t">Admin</h3>
-            <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>platform staff only</span>
-          </div>
-
-          <label>
-            Grant ACU to user ID
-            <input value={grantTarget} onChange={(e) => setGrantTarget(e.target.value)} placeholder="u_…" />
-          </label>
-          <label>
-            Amount
-            <input value={grantAmount} onChange={(e) => setGrantAmount(e.target.value)} inputMode="numeric" />
-          </label>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
-            <button className="btn btn--dark" type="button" onClick={() => void grantAcu()}>
-              Grant ACU
-            </button>
-            <button className="btn btn--dark" type="button" onClick={() => void testPush()}>
-              Send me a test notification
-            </button>
-          </div>
-          {adminResult && <p className="card__note" style={{ marginTop: 10 }}>{adminResult}</p>}
-          <p className="card__note" style={{ marginTop: 10 }}>
-            Live checks:{' '}
-            <a href="https://api.jessmove.com/api/health" target="_blank" rel="noreferrer">health</a> ·{' '}
-            <a href="https://api.jessmove.com/api/db/verify" target="_blank" rel="noreferrer">database rules</a> ·{' '}
-            <a href="https://api.jessmove.com/api/stripe/status" target="_blank" rel="noreferrer">Stripe</a> ·{' '}
-            <a href="https://api.jessmove.com/api/push/status" target="_blank" rel="noreferrer">push</a>
-          </p>
-        </article>
-      )}
-
-      {/* ---- Danger zone ---- */}
-      <article className="card card--light dangerzone">
-        <div className="card__head">
-          <h3 className="card__t">Danger zone</h3>
-          <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>permanent</span>
-        </div>
-        {!deleteArmed ? (
-          <>
-            <p className="card__note">
-              Deleting your account removes your sign-in, your profile media, your notification
-              devices and your session — permanently. Your name disappears; nothing keeps
-              working in the background.
-            </p>
-            <button
-              className="btn dangerzone__btn"
-              type="button"
-              onClick={() => setDeleteArmed(true)}
-              style={{ alignSelf: 'flex-start' }}
-            >
-              Delete this account…
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="card__note">
-              <strong>This cannot be undone.</strong> Type your password to confirm.
-            </p>
-            <label>
-              Password
-              <input
-                type="password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-              />
-            </label>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
-              <button className="btn dangerzone__btn" type="button" onClick={() => void deleteAccount()}>
-                Permanently delete
-              </button>
-              <button className="btn btn--ghost" type="button" onClick={() => { setDeleteArmed(false); setDeletePassword(''); setDeleteNote(null); }}>
-                Keep my account
+              )}
+            </div>
+            <div className="acct__who">
+              {editingName ? (
+                <span className="acct__editrow">
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    maxLength={40}
+                    aria-label="Display name"
+                  />
+                  <button className="btn btn--primary" type="button" onClick={() => void patchName()}>
+                    Save
+                  </button>
+                  <button className="btn acct__ghostbtn" type="button" onClick={() => setEditingName(false)}>
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <h2>
+                  {me.displayName}
+                  <button
+                    type="button"
+                    className="acct__editbtn"
+                    onClick={() => {
+                      setNewName(me.displayName);
+                      setEditingName(true);
+                    }}
+                  >
+                    edit
+                  </button>
+                </h2>
+              )}
+              <p className="acct__meta">
+                <span className="acct__kind">{kindLabel}</span>
+                <span>{me.email}</span>
+                <span>age {me.age}</span>
+              </p>
+            </div>
+            <div className="acct__heroactions">
+              <button className="btn acct__ghostbtn" type="button" onClick={() => void logout()}>
+                Sign out
               </button>
             </div>
-            {deleteNote && <p className="card__note" style={{ marginTop: 10 }}>{deleteNote}</p>}
-          </>
-        )}
-      </article>
-    </>
+          </div>
+          {!canPhoto && (
+            <p className="acct__note">
+              Profile photographs are not available under 18 — in any mode, under any consent
+              setting. Your initials stand for you instead.
+            </p>
+          )}
+          {profileNote && <p className="acct__note">{profileNote}</p>}
+        </section>
+
+        {/* ---- The numbers that matter ---- */}
+        <section className="acct__stats" aria-label="Account overview">
+          <div className="acct__stat">
+            <span className="acct__statk">AI allowance</span>
+            <span className="acct__statv">
+              {wallet ? wallet.balance.toLocaleString('en-GB') : '—'}
+              <small> ACU</small>
+            </span>
+            <span className="acct__stats2">Priced before it runs. Never a surprise bill.</span>
+          </div>
+
+          <div className="acct__stat">
+            <span className="acct__statk">Movement alerts</span>
+            {push === 'on' && <span className="acct__statv acct__statv--ok">On</span>}
+            {push === 'off' && (
+              <button
+                className="btn btn--primary acct__statbtn"
+                type="button"
+                onClick={() => void enablePush(me.userId)}
+              >
+                Turn on
+              </button>
+            )}
+            {push === 'busy' && <span className="acct__statv">…</span>}
+            {(push === 'denied' || push === 'unsupported' || push === 'unconfigured' || push === 'checking') && (
+              <span className="acct__statv acct__statv--dim">Off</span>
+            )}
+            <span className="acct__stats2">
+              {push === 'on' && 'Arrives even when the app is closed.'}
+              {push === 'off' && 'One tap. Works with the app closed.'}
+              {push === 'busy' && 'Asking your browser…'}
+              {push === 'denied' && 'Blocked in browser settings for jessmove.com.'}
+              {push === 'unsupported' && 'On iPhone, install the app to your home screen first.'}
+              {push === 'unconfigured' && 'Not switched on for this deployment yet.'}
+              {push === 'checking' && 'Checking this device…'}
+            </span>
+          </div>
+
+          {me.kind === 'minor' ? (
+            <div className="acct__stat">
+              <span className="acct__statk">Guardian</span>
+              <span className={me.guardianConfirmed ? 'acct__statv acct__statv--ok' : 'acct__statv acct__statv--warn'}>
+                {me.guardianConfirmed ? 'Confirmed' : 'Pending'}
+              </span>
+              <span className="acct__stats2">
+                {me.guardianConfirmed
+                  ? 'Your guardian has confirmed this account.'
+                  : 'A confirmation email has been sent to your guardian.'}
+              </span>
+            </div>
+          ) : (
+            <div className="acct__stat">
+              <span className="acct__statk">Session</span>
+              <span className="acct__statv">
+                {new Date(me.sessionExpires).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
+              <span className="acct__stats2">Signed in on this device until then.</span>
+            </div>
+          )}
+
+          <div className="acct__stat">
+            <span className="acct__statk">User ID</span>
+            <span className="acct__statv acct__statv--code">{me.userId}</span>
+            <span className="acct__stats2">For allowance grants and support.</span>
+          </div>
+        </section>
+
+        {/* ---- Modules ---- */}
+        <div className="acct__grid">
+          <section className="acct__module">
+            <h3>Explore</h3>
+            <nav className="acct__links" aria-label="Account shortcuts">
+              <a href="/try">
+                <span>Try it as…</span>
+                <em>Every age mode, side by side</em>
+              </a>
+              <a href="/console">
+                <span>API console</span>
+                <em>The engine, hands on</em>
+              </a>
+              <a href="/status">
+                <span>Platform status</span>
+                <em>Live, from the API itself</em>
+              </a>
+            </nav>
+          </section>
+
+          {me.kind === 'platform_staff' && (
+            <section className="acct__module acct__module--admin">
+              <h3>
+                Admin <span className="acct__adminchip">platform staff</span>
+              </h3>
+              <div className="acct__adminform">
+                <label>
+                  <span>Grant ACU to user ID</span>
+                  <input value={grantTarget} onChange={(e) => setGrantTarget(e.target.value)} placeholder="u_…" />
+                </label>
+                <label>
+                  <span>Amount</span>
+                  <input value={grantAmount} onChange={(e) => setGrantAmount(e.target.value)} inputMode="numeric" />
+                </label>
+              </div>
+              <div className="acct__adminrow">
+                <button className="btn btn--primary" type="button" onClick={() => void grantAcu()}>
+                  Grant ACU
+                </button>
+                <button className="btn acct__ghostbtn" type="button" onClick={() => void testPush()}>
+                  Send me a test notification
+                </button>
+              </div>
+              {adminResult && <p className="acct__note">{adminResult}</p>}
+              <p className="acct__livechecks">
+                Live checks:{' '}
+                <a href="https://api.jessmove.com/api/health" target="_blank" rel="noreferrer">health</a>
+                <a href="https://api.jessmove.com/api/db/verify" target="_blank" rel="noreferrer">database rules</a>
+                <a href="https://api.jessmove.com/api/stripe/status" target="_blank" rel="noreferrer">Stripe</a>
+                <a href="https://api.jessmove.com/api/push/status" target="_blank" rel="noreferrer">push</a>
+              </p>
+            </section>
+          )}
+        </div>
+
+        {/* ---- Danger zone ---- */}
+        <section className="acct__danger">
+          <div className="acct__dangerhead">
+            <h3>Danger zone</h3>
+            <span>permanent</span>
+          </div>
+          {!deleteArmed ? (
+            <div className="acct__dangerrow">
+              <p>
+                Deleting your account removes your sign-in, profile media, notification devices
+                and session — permanently.
+              </p>
+              <button className="btn acct__dangerbtn" type="button" onClick={() => setDeleteArmed(true)}>
+                Delete this account…
+              </button>
+            </div>
+          ) : (
+            <div className="acct__dangerconfirm">
+              <p>
+                <strong>This cannot be undone.</strong> Type your password to confirm.
+              </p>
+              <div className="acct__dangerrow">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  aria-label="Password"
+                  placeholder="Your password"
+                />
+                <button className="btn acct__dangerbtn" type="button" onClick={() => void deleteAccount()}>
+                  Permanently delete
+                </button>
+                <button
+                  className="btn acct__ghostbtn"
+                  type="button"
+                  onClick={() => {
+                    setDeleteArmed(false);
+                    setDeletePassword('');
+                    setDeleteNote(null);
+                  }}
+                >
+                  Keep my account
+                </button>
+              </div>
+              {deleteNote && <p className="acct__note">{deleteNote}</p>}
+            </div>
+          )}
+        </section>
+      </div>
     );
   }
 
   return (
-    <article className="card card--light">
-      <div className="card__head">
-        <h3 className="card__t">{mode === 'login' ? 'Sign in' : 'Create your account'}</h3>
-        {status?.userStore === 'memory' && (
-          <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>dev store</span>
-        )}
+    <article className="acct-auth">
+      <div className="acct-auth__head">
+        <h3>{mode === 'login' ? 'Sign in' : 'Create your account'}</h3>
+        {status?.userStore === 'memory' && <span className="acct-auth__tag">dev store</span>}
       </div>
 
       <form
