@@ -67,3 +67,28 @@ test('a nutriment that is not a number is not a measurement', () => {
   });
   assert.deepEqual(facts.per100g, { saltG: 0.4 });
 });
+
+test('a label figure carries one decimal, not fifteen', () => {
+  // Open Food Facts stores some figures as a division that never
+  // terminates. 11.6883116883117g of fat is arithmetic leaking through a
+  // nutrition panel — a real Twinkies record, exactly as returned.
+  const facts = toLabelFacts('2500002344567', {
+    product_name: 'sponge cake with creamy filling',
+    brands: 'Hostess Twinkies',
+    quantity: '385g',
+    nutriments: {
+      'energy-kcal_100g': 363.636363636364,
+      fat_100g: 11.6883116883117,
+      'saturated-fat_100g': 4.54545454545455,
+      sugars_100g: 40.2597402597403,
+      salt_100g: 1.16883116883117,
+    },
+    allergens_tags: ['en:eggs', 'en:gluten', 'en:milk', 'en:soybeans'],
+  });
+
+  assert.equal(facts.per100g.fatG, 11.7);
+  assert.equal(facts.per100g.saturatesG, 4.5);
+  assert.equal(facts.per100g.sugarsG, 40.3);
+  assert.equal(facts.per100g.saltG, 1.2);
+  assert.equal(facts.kcalPer100g, 364, 'energy is a whole number');
+});

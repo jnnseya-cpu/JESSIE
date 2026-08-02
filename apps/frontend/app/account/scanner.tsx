@@ -331,7 +331,7 @@ export function ScannerModule() {
                       const band = bandOf(value, spec.low, spec.high);
                       return (
                         <span key={key} className={`scan__band scan__band--${band}`}>
-                          {spec.label} {value}g
+                          {spec.label} {Math.round(value * 10) / 10}g
                         </span>
                       );
                     })}

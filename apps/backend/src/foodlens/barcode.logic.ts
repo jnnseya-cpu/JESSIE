@@ -49,9 +49,16 @@ const ALLERGEN_MAP: Record<string, string> = {
 /** Pure so the mapping is testable without a network. */
 export function toLabelFacts(code: string, product: Record<string, unknown>): LabelFacts {
   const n = (product.nutriments ?? {}) as Record<string, unknown>;
+  /**
+   * One decimal place, because that is what a label prints and what a
+   * person can read. Open Food Facts stores some figures as a division
+   * that never terminates — 11.6883116883117g of fat is arithmetic
+   * leaking through a nutrition panel, not a measurement.
+   */
   const num = (key: string): number | undefined => {
     const value = n[key];
-    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+    if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+    return Math.round(value * 10) / 10;
   };
 
   const tags = Array.isArray(product.allergens_tags) ? (product.allergens_tags as string[]) : [];
@@ -80,7 +87,10 @@ export function toLabelFacts(code: string, product: Record<string, unknown>): La
     brand: product.brands ? String(product.brands).split(',')[0]!.trim() : null,
     quantity: product.quantity ? String(product.quantity) : null,
     per100g,
-    kcalPer100g: num('energy-kcal_100g') ?? null,
+    // Energy is read as a whole number: nobody needs a tenth of a calorie.
+    kcalPer100g: n['energy-kcal_100g'] != null && Number.isFinite(n['energy-kcal_100g'])
+      ? Math.round(n['energy-kcal_100g'] as number)
+      : null,
     proteinPer100g: num('proteins_100g') ?? null,
     carbsPer100g: num('carbohydrates_100g') ?? null,
     fibrePer100g: num('fiber_100g') ?? null,

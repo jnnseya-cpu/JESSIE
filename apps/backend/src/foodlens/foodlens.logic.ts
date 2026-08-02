@@ -174,7 +174,8 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
     const spec = BANDS[key];
     rows.push({
       nutrient: spec.label,
-      grams: value,
+      // One decimal, as a label prints it.
+      grams: Math.round(value * 10) / 10,
       band: bandFor(value, spec.low, spec.high),
       derived,
       basis: derived ? 'calculated' : verified ? 'label' : 'estimate',

@@ -151,7 +151,7 @@ export function TrafficLights({ lights }: { lights: TrafficLight[] }) {
       {lights.map((l) => (
         <div key={l.nutrient} className={`fl__light fl__light--${l.band}`}>
           <span className="fl__lightname">{l.nutrient}</span>
-          <span className="fl__lightval">{l.grams}g</span>
+          <span className="fl__lightval">{Math.round(l.grams * 10) / 10}g</span>
           <span className="fl__lightband">{BAND_WORD[l.band] ?? l.band}</span>
           <span className="fl__lightbasis">{BASIS_WORD[l.basis] ?? l.basis}</span>
         </div>
