@@ -1,0 +1,249 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { apiBase } from '../api-base';
+
+/**
+ * What everything, taken together, is allowed to say.
+ *
+ * FoodLens knows what was scanned; BodyCommand knows the readings that
+ * were given; Activity knows which days had movement in them. Separately
+ * each is a number on a screen. Together they are the only picture a
+ * person actually has of their own risk.
+ *
+ * How it speaks matters more than what it says. Every card names a
+ * *population-level association*, shows the figure it was built from, and
+ * ends with the single thing that moves it — a risk with no lever attached
+ * is just fear, and fear is not a health intervention. Under 18 the whole
+ * section refuses, and says why.
+ */
+
+interface Risk {
+  factor: string;
+  level: 'watch' | 'raised' | 'high';
+  evidence: string;
+  associatedWith: string[];
+  action: string;
+  from: 'foodlens' | 'bodycommand' | 'activity';
+}
+
+interface Insight {
+  available: boolean;
+  why?: string;
+  risks: Risk[];
+  bmi: {
+    bmi: number | null;
+    band: 'under' | 'healthy' | 'over' | 'well_over' | null;
+    healthyRangeKg: { min: number; max: number } | null;
+    gapKg: number | null;
+    weeksAtSafeRate: number | null;
+    safeRateKgPerWeek: number | null;
+    says: string;
+    steps: string[];
+  };
+  builtFrom: string[];
+  limits: string[];
+  seeSomeone: string[];
+}
+
+const LEVEL_WORD: Record<Risk['level'], string> = {
+  high: 'Worth acting on',
+  raised: 'Raised',
+  watch: 'Worth watching',
+};
+
+const SOURCE_WORD: Record<Risk['from'], string> = {
+  foodlens: 'from what you scanned',
+  bodycommand: 'from your own readings',
+  activity: 'from your movement',
+};
+
+export function InsightModule({
+  heightCm,
+  weightKg,
+  kgPerWeek,
+}: {
+  heightCm?: number | null;
+  weightKg?: number | null;
+  kgPerWeek?: number | null;
+}) {
+  const [insight, setInsight] = useState<Insight | null>(null);
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  const load = useCallback(async () => {
+    setState('loading');
+    try {
+      const res = await fetch(`${apiBase()}/insight`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...(heightCm ? { heightCm } : {}),
+          ...(weightKg ? { weightKg } : {}),
+          ...(typeof kgPerWeek === 'number' ? { kgPerWeek } : {}),
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setInsight((await res.json()).data as Insight);
+      setState('ready');
+    } catch {
+      setState('error');
+    }
+  }, [heightCm, weightKg, kgPerWeek]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (state === 'loading') {
+    return (
+      <section className="acct__module acct__module--body">
+        <h3>What this all adds up to</h3>
+        <p className="acct__note">Putting the picture together…</p>
+      </section>
+    );
+  }
+
+  if (state === 'error' || !insight) {
+    return (
+      <section className="acct__module acct__module--body">
+        <h3>What this all adds up to</h3>
+        <p className="probe__err">This could not be worked out just now.</p>
+      </section>
+    );
+  }
+
+  if (!insight.available) {
+    return (
+      <section className="acct__module acct__module--body">
+        <h3>What this all adds up to</h3>
+        <p className="tdv__line tdv__line--guard">{insight.why}</p>
+      </section>
+    );
+  }
+
+  const { bmi } = insight;
+
+  return (
+    <section className="acct__module acct__module--body">
+      <header>
+        <div>
+          <h3>What this all adds up to</h3>
+          <p className="acct__note">
+            Everything this platform holds about you, read together. None of it is a diagnosis.
+          </p>
+        </div>
+      </header>
+
+      {/* ---- the warnings ---- */}
+      {insight.risks.length === 0 ? (
+        <p className="acct__note">
+          Nothing in what you have recorded is out of step with the guidelines. Keep scanning
+          and this stays honest as things change.
+        </p>
+      ) : (
+        <div className="risk__list">
+          {insight.risks.map((risk) => (
+            <article key={risk.factor} className={`risk risk--${risk.level}`}>
+              <header className="risk__head">
+                <h4>{risk.factor}</h4>
+                <span className={`risk__level risk__level--${risk.level}`}>
+                  {LEVEL_WORD[risk.level]}
+                </span>
+              </header>
+              <p className="risk__evidence">
+                {risk.evidence} <em>{SOURCE_WORD[risk.from]}</em>
+              </p>
+              <p className="risk__assoc">
+                Across populations this is associated with{' '}
+                <strong>{risk.associatedWith.join(', ')}</strong>. That is an association, not
+                something you have.
+              </p>
+              <p className="risk__action">{risk.action}</p>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {/* ---- the route to a green BMI ---- */}
+      <h4 className="fl__h">Getting to a green BMI</h4>
+      {bmi.bmi === null ? (
+        <p className="acct__note">{bmi.says}</p>
+      ) : (
+        <>
+          <div className={`bmi bmi--${bmi.band}`}>
+            <div className="bmi__figure">
+              <strong>{bmi.bmi}</strong>
+              <span>BMI</span>
+            </div>
+            <div className="bmi__scale" role="img" aria-label={`BMI ${bmi.bmi}`}>
+              <span className="bmi__band bmi__band--under">under</span>
+              <span className="bmi__band bmi__band--healthy">healthy</span>
+              <span className="bmi__band bmi__band--over">over</span>
+              <span className="bmi__band bmi__band--well_over">well over</span>
+              <span
+                className="bmi__marker"
+                style={{ left: `${Math.max(2, Math.min(98, ((bmi.bmi - 14) / 22) * 100))}%` }}
+              />
+            </div>
+          </div>
+          <p className="risk__evidence">{bmi.says}</p>
+
+          {bmi.gapKg !== null && bmi.weeksAtSafeRate !== null && (
+            <div className="bmi__path">
+              <div className="bmi__step">
+                <strong>{Math.abs(bmi.gapKg)}kg</strong>
+                <span>to the healthy range</span>
+              </div>
+              <div className="bmi__step">
+                <strong>{bmi.safeRateKgPerWeek}kg</strong>
+                <span>a week, sustainably</span>
+              </div>
+              <div className="bmi__step">
+                <strong>{bmi.weeksAtSafeRate}</strong>
+                <span>weeks at that rate</span>
+              </div>
+            </div>
+          )}
+
+          <ol className="risk__steps">
+            {bmi.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      {/* ---- what it was built from, and what it cannot see ---- */}
+      {insight.builtFrom.length > 0 && (
+        <>
+          <h4 className="fl__h">Built from</h4>
+          <ul className="fl__checks">
+            {insight.builtFrom.map((source) => (
+              <li key={source} className="fl__check fl__check--ok">
+                <span>✓</span>
+                <div>
+                  <strong>{source}</strong>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <h4 className="fl__h">What this cannot tell you</h4>
+      <ul className="risk__limits">
+        {insight.limits.map((limit) => (
+          <li key={limit}>{limit}</li>
+        ))}
+      </ul>
+
+      <h4 className="fl__h">When to see somebody instead</h4>
+      <ul className="risk__limits risk__limits--urgent">
+        {insight.seeSomeone.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}

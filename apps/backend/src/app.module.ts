@@ -10,6 +10,7 @@ import { CommsModule } from './comms/comms.module';
 import { ContextModule } from './context/context.module';
 import { DbModule } from './db/db.module';
 import { FoodlensModule } from './foodlens/foodlens.module';
+import { HealthInsightModule } from './health/health-insight.module';
 import { MovaModule } from './mova/mova.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { ActivityModule } from './activity/activity.module';
@@ -37,6 +38,7 @@ import { StripeModule } from './stripe/stripe.module';
     ContextModule,
     DbModule,
     FoodlensModule,
+    HealthInsightModule,
     MovaModule,
     ChallengesModule,
     ActivityModule,

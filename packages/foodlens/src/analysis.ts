@@ -419,3 +419,19 @@ export function personalDelta(
 export type { ConfidenceLevel, EvidenceSource, EvidencedValue, Range };
 export type { CookingMethod, Light, TrafficLights };
 export { confidenceFor, preferSource };
+
+/**
+ * UK adult reference intakes, per day.
+ *
+ * The published figures every front-of-pack label is drawn against. They
+ * live here rather than in one module because the trolley, the ledger and
+ * the health picture must all be totalling against the same numbers — a
+ * second copy that drifts is a set of percentages that quietly disagree.
+ */
+export const REFERENCE_INTAKE = {
+  energyKcal: 2000,
+  fatG: 70,
+  saturatesG: 20,
+  sugarsG: 90,
+  saltG: 6,
+} as const;

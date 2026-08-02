@@ -12,14 +12,10 @@
  * feeling bad.
  */
 
-/** UK adult reference intakes, per day. The published figures. */
-export const REFERENCE_INTAKE = {
-  energyKcal: 2000,
-  fatG: 70,
-  saturatesG: 20,
-  sugarsG: 90,
-  saltG: 6,
-} as const;
+import { REFERENCE_INTAKE } from '@jessmove/foodlens';
+
+/** UK adult reference intakes, per day. One copy, in the shared package. */
+export { REFERENCE_INTAKE };
 
 export interface BasketProduct {
   barcode: string;

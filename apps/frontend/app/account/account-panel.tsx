@@ -14,6 +14,8 @@ import { apiBase, mediaUrl } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
 import { ScannerModule } from './scanner';
+import { LedgerModule } from './ledger';
+import { InsightModule } from './insight';
 import {
   BodyCommandModule,
   ChallengesModule,
@@ -181,6 +183,14 @@ export function AccountPanel() {
     if (prefs?.section) setSection(prefs.section);
   }, [stateLoaded, savedState]);
   useAutosave('ui.preferences', { section }, restored);
+
+  // BodyCommand keeps a member's own figures in their drafts rather than on
+  // a server, so the health picture is handed them from here.
+  const bodyInputs = savedState['body.inputs'] as
+    | { heightCm?: string; weightKg?: string; readings?: { day: string; kg: number }[] }
+    | undefined;
+  const heightCm = Number(bodyInputs?.heightCm) || null;
+  const weightKg = Number(bodyInputs?.weightKg) || null;
 
   const { data: dash, refresh: refreshDash } = useDashboard();
   const onActivity = (fresh: Dashboard | null) => {
@@ -633,12 +643,14 @@ export function AccountPanel() {
             <>
               <FoodLensModule me={me} onActivity={onActivity} />
               <ScannerModule />
+              <LedgerModule />
             </>
           )}
 
           {section === 'body' && (
             <>
               <BodyCommandModule me={me} dashboard={dash} />
+              <InsightModule heightCm={heightCm} weightKg={weightKg} />
               <WearablesModule />
             </>
           )}

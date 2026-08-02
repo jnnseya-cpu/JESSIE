@@ -1,4 +1,4 @@
-import { REFERENCE_INTAKE } from './basket.logic';
+import { REFERENCE_INTAKE } from '@jessmove/foodlens';
 
 /**
  * The ledger, added up.
@@ -59,6 +59,17 @@ export interface FoodLogSummary {
   windowDays: number;
   /** Days in the window on which anything at all was scanned. */
   daysRecorded: number;
+  /**
+   * Days of food the ledger actually represents.
+   *
+   * A week's shopping is scanned in one trip. Dividing it by the one day
+   * it was scanned on says a person eats 6,400 kcal and 25g of salt a day,
+   * which is not merely wrong — it is the figure a health warning would
+   * then be built from. Energy is the only denominator that works across
+   * both a pack bought and a meal eaten, so the coverage is the larger of
+   * the days scanned on and the days of food the energy adds up to.
+   */
+  daysCovered: number;
   entries: number;
   totals: NutrientRollup[];
   series: { day: string; kcal: number; saltG: number; saturatesG: number; sugarsG: number }[];
@@ -98,6 +109,10 @@ export function summarise(
   const recordedDays = new Set(inWindow.map((e) => dayOf(e.at)));
   const daysRecorded = recordedDays.size;
 
+  const totalKcal = inWindow.reduce((sum, e) => sum + (e.kcal ?? 0), 0);
+  const daysOfFood = totalKcal / REFERENCE_INTAKE.energyKcal;
+  const daysCovered = Math.max(1, daysRecorded, Math.round(daysOfFood * 10) / 10);
+
   const totals: NutrientRollup[] = NUTRIENTS.map((nutrient) => {
     let total = 0;
     let fromLabel = 0;
@@ -111,11 +126,11 @@ export function summarise(
       byName.set(entry.name, (byName.get(entry.name) ?? 0) + amount);
     }
 
-    // Per day is divided by days actually recorded, not by the window. A
+    // Divided by the food the ledger covers, never by the window. A
     // fortnight of scanning inside a year is a fortnight's evidence, and
-    // spreading it across 365 days would make everybody look angelic.
-    const divisor = Math.max(1, daysRecorded);
-    const perDay = total / divisor;
+    // spreading it across 365 days would make everybody look angelic;
+    // dividing a week's shop by its one scanning day does the opposite.
+    const perDay = total / daysCovered;
 
     return {
       key: nutrient.key,
@@ -138,6 +153,7 @@ export function summarise(
     window,
     windowDays: days,
     daysRecorded,
+    daysCovered,
     entries: inWindow.length,
     totals,
     series: seriesFrom(inWindow, Math.min(days, 90), now),
@@ -145,7 +161,7 @@ export function summarise(
     coverage:
       daysRecorded === 0
         ? 'Nothing scanned in this period yet.'
-        : `Built from ${inWindow.length} scan${inWindow.length === 1 ? '' : 's'} across ${daysRecorded} day${daysRecorded === 1 ? '' : 's'}. It is what you scanned, not everything you ate.`,
+        : `Built from ${inWindow.length} scan${inWindow.length === 1 ? '' : 's'} across ${daysRecorded} day${daysRecorded === 1 ? '' : 's'}, carrying about ${daysCovered} day${daysCovered === 1 ? '' : 's'} of food. Daily figures are against that, not against the calendar. It is what you scanned, not everything you ate.`,
     retentionDays: RETENTION_DAYS,
   };
 }

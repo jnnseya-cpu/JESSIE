@@ -54,8 +54,10 @@ test('the coach charges the member who asked', () => {
 
 test('FoodLens still charges the member who asked', () => {
   const controller = read('../src/foodlens/foodlens.controller.ts');
-  assert.match(controller, /billTo: this\.billTo\(req\)/, 'analysis is billed');
-  assert.match(controller, /this\.billTo\(req\)\)/, 'reading a barcode from a photo is billed');
+  // The payer and the ledger's owner are the same session, resolved once.
+  assert.match(controller, /billTo: uid/, 'analysis is billed');
+  assert.match(controller, /readBarcode\([^)]*this\.who\(req\)\)/s, 'reading a barcode from a photo is billed');
+  assert.match(controller, /private who\(req: Request\)/, 'the payer comes from the session');
 });
 
 test('every member-facing model call names a payer', () => {

@@ -143,3 +143,44 @@ export class AnalyzeDto {
   @IsBoolean()
   debug?: boolean;
 }
+
+/**
+ * One product joining the ledger with the pack size a member actually
+ * bought. Per-100g figures alone cannot be totalled — a total needs the
+ * amount — so a product with no readable size contributes nothing rather
+ * than a guess, exactly as the trolley behaves.
+ */
+export class LogEntryDto {
+  @IsString()
+  @MaxLength(120)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  barcode?: string;
+
+  /** As printed: "400g", "1.5 l", "4 x 125 g". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  quantity?: string;
+
+  /** Or the grams outright, when the client has already read the size. */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(50_000)
+  grams?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1000)
+  kcalPer100g?: number;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => Per100gDto)
+  per100g?: Per100gDto;
+}
