@@ -309,3 +309,44 @@ test('a plant is counted by its own name, once, however the dish is described', 
   // "bean" must not appear alongside "black bean", and oil is not a plant.
   assert.equal(plants.distinct.includes('bean'), false);
 });
+
+test('a second angle and a barcode both raise what the analysis can claim', async () => {
+  const { analyse } = await import('../src/foodlens/foodlens.logic.ts');
+  const base = {
+    age: 40,
+    items: [{ name: 'rice', confidencePct: 90 }],
+    likelyKcal: 600,
+    preparationCertainty: 0.4,
+  };
+
+  // One photo: portion barely pinned down, so the range stays wide.
+  const single = analyse({
+    ...base,
+    source: 'ai_visual_estimate' as const,
+    portionCertainty: 0.3,
+  }) as Record<string, unknown>;
+
+  // Two angles: the model reports a higher portion certainty.
+  const twoAngles = analyse({
+    ...base,
+    source: 'ai_visual_estimate' as const,
+    portionCertainty: 0.75,
+  }) as Record<string, unknown>;
+
+  // A barcode is a verified source, which is what lets a range collapse.
+  const scanned = analyse({
+    ...base,
+    source: 'barcode_verified_product' as const,
+    portionCertainty: 0.75,
+  }) as Record<string, unknown>;
+
+  const score = (r: Record<string, unknown>) => (r.intelligence as { score: number }).score;
+  assert.ok(score(twoAngles) > score(single), 'a second angle must be worth something');
+  assert.ok(score(scanned) > score(twoAngles), 'a verified source must beat inference');
+
+  const width = (r: Record<string, unknown>) => {
+    const e = r.energy as { min: number; max: number };
+    return e.max - e.min;
+  };
+  assert.ok(width(scanned) < width(single), 'a barcode narrows the range');
+});

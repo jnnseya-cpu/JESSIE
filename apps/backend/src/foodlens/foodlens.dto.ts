@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -38,6 +39,16 @@ export class GramsDto {
   @IsNumber() @Min(0) fatG!: number;
 }
 
+export class PhotoDto {
+  @IsString()
+  @IsIn(['image/jpeg', 'image/png', 'image/webp'])
+  mimeType!: string;
+
+  @IsString()
+  @MaxLength(15_000_000)
+  dataBase64!: string;
+}
+
 export class AnalyzeDto {
   @IsInt()
   @Min(10)
@@ -54,6 +65,18 @@ export class AnalyzeDto {
   @IsString()
   @MaxLength(15_000_000)
   dataBase64?: string;
+
+  /**
+   * Up to three photographs of the same meal. A second angle resolves
+   * depth, which is most of portion size — the capture checks ask for
+   * one, so the request has to be able to carry it.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => PhotoDto)
+  photos?: PhotoDto[];
 
   @IsOptional()
   @IsString()

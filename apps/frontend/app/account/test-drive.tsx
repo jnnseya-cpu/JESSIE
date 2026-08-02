@@ -79,47 +79,61 @@ export function FoodLensModule({
   const [note, setNote] = useState<string | null>(null);
   const [result, setResult] = useState<FoodLensResult | null>(null);
 
-  const analyse = () => {
+  const [photos, setPhotos] = useState<{ mimeType: string; dataBase64: string }[]>([]);
+  const [barcode, setBarcode] = useState('');
+  const [knownKcal, setKnownKcal] = useState('');
+
+  /** Adds a photograph. Up to three of the same meal, from any angle. */
+  const addPhoto = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/jpeg,image/png,image/webp';
-    // On a phone this opens the camera directly.
     input.setAttribute('capture', 'environment');
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      setBusy(true);
       setNote(null);
-      setResult(null);
       try {
-        // Camera photos are far bigger than the request pipeline allows;
-        // shrink in the browser so the upload always fits and travels fast.
         const photo = await shrinkImage(file, 1280, 0.85);
-        const res = await fetch(`${apiBase()}/foodlens/analyze`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            age: me.age,
-            mimeType: photo.mimeType,
-            dataBase64: photo.dataBase64,
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.message ?? `${res.status}`);
-        const analysis = json.data as FoodLensResult;
-        setResult(analysis);
-        // The energy figure becomes history, so a meal can later be read
-        // against the member's own fortnight rather than a population.
-        const energy = analysis.energy && !('withheld' in analysis.energy) ? analysis.energy.likely : undefined;
-        onActivity?.(await recordActivity({ kind: 'food_checked', ...(energy ? { value: energy } : {}) }));
+        setPhotos((p) => [...p, photo].slice(0, 3));
       } catch (e) {
-        setNote(`analysis failed: ${(e as Error).message}`);
-      } finally {
-        setBusy(false);
+        setNote(`that photo could not be read: ${(e as Error).message}`);
       }
     };
     input.click();
+  };
+
+  const analyse = async () => {
+    if (photos.length === 0) {
+      addPhoto();
+      return;
+    }
+    setBusy(true);
+    setNote(null);
+    setResult(null);
+    try {
+      const res = await fetch(`${apiBase()}/foodlens/analyze`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          age: me.age,
+          photos,
+          ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
+          ...(knownKcal && Number(knownKcal) > 0 ? { userConfirmedKcal: Number(knownKcal) } : {}),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      const analysis = json.data as FoodLensResult;
+      setResult(analysis);
+      const energy = analysis.energy && !('withheld' in analysis.energy) ? analysis.energy.likely : undefined;
+      onActivity?.(await recordActivity({ kind: 'food_checked', ...(energy ? { value: energy } : {}) }));
+    } catch (e) {
+      setNote(`analysis failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const named = result?.allergens.filter((a) => a.status !== 'unknown') ?? [];
@@ -133,9 +147,64 @@ export function FoodLensModule({
         Photograph any meal and see what is on the plate. You get an honest energy range
         rather than a fake exact number, and never a judgement about you or the food.
       </p>
-      <button className="btn btn--primary" type="button" onClick={analyse} disabled={busy}>
-        {busy ? 'Reading the plate…' : 'Photograph a meal'}
-      </button>
+      <div className="fl__capture">
+        <div className="fl__shots">
+          {photos.map((p, i) => (
+            <span key={i} className="fl__shot">
+              <img src={`data:${p.mimeType};base64,${p.dataBase64}`} alt={`Photo ${i + 1}`} />
+              <button
+                type="button"
+                aria-label={`Remove photo ${i + 1}`}
+                onClick={() => setPhotos((all) => all.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {photos.length < 3 && (
+            <button type="button" className="fl__addshot" onClick={addPhoto}>
+              <span>+</span>
+              {photos.length === 0 ? 'Photograph the meal' : 'Add another angle'}
+            </button>
+          )}
+        </div>
+        {photos.length === 1 && (
+          <p className="fl__note">
+            One more photo from the side resolves depth, which is most of portion size.
+          </p>
+        )}
+
+        <div className="tdv__askrow">
+          <input
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            placeholder="Barcode, if it came in a packet"
+            aria-label="Barcode"
+            inputMode="numeric"
+            maxLength={48}
+          />
+          <input
+            value={knownKcal}
+            onChange={(e) => setKnownKcal(e.target.value)}
+            placeholder="kcal, if you know it"
+            aria-label="Known calories"
+            inputMode="numeric"
+          />
+        </div>
+        <p className="fl__note">
+          A barcode beats any estimate, and what you tell us outranks everything — including a
+          manufacturer&rsquo;s label. You know what went on the plate; the model is guessing.
+        </p>
+
+        <button
+          className="btn btn--primary"
+          type="button"
+          onClick={() => void analyse()}
+          disabled={busy}
+        >
+          {busy ? 'Reading the plate…' : photos.length === 0 ? 'Photograph a meal' : `Analyse ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
+        </button>
+      </div>
       {note && <p className="acct__note">{note}</p>}
 
       {result && (

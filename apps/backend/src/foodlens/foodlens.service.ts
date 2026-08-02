@@ -26,6 +26,7 @@ export interface AnalyzeRequest {
   age: number;
   mimeType?: string;
   dataBase64?: string;
+  photos?: { mimeType: string; dataBase64: string }[];
   barcode?: string;
   userConfirmedKcal?: number;
   declaredItems?: DetectedFood[];
@@ -139,30 +140,53 @@ export class FoodlensService {
     let mode: 'live' | 'sandbox' = 'sandbox';
     let visionNote: string | null = null;
 
-    if (request.dataBase64) {
-      const bytes = Buffer.from(request.dataBase64, 'base64');
-      if (bytes.length === 0) throw new BadRequestException('The image is empty.');
-      const sniffed = sniffImage(bytes);
-      if (!sniffed.format) {
-        throw new BadRequestException('Those bytes are not a JPEG, PNG or WebP photograph.');
-      }
-      if (request.mimeType && request.mimeType !== `image/${sniffed.format}`) {
-        throw new BadRequestException(
-          `Declared ${request.mimeType} but the bytes are image/${sniffed.format} — refused as a disguised file.`,
-        );
+    // One photograph or several of the same meal. Every one is sniffed
+    // by its bytes and stripped of EXIF before it goes anywhere.
+    const supplied = [
+      ...(request.dataBase64 ? [{ mimeType: request.mimeType, dataBase64: request.dataBase64 }] : []),
+      ...(request.photos ?? []),
+    ].slice(0, 3);
+
+    if (supplied.length > 0) {
+      const prepared: { mediaType: string; dataBase64: string }[] = [];
+      for (const photo of supplied) {
+        const bytes = Buffer.from(photo.dataBase64, 'base64');
+        if (bytes.length === 0) throw new BadRequestException('The image is empty.');
+        const sniffed = sniffImage(bytes);
+        if (!sniffed.format) {
+          throw new BadRequestException('Those bytes are not a JPEG, PNG or WebP photograph.');
+        }
+        if (photo.mimeType && photo.mimeType !== `image/${sniffed.format}`) {
+          throw new BadRequestException(
+            `Declared ${photo.mimeType} but the bytes are image/${sniffed.format} — refused as a disguised file.`,
+          );
+        }
+        prepared.push({
+          mediaType: `image/${sniffed.format}`,
+          dataBase64: stripImageMetadata(bytes).toString('base64'),
+        });
       }
 
-      // GPS and EXIF are stripped before the pixels go anywhere near a model.
-      const clean = stripImageMetadata(bytes);
+      const angles =
+        prepared.length > 1
+          ? `There are ${prepared.length} photographs of the same meal from different angles. ` +
+            'Use them together: the extra angles resolve depth, so portionCertainty should be ' +
+            'meaningfully higher than it would be from one photograph.'
+          : 'There is one photograph, so portionCertainty must stay low unless a reference object is visible.';
 
       try {
         const completion = await this.gateway.complete({
           agent: 'LENS',
           messages: [
             { role: 'system', content: VISION_PROMPT },
-            { role: 'user', content: 'Analyse this meal photograph.' },
+            {
+              role: 'user',
+              content:
+                `Analyse this meal. ${angles}` +
+                (request.barcode ? ` The packet barcode is ${request.barcode}.` : ''),
+            },
           ],
-          images: [{ mediaType: `image/${sniffed.format}`, dataBase64: clean.toString('base64') }],
+          images: prepared,
           jsonSchema: VISION_SCHEMA as unknown as Record<string, unknown>,
         });
         // Models wrap JSON in a markdown fence far more often than not,
@@ -170,8 +194,6 @@ export class FoodlensService {
         const parsed = parseVisionJson(completion.text);
         if (parsed.ok && parsed.value) {
           if (parsed.value.unusable) {
-            // The model read the photo and says it is not a meal. That is
-            // an answer, not a failure, and the member deserves the words.
             visionNote = parsed.value.unusable;
             mode = 'live';
           } else {
@@ -183,8 +205,6 @@ export class FoodlensService {
           this.logger.warn(`vision parse failed: ${parsed.why ?? 'unknown'}`);
         }
       } catch (err) {
-        // No provider or provider refusal: the deterministic layer still
-        // answers — it just says so.
         visionNote =
           err instanceof Error && err.message.includes('No AI provider')
             ? 'No AI provider is configured, so the photograph was not analysed. Declared facts only.'
