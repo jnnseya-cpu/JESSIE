@@ -365,3 +365,44 @@ test('MOVA: the register matches the age mode it was built for', async () => {
   assert.match(systemPromptFor({ age: 30 }), /momentum mode/);
   assert.match(systemPromptFor({ age: 82 }), /vitality mode/);
 });
+
+test('MOVA: the tone sample is labelled as style, never as facts', async () => {
+  const { systemPromptFor } = await import('../src/mova/mova.logic.ts');
+  const prompt = systemPromptFor({ age: 34 });
+  assert.match(prompt, /TONE SAMPLE/);
+  assert.match(prompt, /NOT information\s+about this person/);
+  assert.match(prompt, /never state or imply/i);
+  assert.match(prompt, /how long they have been sitting/);
+  assert.match(prompt, /when their next meeting, call or class is/);
+});
+
+test('MOVA: an answer that reuses the sample\'s numbers is caught', async () => {
+  const { repeatsSampleContext } = await import('../src/mova/mova.logic.ts');
+  const sample = 'Seated ninety-four minutes, next call at 15:00. Silent desk reset?';
+
+  // The exact failure a member saw: invented sitting time and meeting.
+  assert.equal(
+    repeatsSampleContext(
+      'Ninety-four minutes without moving puts load through your lower back, and your next call is at 15:00.',
+      sample,
+      'my lower back aches after work',
+    ),
+    true,
+  );
+
+  // Ordinary coaching that happens to contain numbers is left alone.
+  assert.equal(
+    repeatsSampleContext(
+      'Stand up and hold a gentle hinge for twenty to thirty seconds, breathing normally.',
+      sample,
+      'my lower back aches after work',
+    ),
+    false,
+  );
+
+  // A number the member themselves raised is theirs to discuss.
+  assert.equal(
+    repeatsSampleContext('After 15:00 you could take a short walk.', sample, 'I finish at 15:00'),
+    false,
+  );
+});

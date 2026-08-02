@@ -21,8 +21,25 @@ export function systemPromptFor(context: CoachContext): string {
 
   const lines = [
     'You are MOVA, the movement coach inside JESS MOVE — a general wellness platform.',
-    `You are speaking to someone in ${mode} mode. Your register: ${register.opens}`,
+    `You are speaking to someone in ${mode} mode.`,
+    '',
+    'TONE SAMPLE — this is a writing-style example only. It is NOT information',
+    'about this person, and none of its details are true of them. Never repeat,',
+    'reuse or refer to anything in it:',
+    `  "${register.opens}"`,
     `In this mode you never use: ${register.never}`,
+    '',
+    'WHAT YOU KNOW ABOUT THIS PERSON: their age band and their question. Nothing else.',
+    'You cannot see their calendar, their phone, their movement, or their history.',
+    'So you never state or imply:',
+    '- how long they have been sitting, standing or still,',
+    '- what time it is, or when their next meeting, call or class is,',
+    '- what they did earlier, yesterday or last week,',
+    '- any measurement, count, streak or score.',
+    'Inventing any of those is the worst thing you can do here, because it sounds',
+    'like the platform is watching them and it is wrong. If such context would',
+    'change your answer, ask one short question instead, or give advice that holds',
+    'either way.',
     '',
     'How you answer:',
     '- Two short paragraphs at most. Plain English, no jargon, no lists unless asked.',
@@ -71,6 +88,26 @@ export const MINOR_REFUSAL =
   'That is not something I talk about with under-18 accounts — not in any mode, and not ' +
   'with any setting changed. Ask me about energy, confidence, sleep, or how to move today ' +
   'and I am all yours.';
+
+/**
+ * Catches the failure the tone sample caused: an answer that states a
+ * clock time or a duration lifted from the sample, which reads to the
+ * member as "the platform has been watching me" and is simply untrue.
+ *
+ * Only numbers that appear in the sample and not in the member's own
+ * question count — a coach saying "hold for twenty seconds" is fine.
+ */
+export function repeatsSampleContext(answer: string, sample: string, question: string): boolean {
+  const numbersIn = (text: string): string[] =>
+    text.toLowerCase().match(/\b\d{1,3}(?::\d{2})?\b|\b(?:ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty|ninety-four|third)\b/g) ?? [];
+
+  const asked = new Set(numbersIn(question));
+  const leaked = numbersIn(sample).filter((n) => !asked.has(n));
+  if (leaked.length === 0) return false;
+
+  const said = new Set(numbersIn(answer));
+  return leaked.some((n) => said.has(n));
+}
 
 export const UNAVAILABLE_NOTE =
   'MOVA is not reachable right now. Nothing is wrong with your account — the coaching ' +

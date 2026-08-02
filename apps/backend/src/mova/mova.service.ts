@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MOVA_REFUSES, modeForAge } from '@jessmove/shared';
+import { MOVA_REFUSES, REGISTERS, modeForAge } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
 import {
   MINOR_REFUSAL,
   UNAVAILABLE_NOTE,
+  repeatsSampleContext,
   systemPromptFor,
   violatesMinorRules,
 } from './mova.logic';
@@ -29,21 +30,42 @@ export class MovaService {
 
   constructor(private readonly ai: AiGatewayService) {}
 
+  private async say(system: string, question: string): Promise<string> {
+    const response = await this.ai.complete({
+      agent: 'JESS',
+      maxTokens: 700,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: question },
+      ],
+    });
+    return response.text ?? '';
+  }
+
   async ask(question: string, age: number, displayName?: string): Promise<AskResult> {
     const mode = modeForAge(age);
     const base = { mode, refusals: MOVA_REFUSES.length };
+    const system = systemPromptFor({ age, displayName });
 
     try {
-      const response = await this.ai.complete({
-        agent: 'JESS',
-        maxTokens: 700,
-        messages: [
-          { role: 'system', content: systemPromptFor({ age, displayName }) },
-          { role: 'user', content: question },
-        ],
-      });
+      let answer = (await this.say(system, question)).trim();
 
-      const answer = response.text?.trim();
+      // The tone sample must never become "facts" about the member. If a
+      // number from it survived into the answer, ask once more with the
+      // mistake named — a second pass is far better than a coach that
+      // sounds like it has been watching them.
+      if (repeatsSampleContext(answer, REGISTERS[mode].opens, question)) {
+        this.logger.warn('coach answer repeated tone-sample context — asking again');
+        answer = (
+          await this.say(
+            `${system}\n\nYour previous attempt stated details about this person's day that ` +
+              'you cannot know, taken from the tone sample. Answer again with no invented ' +
+              'context: no durations, no clock times, no history.',
+            question,
+          )
+        ).trim();
+      }
+
       if (!answer) return { ...base, answer: UNAVAILABLE_NOTE, live: false };
 
       // The platform's own guarantee, not the model's good behaviour.
