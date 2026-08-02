@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   BRAND,
@@ -42,13 +42,52 @@ export interface SentRecord {
   at: string;
 }
 
+interface PgPoolLike {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+  end: () => Promise<void>;
+}
+
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleDestroy {
   private readonly logger = new Logger(MailService.name);
   private readonly log: SentRecord[] = [];
   private counter = 0;
+  private pool: PgPoolLike | null = null;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    // The log must outlive the instance: on serverless every function
+    // keeps a private memory, so a durable record is the only one that
+    // tells the truth at /mail/status. Same driver split as UserStore.
+    const url = process.env.DATABASE_URL;
+    if (url) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
+      this.pool = new Pool({
+        connectionString: url,
+        max: 2,
+        ssl: url.includes('sslmode=require') || url.includes('vercel')
+          ? { rejectUnauthorized: true }
+          : undefined,
+      });
+      this.logger.log('mail log: postgres');
+    } else {
+      this.logger.warn('mail log: in-memory — the log will not survive a restart');
+    }
+  }
+
+  /** Best-effort durable write. A broken log must never block an email. */
+  private async persist(record: SentRecord): Promise<void> {
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        `INSERT INTO mail_log (event, recipient, subject, status, detail, at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [record.event, record.to, record.subject, record.status, record.detail, record.at],
+      );
+    } catch (error) {
+      this.logger.warn(`mail log write failed: ${(error as Error).message}`);
+    }
+  }
 
   /**
    * Reads a variable, treating two classic dashboard slips as "not set":
@@ -113,26 +152,58 @@ export class MailService {
     };
   }
 
-  status() {
+  async status() {
     const smtp = this.smtp();
+    const tally = await this.tally();
     return {
       variables: this.variableReport(),
       configured: smtp !== null,
+      log: this.pool ? 'postgres' : 'memory',
       host: smtp?.host ?? null,
       port: smtp?.port ?? null,
       encryption: smtp ? (smtp.secure ? 'implicit TLS (465)' : 'STARTTLS') : null,
       from: smtp?.from ?? null,
-      sent: this.log.filter((r) => r.status === 'sent').length,
-      sandboxed: this.log.filter((r) => r.status === 'sandbox').length,
-      failed: this.log.filter((r) => r.status === 'failed').length,
-      // The newest failure's reason, inline — /mail/recent lives on one
-      // serverless instance's memory and may miss it; this may too, but
-      // whichever instance failed will say why here.
-      lastFailure: this.log.find((r) => r.status === 'failed') ?? null,
+      ...tally,
       unitCostGbp: CHANNEL_DEFINITIONS.email.unitCostGbp,
       note: smtp
         ? 'Live. Messages are delivered over SMTP.'
         : 'No SMTP credentials. Messages render fully and are recorded as sandbox, so the flow stays testable.',
+    };
+  }
+
+  /** Counts and newest failure — durable when the database is attached. */
+  private async tally(): Promise<{
+    sent: number;
+    sandboxed: number;
+    failed: number;
+    lastFailure: SentRecord | null;
+  }> {
+    if (this.pool) {
+      try {
+        const counts = await this.pool.query(
+          'SELECT status, count(*)::int AS n FROM mail_log GROUP BY status',
+        );
+        const of = (status: string) =>
+          Number(counts.rows.find((r) => r.status === status)?.n ?? 0);
+        const failure = await this.pool.query(
+          `SELECT id, event, recipient, subject, status, detail, at FROM mail_log
+           WHERE status = 'failed' ORDER BY at DESC, id DESC LIMIT 1`,
+        );
+        return {
+          sent: of('sent'),
+          sandboxed: of('sandbox'),
+          failed: of('failed'),
+          lastFailure: failure.rows[0] ? rowToRecord(failure.rows[0]) : null,
+        };
+      } catch (error) {
+        this.logger.warn(`mail log read failed: ${(error as Error).message}`);
+      }
+    }
+    return {
+      sent: this.log.filter((r) => r.status === 'sent').length,
+      sandboxed: this.log.filter((r) => r.status === 'sandbox').length,
+      failed: this.log.filter((r) => r.status === 'failed').length,
+      lastFailure: this.log.find((r) => r.status === 'failed') ?? null,
     };
   }
 
@@ -207,6 +278,7 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
         at,
       };
       this.log.unshift(record);
+      await this.persist(record);
       return record;
     }
 
@@ -222,6 +294,7 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
         at,
       };
       this.log.unshift(record);
+      await this.persist(record);
       return record;
     } catch (error) {
       this.logger.warn(`mail delivery failed: ${(error as Error).message}`);
@@ -235,6 +308,7 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
         at,
       };
       this.log.unshift(record);
+      await this.persist(record);
       return record;
     }
   }
@@ -295,9 +369,37 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
     };
   }
 
-  recent(limit = 25): readonly SentRecord[] {
+  async recent(limit = 25): Promise<readonly SentRecord[]> {
+    if (this.pool) {
+      try {
+        const result = await this.pool.query(
+          `SELECT id, event, recipient, subject, status, detail, at FROM mail_log
+           ORDER BY at DESC, id DESC LIMIT $1`,
+          [limit],
+        );
+        return result.rows.map(rowToRecord);
+      } catch (error) {
+        this.logger.warn(`mail log read failed: ${(error as Error).message}`);
+      }
+    }
     return this.log.slice(0, limit);
   }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.pool?.end();
+  }
+}
+
+function rowToRecord(row: Record<string, unknown>): SentRecord {
+  return {
+    id: Number(row.id),
+    event: String(row.event),
+    to: String(row.recipient),
+    subject: String(row.subject),
+    status: row.status as SentRecord['status'],
+    detail: String(row.detail),
+    at: row.at instanceof Date ? row.at.toISOString() : String(row.at),
+  };
 }
 
 function escapeHtml(value: string): string {

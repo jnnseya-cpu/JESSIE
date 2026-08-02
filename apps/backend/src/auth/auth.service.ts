@@ -193,15 +193,18 @@ export class AuthService {
     // platform uses, so every account rule applies to signups too.
     this.profiles.createAccount(userId, kind, input.age, guardianId ?? undefined);
 
+    // Awaited on purpose, best-effort by construction: send() records a
+    // failure instead of throwing, and on serverless a send that is not
+    // awaited is suspended when the response returns — the classic
+    // "the form said the email was on its way, and it never left".
     if (isMinor && input.guardianEmail) {
-      // Best-effort: a mail outage must not block a registration. The
-      // account stays dark either way until the link is clicked.
-      void this.sendGuardianRequest(userId, input.displayName, input.guardianEmail).catch(() => {});
+      // The account stays dark either way until the link is clicked.
+      await this.sendGuardianRequest(userId, input.displayName, input.guardianEmail).catch(() => {});
     } else {
       // Adults are welcomed straight away. A minor's inbox hears nothing
       // until their guardian has confirmed — that email is sent from the
       // confirmation click, not from here.
-      void this.mail
+      await this.mail
         .send('account.registration.received', input.email, { name: input.displayName },
           `Welcome to JESS MOVE, ${input.displayName}.\n\n` +
           `Your account is live. Sign in any time at https://www.jessmove.com/account — ` +
@@ -253,7 +256,9 @@ export class AuthService {
     if (user) {
       const token = issueActionToken('password_reset', { u: user.userId }, this.secret(), 1800);
       const link = `${this.sitePublicUrl()}/account/reset?token=${token}`;
-      void this.mail
+      // Awaited: an un-awaited send is suspended with the serverless
+      // instance the moment the flat answer goes out.
+      await this.mail
         .send('password.reset_link', user.email, { name: user.displayName },
           `Hi ${user.displayName},\n\nSomeone asked to reset the password for this JESS MOVE ` +
           `account. If that was you, open this link — it works for 30 minutes:\n\n${link}\n\n` +
@@ -282,7 +287,7 @@ export class AuthService {
 
     const user = await this.users.byId(data.u);
     if (!user) throw new BadRequestException('that account no longer exists');
-    void this.mail
+    await this.mail
       .send('password.reset.successful', user.email, { name: user.displayName })
       .catch(() => {});
     const session = issueToken({ uid: user.userId, kind: user.kind, age: user.age }, this.secret());
@@ -295,11 +300,11 @@ export class AuthService {
     if (!data?.m) return null;
     const updated = await this.users.confirmGuardian(data.m);
     if (!updated) return null;
-    void this.mail
+    await this.mail
       .send('guardian.link_confirmed', data.g ?? '', { name: updated.displayName })
       .catch(() => {});
     // Now — and only now — the minor's own inbox hears from us.
-    void this.mail
+    await this.mail
       .send('account.registration.received', updated.email, { name: updated.displayName },
         `Hi ${updated.displayName} — your guardian has confirmed your JESS MOVE account, ` +
         `so it's live now.\n\nSign in at https://www.jessmove.com/account and have a look ` +

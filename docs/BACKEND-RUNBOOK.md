@@ -71,6 +71,18 @@ curl -s -X POST localhost:4000/api/mail/send \
 Without credentials you get `"status":"sandbox"` — rendered in full, not delivered. Useful
 for testing before the mailbox exists.
 
+Three diagnostics, learned the hard way:
+
+- `GET /api/mail/probe` — connects and logs in on ports 465 **and** 587 from the running
+  deployment, sends nothing, and returns per-port verdicts plus one sentence of advice.
+  Answers "password or network" in a single page load.
+- Sending falls back to the other submission port automatically when the configured one
+  is unreachable at the network level (never for a mail rejection).
+- The mail log lives in Postgres (`mail_log`, migration 0006), so `/mail/status` counts and
+  `lastFailure` are true across serverless instances and restarts. Every send in the auth
+  flows is awaited before the response returns — an un-awaited send is suspended with the
+  serverless instance and silently never leaves.
+
 **Before emailing real people**, add these at Hostinger or you land in spam:
 
 | Type | Name | Value |

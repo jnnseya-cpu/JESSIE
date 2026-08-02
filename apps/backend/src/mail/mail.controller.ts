@@ -8,7 +8,7 @@ export class MailController {
 
   /** Is SMTP wired, and on which transport. No credentials are returned. */
   @Get('status')
-  status() {
+  async status() {
     return this.mail.status();
   }
 
@@ -43,7 +43,7 @@ export class MailController {
   }
 
   @Get('recent')
-  recent(@Query('limit') limit?: string) {
+  async recent(@Query('limit') limit?: string) {
     return this.mail.recent(Number(limit) || 25);
   }
 }
