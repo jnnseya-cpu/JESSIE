@@ -92,6 +92,8 @@ export class HealthInsightController {
       summary.totals.find((t) => t.key === key)?.perDay;
     const topOf = (key: string): string | null =>
       summary.totals.find((t) => t.key === key)?.topContributors[0]?.name ?? null;
+    const contributorsOf = (key: string): { name: string; amount: number }[] =>
+      summary.totals.find((t) => t.key === key)?.topContributors ?? [];
 
     const input: InsightInput = {
       age: me.age,
@@ -109,6 +111,8 @@ export class HealthInsightController {
         topSalt: topOf('saltG'),
         topSaturates: topOf('saturatesG'),
         topSugars: topOf('sugarsG'),
+        topEnergy: contributorsOf('energyKcal'),
+        topSugarItems: contributorsOf('sugarsG'),
       },
       activity: {
         daysMoved: dashboard.daysMovedInWindow,

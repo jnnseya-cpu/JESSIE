@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiBase } from '../api-base';
+import { Curve } from './charts';
 
 /**
  * What everything, taken together, is allowed to say.
@@ -40,6 +41,20 @@ interface Insight {
     safeRateKgPerWeek: number | null;
     says: string;
     steps: string[];
+  };
+  plan: {
+    planned: boolean;
+    why?: string;
+    gapKg: number;
+    targetKg: number;
+    weeklyLossKg: number;
+    dailyDeficitKcal: number;
+    levers: { what: string; kcalPerDay: number; because: string; from: string }[];
+    leverTotalKcal: number;
+    coveragePct: number;
+    milestones: { label: string; weightKg: number; weeks: number; says: string }[];
+    projection: { week: number; weightKg: number }[];
+    safety: string[];
   };
   builtFrom: string[];
   limits: string[];
@@ -122,7 +137,7 @@ export function InsightModule({
     );
   }
 
-  const { bmi } = insight;
+  const { bmi, plan } = insight;
 
   return (
     <section className="acct__module acct__module--body">
@@ -212,6 +227,88 @@ export function InsightModule({
             ))}
           </ol>
         </>
+      )}
+
+      {/* ---- and how the gap actually gets closed ---- */}
+      {plan.planned ? (
+        <>
+          <h4 className="fl__h">Closing the {Math.abs(plan.gapKg)}kg</h4>
+
+          <div className="plan__line">
+            <Curve
+              points={plan.projection.map((p) => p.weightKg)}
+              label={`Your weight from ${plan.projection[0]?.weightKg}kg down to ${plan.targetKg}kg over ${plan.projection[plan.projection.length - 1]?.week} weeks`}
+            />
+            <div className="plan__lineends">
+              <span>{plan.projection[0]?.weightKg}kg today</span>
+              <span>
+                {plan.targetKg}kg in {plan.projection[plan.projection.length - 1]?.week} weeks
+              </span>
+            </div>
+          </div>
+
+          <ol className="plan__milestones">
+            {plan.milestones.map((m) => (
+              <li key={m.label}>
+                <div className="plan__mhead">
+                  <strong>{m.label}</strong>
+                  <span>
+                    {m.weightKg}kg · week {m.weeks}
+                  </span>
+                </div>
+                <p>{m.says}</p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="plan__deficit">
+            <strong>{plan.dailyDeficitKcal} kcal a day</strong>
+            <span>
+              is the gap between what goes in and what gets used that {plan.weeklyLossKg}kg a
+              week needs. Here is where yours could come from.
+            </span>
+          </div>
+
+          <ul className="plan__levers">
+            {plan.levers.map((lever) => (
+              <li key={lever.what} className={`plan__lever plan__lever--${lever.from}`}>
+                <div className="plan__lhead">
+                  <strong>{lever.what}</strong>
+                  {lever.kcalPerDay > 0 && <span>{lever.kcalPerDay} kcal/day</span>}
+                </div>
+                <p>{lever.because}</p>
+              </li>
+            ))}
+          </ul>
+
+          {plan.leverTotalKcal > 0 && (
+            <div className="plan__coverage">
+              <span className="plan__ctrack">
+                <span
+                  className="plan__cfill"
+                  style={{ width: `${Math.min(100, plan.coveragePct)}%` }}
+                />
+              </span>
+              <p>
+                Those add up to <strong>{plan.leverTotalKcal} kcal a day</strong> —{' '}
+                {plan.coveragePct}% of what {plan.weeklyLossKg}kg a week needs.{' '}
+                {plan.coveragePct >= 120
+                  ? 'You do not need all of them. Pick the ones you would actually keep doing — the rest is spare.'
+                  : plan.coveragePct >= 100
+                    ? 'That is the whole gap, from things already in your own ledger.'
+                    : 'Scanning more of your week will find the rest.'}
+              </p>
+            </div>
+          )}
+
+          <ul className="risk__limits">
+            {plan.safety.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        plan.why && <p className="acct__note">{plan.why}</p>
       )}
 
       {/* ---- what it was built from, and what it cannot see ---- */}

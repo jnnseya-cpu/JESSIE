@@ -6138,3 +6138,15 @@ textarea:focus-visible {
   .ledger__heads, .bmi__path { grid-template-columns: 1fr 1fr; }
   .bmi { flex-direction: column; align-items: stretch; }
 }
+
+/* A nutrient nobody measured. No colour, no band, no number — the tile
+   stays so the table never looks as though it has been taken away. */
+.fl__light--unmeasured {
+  background: transparent;
+  border: 1px dashed var(--jm-hairline);
+  opacity: 0.72;
+}
+
+.fl__light--unmeasured .fl__lightval { color: var(--jm-faint); font-weight: 400; }
+.fl__light--unmeasured .fl__lightband { color: var(--jm-dim); letter-spacing: 0.02em; }
+.fl__light--unmeasured .fl__lightbasis { color: var(--jm-teal); }

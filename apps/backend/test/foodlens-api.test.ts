@@ -389,20 +389,28 @@ test('missing front-of-pack figures are absent, never zero', async () => {
   assert.equal(someStated.value?.per100g?.sugarsG, undefined, 'unstated stays unstated');
 });
 
-test('front-of-pack shows only nutrients that exist, and marks what it worked out', async () => {
+test('the table is always there, and says which figures nobody measured', async () => {
   const { frontOfPackFrom } = await import('../src/foodlens/foodlens.logic.ts');
 
-  // Nothing stated and no plate weight: no panel at all.
-  assert.equal(
-    frontOfPackFrom({
-      age: 40,
-      items: [],
-      likelyKcal: 940,
-      source: 'ai_visual_estimate',
-      portionCertainty: 0.3,
-      preparationCertainty: 0.3,
-    }),
-    null,
+  // Nothing stated and no plate weight: four tiles, none of them a claim.
+  // The table must not vanish — a table that disappears reads as a feature
+  // being removed — and it must never show a zero, because 0g bands as LOW
+  // and LOW is a measurement nobody took.
+  const nothing = frontOfPackFrom({
+    age: 40,
+    items: [],
+    likelyKcal: 940,
+    source: 'ai_visual_estimate',
+    portionCertainty: 0.3,
+    preparationCertainty: 0.3,
+  });
+  assert.equal(nothing.length, 4, 'all four nutrients still have a tile');
+  assert.ok(nothing.every((r) => r.grams === null), 'not one of them is a zero');
+  assert.ok(nothing.every((r) => r.band === null), 'and not one of them is banded');
+  assert.ok(nothing.every((r) => r.basis === 'unmeasured'));
+  assert.deepEqual(
+    nothing.map((r) => r.nutrient),
+    ['fat', 'saturates', 'sugars', 'salt'],
   );
 
   // Macros plus a plate weight make fat derivable — and only fat.
@@ -416,12 +424,15 @@ test('front-of-pack shows only nutrients that exist, and marks what it worked ou
     portionCertainty: 0.5,
     preparationCertainty: 0.5,
   });
-  assert.equal(derived?.length, 1);
-  assert.equal(derived?.[0]?.nutrient, 'fat');
-  assert.equal(derived?.[0]?.grams, 10, '40g of fat in 400g of food is 10g per 100g');
-  assert.equal(derived?.[0]?.band, 'amber');
-  assert.equal(derived?.[0]?.derived, true);
-  assert.equal(derived?.[0]?.basis, 'calculated');
+  const fat = derived.find((r) => r.nutrient === 'fat');
+  assert.equal(fat?.grams, 10, '40g of fat in 400g of food is 10g per 100g');
+  assert.equal(fat?.band, 'amber');
+  assert.equal(fat?.derived, true);
+  assert.equal(fat?.basis, 'calculated');
+  assert.ok(
+    derived.filter((r) => r.nutrient !== 'fat').every((r) => r.basis === 'unmeasured'),
+    'salt cannot be worked out from macros, and does not pretend to be',
+  );
 
   // A stated figure is preferred and is not marked as worked out.
   const stated = frontOfPackFrom({
@@ -433,9 +444,13 @@ test('front-of-pack shows only nutrients that exist, and marks what it worked ou
     portionCertainty: 0.9,
     preparationCertainty: 0.9,
   });
-  assert.deepEqual(stated, [
-    { nutrient: 'salt', grams: 1.9, band: 'red', derived: false, basis: 'label' },
-  ]);
+  assert.deepEqual(stated.find((r) => r.nutrient === 'salt'), {
+    nutrient: 'salt',
+    grams: 1.9,
+    band: 'red',
+    derived: false,
+    basis: 'label',
+  });
 });
 
 test('a figure from a photograph is labelled an estimate, never a label', async () => {

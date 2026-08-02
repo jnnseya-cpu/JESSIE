@@ -79,6 +79,8 @@ export interface HealthInsight {
   why?: string;
   risks: RiskFinding[];
   bmi: BmiPath;
+  /** How the gap actually gets closed. */
+  plan: GapPlan;
   /** What the picture was built from, so nobody mistakes it for complete. */
   builtFrom: string[];
   limits: string[];
@@ -98,6 +100,10 @@ export interface InsightInput {
     topSalt?: string | null;
     topSaturates?: string | null;
     topSugars?: string | null;
+    /** The biggest lines of energy in the ledger, largest first. */
+    topEnergy?: { name: string; amount: number }[];
+    /** The biggest lines of sugars, for spotting a drink. */
+    topSugarItems?: { name: string; amount: number }[];
   } | null;
   /** From the activity dashboard. */
   activity?: { daysMoved: number; windowDays: number } | null;
@@ -335,6 +341,20 @@ export function insightFor(input: InsightInput): HealthInsight {
         says: 'Not shown under 18.',
         steps: [],
       },
+      plan: {
+        planned: false,
+        why: 'Not shown under 18.',
+        gapKg: 0,
+        targetKg: 0,
+        weeklyLossKg: 0,
+        dailyDeficitKcal: 0,
+        levers: [],
+        leverTotalKcal: 0,
+        coveragePct: 0,
+        milestones: [],
+        projection: [],
+        safety: [],
+      },
       builtFrom: [],
       limits: [],
       seeSomeone: ['Anything worrying about a young person’s growth belongs with a GP.'],
@@ -358,6 +378,7 @@ export function insightFor(input: InsightInput): HealthInsight {
     available: true,
     risks,
     bmi: bmiPathFor(input),
+    plan: gapPlanFor(input),
     builtFrom,
     limits: [
       'None of this is a diagnosis. Each item is an association found across populations, not a statement about you.',
@@ -371,4 +392,246 @@ export function insightFor(input: InsightInput): HealthInsight {
       'If you are on medication or being treated for anything, take these figures to that clinician rather than acting on them alone.',
     ],
   };
+}
+
+/* ==================================================================
+ * Closing the gap.
+ *
+ * "13.7kg to the healthy range" is a fact, and on its own it is not
+ * help — it is a number to feel bad about. What follows turns it into
+ * work: a first milestone that matters clinically, a weekly line to
+ * follow, and levers drawn from this person's own ledger rather than
+ * from a leaflet.
+ *
+ * The arithmetic is the standard one: roughly 7,700 kcal per kilogram
+ * of body fat, so half a kilo a week is a daily gap of about 550 kcal
+ * between what goes in and what is used. It is deliberately expressed
+ * as a *gap*, never as a calorie target, because a target needs a
+ * maintenance figure this platform cannot know — it would have to guess
+ * at sex, body composition and activity, and a guess dressed as a
+ * prescription is how people end up eating too little.
+ * ================================================================== */
+
+/** Energy in a kilogram of body fat. The figure the guidance uses. */
+export const KCAL_PER_KG = 7700;
+
+/** Never more than this a day, whatever the arithmetic says. */
+export const MAX_DAILY_DEFICIT = 750;
+
+/**
+ * The first target worth having. Five percent of body weight is where
+ * the evidence on blood pressure, blood sugar and blood lipids starts,
+ * and it arrives long before the healthy range does.
+ */
+export const FIRST_MILESTONE_PCT = 0.05;
+
+export interface Lever {
+  what: string;
+  /** What this is worth per day, in kcal. */
+  kcalPerDay: number;
+  /** Where the figure came from, so it can be checked. */
+  because: string;
+  from: 'foodlens' | 'activity' | 'general';
+}
+
+export interface Milestone {
+  label: string;
+  weightKg: number;
+  weeks: number;
+  says: string;
+}
+
+export interface GapPlan {
+  /** Present only when there is a gap worth planning for. */
+  planned: boolean;
+  why?: string;
+  gapKg: number;
+  targetKg: number;
+  weeklyLossKg: number;
+  dailyDeficitKcal: number;
+  levers: Lever[];
+  /** What the levers add up to, against what is needed. */
+  leverTotalKcal: number;
+  coveragePct: number;
+  milestones: Milestone[];
+  /** A weight per week, for drawing the line to follow. */
+  projection: { week: number; weightKg: number }[];
+  safety: string[];
+}
+
+/**
+ * A daily gap of `dailyDeficitKcal`, and the levers that might close it.
+ *
+ * Every food lever is worth what that item actually contributes in this
+ * person's ledger — not a leaflet's guess. The saving claimed is
+ * deliberately conservative: swapping something is rarely removing it.
+ */
+export function gapPlanFor(input: InsightInput): GapPlan {
+  const path = bmiPathFor(input);
+  const empty: GapPlan = {
+    planned: false,
+    gapKg: 0,
+    targetKg: 0,
+    weeklyLossKg: 0,
+    dailyDeficitKcal: 0,
+    levers: [],
+    leverTotalKcal: 0,
+    coveragePct: 0,
+    milestones: [],
+    projection: [],
+    safety: [],
+  };
+
+  if (path.bmi === null || !input.weightKg || !path.healthyRangeKg) {
+    return { ...empty, why: 'Give a height and a weight in BodyCommand and this fills in.' };
+  }
+  if (path.band === 'healthy') {
+    return {
+      ...empty,
+      why: `You are already inside the healthy range. There is no gap to close — staying between ${path.healthyRangeKg.min}kg and ${path.healthyRangeKg.max}kg is the whole job.`,
+    };
+  }
+  if (path.band === 'under') {
+    return {
+      ...empty,
+      why: 'Below the healthy range, this platform will not plan a reduction. That conversation belongs with a GP or a dietitian.',
+    };
+  }
+
+  const weight = input.weightKg;
+  const targetKg = path.healthyRangeKg.max;
+  const gapKg = round(weight - targetKg, 1);
+  const weeklyLossKg = path.safeRateKgPerWeek ?? 0.5;
+  const dailyDeficitKcal = Math.min(
+    MAX_DAILY_DEFICIT,
+    Math.round((weeklyLossKg * KCAL_PER_KG) / 7 / 10) * 10,
+  );
+
+  const levers = leversFor(input, dailyDeficitKcal);
+  const leverTotalKcal = levers.reduce((sum, l) => sum + l.kcalPerDay, 0);
+
+  const firstMilestoneKg = round(weight * FIRST_MILESTONE_PCT, 1);
+  const milestones: Milestone[] = [
+    {
+      label: 'First five percent',
+      weightKg: round(weight - firstMilestoneKg, 1),
+      weeks: Math.ceil(firstMilestoneKg / weeklyLossKg),
+      says:
+        'Where the evidence on blood pressure, blood sugar and cholesterol begins. It arrives long before the healthy range does.',
+    },
+    {
+      label: 'Halfway',
+      weightKg: round(weight - gapKg / 2, 1),
+      weeks: Math.ceil(gapKg / 2 / weeklyLossKg),
+      says: 'The point where the habits are the thing keeping it going, rather than the effort.',
+    },
+    {
+      label: 'Inside the healthy range',
+      weightKg: targetKg,
+      weeks: Math.ceil(gapKg / weeklyLossKg),
+      says: `${path.healthyRangeKg.min}kg to ${path.healthyRangeKg.max}kg is the range. The top of it counts.`,
+    },
+  ].filter((m, i, all) => i === 0 || m.weeks > all[i - 1]!.weeks);
+
+  const totalWeeks = Math.ceil(gapKg / weeklyLossKg);
+  const step = Math.max(1, Math.round(totalWeeks / 26));
+  const projection: { week: number; weightKg: number }[] = [];
+  for (let week = 0; week <= totalWeeks; week += step) {
+    projection.push({ week, weightKg: round(Math.max(targetKg, weight - week * weeklyLossKg), 1) });
+  }
+  if (projection[projection.length - 1]?.week !== totalWeeks) {
+    projection.push({ week: totalWeeks, weightKg: targetKg });
+  }
+
+  return {
+    planned: true,
+    gapKg,
+    targetKg,
+    weeklyLossKg,
+    dailyDeficitKcal,
+    levers,
+    leverTotalKcal,
+    coveragePct: Math.round((leverTotalKcal / dailyDeficitKcal) * 100),
+    milestones,
+    projection,
+    safety: [
+      'This is a daily gap, not a calorie allowance. Nothing here tells you a number to eat down to — that needs a maintenance figure nobody can work out from a height and a weight.',
+      'If the weight is coming off faster than about a percent of your body weight a week, that is too fast, and BodyCommand will say so.',
+      'Medication, pregnancy, a thyroid condition and several others change all of this. If any of them apply, take the plan to the clinician who knows about it rather than following it alone.',
+    ],
+  };
+}
+
+/**
+ * The levers, largest first.
+ *
+ * Food levers come from the ledger, so a person is shown the thing they
+ * actually buy rather than a generic swap. Movement is offered against
+ * the days they have not moved, never as a punishment for eating.
+ */
+function leversFor(input: InsightInput, needed: number): Lever[] {
+  const levers: Lever[] = [];
+  const food = input.food;
+
+  if (food && food.daysCovered > 0) {
+    const perDayOf = (amount: number): number => Math.round(amount / food.daysCovered);
+
+    // A sugary drink is the single cheapest change most people can make:
+    // the swap is like-for-like and takes almost all of the energy out.
+    const drink = (food.topSugarItems ?? []).find((item) =>
+      /cola|lemonade|juice|squash|energy|drink|soda|smoothie|tonic/i.test(item.name),
+    );
+    const drinkEnergy = (food.topEnergy ?? []).find((e) => e.name === drink?.name);
+    if (drink && drinkEnergy && perDayOf(drinkEnergy.amount) >= 30) {
+      levers.push({
+        what: `Swap ${drink.name} for a no-sugar version`,
+        kcalPerDay: Math.round(perDayOf(drinkEnergy.amount) * 0.9),
+        because: `${drink.name} is ${perDayOf(drinkEnergy.amount)} kcal a day of what you scanned, and almost all of it is sugar.`,
+        from: 'foodlens',
+      });
+    }
+
+    // The biggest line in the ledger that is not that drink. Halving is
+    // the honest claim — swapping something is rarely removing it.
+    for (const item of (food.topEnergy ?? []).slice(0, 3)) {
+      if (levers.some((l) => l.what.includes(item.name))) continue;
+      const perDay = perDayOf(item.amount);
+      if (perDay < 60) continue;
+      levers.push({
+        what: `Halve the ${item.name}`,
+        kcalPerDay: Math.round(perDay / 2),
+        because: `${item.name} is the ${levers.length === 0 ? 'largest' : 'next largest'} line in your ledger at ${perDay} kcal a day.`,
+        from: 'foodlens',
+      });
+      if (levers.reduce((s, l) => s + l.kcalPerDay, 0) >= needed) break;
+    }
+  }
+
+  // Movement, offered against the days that are empty rather than as a
+  // penalty for what was eaten.
+  if (input.activity && input.activity.windowDays > 0) {
+    const perWeek = (input.activity.daysMoved / input.activity.windowDays) * 7;
+    const spare = Math.max(0, Math.round(ACTIVE_DAYS_TARGET - perWeek));
+    if (spare > 0) {
+      // A brisk half-hour walk is roughly 150 kcal for an average adult.
+      levers.push({
+        what: `${spare} more brisk half-hour walk${spare === 1 ? '' : 's'} a week`,
+        kcalPerDay: Math.round((spare * 150) / 7),
+        because: `You moved on about ${round(perWeek)} days a week. Each brisk half hour is roughly 150 kcal.`,
+        from: 'activity',
+      });
+    }
+  }
+
+  if (levers.length === 0) {
+    levers.push({
+      what: 'Scan a week of your shopping',
+      kcalPerDay: 0,
+      because:
+        'With a ledger behind it this becomes your own swaps rather than general advice. Until then there is nothing specific to point at.',
+      from: 'general',
+    });
+  }
+
+  return levers.sort((a, b) => b.kcalPerDay - a.kcalPerDay);
 }

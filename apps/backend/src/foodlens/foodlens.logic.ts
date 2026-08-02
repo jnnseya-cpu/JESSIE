@@ -126,29 +126,28 @@ const BANDS = {
 } as const;
 
 /**
- * Front-of-pack, built only from figures that exist.
+ * Front-of-pack. The table is always here.
  *
- * Every nutrient here is either stated by the source or worked out from
- * the plate's own macros and weight, and each row says which. A nutrient
- * nobody measured does not appear — it does not appear as 0g, and it
- * does not appear as a grey box, because a panel with a hole in it is
- * more honest than a panel that fills the hole.
+ * It was asked for four times, and twice what came back was four tiles
+ * reading "0g LOW" — a fabricated measurement, which is the single worst
+ * thing this module could put on a screen. The fix for that was to drop
+ * rows nobody had measured, and the fix was worse than the fault: a table
+ * that disappears looks like a feature being taken away, and a member
+ * cannot tell the difference between "we did not measure this" and "this
+ * is gone".
+ *
+ * So every nutrient always has a tile. A figure that exists shows its
+ * number, its band and where it came from. A figure that does not exist
+ * says *not measured* and carries no band, no colour and above all no
+ * zero — because 0g bands as LOW, and LOW is a claim.
  */
 export function frontOfPackFrom(facts: AnalysisFacts): {
   nutrient: string;
-  grams: number;
-  band: 'green' | 'amber' | 'red';
+  grams: number | null;
+  band: 'green' | 'amber' | 'red' | null;
   derived: boolean;
-  basis: 'label' | 'estimate' | 'calculated';
-}[] | null {
-  const rows: {
-    nutrient: string;
-    grams: number;
-    band: 'green' | 'amber' | 'red';
-    derived: boolean;
-    basis: 'label' | 'estimate' | 'calculated';
-  }[] = [];
-
+  basis: 'label' | 'estimate' | 'calculated' | 'unmeasured';
+}[] {
   // A figure from a barcode or a confirmed label is a fact. The same
   // figure from a photograph is an estimate, and the row must say so.
   const verified =
@@ -159,7 +158,8 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
   const bandFor = (value: number, low: number, high: number): 'green' | 'amber' | 'red' =>
     value <= low ? 'green' : value >= high ? 'red' : 'amber';
 
-  for (const key of ['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const) {
+  return (['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const).map((key) => {
+    const spec = BANDS[key];
     const stated = facts.per100g?.[key];
     let value: number | undefined = typeof stated === 'number' ? stated : undefined;
     let derived = false;
@@ -169,20 +169,20 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
       value = Number(((facts.grams.fatG / facts.plateGrams) * 100).toFixed(1));
       derived = true;
     }
-    if (value === undefined) continue;
 
-    const spec = BANDS[key];
-    rows.push({
+    if (value === undefined) {
+      return { nutrient: spec.label, grams: null, band: null, derived: false, basis: 'unmeasured' as const };
+    }
+
+    return {
       nutrient: spec.label,
       // One decimal, as a label prints it.
       grams: Math.round(value * 10) / 10,
       band: bandFor(value, spec.low, spec.high),
       derived,
-      basis: derived ? 'calculated' : verified ? 'label' : 'estimate',
-    });
-  }
-
-  return rows.length > 0 ? rows : null;
+      basis: derived ? ('calculated' as const) : verified ? ('label' as const) : ('estimate' as const),
+    };
+  });
 }
 
 /**

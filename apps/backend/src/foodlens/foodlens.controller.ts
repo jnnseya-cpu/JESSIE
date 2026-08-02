@@ -187,13 +187,14 @@ export class FoodlensController {
     // as a row of nulls.
     if (uid) {
       const energy = result.energy as { likely?: number; withheld?: boolean } | undefined;
-      const rows = (result.frontOfPack as { nutrient: string; grams: number }[] | null) ?? [];
+      const rows = (result.frontOfPack as { nutrient: string; grams: number | null }[] | null) ?? [];
       const plateGrams = (result.plateGrams as number | undefined) ?? null;
       // Front-of-pack is per 100g; the ledger holds what was on the plate.
       const scale = plateGrams && plateGrams > 0 ? plateGrams / 100 : null;
       const onThePlate = (nutrient: string): number | null => {
         const row = rows.find((r) => r.nutrient === nutrient);
-        return row && scale ? Math.round(row.grams * scale * 10) / 10 : null;
+        // An unmeasured nutrient joins the ledger as nothing, never as zero.
+        return row?.grams != null && scale ? Math.round(row.grams * scale * 10) / 10 : null;
       };
       const items = (result.items as { name: string }[] | undefined) ?? [];
 

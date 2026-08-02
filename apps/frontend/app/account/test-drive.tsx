@@ -61,10 +61,10 @@ interface FoodLensResult {
   frontOfPack:
     | {
         nutrient: string;
-        grams: number;
-        band: 'green' | 'amber' | 'red';
+        grams: number | null;
+        band: 'green' | 'amber' | 'red' | null;
         derived: boolean;
-        basis: 'label' | 'estimate' | 'calculated';
+        basis: 'label' | 'estimate' | 'calculated' | 'unmeasured';
       }[]
     | null;
   wheel: Record<string, number | null>;
@@ -273,8 +273,9 @@ export function FoodLensModule({
             </>
           )}
 
-          {/* A set of zeros is not a panel — heading and all, it stays away. */}
-          {result.frontOfPack && result.frontOfPack.some((l) => l.grams > 0) && (
+          {/* Always drawn. A nutrient nobody measured says so in its own
+              tile rather than the table quietly disappearing. */}
+          {result.frontOfPack && result.frontOfPack.length > 0 && (
             <>
               <h4 className="fl__h">Per 100g · UK front-of-pack</h4>
               <TrafficLights lights={result.frontOfPack} />
@@ -284,7 +285,10 @@ export function FoodLensModule({
                 it was arrived at: <strong>from the label</strong> when a barcode or a
                 confirmed label supplied it, <strong>worked out</strong> when it came from the
                 plate&rsquo;s own macros and weight, and <strong>estimated</strong> when the
-                model read it from the photograph. Scan a barcode and these become facts.
+                model read it from the photograph. A tile reading <strong>not measured</strong>
+                is exactly that — nobody measured it, and this refuses to print a zero in its
+                place, because 0g bands as LOW and LOW is a claim. Scan the barcode and every
+                one of them becomes a fact off the packet.
               </p>
             </>
           )}

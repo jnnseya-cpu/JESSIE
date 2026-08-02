@@ -22,10 +22,11 @@ export interface Energy {
 
 export interface TrafficLight {
   nutrient: string;
-  grams: number;
-  band: 'green' | 'amber' | 'red';
+  /** Null when nobody measured it. Never a zero standing in for one. */
+  grams: number | null;
+  band: 'green' | 'amber' | 'red' | null;
   derived: boolean;
-  basis: 'label' | 'estimate' | 'calculated';
+  basis: 'label' | 'estimate' | 'calculated' | 'unmeasured';
 }
 
 /** How the figure was arrived at. A row never poses as more than it is. */
@@ -33,6 +34,7 @@ const BASIS_WORD: Record<string, string> = {
   label: 'from the label',
   estimate: 'estimated',
   calculated: 'worked out',
+  unmeasured: 'scan the barcode',
 };
 
 const BAND_WORD: Record<string, string> = { green: 'low', amber: 'medium', red: 'high' };
@@ -147,23 +149,33 @@ export function MacroBars({
 /**
  * UK front-of-pack bands. The word is printed beside the colour.
  *
- * The last guard against a fabricated panel. The analysis already refuses
- * to send a set of zeros — a nutrient nobody measured is absent, not 0g —
- * but four tiles reading "0g LOW" is the single worst thing this module
- * could put on a screen, because it looks like a measurement and is not
- * one. If a set of zeros ever reaches here, from a cached old reply or a
- * future bug, nothing is drawn.
+ * The table is always drawn. It was asked for four times and twice came
+ * back as four tiles reading "0g LOW" — a measurement nobody took, which
+ * is the worst thing this module could show. Dropping the unmeasured rows
+ * fixed that and created a worse problem: a table that vanishes reads as a
+ * feature being taken away.
+ *
+ * So a nutrient nobody measured keeps its tile and says so. No number, no
+ * band, no colour — an em dash and the words "not measured", with the one
+ * action that fills it in.
  */
 export function TrafficLights({ lights }: { lights: TrafficLight[] }) {
-  if (lights.length === 0 || lights.every((l) => !(l.grams > 0))) return null;
+  if (lights.length === 0) return null;
 
   return (
     <div className="fl__lights">
       {lights.map((l) => (
-        <div key={l.nutrient} className={`fl__light fl__light--${l.band}`}>
+        <div
+          key={l.nutrient}
+          className={`fl__light fl__light--${l.band ?? 'unmeasured'}`}
+        >
           <span className="fl__lightname">{l.nutrient}</span>
-          <span className="fl__lightval">{Math.round(l.grams * 10) / 10}g</span>
-          <span className="fl__lightband">{BAND_WORD[l.band] ?? l.band}</span>
+          <span className="fl__lightval">
+            {l.grams === null ? '—' : `${Math.round(l.grams * 10) / 10}g`}
+          </span>
+          <span className="fl__lightband">
+            {l.band === null ? 'not measured' : (BAND_WORD[l.band] ?? l.band)}
+          </span>
           <span className="fl__lightbasis">{BASIS_WORD[l.basis] ?? l.basis}</span>
         </div>
       ))}
