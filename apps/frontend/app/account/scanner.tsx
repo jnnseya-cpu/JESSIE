@@ -84,6 +84,8 @@ interface BarcodeDetectorLike {
 export function ScannerModule() {
   const [scans, setScans] = useState<Scanned[]>([]);
   const [typed, setTyped] = useState('');
+  // Pack sizes the member fills in for records that carry none.
+  const [sizes, setSizes] = useState<Record<string, string>>({});
   const [live, setLive] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,7 +112,9 @@ export function ScannerModule() {
   // interesting number in a supermarket is the shop, not the item.
   const [basket, setBasket] = useState<Basket | null>(null);
   useEffect(() => {
-    const found = scans.filter((s) => s.found);
+    const found = scans
+      .filter((s) => s.found)
+      .map((s) => (s.quantity ? s : { ...s, quantity: sizes[s.barcode] ?? null }));
     if (found.length === 0) {
       setBasket(null);
       return;
@@ -132,7 +136,7 @@ export function ScannerModule() {
     return () => {
       cancelled = true;
     };
-  }, [scans]);
+  }, [scans, sizes]);
 
   const supported = typeof window !== 'undefined' && 'BarcodeDetector' in window;
   // An installed app has no address bar, so any advice about a padlock in
@@ -422,8 +426,14 @@ export function ScannerModule() {
                       {[s.brand, s.quantity].filter(Boolean).join(' · ') || s.barcode}
                     </span>
                   </div>
-                  {typeof s.kcalPer100g === 'number' && (
+                  {typeof s.kcalPer100g === 'number' ? (
                     <span className="scan__kcal">{Math.round(s.kcalPer100g)} kcal / 100g</span>
+                  ) : (
+                    <p className="scan__allergens">
+                      This record carries no nutrition table, so there are no figures to show
+                      — the allergens below are what its label declares. Photograph the
+                      nutrition panel and FoodLens will read it.
+                    </p>
                   )}
                   <div className="scan__bands">
                     {(['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const).map((key) => {
@@ -438,6 +448,17 @@ export function ScannerModule() {
                       );
                     })}
                   </div>
+                  {!s.quantity && (
+                    <label className="scan__size">
+                      <span>Pack size — so it can count towards your trolley</span>
+                      <input
+                        value={sizes[s.barcode] ?? ''}
+                        onChange={(e) => setSizes((all) => ({ ...all, [s.barcode]: e.target.value }))}
+                        placeholder="e.g. 400g or 1 kg"
+                        aria-label={`Pack size for ${s.name ?? s.barcode}`}
+                      />
+                    </label>
+                  )}
                   <p className="scan__allergens">
                     {s.allergensPresent && s.allergensPresent.length > 0 ? (
                       <>

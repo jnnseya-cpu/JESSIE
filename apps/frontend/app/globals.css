@@ -5909,3 +5909,23 @@ textarea:focus-visible {
   font-size: 11.5px;
   color: rgba(244, 250, 249, 0.45);
 }
+
+.scan__size {
+  display: block;
+  margin: 8px 0 4px;
+}
+.scan__size span {
+  display: block;
+  font-size: 11.5px;
+  color: rgba(244, 250, 249, 0.5);
+  margin-bottom: 4px;
+}
+.scan__size input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  background: rgba(4, 18, 31, 0.5);
+  color: #f4faf9;
+  font-size: 14px;
+}
