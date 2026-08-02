@@ -55,13 +55,28 @@ test('a browser tab is sent to the address bar, not to a home-screen icon', () =
   assert.match(permissionRoute(device(false, DESKTOP)), /address-bar/);
 });
 
-test('every message ends at the path that needs no permission at all', () => {
+test('every message leads with the answer, not the obstacle', () => {
   for (const d of [device(true, ANDROID), device(true, IPHONE), device(false, DESKTOP)]) {
     const message = cameraBlockedMessage(d);
+    // The first sentence must be the way out, not a lecture on permissions.
+    const first = message.split(/[.—]/)[0] ?? '';
+    assert.match(first, /^Photograph a barcode/, `opened with: ${first}`);
     assert.match(message, /Photograph a barcode/);
-    assert.match(message, /needs no permission/);
-    assert.match(message, /reads the same packets/);
+    assert.match(message, /Add several at once/, 'the bulk path is offered too');
+    // And the menu route is present but last, for the few who want it.
+    assert.ok(
+      message.indexOf('Photograph a barcode') < message.lastIndexOf('rather have live scanning back'),
+      'the route comes after the answer',
+    );
   }
+});
+
+test('the scanner never offers a permission the browser has already refused', () => {
+  const source = readFileSync(new URL('../../frontend/app/account/scanner.tsx', import.meta.url), 'utf8');
+  assert.match(source, /navigator\.permissions\?\.query/, 'the state is asked for up front');
+  assert.match(source, /cameraState !== 'denied'/, 'and a refused camera is not offered');
+  assert.match(source, /addSeveralPhotos/, 'a whole trolley can be added at once');
+  assert.match(source, /input\.multiple = true/, 'from several photographs in one go');
 });
 
 test('the scanner leads with the way that always works', () => {

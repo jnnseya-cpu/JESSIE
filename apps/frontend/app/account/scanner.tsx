@@ -96,6 +96,19 @@ export function ScannerModule() {
    * no permission, which is why it is the primary action.
    */
   const [liveRefused, setLiveRefused] = useState(false);
+  /**
+   * Whether asking for the camera could possibly succeed.
+   *
+   * The Permissions API answers this before anybody taps anything. When it
+   * says `denied`, asking again does nothing at all — the browser will not
+   * even show a dialogue — so offering the button is offering a dead end,
+   * and explaining the dead end in a paragraph is worse. It simply is not
+   * offered, and the photograph path, which needs no permission, is the
+   * whole of what is on screen.
+   */
+  const [cameraState, setCameraState] = useState<'unknown' | 'prompt' | 'granted' | 'denied'>(
+    'unknown',
+  );
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -209,10 +222,51 @@ export function ScannerModule() {
   };
 
   /**
-   * The fallback that always works: take one still of the barcode. The
-   * browser reads it where it can, and where it cannot the photograph
-   * goes to the model, which reads the digits printed under the bars.
+   * Reads one photograph of a barcode.
+   *
+   * The browser's own detector runs first — instant and free — and where
+   * it cannot read the bars the photograph goes to the model, which reads
+   * the digits printed underneath them. Neither needs a camera permission,
+   * because the picture was taken by the phone's own camera app.
    */
+  const readOnePhoto = async (file: File): Promise<'found' | 'missed'> => {
+    const photo = await shrinkImage(file, 1600, 0.9);
+
+    if (supported) {
+      try {
+        const Detector = (
+          window as unknown as { BarcodeDetector: new (o: object) => BarcodeDetectorLike }
+        ).BarcodeDetector;
+        const detector = new Detector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+        });
+        const bitmap = await createImageBitmap(file);
+        const codes = await detector.detect(bitmap);
+        if (codes[0]?.rawValue) {
+          await lookup(codes[0].rawValue);
+          return 'found';
+        }
+      } catch {
+        /* fall through to the model */
+      }
+    }
+
+    const res = await fetch(`${apiBase()}/foodlens/barcode/read`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mimeType: photo.mimeType, dataBase64: photo.dataBase64 }),
+    });
+    const json = await res.json();
+    const data = tidy(json.data as Scanned);
+    if (!data.found) return 'missed';
+    seenRef.current.add(data.barcode);
+    setScans((all) => [data, ...all.filter((s) => s.barcode !== data.barcode)].slice(0, 40));
+    if (navigator.vibrate) navigator.vibrate(40);
+    return 'found';
+  };
+
+  /** One packet, one photograph. Works on every device, permission or not. */
   const photographBarcode = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -224,47 +278,54 @@ export function ScannerModule() {
       setBusy(true);
       setNote(null);
       try {
-        const photo = await shrinkImage(file, 1600, 0.9);
-
-        // Try the browser's own detector on the still first — instant and free.
-        if (supported) {
-          try {
-            const Detector = (
-              window as unknown as { BarcodeDetector: new (o: object) => BarcodeDetectorLike }
-            ).BarcodeDetector;
-            const detector = new Detector({
-              formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
-            });
-            const bitmap = await createImageBitmap(file);
-            const codes = await detector.detect(bitmap);
-            if (codes[0]?.rawValue) {
-              await lookup(codes[0].rawValue);
-              return;
-            }
-          } catch {
-            /* fall through to the model */
-          }
-        }
-
-        const res = await fetch(`${apiBase()}/foodlens/barcode/read`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ mimeType: photo.mimeType, dataBase64: photo.dataBase64 }),
-        });
-        const json = await res.json();
-        const data = tidy(json.data as Scanned);
-        if (data.found) {
-          seenRef.current.add(data.barcode);
-          setScans((all) => [data, ...all.filter((s) => s.barcode !== data.barcode)].slice(0, 40));
-        } else {
-          setNote(data.note ?? 'No barcode could be read in that photograph.');
+        if ((await readOnePhoto(file)) === 'missed') {
+          setNote('No barcode could be read in that photograph. Fill the frame with the bars, or type the number below.');
         }
       } catch (e) {
         setNote(`that photo could not be read: ${(e as Error).message}`);
       } finally {
         setBusy(false);
       }
+    };
+    input.click();
+  };
+
+  /**
+   * A whole trolley in one go.
+   *
+   * This is the answer to live scanning rather than an apology for it.
+   * Walk the aisles photographing packets with the phone's own camera —
+   * which is fast, familiar, and asks nobody for anything — then come back
+   * and add the lot in a single action. No permission, no menus, and no
+   * standing in front of a shelf holding a web page open.
+   */
+  const addSeveralPhotos = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.multiple = true;
+    input.onchange = async () => {
+      const files = [...(input.files ?? [])];
+      if (files.length === 0) return;
+      setBusy(true);
+      setNote(null);
+      let found = 0;
+      let missed = 0;
+      for (const [index, file] of files.entries()) {
+        setNote(`Reading ${index + 1} of ${files.length}…`);
+        try {
+          if ((await readOnePhoto(file)) === 'found') found += 1;
+          else missed += 1;
+        } catch {
+          missed += 1;
+        }
+      }
+      setNote(
+        missed === 0
+          ? `${found} product${found === 1 ? '' : 's'} added.`
+          : `${found} added. ${missed} photograph${missed === 1 ? '' : 's'} had no readable barcode — photograph those again, or type the numbers below.`,
+      );
+      setBusy(false);
     };
     input.click();
   };
@@ -299,6 +360,27 @@ export function ScannerModule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, supported]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const status = await navigator.permissions?.query({
+          name: 'camera' as PermissionName,
+        });
+        if (!status || cancelled) return;
+        const apply = () => !cancelled && setCameraState(status.state as 'prompt' | 'granted' | 'denied');
+        apply();
+        status.onchange = apply;
+      } catch {
+        // Safari and others do not answer for the camera. Unknown means
+        // the button stays, because asking may well work.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => stop, []);
 
   return (
@@ -309,8 +391,12 @@ export function ScannerModule() {
       </h3>
       <p className="tdv__what">
         In an aisle the packet already holds a laboratory measurement, so scanning beats
-        photographing. Point the camera and keep moving — every product lands below with its
-        real front-of-pack bands and the allergens its label declares.
+        guessing.{' '}
+        {supported && cameraState !== 'denied' && !liveRefused
+          ? 'Point the camera and keep moving'
+          : 'Photograph the packets as you go'}{' '}
+        — every product lands below with its real front-of-pack bands and the allergens its
+        label declares.
       </p>
 
       {live && (
@@ -323,15 +409,22 @@ export function ScannerModule() {
       <button className="btn btn--primary" type="button" disabled={busy} onClick={photographBarcode}>
         {busy ? 'Reading the barcode…' : 'Photograph a barcode'}
       </button>
+
+      <button className="btn acct__ghostbtn" type="button" disabled={busy} onClick={addSeveralPhotos}>
+        Add several at once
+      </button>
       <p className="fl__note">
-        This is the way that always works. It opens your normal camera app, needs no permission
-        from this app at all, and reads the packet the same way. Fill the frame with the bars.
+        Photograph the packets as you shop with your normal camera app, then add the lot here in
+        one go. Nothing to allow, nothing to set up, and no need to hold this page open in the
+        aisle.
       </p>
 
       <div className="tdv__chips">
-        {/* Offered only where it can work, and withdrawn once refused —
-            a button that cannot do its job is worse than no button. */}
-        {supported && !liveRefused && (
+        {/* Offered only where asking could actually succeed. A browser
+            that has already refused will not even show a dialogue, so the
+            button would be a dead end and the explanation of the dead end
+            would be worse. */}
+        {supported && !liveRefused && cameraState !== 'denied' && (
           <button type="button" onClick={() => (live ? stop() : void start())}>
             {live ? 'Stop scanning' : 'Scan continuously (needs camera access)'}
           </button>

@@ -60,11 +60,23 @@ export function permissionRoute(device: Device): string {
   return 'Allow the camera for this site in your browser’s address-bar settings.';
 }
 
-/** The whole message, ending where it should: at the way that always works. */
+/**
+ * The message, which leads with the answer rather than the obstacle.
+ *
+ * The version this replaces opened with a sentence about permissions and
+ * then spent three more on a Chrome menu. Nobody standing in an aisle
+ * wants a tutorial; they want the packet scanned. So the first thing said
+ * is the thing that works, and the menu route is one quiet sentence at the
+ * end for the few who would rather have live scanning back.
+ */
 export function cameraBlockedMessage(device: Device): string {
   return (
-    `Live scanning needs a camera permission this device has not given. ${permissionRoute(device)} ` +
-    'You do not need it, though — Photograph a barcode above opens your normal camera app, ' +
-    'needs no permission from this app at all, and reads the same packets.'
+    'Photograph a barcode above uses your phone’s own camera and reads the same packets, with ' +
+    'no permission needed. Add several at once takes a whole trolley in one go. If you would ' +
+    `rather have live scanning back: ${lowerFirst(permissionRoute(device))}`
   );
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }
