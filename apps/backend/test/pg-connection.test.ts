@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { isLocalDatabase, needsSsl, poolOptions } from '../src/db/pg.ts';
 
@@ -61,4 +62,34 @@ test('an unreachable host fails fast rather than hanging the request', () => {
 test('an unparseable URL is not assumed to be local', () => {
   assert.equal(isLocalDatabase('this is not a url'), false);
   assert.equal(needsSsl('this is not a url'), true);
+});
+
+/* ------------------------------------------------------------------ *
+ * Two more ways a launch goes wrong quietly.
+ * ------------------------------------------------------------------ */
+
+test('the site can always call its own API, whatever CORS_ORIGINS says', () => {
+  // The default was localhost alone. On a real deployment with the
+  // variable unset, that means the live site cannot call its own API and
+  // every signed-in screen is broken — with a browser console error
+  // nobody outside the browser ever sees.
+  const setup = readFileSync(new URL('../src/setup.ts', import.meta.url), 'utf8');
+  assert.match(setup, /https:\/\/www\.jessmove\.com/);
+  assert.match(setup, /https:\/\/jessmove\.com/);
+  assert.match(setup, /jessmove\\\.com\$/, 'a preview subdomain is matched, not listed');
+  assert.match(setup, /credentials: true/);
+});
+
+test('a reset link stops working the moment the password changes', () => {
+  const service = readFileSync(new URL('../src/auth/auth.service.ts', import.meta.url), 'utf8');
+  assert.match(service, /function passwordFingerprint/);
+  assert.match(service, /f: passwordFingerprint\(user\.passwordHash\)/, 'the link carries it');
+  assert.match(service, /data\.f !== passwordFingerprint\(current\.passwordHash\)/, 'and checks it');
+  assert.match(service, /has already been used/);
+});
+
+test('a duplicate signup is a conflict, not a five hundred', () => {
+  const store = readFileSync(new URL('../src/auth/user-store.ts', import.meta.url), 'utf8');
+  assert.match(store, /'23505'/, 'the unique violation is caught');
+  assert.match(store, /ConflictException/);
 });

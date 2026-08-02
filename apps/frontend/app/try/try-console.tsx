@@ -81,7 +81,17 @@ export function TryConsole() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch(url('/accounts/profiles'));
+      // Staff only, deliberately. This console lists demo accounts and can
+      // delete them, which is not a thing a public page may do — it used to
+      // be open, and on a public launch that is somebody else's account.
+      const res = await fetch(url('/accounts/profiles'), { credentials: 'include' });
+      if (res.status === 401 || res.status === 403) {
+        setPersonas([]);
+        setError(
+          'This console is for platform staff. Sign in with a staff account on the account page and come back.',
+        );
+        return;
+      }
       const json = await res.json();
       const list: Persona[] = json.data ?? [];
       setPersonas(list);
@@ -105,7 +115,7 @@ export function TryConsole() {
     setBusy(label);
     setError(null);
     try {
-      const res = await fetch(url(path), { method });
+      const res = await fetch(url(path), { method, credentials: 'include' });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.message ?? `${res.status}`);

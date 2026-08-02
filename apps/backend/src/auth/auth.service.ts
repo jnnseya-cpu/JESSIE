@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -22,6 +23,15 @@ import {
   type SessionPayload,
 } from './token';
 import { UserStore } from './user-store';
+
+/**
+ * A short, non-reversible marker for the password a reset link was issued
+ * against. It is not a credential and it is never stored — it rides inside
+ * the signed link so the link can tell whether the password has moved on.
+ */
+function passwordFingerprint(passwordHash: string): string {
+  return createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
+}
 
 /**
  * Registration, login, sessions.
@@ -254,7 +264,16 @@ export class AuthService {
     this.assertConfigured();
     const user = await this.users.byEmail(email);
     if (user) {
-      const token = issueActionToken('password_reset', { u: user.userId }, this.secret(), 1800);
+      // The link carries a fingerprint of the password it was issued
+      // against. Changing the password changes the fingerprint, so the
+      // link stops working the moment it is used — a stateless single-use
+      // token, with no table to keep and nothing to expire.
+      const token = issueActionToken(
+        'password_reset',
+        { u: user.userId, f: passwordFingerprint(user.passwordHash) },
+        this.secret(),
+        1800,
+      );
       const link = `${this.sitePublicUrl()}/account/reset?token=${token}`;
       // Awaited: an un-awaited send is suspended with the serverless
       // instance the moment the flat answer goes out.
@@ -275,6 +294,17 @@ export class AuthService {
     const data = verifyActionToken('password_reset', token, this.secret());
     if (!data?.u) {
       throw new BadRequestException('that reset link is not valid — it may have expired (30 minutes)');
+    }
+
+    // Used once, and only once. Without this a link kept working for its
+    // whole thirty minutes: forwarded, or read from a shared inbox, it
+    // could be used again after the member had already reset — which is
+    // somebody else taking the account back.
+    const current = await this.users.byId(data.u);
+    if (!current || (data.f && data.f !== passwordFingerprint(current.passwordHash))) {
+      throw new BadRequestException(
+        'that reset link has already been used — ask for a fresh one if you still need it',
+      );
     }
     let passwordHash: string;
     try {

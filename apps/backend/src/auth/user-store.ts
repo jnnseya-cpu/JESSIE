@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { makePool } from '../db/pg';
 import type { AccountKind } from '@jessmove/shared';
 
@@ -104,16 +104,27 @@ export class UserStore implements OnModuleDestroy {
 
   async create(user: NewUser): Promise<UserRecord> {
     if (this.pool) {
-      const result = await this.pool.query(CREATE_SQL, [
-        user.userId,
-        user.email,
-        user.passwordHash,
-        user.kind,
-        user.age,
-        user.guardianId,
-        user.displayName,
-      ]);
-      return rowToUser(result.rows[0]!);
+      try {
+        const result = await this.pool.query(CREATE_SQL, [
+          user.userId,
+          user.email,
+          user.passwordHash,
+          user.kind,
+          user.age,
+          user.guardianId,
+          user.displayName,
+        ]);
+        return rowToUser(result.rows[0]!);
+      } catch (error) {
+        // Somebody double-tapped Create account, or two tabs raced. The
+        // check before this is a courtesy; the unique index is the truth,
+        // and the person on the end of it should see the ordinary "you
+        // already have an account" rather than a 500.
+        if ((error as { code?: string }).code === '23505') {
+          throw new ConflictException('an account already exists for that email address');
+        }
+        throw error;
+      }
     }
 
     const record: UserRecord = {
