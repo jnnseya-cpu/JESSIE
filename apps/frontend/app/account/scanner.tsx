@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { apiBase } from '../api-base';
+import { shrinkImage } from './image-shrink';
 
 /**
  * The supermarket scanner.
@@ -96,9 +97,83 @@ export function ScannerModule() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-    } catch {
-      setNote('The camera could not be opened. Type the number instead — it works just as well.');
+    } catch (error) {
+      // "Could not be opened" is not a diagnosis. Say which wall we hit,
+      // because each one has a different way round it.
+      const name = (error as { name?: string })?.name ?? '';
+      const why =
+        name === 'NotAllowedError'
+          ? 'Camera access is blocked for this site. Tap the padlock in the address bar, allow Camera, then try again — or photograph the barcode below.'
+          : name === 'NotFoundError'
+            ? 'No camera was found on this device.'
+            : name === 'NotReadableError'
+              ? 'Another app is holding the camera. Close it and try again.'
+              : name === 'SecurityError'
+                ? 'This browser will not open a camera here. Photograph the barcode below instead.'
+                : `The camera did not open (${name || 'unknown reason'}).`;
+      setNote(`${why} Photographing the barcode works on every device.`);
     }
+  };
+
+  /**
+   * The fallback that always works: take one still of the barcode. The
+   * browser reads it where it can, and where it cannot the photograph
+   * goes to the model, which reads the digits printed under the bars.
+   */
+  const photographBarcode = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.setAttribute('capture', 'environment');
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setBusy(true);
+      setNote(null);
+      try {
+        const photo = await shrinkImage(file, 1600, 0.9);
+
+        // Try the browser's own detector on the still first — instant and free.
+        if (supported) {
+          try {
+            const Detector = (
+              window as unknown as { BarcodeDetector: new (o: object) => BarcodeDetectorLike }
+            ).BarcodeDetector;
+            const detector = new Detector({
+              formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+            });
+            const bitmap = await createImageBitmap(file);
+            const codes = await detector.detect(bitmap);
+            if (codes[0]?.rawValue) {
+              await lookup(codes[0].rawValue);
+              return;
+            }
+          } catch {
+            /* fall through to the model */
+          }
+        }
+
+        const res = await fetch(`${apiBase()}/foodlens/barcode/read`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mimeType: photo.mimeType, dataBase64: photo.dataBase64 }),
+        });
+        const json = await res.json();
+        const data = json.data as Scanned;
+        if (data.found) {
+          seenRef.current.add(data.barcode);
+          setScans((all) => [data, ...all.filter((s) => s.barcode !== data.barcode)].slice(0, 40));
+        } else {
+          setNote(data.note ?? 'No barcode could be read in that photograph.');
+        }
+      } catch (e) {
+        setNote(`that photo could not be read: ${(e as Error).message}`);
+      } finally {
+        setBusy(false);
+      }
+    };
+    input.click();
   };
 
   // The read loop. Runs only while the camera is live.
@@ -152,15 +227,14 @@ export function ScannerModule() {
       )}
 
       <div className="tdv__chips">
-        {supported ? (
+        {supported && (
           <button type="button" onClick={() => (live ? stop() : void start())}>
-            {live ? 'Stop scanning' : 'Scan with the camera'}
+            {live ? 'Stop scanning' : 'Scan continuously'}
           </button>
-        ) : (
-          <span className="fl__note">
-            This browser cannot scan barcodes directly — type the number instead.
-          </span>
         )}
+        <button type="button" disabled={busy} onClick={photographBarcode}>
+          {busy ? 'Reading…' : 'Photograph a barcode'}
+        </button>
         {scans.length > 0 && (
           <button
             type="button"

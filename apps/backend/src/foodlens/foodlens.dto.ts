@@ -49,6 +49,17 @@ export class PhotoDto {
   dataBase64!: string;
 }
 
+export class ReadBarcodeDto {
+  @IsOptional()
+  @IsString()
+  @IsIn(['image/jpeg', 'image/png', 'image/webp'])
+  mimeType?: string;
+
+  @IsString()
+  @MaxLength(15_000_000)
+  dataBase64!: string;
+}
+
 export class AnalyzeDto {
   @IsInt()
   @Min(10)

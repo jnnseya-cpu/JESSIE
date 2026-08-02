@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { AnalyzeDto } from './foodlens.dto';
+import { AnalyzeDto, ReadBarcodeDto } from './foodlens.dto';
 import { FoodlensService } from './foodlens.service';
 
 @Controller('foodlens')
@@ -26,6 +26,12 @@ export class FoodlensController {
   @Get('barcode/:code')
   scan(@Param('code') code: string): Promise<Record<string, unknown>> {
     return this.foodlens.scan(code);
+  }
+
+  /** Read a barcode off a photograph, for devices that will not stream. */
+  @Post('barcode/read')
+  readBarcode(@Body() body: ReadBarcodeDto): Promise<Record<string, unknown>> {
+    return this.foodlens.readBarcode(body.mimeType, body.dataBase64);
   }
 
   @Post('analyze')

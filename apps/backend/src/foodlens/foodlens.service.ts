@@ -72,6 +72,66 @@ export class FoodlensService {
     return { found: true, ...label };
   }
 
+  /**
+   * Reading the digits off a photograph of a barcode.
+   *
+   * The live-camera path needs a permission and an API that not every
+   * browser or webview grants. A still photograph needs neither — every
+   * phone can take one — so the model reads the number and the lookup
+   * carries on exactly as if it had been scanned.
+   */
+  async readBarcode(mimeType: string | undefined, dataBase64: string): Promise<Record<string, unknown>> {
+    const bytes = Buffer.from(dataBase64, 'base64');
+    const sniffed = sniffImage(bytes);
+    if (!sniffed.format) {
+      throw new BadRequestException('Those bytes are not a JPEG, PNG or WebP photograph.');
+    }
+    if (mimeType && mimeType !== `image/${sniffed.format}`) {
+      throw new BadRequestException(
+        `Declared ${mimeType} but the bytes are image/${sniffed.format} — refused as a disguised file.`,
+      );
+    }
+
+    try {
+      const completion = await this.gateway.complete({
+        agent: 'LENS',
+        maxTokens: 60,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You read barcode numbers from photographs. Reply with a single raw JSON object ' +
+              'and nothing else: {"barcode":"<digits>"} using only the digits printed beneath ' +
+              'the bars. If no barcode is legible, reply {"barcode":null}. Never invent digits.',
+          },
+          { role: 'user', content: 'Read the barcode number in this photograph.' },
+        ],
+        images: [
+          {
+            mediaType: `image/${sniffed.format}`,
+            dataBase64: stripImageMetadata(bytes).toString('base64'),
+          },
+        ],
+      });
+
+      const match = /\d{6,14}/.exec(completion.text.replace(/[^0-9]/g, ' '));
+      const code = match?.[0];
+      if (!code) {
+        return {
+          found: false,
+          note: 'No barcode could be read in that photograph. Try filling more of the frame with the bars, or type the number.',
+        };
+      }
+      return this.scan(code);
+    } catch (error) {
+      this.logger.warn(`barcode read failed: ${(error as Error).message}`);
+      return {
+        found: false,
+        note: 'That photograph could not be read this time. Type the number instead — it works just as well.',
+      };
+    }
+  }
+
   policy(): Record<string, unknown> {
     return {
       neverClaimed: NEVER_CLAIM,
