@@ -213,12 +213,16 @@ export class AccountsController {
     return this.profiles.attachUpload(userId, body.slot, body.age, body.mimeType, bytes);
   }
 
-  /** Serves memory-driver objects in development. 404 under Vercel Blob. */
+  /**
+   * Serves an object this API holds itself — the database driver, or
+   * memory in local development. 404 under Vercel Blob, where the URL
+   * points at the blob host instead.
+   */
   @Get('media/local/:key')
-  local(@Param('key') key: string, @Res() res: Response) {
-    const hit = this.storage.local(key);
+  async local(@Param('key') key: string, @Res() res: Response) {
+    const hit = await this.storage.fetch(key);
     res.setHeader('content-type', hit.contentType);
-    res.setHeader('cache-control', 'private, max-age=60');
+    res.setHeader('cache-control', 'private, max-age=300');
     res.send(hit.bytes);
   }
 }

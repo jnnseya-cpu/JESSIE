@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
  * read is a token an injected script can read.
  */
 
-import { apiBase } from '../api-base';
+import { apiBase, mediaUrl } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
 import { ScannerModule } from './scanner';
@@ -444,7 +444,7 @@ export function AccountPanel() {
         <section className="acct__hero">
           <div
             className="acct__cover"
-            style={me.coverUrl ? { backgroundImage: `url(${me.coverUrl})` } : undefined}
+            style={me.coverUrl ? { backgroundImage: `url(${mediaUrl(me.coverUrl)})` } : undefined}
           >
             {canPhoto && (
               <button
@@ -461,7 +461,7 @@ export function AccountPanel() {
             <div className="acct__avatarwrap">
               {me.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img className="acct__avatar" src={me.avatarUrl} alt="" />
+                <img className="acct__avatar" src={mediaUrl(me.avatarUrl)} alt="" />
               ) : (
                 <div className="acct__avatar acct__avatar--initials">{initials}</div>
               )}
