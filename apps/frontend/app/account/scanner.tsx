@@ -44,6 +44,22 @@ function bandOf(value: number, low: number, high: number): 'green' | 'amber' | '
   return value <= low ? 'green' : value >= high ? 'red' : 'amber';
 }
 
+/** One decimal for grams, whole numbers for energy — as a label prints. */
+function tidy(product: Scanned): Scanned {
+  if (!product.per100g) return product;
+  const per100g: Scanned['per100g'] = {};
+  for (const key of ['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const) {
+    const value = product.per100g[key];
+    if (typeof value === 'number') per100g[key] = Math.round(value * 10) / 10;
+  }
+  return {
+    ...product,
+    per100g,
+    kcalPer100g:
+      typeof product.kcalPer100g === 'number' ? Math.round(product.kcalPer100g) : product.kcalPer100g,
+  };
+}
+
 interface DetectedBarcode {
   rawValue: string;
 }
@@ -62,12 +78,14 @@ export function ScannerModule() {
   const seenRef = useRef<Set<string>>(new Set());
   const { loaded, state, restored } = useSavedState();
 
-  // A trolley half-scanned is still a trolley: restore the list.
+  // A trolley half-scanned is still a trolley: restore the list. Figures
+  // saved by an older build are tidied on the way in, so a draft written
+  // before the rounding fix cannot keep showing fifteen decimals.
   useEffect(() => {
     if (!loaded) return;
     const saved = state['scanner.list'] as Scanned[] | undefined;
     if (Array.isArray(saved) && saved.length > 0) {
-      setScans(saved);
+      setScans(saved.map(tidy));
       saved.forEach((s) => seenRef.current.add(s.barcode));
     }
   }, [loaded, state]);
@@ -89,7 +107,7 @@ export function ScannerModule() {
     try {
       const res = await fetch(`${apiBase()}/foodlens/barcode/${encodeURIComponent(barcode)}`);
       const json = await res.json();
-      const data = json.data as Scanned;
+      const data = tidy(json.data as Scanned);
       setScans((all) => [data, ...all].slice(0, 40));
       if (navigator.vibrate) navigator.vibrate(data.found ? 40 : [20, 40, 20]);
     } catch (e) {
@@ -186,7 +204,7 @@ export function ScannerModule() {
           body: JSON.stringify({ mimeType: photo.mimeType, dataBase64: photo.dataBase64 }),
         });
         const json = await res.json();
-        const data = json.data as Scanned;
+        const data = tidy(json.data as Scanned);
         if (data.found) {
           seenRef.current.add(data.barcode);
           setScans((all) => [data, ...all.filter((s) => s.barcode !== data.barcode)].slice(0, 40));
