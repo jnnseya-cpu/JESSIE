@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { AnalyzeDto } from './foodlens.dto';
 import { FoodlensService } from './foodlens.service';
 
@@ -20,6 +20,12 @@ export class FoodlensController {
   @Get('probe')
   probe(): Promise<Record<string, unknown>> {
     return this.foodlens.probeVision();
+  }
+
+  /** The supermarket case: one code in, the packet's own label out. */
+  @Get('barcode/:code')
+  scan(@Param('code') code: string): Promise<Record<string, unknown>> {
+    return this.foodlens.scan(code);
   }
 
   @Post('analyze')

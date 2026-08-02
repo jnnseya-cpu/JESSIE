@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiBase } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
+import { ScannerModule } from './scanner';
 import {
   BodyCommandModule,
   ChallengesModule,
@@ -591,6 +592,7 @@ export function AccountPanel() {
           <MovaModule me={me} />
           <SnapModule me={me} onActivity={onActivity} />
           <FoodLensModule me={me} onActivity={onActivity} />
+          <ScannerModule />
           <BodyCommandModule me={me} />
           <WearablesModule />
           <ChallengesModule me={me} />

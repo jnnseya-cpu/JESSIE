@@ -11,6 +11,7 @@ import {
 } from '@jessmove/foodlens';
 import { AiGatewayError } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
+import { BarcodeService, type LabelFacts } from './barcode.service';
 import { adviseOnVisionFailure } from './vision-advice.logic';
 import { parseVisionJson } from './vision-parse.logic';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
@@ -53,7 +54,23 @@ export interface AnalyzeRequest {
 export class FoodlensService {
   private readonly logger = new Logger(FoodlensService.name);
 
-  constructor(private readonly gateway: AiGatewayService) {}
+  constructor(
+    private readonly gateway: AiGatewayService,
+    private readonly barcodes: BarcodeService,
+  ) {}
+
+  /** The packet's own label, for the scanner. */
+  async scan(barcode: string): Promise<Record<string, unknown>> {
+    const label = await this.barcodes.lookup(barcode);
+    if (!label) {
+      return {
+        found: false,
+        barcode,
+        note: 'That barcode is not in the open label database. Photograph the packet instead and the analysis carries on from there.',
+      };
+    }
+    return { found: true, ...label };
+  }
 
   policy(): Record<string, unknown> {
     return {
@@ -124,6 +141,52 @@ export class FoodlensService {
         causes,
         advice: adviseOnVisionFailure(causes),
       };
+    }
+  }
+
+  /**
+   * The second pass. Given the foods already identified, ask for typical
+   * per-100g composition in plain words — a much easier question than
+   * reading a photograph, and one a text model answers reliably. The
+   * result is still an estimate and is labelled as one downstream.
+   */
+  private async estimatePer100g(
+    names: string[],
+  ): Promise<{ fatG: number; saturatesG: number; sugarsG: number; saltG: number } | null> {
+    try {
+      const completion = await this.gateway.complete({
+        agent: 'LENS',
+        maxTokens: 200,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You give typical nutrition composition for a dish. Answer with a single raw ' +
+              'JSON object, no markdown fence, no commentary: ' +
+              '{"fatG":number,"saturatesG":number,"sugarsG":number,"saltG":number} — all per ' +
+              '100g of the dish as served. Use published composition tables for the closest ' +
+              'match. Never return all zeros.',
+          },
+          { role: 'user', content: `Per 100g composition of: ${names.join(', ')}.` },
+        ],
+      });
+
+      const parsed = parseVisionJson(
+        // The shared parser wants a food list; give it one so the same
+        // fence-stripping and clamping applies to this reply too.
+        completion.text.replace(/^\s*\{/, '{"items":[{"name":"x","confidencePct":1}],'),
+      );
+      const per100g = parsed.value?.per100g;
+      if (!per100g) return null;
+      const complete =
+        typeof per100g.fatG === 'number' &&
+        typeof per100g.saturatesG === 'number' &&
+        typeof per100g.sugarsG === 'number' &&
+        typeof per100g.saltG === 'number';
+      return complete ? (per100g as { fatG: number; saturatesG: number; sugarsG: number; saltG: number }) : null;
+    } catch (error) {
+      this.logger.warn(`per100g second pass failed: ${(error as Error).message}`);
+      return null;
     }
   }
 
@@ -214,19 +277,40 @@ export class FoodlensService {
       }
     }
 
-    const source = this.bestSource(request, vision !== null);
+    // A model asked for per-100g figures in a schema will still sometimes
+    // omit them — only some providers enforce a schema at all — and the
+    // front-of-pack panel then silently vanishes. Rather than let that
+    // happen, ask again in plain words for the one thing that is missing.
+    if (vision && !vision.per100g && vision.items.length > 0) {
+      vision.per100g = (await this.estimatePer100g(vision.items.map((i) => i.name))) ?? undefined;
+    }
+
+    // A scanned label outranks everything a photograph can offer, so it
+    // is fetched first and the analysis is built on top of it.
+    let label: LabelFacts | null = null;
+    if (request.barcode) label = await this.barcodes.lookup(request.barcode);
+
+    const source = label
+      ? ('barcode_verified_product' as const)
+      : this.bestSource(request, vision !== null);
     const facts: AnalysisFacts = {
       age: request.age,
       items: vision?.items ?? request.declaredItems ?? [],
       likelyKcal:
         request.userConfirmedKcal ?? request.declaredKcal ?? vision?.likelyKcal ?? null,
       source,
-      per100g: request.per100g ?? vision?.per100g,
+      per100g: request.per100g ?? label?.per100g ?? vision?.per100g,
       plateGrams: vision?.plateGrams,
       grams: request.grams ?? vision?.grams,
       portionCertainty: vision?.portionCertainty ?? (request.userConfirmedKcal ? 1 : 0.35),
       preparationCertainty: vision?.preparationCertainty ?? (request.barcode ? 0.9 : 0.3),
-      allergenEvidence: request.allergenSource
+      allergenEvidence: label
+        ? {
+            source: 'verified_manufacturer_label' as const,
+            declaresPresent: label.allergensPresent as never,
+            declaresFullList: label.declaresFullList,
+          }
+        : request.allergenSource
         ? {
             source: request.allergenSource,
             declaresPresent: request.allergensPresent,
@@ -238,6 +322,7 @@ export class FoodlensService {
     return {
       mode,
       ...(visionNote ? { note: visionNote } : {}),
+      ...(label ? { label: { name: label.name, brand: label.brand, quantity: label.quantity, ingredients: label.ingredients } } : {}),
       ...analyse(facts),
     };
   }
