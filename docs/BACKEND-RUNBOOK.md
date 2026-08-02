@@ -37,7 +37,7 @@ pnpm --filter @jessmove/backend start
 bash scripts/smoke.sh http://localhost:4000/api
 ```
 
-✅ `pass=82 fail=0`
+✅ `pass=83 fail=0`
 
 *(`health` saying `degraded` is normal — it means no AI key, not a fault.)*
 
@@ -197,7 +197,7 @@ whole API as one function. Same account as the website, second project, and
    bash scripts/smoke.sh https://<project>.vercel.app/api
    ```
 
-   ✅ `pass=82 fail=0`
+   ✅ `pass=83 fail=0`
 
 5. Project → **Settings → Domains** → add `api.jessmove.com`. The DNS record already
    points at Vercel, so it attaches and the certificate is automatic.
@@ -322,7 +322,7 @@ leave it off while /try and /console are in use, and turn it on before real user
 ## Done when
 
 - [ ] `pnpm -r test` → 295 pass
-- [ ] `scripts/smoke.sh` → 82/82
+- [ ] `scripts/smoke.sh` → 83/83
 - [ ] `/api/stripe/status` → no missing Price IDs
 - [ ] `/api/mail/status` → `configured: true`
 - [ ] A test email arrives, not in spam
