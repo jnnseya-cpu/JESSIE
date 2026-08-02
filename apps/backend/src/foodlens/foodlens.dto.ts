@@ -134,4 +134,12 @@ export class AnalyzeDto {
   @IsOptional()
   @IsBoolean()
   allergensFullList?: boolean;
+
+  /**
+   * Returns what the model actually said. Off unless asked for, because
+   * a diagnostic in every response is a diagnostic nobody reads.
+   */
+  @IsOptional()
+  @IsBoolean()
+  debug?: boolean;
 }

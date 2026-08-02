@@ -37,6 +37,8 @@ export interface AnalyzeRequest {
   allergenSource?: EvidenceSource;
   allergensPresent?: Allergen[];
   allergensFullList?: boolean;
+  /** Returns the model's own reply alongside the analysis. Off by default. */
+  debug?: boolean;
 }
 
 /**
@@ -272,6 +274,10 @@ export class FoodlensService {
     let vision: VisionResult | null = null;
     let mode: 'live' | 'sandbox' = 'sandbox';
     let visionNote: string | null = null;
+    // Kept only for this request, and returned only when explicitly
+    // asked for: when a panel is missing, the model's own words are the
+    // difference between fixing it and guessing at it.
+    const trace: Record<string, unknown> = {};
 
     // One photograph or several of the same meal. Every one is sniffed
     // by its bytes and stripped of EXIF before it goes anywhere.
@@ -322,9 +328,14 @@ export class FoodlensService {
           images: prepared,
           jsonSchema: VISION_SCHEMA as unknown as Record<string, unknown>,
         });
+        trace.visionReply = completion.text.slice(0, 1200);
+        trace.model = completion.model;
         // Models wrap JSON in a markdown fence far more often than not,
         // and a bare JSON.parse turns that into a phantom outage.
         const parsed = parseVisionJson(completion.text);
+        trace.parsed = parsed.ok;
+        trace.parseFailure = parsed.why ?? null;
+        trace.per100gFromVision = parsed.value?.per100g ?? null;
         if (parsed.ok && parsed.value) {
           if (parsed.value.unusable) {
             visionNote = parsed.value.unusable;
@@ -351,7 +362,10 @@ export class FoodlensService {
     // front-of-pack panel then silently vanishes. Rather than let that
     // happen, ask again in plain words for the one thing that is missing.
     if (vision && !vision.per100g && vision.items.length > 0) {
-      vision.per100g = (await this.estimatePer100g(vision.items.map((i) => i.name))) ?? undefined;
+      const second = await this.estimatePer100g(vision.items.map((i) => i.name));
+      trace.secondPassRan = true;
+      trace.secondPassResult = second;
+      vision.per100g = second ?? undefined;
     }
 
     // A scanned label outranks everything a photograph can offer, so it
@@ -392,6 +406,7 @@ export class FoodlensService {
       mode,
       ...(visionNote ? { note: visionNote } : {}),
       ...(label ? { label: { name: label.name, brand: label.brand, quantity: label.quantity, ingredients: label.ingredients } } : {}),
+      ...(request.debug ? { diagnostics: trace } : {}),
       ...analyse(facts),
     };
   }
