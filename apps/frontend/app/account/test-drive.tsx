@@ -59,7 +59,13 @@ interface FoodLensResult {
       };
   macros: { proteinPct: number; carbohydratePct: number; fatPct: number } | null;
   frontOfPack:
-    | { nutrient: string; grams: number; band: 'green' | 'amber' | 'red'; derived: boolean }[]
+    | {
+        nutrient: string;
+        grams: number;
+        band: 'green' | 'amber' | 'red';
+        derived: boolean;
+        basis: 'label' | 'estimate' | 'calculated';
+      }[]
     | null;
   wheel: Record<string, number | null>;
   capture: { checks: { check: string; passed: boolean; detail: string }[]; passRate: number };
@@ -273,10 +279,11 @@ export function FoodLensModule({
               <TrafficLights lights={result.frontOfPack} />
               <p className="fl__note">
                 Bands follow the published UK thresholds, and the word is printed beside the
-                colour because colour alone is not an accessible signal. Only nutrients this
-                photograph could actually produce are shown — a missing one is missing, not
-                zero. &ldquo;Worked out&rdquo; means it came from the plate&rsquo;s own macros
-                and weight rather than a label.
+                colour because colour alone is not an accessible signal. Each figure says how
+                it was arrived at: <strong>from the label</strong> when a barcode or a
+                confirmed label supplied it, <strong>worked out</strong> when it came from the
+                plate&rsquo;s own macros and weight, and <strong>estimated</strong> when the
+                model read it from the photograph. Scan a barcode and these become facts.
               </p>
             </>
           )}

@@ -25,7 +25,15 @@ export interface TrafficLight {
   grams: number;
   band: 'green' | 'amber' | 'red';
   derived: boolean;
+  basis: 'label' | 'estimate' | 'calculated';
 }
+
+/** How the figure was arrived at. A row never poses as more than it is. */
+const BASIS_WORD: Record<string, string> = {
+  label: 'from the label',
+  estimate: 'estimated',
+  calculated: 'worked out',
+};
 
 const BAND_WORD: Record<string, string> = { green: 'low', amber: 'medium', red: 'high' };
 
@@ -144,10 +152,8 @@ export function TrafficLights({ lights }: { lights: TrafficLight[] }) {
         <div key={l.nutrient} className={`fl__light fl__light--${l.band}`}>
           <span className="fl__lightname">{l.nutrient}</span>
           <span className="fl__lightval">{l.grams}g</span>
-          <span className="fl__lightband">
-            {BAND_WORD[l.band] ?? l.band}
-            {l.derived ? ' · worked out' : ''}
-          </span>
+          <span className="fl__lightband">{BAND_WORD[l.band] ?? l.band}</span>
+          <span className="fl__lightbasis">{BASIS_WORD[l.basis] ?? l.basis}</span>
         </div>
       ))}
     </div>

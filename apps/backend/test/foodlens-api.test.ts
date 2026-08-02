@@ -421,6 +421,7 @@ test('front-of-pack shows only nutrients that exist, and marks what it worked ou
   assert.equal(derived?.[0]?.grams, 10, '40g of fat in 400g of food is 10g per 100g');
   assert.equal(derived?.[0]?.band, 'amber');
   assert.equal(derived?.[0]?.derived, true);
+  assert.equal(derived?.[0]?.basis, 'calculated');
 
   // A stated figure is preferred and is not marked as worked out.
   const stated = frontOfPackFrom({
@@ -432,5 +433,47 @@ test('front-of-pack shows only nutrients that exist, and marks what it worked ou
     portionCertainty: 0.9,
     preparationCertainty: 0.9,
   });
-  assert.deepEqual(stated, [{ nutrient: 'salt', grams: 1.9, band: 'red', derived: false }]);
+  assert.deepEqual(stated, [
+    { nutrient: 'salt', grams: 1.9, band: 'red', derived: false, basis: 'label' },
+  ]);
+});
+
+test('a figure from a photograph is labelled an estimate, never a label', async () => {
+  const { frontOfPackFrom } = await import('../src/foodlens/foodlens.logic.ts');
+
+  const fromPhoto = frontOfPackFrom({
+    age: 40,
+    items: [],
+    likelyKcal: 940,
+    source: 'ai_visual_estimate',
+    per100g: { fatG: 11.4, saturatesG: 3.2, sugarsG: 4.1, saltG: 1.7 },
+    portionCertainty: 0.4,
+    preparationCertainty: 0.4,
+  });
+  assert.equal(fromPhoto?.length, 4, 'all four rows appear');
+  assert.ok(fromPhoto?.every((r) => r.basis === 'estimate'));
+  assert.equal(fromPhoto?.find((r) => r.nutrient === 'salt')?.band, 'red');
+
+  // The identical figures from a barcode are facts, and say so.
+  const fromBarcode = frontOfPackFrom({
+    age: 40,
+    items: [],
+    likelyKcal: 940,
+    source: 'barcode_verified_product',
+    per100g: { fatG: 11.4, saturatesG: 3.2, sugarsG: 4.1, saltG: 1.7 },
+    portionCertainty: 0.9,
+    preparationCertainty: 0.9,
+  });
+  assert.ok(fromBarcode?.every((r) => r.basis === 'label'));
+});
+
+test('a legitimate zero survives when the set as a whole is real', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  // A salad really can be 0g of salt — that is a measurement, not a bug.
+  const salad = parseVisionJson(
+    '{"items":[{"name":"green salad","confidencePct":90}],"likelyKcal":90,' +
+      '"per100g":{"fatG":2.1,"saturatesG":0.3,"sugarsG":1.8,"saltG":0}}',
+  );
+  assert.equal(salad.value?.per100g?.saltG, 0);
+  assert.equal(salad.value?.per100g?.fatG, 2.1);
 });

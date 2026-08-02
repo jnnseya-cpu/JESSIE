@@ -5710,3 +5710,12 @@ textarea:focus-visible {
     animation: none;
   }
 }
+
+.fl__lightbasis {
+  display: block;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(244, 250, 249, 0.42);
+  margin-top: 2px;
+}

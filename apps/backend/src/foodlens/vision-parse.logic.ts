@@ -204,19 +204,22 @@ export function parseVisionJson(text: string): ParseOutcome {
     per100gRaw && typeof per100gRaw === 'object'
       ? (['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const).map((k) => per100gRaw[k])
       : [];
-  // Keep every figure the model actually stated and nothing else. A
-  // missing nutrient stays missing: 0g bands as LOW, which would state
-  // something nobody measured.
+  // A genuine measurement set may legitimately contain a zero — a salad
+  // really can be 0g of salt. What must never survive is a set that is
+  // ALL zeros, which is what a defaulting bug looks like rather than a
+  // food. So: keep every stated number, including zeros, provided the
+  // set as a whole says something.
   const kept: Record<string, number> = {};
   if (per100gRaw && typeof per100gRaw === 'object') {
     for (const key of ['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const) {
       const value = per100gRaw[key];
-      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
         kept[key] = Math.min(100, Math.max(0, value));
       }
     }
   }
-  const per100g = Object.keys(kept).length > 0 ? (kept as Partial<Per100g>) : undefined;
+  const meaningful = Object.values(kept).some((v) => v > 0);
+  const per100g = meaningful ? (kept as Partial<Per100g>) : undefined;
 
   const gramsRaw = raw.grams as Record<string, unknown> | undefined;
   const grams =

@@ -139,15 +139,29 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
   grams: number;
   band: 'green' | 'amber' | 'red';
   derived: boolean;
+  basis: 'label' | 'estimate' | 'calculated';
 }[] | null {
-  const rows: { nutrient: string; grams: number; band: 'green' | 'amber' | 'red'; derived: boolean }[] = [];
+  const rows: {
+    nutrient: string;
+    grams: number;
+    band: 'green' | 'amber' | 'red';
+    derived: boolean;
+    basis: 'label' | 'estimate' | 'calculated';
+  }[] = [];
+
+  // A figure from a barcode or a confirmed label is a fact. The same
+  // figure from a photograph is an estimate, and the row must say so.
+  const verified =
+    facts.source === 'barcode_verified_product' ||
+    facts.source === 'verified_manufacturer_label' ||
+    facts.source === 'user_confirmed_quantity';
 
   const bandFor = (value: number, low: number, high: number): 'green' | 'amber' | 'red' =>
     value <= low ? 'green' : value >= high ? 'red' : 'amber';
 
   for (const key of ['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const) {
     const stated = facts.per100g?.[key];
-    let value: number | undefined = typeof stated === 'number' && stated > 0 ? stated : undefined;
+    let value: number | undefined = typeof stated === 'number' ? stated : undefined;
     let derived = false;
 
     // Fat is the one the plate's own macros can produce exactly.
@@ -158,7 +172,13 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
     if (value === undefined) continue;
 
     const spec = BANDS[key];
-    rows.push({ nutrient: spec.label, grams: value, band: bandFor(value, spec.low, spec.high), derived });
+    rows.push({
+      nutrient: spec.label,
+      grams: value,
+      band: bandFor(value, spec.low, spec.high),
+      derived,
+      basis: derived ? 'calculated' : verified ? 'label' : 'estimate',
+    });
   }
 
   return rows.length > 0 ? rows : null;
@@ -371,7 +391,7 @@ function clamp01(v: number): number {
 export const VISION_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['items', 'likelyKcal', 'portionCertainty', 'preparationCertainty'],
+  required: ['items', 'likelyKcal', 'portionCertainty', 'preparationCertainty', 'per100g', 'grams', 'plateGrams'],
   properties: {
     items: {
       type: 'array',
@@ -421,9 +441,11 @@ export const VISION_PROMPT = [
   '- Never default to 50. If you are sure, say 90+. If you are guessing, say 20.',
   '- likelyKcal is your central estimate; the platform will widen it into a range itself.',
   '- grams holds your best estimate of protein, carbohydrate and fat for the whole plate.',
-  '- per100g holds fat, saturates, sugars and salt per 100g. Give real figures — never zeros.',
+  '- per100g is REQUIRED: fat, saturates, sugars and salt per 100g of this food.',
+  '- If no label is visible, estimate per100g from the typical composition of the dish.',
+  '  An estimate labelled as an estimate is useful; an omission is not. Never return all zeros.',
+  '- grams is the whole plate: protein, carbohydrate and fat in grams.',
   '- plateGrams is the total edible weight of the meal in grams, your best estimate.',
-  '- If you cannot judge per100g, still give grams and plateGrams and the platform derives it.',
   '- portionCertainty and preparationCertainty are 0–1 and low unless a reference object or clear preparation is visible.',
   '- Never claim an allergen is absent, never diagnose, never judge the eater.',
   '',
