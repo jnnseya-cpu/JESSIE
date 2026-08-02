@@ -61,6 +61,12 @@ export function ScannerModule() {
   const seenRef = useRef<Set<string>>(new Set());
 
   const supported = typeof window !== 'undefined' && 'BarcodeDetector' in window;
+  // An installed app has no address bar, so any advice about a padlock in
+  // one is advice nobody can follow.
+  const installed =
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(display-mode: standalone)').matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true);
 
   const lookup = async (barcode: string) => {
     if (seenRef.current.has(barcode)) return;
@@ -103,7 +109,9 @@ export function ScannerModule() {
       const name = (error as { name?: string })?.name ?? '';
       const why =
         name === 'NotAllowedError'
-          ? 'Camera access is blocked for this site. Tap the padlock in the address bar, allow Camera, then try again — or photograph the barcode below.'
+          ? installed
+            ? 'Camera access is blocked for the installed app. Press and hold the JESS MOVE icon on your home screen → App info → Permissions → Camera → Allow. Until then, use Photograph a barcode above — it opens your normal camera app and needs no permission here.'
+            : 'Camera access is blocked for this site. Tap the padlock in the address bar, allow Camera, then try again — or photograph the barcode instead.'
           : name === 'NotFoundError'
             ? 'No camera was found on this device.'
             : name === 'NotReadableError'
@@ -111,7 +119,11 @@ export function ScannerModule() {
               : name === 'SecurityError'
                 ? 'This browser will not open a camera here. Photograph the barcode below instead.'
                 : `The camera did not open (${name || 'unknown reason'}).`;
-      setNote(`${why} Photographing the barcode works on every device.`);
+      setNote(
+        name === 'NotAllowedError'
+          ? why
+          : `${why} Photographing the barcode works on every device.`,
+      );
     }
   };
 
@@ -226,15 +238,20 @@ export function ScannerModule() {
         </div>
       )}
 
+      <button className="btn btn--primary" type="button" disabled={busy} onClick={photographBarcode}>
+        {busy ? 'Reading the barcode…' : 'Photograph a barcode'}
+      </button>
+      <p className="fl__note">
+        This opens your normal camera app, so it works in the installed app and needs no extra
+        permission. Fill the frame with the bars.
+      </p>
+
       <div className="tdv__chips">
         {supported && (
           <button type="button" onClick={() => (live ? stop() : void start())}>
-            {live ? 'Stop scanning' : 'Scan continuously'}
+            {live ? 'Stop scanning' : 'Scan continuously (needs camera access)'}
           </button>
         )}
-        <button type="button" disabled={busy} onClick={photographBarcode}>
-          {busy ? 'Reading…' : 'Photograph a barcode'}
-        </button>
         {scans.length > 0 && (
           <button
             type="button"
