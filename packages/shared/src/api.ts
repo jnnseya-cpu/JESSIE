@@ -54,5 +54,20 @@ export interface HealthReport {
   status: 'ok' | 'degraded' | 'down';
   version: string;
   uptimeSeconds: number;
+  /**
+   * Which commit is actually serving this request.
+   *
+   * Weeks were spent on a fault whose whole answer was "the code you are
+   * looking at is not the code that is deployed" — a failed build here, a
+   * service worker holding an old bundle there — and there was no single
+   * request that would say so. There is now.
+   */
+  build: {
+    commit: string | null;
+    shortCommit: string | null;
+    branch: string | null;
+    deployedAt: string | null;
+    environment: string | null;
+  };
   checks: Record<string, { status: 'ok' | 'degraded' | 'down'; detail?: string }>;
 }
