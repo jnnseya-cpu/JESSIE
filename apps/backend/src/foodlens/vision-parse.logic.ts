@@ -23,6 +23,7 @@ export interface VisionPayload {
   portionCertainty: number;
   preparationCertainty: number;
   per100g?: { fatG: number; saturatesG: number; sugarsG: number; saltG: number };
+  grams?: { proteinG: number; carbohydrateG: number; fatG: number };
   /** Set when the model says the photograph cannot be read as a meal. */
   unusable?: string;
 }
@@ -197,6 +198,16 @@ export function parseVisionJson(text: string): ParseOutcome {
         }
       : undefined;
 
+  const gramsRaw = raw.grams as Record<string, unknown> | undefined;
+  const grams =
+    gramsRaw && typeof gramsRaw === 'object'
+      ? {
+          proteinG: clamp(gramsRaw.proteinG, 0, 500, 0),
+          carbohydrateG: clamp(gramsRaw.carbohydrateG, 0, 800, 0),
+          fatG: clamp(gramsRaw.fatG, 0, 400, 0),
+        }
+      : undefined;
+
   return {
     ok: true,
     value: {
@@ -205,6 +216,7 @@ export function parseVisionJson(text: string): ParseOutcome {
       portionCertainty: clamp(raw.portionCertainty, 0, 1, 0.3),
       preparationCertainty: clamp(raw.preparationCertainty, 0, 1, 0.3),
       ...(per100g ? { per100g } : {}),
+      ...(grams && grams.proteinG + grams.carbohydrateG + grams.fatG > 0 ? { grams } : {}),
       ...(unusable ? { unusable } : {}),
     },
   };

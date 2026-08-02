@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiBase } from '../api-base';
+import { Curve, DayStrip, Heatmap, StackedMix } from './charts';
 
 /**
  * Your day, drawn from what you actually did.
@@ -27,6 +28,18 @@ interface Reading {
   says: string;
 }
 
+interface Rewards {
+  movePoints: number;
+  energyCrystals: number;
+  levelStars: number;
+  pointsIntoLevel: number;
+  pointsForNextLevel: number;
+  streakShields: number;
+  world: string;
+  worldProgress: number;
+  awards: { reason: string; points: number }[];
+}
+
 export interface Dashboard {
   days: DayPoint[];
   todaySeconds: number;
@@ -39,6 +52,11 @@ export interface Dashboard {
   heldWithReasons: { detail: string; count: number }[];
   readings: Reading[];
   totalActs: number;
+  rewards: Rewards;
+  heatmap: number[][];
+  today: { hour: number; kind: string }[];
+  weights: { day: string; kg: number }[];
+  meals: { day: string; kcal: number }[];
 }
 
 export function useDashboard() {
@@ -66,6 +84,8 @@ export async function recordActivity(body: {
   category?: string;
   seconds?: number;
   detail?: string;
+  /** A measurement the member gave: kilograms, kilocalories. */
+  value?: number;
 }): Promise<Dashboard | null> {
   try {
     const res = await fetch(`${apiBase()}/activity`, {
@@ -150,7 +170,32 @@ export function DashboardModule({ data }: { data: Dashboard | null }) {
         </p>
       )}
 
+      <h4 className="fl__h">Today</h4>
+      <DayStrip events={data.today} />
+
+      <h4 className="fl__h">Minutes moved, fourteen days</h4>
       <Fortnight days={data.days} />
+
+      {data.days.filter((d) => d.offered > 0).length >= 2 && (
+        <>
+          <h4 className="fl__h">Prompt → completed movement</h4>
+          <Curve
+            label="Completion rate over the fortnight"
+            points={data.days.map((d) => (d.offered === 0 ? null : Math.round((d.completed / d.offered) * 100)))}
+          />
+          <p className="chart__note">
+            The share of offered Snaps that actually happened, day by day. A gap is a day
+            nothing was offered — the engine stayed silent rather than filling the chart.
+          </p>
+        </>
+      )}
+
+      {data.heatmap.flat().some((c) => c > 0) && (
+        <>
+          <h4 className="fl__h">Where your movement actually happens</h4>
+          <Heatmap grid={data.heatmap} />
+        </>
+      )}
 
       <div className="dash__readings">
         {data.readings.map((r) => (
@@ -162,11 +207,45 @@ export function DashboardModule({ data }: { data: Dashboard | null }) {
         product refuses to make. A dash means not enough of your history yet.
       </p>
 
+      {data.rewards.movePoints > 0 && (
+        <div className="dash__rewards">
+          <div className="dash__world">
+            <span className="dash__rlabel">Your world</span>
+            <strong>{data.rewards.world}</strong>
+            <div className="tdv__bar" aria-label={`Level progress ${data.rewards.worldProgress}%`}>
+              <span style={{ width: `${Math.max(2, data.rewards.worldProgress)}%` }} />
+            </div>
+            <span className="dash__rsays">
+              Level {data.rewards.levelStars} · {data.rewards.pointsIntoLevel}/
+              {data.rewards.pointsForNextLevel} to the next world
+            </span>
+          </div>
+          <div className="dash__assets">
+            <span>
+              <strong>{data.rewards.movePoints}</strong> MovePoints
+            </span>
+            <span>
+              <strong>{data.rewards.energyCrystals}</strong> Energy Crystals
+            </span>
+            <span>
+              <strong>{data.rewards.streakShields}</strong> Streak Shields
+            </span>
+            <span>
+              <strong>{data.rewards.levelStars}</strong> Level Stars
+            </span>
+          </div>
+          <p className="dash__rsays">
+            Earned for: {data.rewards.awards.map((a) => `${a.reason} (+${a.points})`).join(' · ')}.
+            Never for calories, weight, appearance or how hard you went.
+          </p>
+        </div>
+      )}
+
       {data.mix.length > 0 && (
-        <p className="tdv__line">
-          <strong>Your mix:</strong>{' '}
-          {data.mix.map((m) => `${m.category} ×${m.completed}`).join(' · ')}
-        </p>
+        <>
+          <h4 className="fl__h">Your movement mix</h4>
+          <StackedMix parts={data.mix.map((m) => ({ label: m.category, value: m.completed }))} />
+        </>
       )}
 
       {data.heldWithReasons.length > 0 && (

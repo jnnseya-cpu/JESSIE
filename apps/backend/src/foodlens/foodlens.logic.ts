@@ -96,15 +96,63 @@ export function analyse(facts: AnalysisFacts): Record<string, unknown> {
     macros: !minor && facts.grams ? macroSplit(facts.grams) : null,
     energyAgreement: agreement,
     frontOfPack: facts.per100g ? trafficLightsPer100g(facts.per100g) : null,
+    // The grams behind the bands, so the surface can print the figure
+    // beside the colour — colour alone is not an accessible signal.
+    per100g: facts.per100g ?? null,
     allergens: UK_ALLERGENS.map((allergen) => {
       const status = facts.allergenEvidence
         ? allergenStatus(allergen, facts.allergenEvidence)
         : 'unknown';
       return { allergen, status, ...(status === 'unknown' ? { note: ALLERGEN_UNKNOWN_COPY } : {}) };
     }),
+    wheel: wheelFrom(facts, score, minor),
     framing: { permitted: PERMITTED_FRAMINGS, banned: BANNED_FRAMINGS },
     neverClaimed: NEVER_CLAIM,
     underEighteen: minor,
+  };
+}
+
+/**
+ * The twelve-axis wheel, filled only where the photograph actually told
+ * us something. An axis with no evidence is null rather than a middling
+ * guess — a half-full spoke would read as a measurement, and it is not
+ * one. Under 18 the energy axis is absent along with every other figure.
+ */
+export function wheelFrom(
+  facts: AnalysisFacts,
+  intelligenceScore: number,
+  minor: boolean,
+): Record<string, number | null> {
+  const per100g = facts.per100g;
+  // Front-of-pack thresholds, inverted: a low load is a high reading.
+  const invert = (value: number, low: number, high: number): number =>
+    Math.round(100 - Math.min(100, Math.max(0, ((value - low) / (high - low)) * 100)));
+
+  const grams = facts.grams;
+  const proteinShare =
+    grams && grams.proteinG + grams.carbohydrateG + grams.fatG > 0
+      ? grams.proteinG / (grams.proteinG + grams.carbohydrateG + grams.fatG)
+      : null;
+
+  const allergenConfidence = facts.allergenEvidence?.declaresFullList
+    ? 100
+    : facts.allergenEvidence
+      ? 55
+      : null;
+
+  return {
+    energyBalance: minor || facts.likelyKcal == null ? null : Math.round(clamp01(facts.portionCertainty) * 100),
+    proteinStrength: proteinShare == null ? null : Math.round(Math.min(1, proteinShare / 0.35) * 100),
+    fibreStrength: null,
+    plantDiversity: null,
+    fatQuality: per100g ? invert(per100g.saturatesG, 1.5, 5) : null,
+    sugarLoad: per100g ? invert(per100g.sugarsG, 5, 22.5) : null,
+    saltLoad: per100g ? invert(per100g.saltG, 0.3, 1.5) : null,
+    processingLevel: null,
+    portionAlignment: Math.round(clamp01(facts.portionCertainty) * 100),
+    personalFit: null,
+    allergenConfidence,
+    mealConfidence: intelligenceScore,
   };
 }
 
@@ -133,6 +181,16 @@ export const VISION_SCHEMA = {
     likelyKcal: { type: 'number', minimum: 0, maximum: 6000 },
     portionCertainty: { type: 'number', minimum: 0, maximum: 1 },
     preparationCertainty: { type: 'number', minimum: 0, maximum: 1 },
+    grams: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['proteinG', 'carbohydrateG', 'fatG'],
+      properties: {
+        proteinG: { type: 'number', minimum: 0 },
+        carbohydrateG: { type: 'number', minimum: 0 },
+        fatG: { type: 'number', minimum: 0 },
+      },
+    },
     per100g: {
       type: 'object',
       additionalProperties: false,
@@ -153,6 +211,8 @@ export const VISION_PROMPT = [
   'Rules that override everything else:',
   '- Confidence per item reflects genuine visual certainty, never politeness.',
   '- likelyKcal is your central estimate; the platform will widen it into a range itself.',
+  '- grams holds your best estimate of protein, carbohydrate and fat for the whole plate.',
+  '- per100g holds fat, saturates, sugars and salt per 100g, so front-of-pack bands can be shown.',
   '- portionCertainty and preparationCertainty are 0–1 and low unless a reference object or clear preparation is visible.',
   '- Never claim an allergen is absent, never diagnose, never judge the eater.',
   '',

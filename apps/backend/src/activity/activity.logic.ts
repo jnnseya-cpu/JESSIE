@@ -21,6 +21,8 @@ export interface ActivityRow {
   onDay: string;
   at: string;
   detail: string;
+  /** A measurement the member gave: kilograms, kilocalories. */
+  value?: number | null;
 }
 
 export interface DayPoint {
@@ -53,6 +55,14 @@ export interface Dashboard {
   heldWithReasons: { detail: string; count: number }[];
   readings: Reading[];
   totalActs: number;
+  /** 7 rows (Mon-Sun) x 6 four-hour blocks, counting completions. */
+  heatmap: number[][];
+  /** Today, hour by hour: what was offered, done and held. */
+  today: { hour: number; kind: ActivityKind }[];
+  /** Weight readings in the window, oldest first, for the trajectory. */
+  weights: { day: string; kg: number }[];
+  /** Meal energies in the window, for the meal-against-your-median chart. */
+  meals: { day: string; kcal: number }[];
 }
 
 export const WINDOW_DAYS = 14;
@@ -134,7 +144,35 @@ export function buildDashboard(rows: ActivityRow[], today: string): Dashboard {
       .sort((a, b) => b.count - a.count),
     readings: readingsFrom(series, mix, foodChecks, totalOffered, totalCompleted),
     totalActs: inWindow.length,
+    heatmap: heatmapFrom(inWindow),
+    today: inWindow
+      .filter((r) => r.onDay === today)
+      .map((r) => ({ hour: new Date(r.at).getHours(), kind: r.kind })),
+    weights: inWindow
+      .filter((r) => r.kind === 'body_read' && typeof r.value === 'number')
+      .map((r) => ({ day: r.onDay, kg: r.value as number })),
+    meals: inWindow
+      .filter((r) => r.kind === 'food_checked' && typeof r.value === 'number')
+      .map((r) => ({ day: r.onDay, kcal: r.value as number })),
   };
+}
+
+/**
+ * When movement actually happens: seven weekdays by six four-hour blocks.
+ * The pattern is the useful part — it names the block where a Snap is
+ * most likely to land, and the one that never gets used.
+ */
+export function heatmapFrom(rows: ActivityRow[]): number[][] {
+  const grid: number[][] = Array.from({ length: 7 }, () => Array.from({ length: 6 }, () => 0));
+  for (const row of rows) {
+    if (row.kind !== 'snap_completed') continue;
+    const when = new Date(row.at);
+    // Monday-first, which is how a week is read in the UK.
+    const weekday = (when.getDay() + 6) % 7;
+    const block = Math.min(5, Math.floor(when.getHours() / 4));
+    grid[weekday]![block]! += 1;
+  }
+  return grid;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { computeRewards, type Rewards } from './rewards.logic';
 import {
   buildDashboard,
   dayKey,
@@ -18,6 +19,8 @@ export interface RecordInput {
   category?: string | null;
   seconds?: number;
   detail?: string;
+  /** A measurement: kilograms for a body read, kcal for a meal. */
+  value?: number | null;
 }
 
 /**
@@ -59,14 +62,15 @@ export class ActivityService implements OnModuleDestroy {
       onDay: dayKey(new Date()),
       at: new Date().toISOString(),
       detail: (input.detail ?? '').slice(0, 200),
+      value: input.value ?? null,
     };
 
     if (this.pool) {
       try {
         await this.pool.query(
-          `INSERT INTO member_activity (user_id, kind, category, seconds, detail)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [input.userId, row.kind, row.category, row.seconds, row.detail],
+          `INSERT INTO member_activity (user_id, kind, category, seconds, detail, value)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [input.userId, row.kind, row.category, row.seconds, row.detail, row.value ?? null],
         );
         return;
       } catch (error) {
@@ -80,14 +84,14 @@ export class ActivityService implements OnModuleDestroy {
     this.memory.set(input.userId, existing);
   }
 
-  async dashboard(userId: string): Promise<Dashboard> {
+  async dashboard(userId: string): Promise<Dashboard & { rewards: Rewards }> {
     const today = dayKey(new Date());
     let rows: ActivityRow[] = [];
 
     if (this.pool) {
       try {
         const result = await this.pool.query(
-          `SELECT kind, category, seconds, on_day, at, detail
+          `SELECT kind, category, seconds, on_day, at, detail, value
            FROM member_activity
            WHERE user_id = $1 AND on_day >= current_date - interval '13 days'
            ORDER BY at ASC`,
@@ -100,6 +104,7 @@ export class ActivityService implements OnModuleDestroy {
           onDay: r.on_day instanceof Date ? r.on_day.toISOString().slice(0, 10) : String(r.on_day).slice(0, 10),
           at: r.at instanceof Date ? r.at.toISOString() : String(r.at),
           detail: String(r.detail ?? ''),
+          value: r.value == null ? null : Number(r.value),
         }));
       } catch (error) {
         this.logger.warn(`activity read failed: ${(error as Error).message}`);
@@ -108,7 +113,14 @@ export class ActivityService implements OnModuleDestroy {
       rows = this.memory.get(userId) ?? [];
     }
 
-    return buildDashboard(rows, today);
+    // Rewards are composed here rather than inside buildDashboard so the
+    // pure day maths stays importable by the type-stripping test runner.
+    const dashboard = buildDashboard(rows, today);
+    const inWindow = rows.filter((r) => r.onDay >= dashboard.days[0]!.day);
+    return {
+      ...dashboard,
+      rewards: computeRewards(inWindow, dashboard.days, userId, dashboard.streak),
+    };
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -111,3 +111,62 @@ test('activity outside the window cannot leak into the readings', () => {
   assert.equal(dash.totalActs, 0);
   assert.equal(dash.daysMovedInWindow, 0);
 });
+
+/* ------------------------------------------------------------------ *
+ * Rewards — the charter's permitted list, and nothing else
+ * ------------------------------------------------------------------ */
+
+test('points come only from behaviours the charter permits', async () => {
+  const { computeRewards } = await import('../src/activity/rewards.logic.ts');
+  const { POINTS_REWARD } = await import('@jessmove/shared');
+
+  const rows = [
+    row({ kind: 'snap_offered', onDay: '2026-08-12', category: 'mobility' }),
+    row({ kind: 'snap_completed', onDay: '2026-08-12', category: 'mobility', seconds: 120 }),
+    row({ kind: 'snap_completed', onDay: '2026-08-14', category: 'strength', seconds: 900 }),
+  ];
+  const series = buildDashboard(rows, TODAY).days;
+  const rewards = computeRewards(rows, series, 'u_test', 2);
+
+  for (const award of rewards.awards) {
+    assert.ok(
+      (POINTS_REWARD as readonly string[]).includes(award.reason),
+      `"${award.reason}" is not a permitted reason for points`,
+    );
+  }
+  assert.ok(rewards.movePoints > 0);
+});
+
+test('a longer session does not out-earn a second day', async () => {
+  const { computeRewards } = await import('../src/activity/rewards.logic.ts');
+
+  // One very long session on one day.
+  const marathon = [
+    row({ kind: 'snap_completed', onDay: TODAY, category: 'mobility', seconds: 3600 }),
+  ];
+  // Two ordinary sessions on two days.
+  const steady = [
+    row({ kind: 'snap_completed', onDay: '2026-08-13', category: 'mobility', seconds: 120 }),
+    row({ kind: 'snap_completed', onDay: TODAY, category: 'mobility', seconds: 120 }),
+  ];
+
+  const a = computeRewards(marathon, buildDashboard(marathon, TODAY).days, 'u', 1);
+  const b = computeRewards(steady, buildDashboard(steady, TODAY).days, 'u', 2);
+  assert.ok(b.movePoints > a.movePoints, 'showing up twice must beat one long push');
+});
+
+test('a lapse is rewarded on return rather than punished', async () => {
+  const { computeRewards } = await import('../src/activity/rewards.logic.ts');
+  const lapsed = [
+    row({ kind: 'snap_completed', onDay: '2026-08-05', seconds: 60 }),
+    row({ kind: 'snap_completed', onDay: TODAY, seconds: 60 }),
+  ];
+  const rewards = computeRewards(lapsed, buildDashboard(lapsed, TODAY).days, 'u', 1);
+  assert.ok(rewards.awards.some((a) => a.reason === 'returning after a lapse'));
+});
+
+test('a world is stable for a person and changes with their level', async () => {
+  const { worldFor } = await import('../src/activity/rewards.logic.ts');
+  assert.equal(worldFor('u_abc', 1), worldFor('u_abc', 1));
+  assert.notEqual(worldFor('u_abc', 1), worldFor('u_abc', 2));
+});

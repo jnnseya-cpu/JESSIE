@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { CHALLENGE_TEMPLATES, modeForAge } from '@jessmove/shared';
 import { apiBase } from '../api-base';
+import { Cone, WeightedBars } from './charts';
+import { recordActivity } from './dashboard';
 
 /**
  * The rest of the product, where a member can actually use it.
@@ -150,6 +152,7 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [result, setResult] = useState<Assessment | null>(null);
+  const [history, setHistory] = useState<number[]>([]);
   const minor = me.age < 18;
 
   const assess = async () => {
@@ -167,6 +170,11 @@ export function BodyCommandModule({ me }: { me: Subject }) {
         optedIntoBodyMetrics: !minor,
       });
       setResult(data as Assessment);
+      // The reading becomes history, which is what lets a trajectory exist.
+      if (!minor && weightKg) {
+        void recordActivity({ kind: 'body_read', value: Number(weightKg) });
+        setHistory((h) => [...h, Number(weightKg)]);
+      }
     } catch (e) {
       setNote(`could not assess: ${(e as Error).message}`);
     } finally {
@@ -269,6 +277,33 @@ export function BodyCommandModule({ me }: { me: Subject }) {
                 'No body numbers are calculated or shown for this account.'}
             </p>
           )}
+
+          {!minor && (
+            <>
+              <h4 className="fl__h">Your trajectory</h4>
+              <Cone history={history} label="Weight trajectory with widening uncertainty" />
+            </>
+          )}
+
+          <h4 className="fl__h">What the score is actually made of</h4>
+          <WeightedBars
+            items={[
+              { label: 'Food-pattern quality', value: 15 },
+              { label: 'Movement consistency', value: 15 },
+              { label: 'Sedentary interruption', value: 10 },
+              { label: 'Strength protection', value: 10 },
+              { label: 'Sleep and recovery', value: 10 },
+              { label: 'Waist or body-risk trend', value: 10 },
+              { label: 'Goal adherence', value: 10 },
+              { label: 'Behavioural stability', value: 10 },
+              { label: 'Sustainability', value: 5 },
+              { label: 'Measurement confidence', value: 5 },
+            ]}
+          />
+          <p className="chart__note">
+            BMI contributes nothing directly. Ninety per cent of the score is behaviour you
+            control today, not a number on a scale.
+          </p>
 
           <p className="tdv__line">
             <strong>Your pathway:</strong>{' '}
@@ -466,6 +501,20 @@ export function ChallengesModule({ me }: { me: Subject }) {
                 )}
               </>
             )}
+            <h4 className="fl__h">What the team score counts</h4>
+            <WeightedBars
+              items={[
+                { label: 'Participation', value: 35 },
+                { label: 'Consistency', value: 25 },
+                { label: 'Improvement', value: 25 },
+                { label: 'Mutual support', value: 15 },
+              ]}
+            />
+            <p className="chart__note">
+              Physical capability is absent by design — that is what lets a ten-year-old, a
+              wheelchair user and an eighty-eight-year-old share one leaderboard fairly.
+            </p>
+
             <div className="tdv__chips">
               <button type="button" disabled={busy} onClick={() => void act(c.id, 'moved')}>
                 I moved today

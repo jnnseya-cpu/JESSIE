@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
@@ -25,6 +25,12 @@ class RecordActivityDto {
   @IsString()
   @MaxLength(200)
   detail?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(10000)
+  value?: number;
 }
 
 @Controller('activity')

@@ -5,6 +5,14 @@ import { modeForAge } from '@jessmove/shared';
 import { apiBase } from '../api-base';
 import { shrinkImage } from './image-shrink';
 import { recordActivity, type Dashboard } from './dashboard';
+import {
+  AllergenGrid,
+  EnergyRange,
+  FoodWheel,
+  IntelligenceGauge,
+  MacroBars,
+  TrafficLights,
+} from './foodlens-visuals';
 
 /**
  * The two live test surfaces on the account console: point FoodLens at a
@@ -40,6 +48,9 @@ interface FoodLensResult {
         confidence: string;
       };
   macros: { proteinPct: number; carbohydratePct: number; fatPct: number } | null;
+  frontOfPack: Record<string, 'green' | 'amber' | 'red'> | null;
+  per100g: { fatG: number; saturatesG: number; sugarsG: number; saltG: number } | null;
+  wheel: Record<string, number | null>;
   allergens: { allergen: string; status: string; note?: string }[];
   underEighteen: boolean;
 }
@@ -83,8 +94,12 @@ export function FoodLensModule({
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.message ?? `${res.status}`);
-        setResult(json.data as FoodLensResult);
-        onActivity?.(await recordActivity({ kind: 'food_checked' }));
+        const analysis = json.data as FoodLensResult;
+        setResult(analysis);
+        // The energy figure becomes history, so a meal can later be read
+        // against the member's own fortnight rather than a population.
+        const energy = analysis.energy && !('withheld' in analysis.energy) ? analysis.energy.likely : undefined;
+        onActivity?.(await recordActivity({ kind: 'food_checked', ...(energy ? { value: energy } : {}) }));
       } catch (e) {
         setNote(`analysis failed: ${(e as Error).message}`);
       } finally {
@@ -132,33 +147,42 @@ export function FoodLensModule({
             <p className="acct__note">No food could be identified in that photo.</p>
           )}
 
-          <p className="tdv__line">
-            <strong>Meal intelligence:</strong> {result.intelligence.score}/100 —{' '}
-            {result.intelligence.says}
-          </p>
+          <IntelligenceGauge score={result.intelligence.score} band={result.intelligence.band} />
+          <p className="fl__note">{result.intelligence.says}</p>
 
           {result.energy && 'withheld' in result.energy ? (
             <p className="tdv__line tdv__line--guard">{result.energy.why}</p>
           ) : result.energy ? (
-            <p className="tdv__line">
-              <strong>Energy:</strong> {result.energy.min}–{result.energy.max}{' '}
-              {result.energy.unit} (most likely {result.energy.likely}) ·{' '}
-              {result.energy.confidence} confidence
-            </p>
+            <EnergyRange energy={result.energy} />
           ) : null}
 
           {result.macros && (
-            <p className="tdv__line">
-              <strong>Balance:</strong> {result.macros.proteinPct}% protein ·{' '}
-              {result.macros.carbohydratePct}% carbohydrate · {result.macros.fatPct}% fat
-            </p>
+            <>
+              <h4 className="fl__h">Where the energy comes from</h4>
+              <MacroBars macros={result.macros} />
+            </>
           )}
 
-          <p className="tdv__line">
-            <strong>Allergens:</strong>{' '}
+          {result.frontOfPack && Object.keys(result.frontOfPack).length > 0 && (
+            <>
+              <h4 className="fl__h">Per 100g · UK front-of-pack</h4>
+              <TrafficLights bands={result.frontOfPack} per100g={result.per100g} />
+              <p className="fl__note">
+                Bands follow the published UK thresholds. The word is printed beside the
+                colour, because colour on its own is not an accessible signal.
+              </p>
+            </>
+          )}
+
+          <h4 className="fl__h">The Food Intelligence Wheel</h4>
+          <FoodWheel wheel={result.wheel ?? {}} />
+
+          <h4 className="fl__h">All 14 UK declarable allergens</h4>
+          <AllergenGrid allergens={result.allergens} />
+          <p className="fl__note">
             {named.length > 0
-              ? named.map((a) => `${a.allergen}: ${a.status}`).join(' · ')
-              : 'unknown from a photo — FoodLens never claims an allergen is absent.'}
+              ? 'Only a complete declaration from a verifiable source may say absent.'
+              : 'Nothing here is declared by a source we can verify. FoodLens never claims an allergen is absent from a photograph — check the packet or ask, especially if a reaction would be serious.'}
           </p>
         </div>
       )}
