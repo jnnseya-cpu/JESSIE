@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { makeJoinCode } from '../challenges/challenges.logic';
+import { makePool } from '../db/pg';
 import {
   householdReport,
   organisationReport,
@@ -58,15 +59,7 @@ export class GroupsService implements OnModuleDestroy {
   constructor() {
     const url = process.env.DATABASE_URL;
     if (url) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 2,
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool(url, 2);
     } else {
       this.logger.warn('groups: in-memory — they will not survive a restart');
     }

@@ -1,4 +1,5 @@
 import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
+import { makePool } from '../db/pg';
 import { ConfigService } from '@nestjs/config';
 import {
   BRAND,
@@ -60,15 +61,7 @@ export class MailService implements OnModuleDestroy {
     // tells the truth at /mail/status. Same driver split as UserStore.
     const url = process.env.DATABASE_URL;
     if (url) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 2,
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool(url, 2);
       this.logger.log('mail log: postgres');
     } else {
       this.logger.warn('mail log: in-memory — the log will not survive a restart');

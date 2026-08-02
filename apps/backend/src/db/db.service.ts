@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { makePool, needsSsl } from './pg';
 import { CONSTRAINT_SUITE, MIGRATIONS } from './embedded-sql';
 import { EXPECTED_CHECKS, stripPsqlMetaCommands } from './sql-text';
 
@@ -57,6 +58,28 @@ function collectRows(result: unknown): Record<string, unknown>[] {
   return results.flatMap((r) => (r as QueryResultLike).rows ?? []);
 }
 
+/**
+ * Turns a connection failure into the sentence that fixes it. These are
+ * the four ways a DATABASE_URL is usually wrong, and each one otherwise
+ * arrives as a driver message nobody should have to interpret.
+ */
+function adviceFor(error: string | null): string {
+  const text = (error ?? '').toLowerCase();
+  if (text.includes('no pg_hba.conf entry') || text.includes('ssl')) {
+    return 'The server refused the connection over the transport offered. This deployment now uses SSL for any host that is not local; if the database genuinely does not speak SSL, add sslmode=disable to DATABASE_URL.';
+  }
+  if (text.includes('password') || text.includes('authentication')) {
+    return 'The database rejected the credentials in DATABASE_URL. Copy the connection string again from the provider.';
+  }
+  if (text.includes('enotfound') || text.includes('eai_again') || text.includes('getaddrinfo')) {
+    return 'The host in DATABASE_URL does not resolve. Check it for a typo, and that the string was pasted whole.';
+  }
+  if (text.includes('timeout') || text.includes('etimedout') || text.includes('econnrefused')) {
+    return 'The host resolves but nothing answered. Check the port, and that the database allows connections from this deployment.';
+  }
+  return 'The database is configured but unreachable. The driver message above is the whole of what it said.';
+}
+
 export interface MigrateOutcome {
   readonly applied: string[];
   readonly adopted: string[];
@@ -74,15 +97,7 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
     const url = process.env.DATABASE_URL;
     if (url) {
       // Lazy so environments without the pg package still boot in memory mode.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 2, // serverless: many instances × small pools, not one big pool
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool<PgPoolLike>(url, 2);
     }
   }
 
@@ -176,27 +191,40 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
     }
     let recorded: { id: string; appliedAt: string; adopted: boolean }[] = [];
     let readError: string | null = null;
-    const client = await this.pool.connect();
+    let reachable = false;
+
+    // Connecting is itself the thing most likely to be broken, so it is
+    // inside the try. This endpoint failing with a 500 is the one outcome
+    // that helps nobody: it is where somebody looks to find out *why*
+    // everything else is failing.
     try {
-      recorded = collectRows(
-        await client.query('SELECT id, applied_at, adopted FROM schema_migrations ORDER BY id'),
-      ).map((r) => ({
-        id: String(r.id),
-        appliedAt: r.applied_at instanceof Date ? r.applied_at.toISOString() : String(r.applied_at),
-        adopted: Boolean(r.adopted),
-      }));
+      const client = await this.pool.connect();
+      try {
+        reachable = true;
+        recorded = collectRows(
+          await client.query('SELECT id, applied_at, adopted FROM schema_migrations ORDER BY id'),
+        ).map((r) => ({
+          id: String(r.id),
+          appliedAt: r.applied_at instanceof Date ? r.applied_at.toISOString() : String(r.applied_at),
+          adopted: Boolean(r.adopted),
+        }));
+      } finally {
+        client.release();
+      }
     } catch (err) {
       readError = err instanceof Error ? err.message : String(err);
-    } finally {
-      client.release();
     }
+
     return {
       configured: true,
+      reachable,
+      ssl: needsSsl(process.env.DATABASE_URL ?? ''),
       migrationsExpected: MIGRATIONS.map((m) => m.id),
       migrationsApplied: recorded,
       upToDate: readError == null && MIGRATIONS.every((m) => recorded.some((r) => r.id === m.id)),
       lastError: this.lastError ?? readError,
       startupOutcome: this.outcome,
+      ...(reachable ? {} : { advice: adviceFor(readError) }),
     };
   }
 

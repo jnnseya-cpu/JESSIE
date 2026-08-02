@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { makePool } from '../db/pg';
 import type { AccountKind } from '@jessmove/shared';
 
 /**
@@ -90,15 +91,7 @@ export class UserStore implements OnModuleDestroy {
     if (url) {
       // Required lazily so the memory driver works in environments where
       // the pg package cannot load at all.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 3, // serverless: many instances × small pools, not one big pool
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool(url, 3);
       this.logger.log('user store: postgres');
     } else {
       this.logger.warn('user store: in-memory — users will not survive a restart');

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { makePool } from '../db/pg';
 import { ConfigService } from '@nestjs/config';
 import {
   PLAN_DEFINITIONS,
@@ -81,15 +82,7 @@ export class StripeService {
   ) {
     const url = process.env.DATABASE_URL;
     if (url) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => DedupePool };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 2,
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool(url, 2);
     }
   }
 

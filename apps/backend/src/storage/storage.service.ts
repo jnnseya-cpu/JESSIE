@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { makePool } from '../db/pg';
 
 /**
  * Where profile media bytes live.
@@ -49,15 +50,7 @@ export class StorageService {
   constructor() {
     const url = process.env.DATABASE_URL;
     if (url) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 2,
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool(url, 2);
     }
   }
 

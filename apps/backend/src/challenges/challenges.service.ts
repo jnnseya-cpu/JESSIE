@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleDestroy } from '@nestjs/common';
+import { makePool } from '../db/pg';
 import { randomUUID } from 'node:crypto';
 import { CHALLENGE_TEMPLATES } from '@jessmove/shared';
 import {
@@ -59,15 +60,7 @@ export class ChallengesService implements OnModuleDestroy {
   constructor() {
     const url = process.env.DATABASE_URL;
     if (url) {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Pool } = require('pg') as { Pool: new (o: object) => PgPoolLike };
-      this.pool = new Pool({
-        connectionString: url,
-        max: 2,
-        ssl: url.includes('sslmode=require') || url.includes('vercel')
-          ? { rejectUnauthorized: true }
-          : undefined,
-      });
+      this.pool = makePool(url, 2);
     } else {
       this.logger.warn('challenges: in-memory — they will not survive a restart');
     }
