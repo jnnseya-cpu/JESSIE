@@ -72,6 +72,83 @@ export function extractJsonObject(text: string): string | null {
   return null;
 }
 
+const USABLE_KEY = /^(image)?(is)?usable$/i;
+const REASON_KEY = /(reason|issue|why|note|explanation|message)/i;
+
+/**
+ * Finds "this photograph is not a meal" however the model spelled it,
+ * flat or one level of nesting deep, and returns the reason it gave.
+ */
+export function findUnusable(raw: Record<string, unknown>): string | undefined {
+  const scopes: Record<string, unknown>[] = [raw];
+  for (const value of Object.values(raw)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      scopes.push(value as Record<string, unknown>);
+    }
+  }
+
+  for (const scope of scopes) {
+    const usableKey = Object.keys(scope).find((k) => USABLE_KEY.test(k));
+    if (!usableKey || scope[usableKey] !== false) continue;
+
+    const reasonKey = Object.keys(scope).find(
+      (k) => REASON_KEY.test(k) && typeof scope[k] === 'string',
+    );
+    const reason = reasonKey ? String(scope[reasonKey]) : undefined;
+    return reason && reason.trim().length > 0
+      ? reason.trim()
+      : 'The photograph could not be read as a meal.';
+  }
+  return undefined;
+}
+
+/**
+ * The food list, wherever the model put it: `items`, `foods`,
+ * `detectedItems`, or the same nested one level down. An array whose
+ * entries carry a `name` is the food list whatever it is called.
+ */
+export function findItems(raw: Record<string, unknown>): unknown[] {
+  const looksLikeFood = (value: unknown): value is unknown[] =>
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (entry) => entry !== null && typeof entry === 'object' && 'name' in (entry as object),
+    );
+
+  if (looksLikeFood(raw.items)) return raw.items;
+
+  for (const value of Object.values(raw)) {
+    if (looksLikeFood(value)) return value;
+  }
+  for (const value of Object.values(raw)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const nested of Object.values(value as Record<string, unknown>)) {
+        if (looksLikeFood(nested)) return nested;
+      }
+    }
+  }
+  return [];
+}
+
+/** Energy, wherever it landed: likelyKcal, kcal, calories, or nested. */
+export function findKcal(raw: Record<string, unknown>): number | null {
+  const KEY = /^(likely)?(kcal|calories|energykcal|estimatedkcal)$/i;
+  const scopes: Record<string, unknown>[] = [raw];
+  for (const value of Object.values(raw)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      scopes.push(value as Record<string, unknown>);
+    }
+  }
+  for (const scope of scopes) {
+    for (const [key, value] of Object.entries(scope)) {
+      if (KEY.test(key.replace(/[_\s-]/g, '')) && typeof value === 'number' && Number.isFinite(value)) {
+        return Math.min(Math.max(value, 0), 6000);
+      }
+    }
+  }
+  return null;
+}
+
 function clamp(value: unknown, min: number, max: number, fallback: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   return Math.min(Math.max(n, min), max);
@@ -89,13 +166,12 @@ export function parseVisionJson(text: string): ParseOutcome {
   }
 
   // A model that judges the photo unreadable is answering correctly, not
-  // failing — an empty plate of items with a stated reason.
-  const unusable =
-    raw.imageUsable === false
-      ? String(raw.imageIssue ?? 'The photograph could not be read as a meal.')
-      : undefined;
+  // failing. It will not agree with itself about the key name, though —
+  // imageUsable / usable / isUsable, flat or nested one level down — so
+  // look for the judgement rather than a particular spelling.
+  const unusable = findUnusable(raw);
 
-  const rawItems = Array.isArray(raw.items) ? raw.items : [];
+  const rawItems = findItems(raw);
   const items: DetectedFood[] = rawItems
     .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
     .filter((i) => typeof i.name === 'string' && i.name.trim().length > 0)
@@ -108,10 +184,7 @@ export function parseVisionJson(text: string): ParseOutcome {
     return { ok: false, why: 'the model named no foods and gave no reason' };
   }
 
-  const kcal =
-    typeof raw.likelyKcal === 'number' && Number.isFinite(raw.likelyKcal)
-      ? clamp(raw.likelyKcal, 0, 6000, 0)
-      : null;
+  const kcal = findKcal(raw);
 
   const per100gRaw = raw.per100g as Record<string, unknown> | undefined;
   const per100g =

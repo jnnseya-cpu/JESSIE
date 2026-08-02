@@ -164,3 +164,36 @@ test('an empty answer with no reason is a parse failure that says why', async ()
   assert.equal(parseVisionJson('I could not analyse that.').ok, false);
   assert.match(parseVisionJson('{"items":[]}').why ?? '', /no foods and gave no reason/);
 });
+
+test('the "not a meal" judgement is found however the model spells it', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+
+  // The exact nested shape production returned on the second probe.
+  const nested = parseVisionJson(
+    '```json\n{"imageAssessment":{"usable":false,"reason":"The supplied image is a ' +
+      'near-uniform pale pink field with no discernible food."},"items":[]}\n```',
+  );
+  assert.equal(nested.ok, true);
+  assert.match(nested.value?.unusable ?? '', /pale pink field/);
+
+  // And the flat spelling the prompt asks for.
+  const flat = parseVisionJson('{"items":[],"imageUsable":false,"imageIssue":"Too dark to read."}');
+  assert.match(flat.value?.unusable ?? '', /Too dark/);
+
+  // A usable photo is never mistaken for an unusable one.
+  const good = parseVisionJson(
+    '{"items":[{"name":"toast","confidencePct":90}],"likelyKcal":200,"imageUsable":true}',
+  );
+  assert.equal(good.value?.unusable, undefined);
+});
+
+test('foods and energy are found even when the model nests or renames them', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  const out = parseVisionJson(
+    '{"analysis":{"foods":[{"name":"lentil dahl","confidencePct":84}],"estimatedKcal":430},' +
+      '"portionCertainty":0.4,"preparationCertainty":0.5}',
+  );
+  assert.equal(out.ok, true);
+  assert.equal(out.value?.items[0]?.name, 'lentil dahl');
+  assert.equal(out.value?.likelyKcal, 430);
+});
