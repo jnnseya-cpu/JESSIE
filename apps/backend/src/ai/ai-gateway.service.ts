@@ -12,7 +12,7 @@ import {
   type AiProviderHealth,
 } from '@jessmove/shared';
 import { ACU_PER_GBP, COST_PROTECTION_MULTIPLE } from '@jessmove/body-command';
-import { WalletService } from '../acu/wallet.service';
+import { WalletService, type SpendResult } from '../acu/wallet.service';
 import { MODEL_PROVIDERS, type ModelProvider } from './provider.interface';
 
 /**
@@ -61,7 +61,12 @@ export class AiGatewayService {
         cost: { providerCostGbp: acu / ACU_PER_GBP / COST_PROTECTION_MULTIPLE },
       });
       if (!result.allowed) {
-        this.logger.warn(`[${billTo}] allowance refused: ${result.reason}`);
+        // Read the refusal through an explicit view of that arm of the
+        // union rather than relying on the discriminant being narrowed:
+        // a build that compiles this file under different settings must
+        // not fail over a log line.
+        const refused = result as Extract<SpendResult, { allowed: false }>;
+        this.logger.warn(`[${billTo}] allowance refused: ${refused.reason}`);
       }
     } catch (error) {
       this.logger.warn(`could not meter ${agent} for ${billTo}: ${(error as Error).message}`);
