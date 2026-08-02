@@ -192,16 +192,27 @@ export function parseVisionJson(text: string): ParseOutcome {
 
   const kcal = findKcal(raw);
 
+  // Front-of-pack bands are a claim about a food. A missing figure must
+  // never become 0g, because 0g bands as LOW and the panel then states
+  // something nobody measured — the exact failure this module exists to
+  // prevent. All four must be real numbers or there is no panel.
   const per100gRaw = raw.per100g as Record<string, unknown> | undefined;
-  const per100g =
+  const per100gValues =
     per100gRaw && typeof per100gRaw === 'object'
-      ? {
-          fatG: clamp(per100gRaw.fatG, 0, 100, 0),
-          saturatesG: clamp(per100gRaw.saturatesG, 0, 100, 0),
-          sugarsG: clamp(per100gRaw.sugarsG, 0, 100, 0),
-          saltG: clamp(per100gRaw.saltG, 0, 100, 0),
-        }
-      : undefined;
+      ? (['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const).map((k) => per100gRaw[k])
+      : [];
+  const per100gComplete =
+    per100gValues.length === 4 &&
+    per100gValues.every((v) => typeof v === 'number' && Number.isFinite(v)) &&
+    per100gValues.some((v) => (v as number) > 0);
+  const per100g = per100gComplete
+    ? {
+        fatG: clamp(per100gRaw!.fatG, 0, 100, 0),
+        saturatesG: clamp(per100gRaw!.saturatesG, 0, 100, 0),
+        sugarsG: clamp(per100gRaw!.sugarsG, 0, 100, 0),
+        saltG: clamp(per100gRaw!.saltG, 0, 100, 0),
+      }
+    : undefined;
 
   const gramsRaw = raw.grams as Record<string, unknown> | undefined;
   const grams =

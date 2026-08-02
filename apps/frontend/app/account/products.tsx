@@ -74,7 +74,7 @@ export function MovaModule({ me }: { me: Subject }) {
   };
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--coach">
       <h3>
         MOVA — your coach <span className="tdv__chip">ask anything</span>
       </h3>
@@ -190,7 +190,7 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   const metrics = result?.metrics;
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--body">
       <h3>
         BodyCommand <span className="tdv__chip">your starting point</span>
       </h3>
@@ -346,7 +346,7 @@ export function WearablesModule() {
   const live = (status?.providers ?? []).filter((p) => p.configured);
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--move">
       <h3>
         Wearables &amp; reach <span className="tdv__chip">four tiers</span>
       </h3>
@@ -478,7 +478,7 @@ export function ChallengesModule({ me }: { me: Subject }) {
   ).slice(0, 3);
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--team">
       <h3>
         Challenges <span className="tdv__chip">team</span>
       </h3>
@@ -658,7 +658,7 @@ export function GroupsModule({ me }: { me: Subject }) {
   };
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--team">
       <h3>
         Household &amp; team <span className="tdv__chip">shared</span>
       </h3>

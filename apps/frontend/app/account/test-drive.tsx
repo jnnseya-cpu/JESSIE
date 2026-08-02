@@ -139,7 +139,7 @@ export function FoodLensModule({
   const named = result?.allergens.filter((a) => a.status !== 'unknown') ?? [];
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--food">
       <h3>
         FoodLens 360° <span className="tdv__chip">live</span>
       </h3>
@@ -438,7 +438,7 @@ export function SnapModule({
   };
 
   return (
-    <section className="acct__module">
+    <section className="acct__module acct__module--move">
       <h3>
         Micro-Movement <span className="tdv__chip">{modeForAge(me.age)} mode</span>
       </h3>

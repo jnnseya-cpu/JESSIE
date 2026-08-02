@@ -350,3 +350,31 @@ test('a second angle and a barcode both raise what the analysis can claim', asyn
   };
   assert.ok(width(scanned) < width(single), 'a barcode narrows the range');
 });
+
+test('missing front-of-pack figures are absent, never zero', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+
+  // The real failure: a model that returns no per100g at all.
+  const none = parseVisionJson('{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940}');
+  assert.equal(none.value?.per100g, undefined, 'no panel rather than 0g LOW across the board');
+
+  // A partial object is not a measurement either.
+  const partial = parseVisionJson(
+    '{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940,"per100g":{"fatG":12}}',
+  );
+  assert.equal(partial.value?.per100g, undefined);
+
+  // All zeros is what a defaulting bug looks like, so it is refused too.
+  const zeros = parseVisionJson(
+    '{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940,' +
+      '"per100g":{"fatG":0,"saturatesG":0,"sugarsG":0,"saltG":0}}',
+  );
+  assert.equal(zeros.value?.per100g, undefined);
+
+  // A real measurement still comes through.
+  const real = parseVisionJson(
+    '{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940,' +
+      '"per100g":{"fatG":11.4,"saturatesG":3.2,"sugarsG":4.1,"saltG":1.7}}',
+  );
+  assert.equal(real.value?.per100g?.saltG, 1.7);
+});
