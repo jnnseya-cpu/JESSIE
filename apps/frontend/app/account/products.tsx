@@ -343,30 +343,175 @@ export function WearablesModule() {
  * Challenges — what exists, and what is honestly not built yet
  * ------------------------------------------------------------------ */
 
+interface ChallengeSummary {
+  id: string;
+  name: string;
+  joinCode: string;
+  endsOn: string;
+  isOwner: boolean;
+}
+
+interface Progress {
+  teamSize: number;
+  participation: number;
+  teamScore: number;
+  daysElapsed: number;
+  daysTotal: number;
+  whoTookPart: string[];
+  someoneCapped: boolean;
+}
+
 export function ChallengesModule({ me }: { me: Subject }) {
-  const forYou = CHALLENGE_TEMPLATES.slice(0, 4);
+  const [mine, setMine] = useState<ChallengeSummary[] | null>(null);
+  const [progress, setProgress] = useState<Record<string, Progress>>({});
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const loadMine = async () => {
+    try {
+      const res = await fetch(`${apiBase()}/challenges/mine`, { credentials: 'include' });
+      if (!res.ok) {
+        setMine([]);
+        return;
+      }
+      const list = ((await res.json()).data.challenges ?? []) as ChallengeSummary[];
+      setMine(list);
+      for (const c of list) void loadProgress(c.id);
+    } catch {
+      setMine([]);
+    }
+  };
+
+  const loadProgress = async (id: string) => {
+    try {
+      const res = await fetch(`${apiBase()}/challenges/${id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = (await res.json()).data as Progress;
+      setProgress((p) => ({ ...p, [id]: data }));
+    } catch {
+      /* a challenge that will not load simply shows no bar */
+    }
+  };
+
+  useEffect(() => {
+    void loadMine();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const run = async (fn: () => Promise<unknown>, failure: string) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await fn();
+      await loadMine();
+    } catch (e) {
+      setNote(`${failure}: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const start = (template: string) =>
+    run(() => post('/challenges', { template }), 'could not start that');
+  const join = () =>
+    run(async () => {
+      await post('/challenges/join', { code: code.trim() });
+      setCode('');
+    }, 'could not join');
+  const act = (id: string, kind: 'moved' | 'support') =>
+    run(async () => {
+      const data = (await post(`/challenges/${id}/act`, { kind })) as Progress;
+      setProgress((p) => ({ ...p, [id]: data }));
+    }, 'could not record that');
+
+  const suggested = CHALLENGE_TEMPLATES.filter((t) =>
+    me.age < 18 ? ['family_expedition', 'class_quest'].includes(t.key) : true,
+  ).slice(0, 3);
+
   return (
     <section className="acct__module">
       <h3>
-        Challenges <span className="tdv__chip">soon</span>
+        Challenges <span className="tdv__chip">team</span>
       </h3>
       <p className="tdv__what">
-        Team movement where nobody can win alone and no individual is ever ranked. These are
-        the formats built into the platform — joining opens when your crew or workplace is
-        set up.
+        Movement as a team, where nobody can win it alone. The score counts turning up,
+        keeping at it, improving on your own past and helping others — never how fit you
+        are, and never one person against another.
       </p>
-      <ul className="tdv__list">
-        {forYou.map((c) => (
-          <li key={c.key}>
-            <strong>{c.name}</strong>
-            <em>
-              {c.forWhom} · runs {c.runs}
-            </em>
-          </li>
-        ))}
-      </ul>
+
+      {(mine ?? []).map((c) => {
+        const p = progress[c.id];
+        return (
+          <div key={c.id} className="tdv__result">
+            <p className="tdv__snapname">{c.name}</p>
+            {p && (
+              <>
+                <div className="tdv__bar" aria-label={`Team score ${p.teamScore} out of 100`}>
+                  <span style={{ width: `${Math.max(2, p.teamScore)}%` }} />
+                </div>
+                <p className="tdv__line">
+                  <strong>Team score {p.teamScore}/100</strong> · {Math.round(p.participation * 100)}%
+                  of {p.teamSize} {p.teamSize === 1 ? 'person' : 'people'} have taken part · day{' '}
+                  {p.daysElapsed} of {p.daysTotal}
+                </p>
+                {p.whoTookPart.length > 0 && (
+                  <p className="tdv__line">Took part: {p.whoTookPart.join(', ')}</p>
+                )}
+                {p.someoneCapped && (
+                  <p className="tdv__line tdv__line--guard">
+                    Someone has hit the contribution ceiling — the team needs more people, not
+                    more effort from one.
+                  </p>
+                )}
+              </>
+            )}
+            <div className="tdv__chips">
+              <button type="button" disabled={busy} onClick={() => void act(c.id, 'moved')}>
+                I moved today
+              </button>
+              <button type="button" disabled={busy} onClick={() => void act(c.id, 'support')}>
+                Cheer the team
+              </button>
+            </div>
+            <p className="acct__note">
+              Share this code so others can join: <strong>{c.joinCode}</strong>
+            </p>
+          </div>
+        );
+      })}
+
+      {mine !== null && mine.length === 0 && (
+        <>
+          <p className="acct__note" style={{ marginTop: 0 }}>
+            Start one and share the code, or enter a code you were given.
+          </p>
+          <div className="tdv__chips">
+            {suggested.map((t) => (
+              <button key={t.key} type="button" disabled={busy} onClick={() => void start(t.key)}>
+                Start {t.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="tdv__askrow" style={{ marginTop: 12 }}>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="Join with a code"
+          aria-label="Challenge join code"
+          maxLength={12}
+        />
+        <button className="btn acct__ghostbtn" type="button" disabled={busy || code.length < 4} onClick={() => void join()}>
+          Join
+        </button>
+      </div>
+      {note && <p className="acct__note">{note}</p>}
       <p className="acct__note">
-        Your mode: {modeForAge(me.age)}. Under-18 accounts never appear in a public ranking.
+        Nothing here is public and no individual is ever ranked
+        {me.age < 18 ? ', and under-18 accounts never appear in any ranking at all' : ''}.
       </p>
     </section>
   );
