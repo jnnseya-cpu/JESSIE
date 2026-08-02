@@ -10,6 +10,7 @@ import {
 import { apiBase } from '../api-base';
 import { Cone, WeightedBars } from './charts';
 import { recordActivity } from './dashboard';
+import { SaveMark, useAutosave, useSavedState } from './autosave';
 
 /**
  * The rest of the product, where a member can actually use it.
@@ -154,6 +155,21 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   const [weightKg, setWeightKg] = useState('');
   const [waistCm, setWaistCm] = useState('');
   const [goal, setGoal] = useState<string>('REDUCE');
+  const { loaded, state } = useSavedState();
+
+  // Come back tomorrow and your height is still there.
+  useEffect(() => {
+    if (!loaded) return;
+    const saved = state['body.inputs'] as
+      | { heightCm?: string; weightKg?: string; waistCm?: string; goal?: string; history?: number[] }
+      | undefined;
+    if (!saved) return;
+    if (saved.heightCm) setHeightCm(saved.heightCm);
+    if (saved.weightKg) setWeightKg(saved.weightKg);
+    if (saved.waistCm) setWaistCm(saved.waistCm);
+    if (saved.goal) setGoal(saved.goal);
+    if (Array.isArray(saved.history)) setHistory(saved.history);
+  }, [loaded, state]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [result, setResult] = useState<Assessment | null>(null);
@@ -188,11 +204,17 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   };
 
   const metrics = result?.metrics;
+  const saveState = useAutosave(
+    'body.inputs',
+    { heightCm, weightKg, waistCm, goal, history },
+    loaded,
+  );
 
   return (
     <section className="acct__module acct__module--body">
       <h3>
         BodyCommand <span className="tdv__chip">your starting point</span>
+        <SaveMark state={saveState} />
       </h3>
       <p className="tdv__what">
         {minor

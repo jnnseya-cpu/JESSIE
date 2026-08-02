@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiBase } from '../api-base';
 import { shrinkImage } from './image-shrink';
+import { SaveMark, useAutosave, useSavedState } from './autosave';
 
 /**
  * The supermarket scanner.
@@ -59,6 +60,19 @@ export function ScannerModule() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const seenRef = useRef<Set<string>>(new Set());
+  const { loaded, state } = useSavedState();
+
+  // A trolley half-scanned is still a trolley: restore the list.
+  useEffect(() => {
+    if (!loaded) return;
+    const saved = state['scanner.list'] as Scanned[] | undefined;
+    if (Array.isArray(saved) && saved.length > 0) {
+      setScans(saved);
+      saved.forEach((s) => seenRef.current.add(s.barcode));
+    }
+  }, [loaded, state]);
+
+  const saveState = useAutosave('scanner.list', scans, loaded);
 
   const supported = typeof window !== 'undefined' && 'BarcodeDetector' in window;
   // An installed app has no address bar, so any advice about a padlock in
@@ -224,6 +238,7 @@ export function ScannerModule() {
     <section className="acct__module acct__module--food">
       <h3>
         Shelf scanner <span className="tdv__chip">supermarket</span>
+        <SaveMark state={saveState} />
       </h3>
       <p className="tdv__what">
         In an aisle the packet already holds a laboratory measurement, so scanning beats

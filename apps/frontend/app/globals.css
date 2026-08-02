@@ -5813,3 +5813,20 @@ textarea:focus-visible {
   line-height: 1.5;
   color: rgba(244, 250, 249, 0.62);
 }
+
+/* ---- the quiet autosave word ---- */
+.save {
+  margin-left: 10px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(244, 250, 249, 0.4);
+  font-weight: 500;
+  vertical-align: middle;
+}
+.save--saved {
+  color: rgba(45, 212, 191, 0.75);
+}
+.save--error {
+  color: rgba(251, 191, 36, 0.85);
+}
