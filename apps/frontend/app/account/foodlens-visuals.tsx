@@ -189,8 +189,13 @@ export function FoodWheel({ wheel }: { wheel: Record<string, number | null> }) {
     return [centre + Math.cos(angle) * r, centre + Math.sin(angle) * r];
   };
 
-  const known = axes.map((a) => (typeof wheel[a] === 'number' ? (wheel[a] as number) : 0));
-  const polygon = known.map((v, i) => point(i, v).join(',')).join(' ');
+  // Unknown axes are absent, not zero. A polygon dragged through the
+  // centre reads as "scored badly" when the truth is "not measured", so
+  // only known axes are joined; a lone known axis is drawn as a point.
+  const knownAxes = axes
+    .map((axis, i) => ({ axis, i, value: wheel[axis] }))
+    .filter((a): a is { axis: string; i: number; value: number } => typeof a.value === 'number');
+  const polygon = knownAxes.map((a) => point(a.i, a.value).join(',')).join(' ');
 
   return (
     <div className="fl__wheelwrap">
@@ -209,7 +214,13 @@ export function FoodWheel({ wheel }: { wheel: Record<string, number | null> }) {
           const [x, y] = point(i, 100);
           return <line key={axis} x1={centre} y1={centre} x2={x} y2={y} stroke="rgba(244,250,249,0.09)" />;
         })}
-        <polygon points={polygon} fill="rgba(45,212,191,0.22)" stroke="#2dd4bf" strokeWidth="1.6" />
+        {knownAxes.length >= 3 && (
+          <polygon points={polygon} fill="rgba(45,212,191,0.22)" stroke="#2dd4bf" strokeWidth="1.6" />
+        )}
+        {knownAxes.map((a) => {
+          const [px, py] = point(a.i, a.value);
+          return <circle key={`p-${a.axis}`} cx={px} cy={py} r="3" fill="#2dd4bf" />;
+        })}
         {axes.map((axis, i) => {
           const [x, y] = point(i, 128);
           const value = wheel[axis];
@@ -229,9 +240,9 @@ export function FoodWheel({ wheel }: { wheel: Record<string, number | null> }) {
         })}
       </svg>
       <p className="fl__note">
-        Twelve dimensions, one of which is the estimate&rsquo;s own confidence. There is no
-        composite health rating — that is the number this product refuses to invent. A faint
-        label means nothing in this photograph could tell us.
+        {knownAxes.length} of {axes.length} dimensions could be read from this photograph.
+        A faint label is an axis nothing could tell us — not a low score. There is no
+        composite health rating, because that is the number this product refuses to invent.
       </p>
     </div>
   );

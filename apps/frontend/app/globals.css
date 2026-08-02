@@ -5329,3 +5329,33 @@ textarea:focus-visible {
   color: rgba(244, 250, 249, 0.5);
   line-height: 1.45;
 }
+
+/* ---- the opportunity score, shown ---- */
+.mm__score {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 10px 0;
+}
+.mm__factor {
+  display: block;
+  font-size: 11.5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: rgba(244, 250, 249, 0.05);
+  color: rgba(244, 250, 249, 0.7);
+}
+.mm__factor--plus {
+  border-left: 2px solid rgba(45, 212, 191, 0.6);
+}
+.mm__factor--minus {
+  border-left: 2px solid rgba(251, 191, 36, 0.6);
+}
+.mm__nine {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgba(244, 250, 249, 0.7);
+}

@@ -28,7 +28,8 @@ import {
 
 export interface DetectedFood {
   readonly name: string;
-  readonly confidencePct: number;
+  /** Null when the model did not state one. Never a made-up middle value. */
+  readonly confidencePct: number | null;
 }
 
 export interface AnalysisFacts {
@@ -51,11 +52,14 @@ export interface AnalysisFacts {
 
 export function analyse(facts: AnalysisFacts): Record<string, unknown> {
   const confidence = confidenceFor(facts.source);
+  // Items whose confidence the model never stated cannot count towards
+  // coverage in either direction — they are simply not evidence.
+  const stated = facts.items.filter((i) => typeof i.confidencePct === 'number');
   const itemCoverage =
-    facts.items.length === 0
+    stated.length === 0
       ? 0
-      : facts.items.reduce((a, i) => a + Math.min(Math.max(i.confidencePct, 0), 100), 0) /
-        (facts.items.length * 100);
+      : stated.reduce((a, i) => a + Math.min(Math.max(i.confidencePct as number, 0), 100), 0) /
+        (stated.length * 100);
 
   const score = mealIntelligence({
     bestSource: facts.source,
@@ -169,9 +173,11 @@ export function captureQualityFrom(facts: AnalysisFacts): {
   checks: { check: string; passed: boolean; detail: string }[];
   passRate: number;
 } {
+  // An item with no stated certainty is not "named with confidence" —
+  // silence is not agreement.
   const namedWell =
     facts.items.length > 0 &&
-    facts.items.every((i) => i.confidencePct >= 60);
+    facts.items.every((i) => typeof i.confidencePct === 'number' && i.confidencePct >= 60);
 
   const checks = [
     {
@@ -276,21 +282,40 @@ export function swapLadderFor(facts: AnalysisFacts): {
   return ladder;
 }
 
-/** Distinct plants on the plate. A count, never a target you are failing. */
+/**
+ * Distinct plants on the plate, named as plants.
+ *
+ * A model returns "Fried ripe plantain (dodo), deep-fried slices" — one
+ * plant wearing a sentence. Counting the sentence gives a diversity list
+ * nobody can read, so the plant word itself is what gets counted, once.
+ */
+const PLANT_WORDS = [
+  'plantain', 'banana', 'apple', 'orange', 'mango', 'berry', 'blueberry', 'strawberry',
+  'tomato', 'potato', 'sweet potato', 'yam', 'cassava', 'rice', 'oat', 'wheat', 'barley',
+  'quinoa', 'bean', 'black bean', 'lentil', 'chickpea', 'pea', 'spinach', 'kale', 'cabbage',
+  'broccoli', 'cauliflower', 'carrot', 'pepper', 'onion', 'spring onion', 'leek', 'garlic',
+  'ginger', 'turmeric', 'coriander', 'parsley', 'basil', 'mushroom', 'courgette', 'aubergine',
+  'cucumber', 'lettuce', 'avocado', 'sweetcorn', 'corn', 'okra', 'celery', 'beetroot',
+  'squash', 'pumpkin', 'olive', 'almond', 'walnut', 'cashew', 'peanut', 'sesame', 'seed',
+] as const;
+
 export function plantsFrom(items: readonly DetectedFood[]): {
   distinct: string[];
   count: number;
 } {
-  const PLANTS =
-    /(bean|lentil|chickpea|pea|spinach|kale|cabbage|broccoli|carrot|tomato|pepper|onion|garlic|ginger|turmeric|coriander|parsley|basil|mushroom|courgette|aubergine|cucumber|lettuce|salad|avocado|potato|sweetcorn|corn|rice|oat|wheat|barley|quinoa|banana|apple|berry|berries|orange|mango|plantain|nut|almond|walnut|cashew|seed|sesame|olive|leek|celery|beetroot|squash|pumpkin|yam|cassava|okra|spring onion)/i;
-  const distinct = [
-    ...new Set(
-      items
-        .map((i) => i.name.toLowerCase().trim())
-        .filter((name) => PLANTS.test(name)),
-    ),
-  ].sort();
-  return { distinct, count: distinct.length };
+  const found = new Set<string>();
+  for (const item of items) {
+    const text = item.name.toLowerCase();
+    for (const plant of PLANT_WORDS) {
+      // Word-boundary match so "pea" does not fire inside "peanut butter".
+      if (new RegExp(`\\b${plant}s?\\b`).test(text)) found.add(plant);
+    }
+  }
+  // Prefer the specific name where both matched: "black bean" over "bean".
+  const distinct = [...found].filter(
+    (plant) => ![...found].some((other) => other !== plant && other.includes(plant)),
+  );
+  return { distinct: distinct.sort(), count: distinct.length };
 }
 
 function clamp01(v: number): number {
@@ -346,7 +371,8 @@ export const VISION_PROMPT = [
   'You are FoodLens, the meal-photo analyst for a wellness platform.',
   'Identify the foods on the plate and estimate the meal generously honestly.',
   'Rules that override everything else:',
-  '- Confidence per item reflects genuine visual certainty, never politeness.',
+  '- Every item MUST carry confidencePct: your genuine visual certainty, 0-100.',
+  '- Never default to 50. If you are sure, say 90+. If you are guessing, say 20.',
   '- likelyKcal is your central estimate; the platform will widen it into a range itself.',
   '- grams holds your best estimate of protein, carbohydrate and fat for the whole plate.',
   '- per100g holds fat, saturates, sugars and salt per 100g, so front-of-pack bands can be shown.',

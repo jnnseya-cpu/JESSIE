@@ -14,7 +14,8 @@
 
 export interface DetectedFood {
   name: string;
-  confidencePct: number;
+  /** Null when the model did not state one. Never a made-up middle value. */
+  confidencePct: number | null;
 }
 
 export interface VisionPayload {
@@ -178,7 +179,11 @@ export function parseVisionJson(text: string): ParseOutcome {
     .filter((i) => typeof i.name === 'string' && i.name.trim().length > 0)
     .map((i) => ({
       name: String(i.name).slice(0, 80),
-      confidencePct: clamp(i.confidencePct, 0, 100, 50),
+      // A model that did not say how sure it is has not said 50%.
+      confidencePct:
+        typeof i.confidencePct === 'number' && Number.isFinite(i.confidencePct)
+          ? Math.min(100, Math.max(0, i.confidencePct))
+          : null,
     }));
 
   if (items.length === 0 && !unusable) {

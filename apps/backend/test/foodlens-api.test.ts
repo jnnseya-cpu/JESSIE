@@ -268,3 +268,44 @@ test('plants are counted from what was actually named', async () => {
   ]);
   assert.equal(plants.count, 2, 'chicken is not a plant and duplicates count once');
 });
+
+test('an unstated item certainty is never turned into 50%', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  const out = parseVisionJson('{"items":[{"name":"plantain"}],"likelyKcal":300}');
+  assert.equal(out.value?.items[0]?.confidencePct, null);
+
+  const stated = parseVisionJson('{"items":[{"name":"rice","confidencePct":88}],"likelyKcal":300}');
+  assert.equal(stated.value?.items[0]?.confidencePct, 88);
+});
+
+test('items with no stated certainty do not inflate meal intelligence', async () => {
+  const { analyse } = await import('../src/foodlens/foodlens.logic.ts');
+  const facts = {
+    age: 40,
+    likelyKcal: 500,
+    source: 'ai_visual_estimate' as const,
+    portionCertainty: 0.4,
+    preparationCertainty: 0.4,
+  };
+  const silent = analyse({ ...facts, items: [{ name: 'stew', confidencePct: null }] }) as Record<string, unknown>;
+  const confident = analyse({ ...facts, items: [{ name: 'stew', confidencePct: 95 }] }) as Record<string, unknown>;
+
+  const scoreOf = (r: Record<string, unknown>) => (r.intelligence as { score: number }).score;
+  assert.ok(scoreOf(confident) > scoreOf(silent), 'stated confidence must beat silence');
+
+  const capture = silent.capture as { checks: { check: string; passed: boolean }[] };
+  const named = capture.checks.find((c) => c.check === 'Named with confidence');
+  assert.equal(named?.passed, false, 'silence is not agreement');
+});
+
+test('a plant is counted by its own name, once, however the dish is described', async () => {
+  const { plantsFrom } = await import('../src/foodlens/foodlens.logic.ts');
+  const plants = plantsFrom([
+    { name: 'Fried ripe plantain (dodo), deep-fried slices', confidencePct: 50 },
+    { name: 'Absorbed frying oil (likely vegetable or palm oil)', confidencePct: 50 },
+    { name: 'Black beans with rice', confidencePct: 80 },
+  ]);
+  assert.deepEqual(plants.distinct, ['black bean', 'plantain', 'rice']);
+  // "bean" must not appear alongside "black bean", and oil is not a plant.
+  assert.equal(plants.distinct.includes('bean'), false);
+});

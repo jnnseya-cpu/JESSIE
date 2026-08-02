@@ -5,6 +5,10 @@ import {
   AGENT_REGISTRY,
   AGE_MODE_DEFINITIONS,
   MOVEMENT_VARIANTS,
+  NINE_QUESTIONS,
+  OPPORTUNITY_MULTIPLIERS,
+  OPPORTUNITY_PENALTIES,
+  OPPORTUNITY_THRESHOLD,
   VARIANT_LABELS,
   modeForAge,
 } from '@jessmove/shared';
@@ -40,7 +44,7 @@ interface Subject {
 interface FoodLensResult {
   mode: 'live' | 'sandbox';
   note?: string;
-  items: { name: string; confidencePct: number }[];
+  items: { name: string; confidencePct: number | null }[];
   intelligence: { score: number; band: string; says: string; caption: string };
   energy:
     | null
@@ -148,7 +152,11 @@ export function FoodLensModule({
               {result.items.map((i) => (
                 <li key={i.name}>
                   <span>{i.name}</span>
-                  <em>{Math.round(i.confidencePct)}% sure</em>
+                  <em>
+                    {typeof i.confidencePct === 'number'
+                      ? `${Math.round(i.confidencePct)}% sure`
+                      : 'certainty not stated'}
+                  </em>
                 </li>
               ))}
             </ul>
@@ -369,6 +377,32 @@ export function SnapModule({
         One short movement you can do right now, wherever you are — no kit, no changing, no
         gym. It is sized for your age and checked for safety before you ever see it.
       </p>
+      <div className="mm__facts">
+        <span>
+          <strong>{AGE_MODE_DEFINITIONS[modeForAge(me.age)].dailyCap}</strong> a day, maximum
+        </span>
+        <span>
+          <strong>90–300s</strong> per Snap
+        </span>
+        <span>
+          <strong>≤ 7%</strong> harder per week
+        </span>
+        <span>
+          <strong>5/5</strong> variants required
+        </span>
+      </div>
+      <div className="tdv__chips tdv__chips--static">
+        {MOVEMENT_VARIANTS.map((v) => (
+          <span key={v} className="fl__plant">
+            {VARIANT_LABELS[v]}
+          </span>
+        ))}
+      </div>
+      <p className="fl__note">
+        Every movement exists in all five variants before it may be published — independently
+        authored, not degraded from the standing version. There is no override flag.
+      </p>
+
       <button className="btn btn--primary" type="button" onClick={() => void ask()} disabled={busy}>
         {busy ? 'Asking the engine…' : 'Give me a Snap'}
       </button>
@@ -427,6 +461,46 @@ export function SnapModule({
               {done ? 'Logged — nice one' : 'I did it'}
             </button>
           </div>
+
+          <details className="mm__agents">
+            <summary>How this moment was scored</summary>
+            <p className="fl__note">
+              Seven factors multiply and three penalties subtract, all normalised so no single
+              input can dominate. Below {OPPORTUNITY_THRESHOLD} the OS says nothing at all —
+              silence is a valid outcome, and it is logged as one.
+            </p>
+            <div className="mm__score">
+              <div>
+                <span className="fl__h">Multiplied</span>
+                {OPPORTUNITY_MULTIPLIERS.map((k) => (
+                  <span key={k} className="mm__factor mm__factor--plus">
+                    × {k.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                  </span>
+                ))}
+              </div>
+              <div>
+                <span className="fl__h">Subtracted</span>
+                {OPPORTUNITY_PENALTIES.map((k) => (
+                  <span key={k} className="mm__factor mm__factor--minus">
+                    − {k.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <p className="fl__note">
+              Safety confidence sits in the multiplied half, so a zero there kills the
+              recommendation however good the moment otherwise looks.
+            </p>
+          </details>
+
+          <details className="mm__agents">
+            <summary>The nine questions settled first</summary>
+            <ol className="mm__nine">
+              {NINE_QUESTIONS.map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ol>
+          </details>
 
           <details className="mm__agents">
             <summary>Which agents decided this</summary>
