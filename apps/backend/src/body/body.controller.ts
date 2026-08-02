@@ -1,4 +1,5 @@
-import { BodyAssessmentDto } from './body.dto';
+import { BodyAssessmentDto, ProgressDto } from './body.dto';
+import { alongsideFrom, trendFrom, warningsFor } from './progress.logic';
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   BC_AGENTS,
@@ -24,6 +25,36 @@ export class BodyController {
   }
 
   /** The scorecard. Published so the weighting is inspectable. */
+  /**
+   * The loop: what has happened since the last reading, what to watch,
+   * and what the member was doing alongside it.
+   */
+  @Post('progress')
+  progress(@Body() body: ProgressDto) {
+    const trend = trendFrom(body.readings ?? []);
+    const latest = [...(body.readings ?? [])].sort((a, b) => a.day.localeCompare(b.day)).pop();
+    return {
+      trend,
+      warnings: warningsFor({
+        age: body.age,
+        bmi: body.bmi ?? null,
+        trend,
+        latestKg: latest?.kg ?? null,
+      }),
+      alongside: alongsideFrom({
+        daysMoved: body.daysMoved ?? 0,
+        mealsChecked: body.mealsChecked ?? 0,
+        windowDays: body.windowDays ?? 14,
+      }),
+      howItWorks: [
+        'You give a reading whenever you like — nothing is measured behind your back.',
+        'Two readings make a direction; three make a trend worth reading.',
+        'The rate is checked against what is sustainable, not against other people.',
+        'What you did is shown beside the trend, never as its cause.',
+      ],
+    };
+  }
+
   @Get('scorecard')
   scorecard() {
     return {

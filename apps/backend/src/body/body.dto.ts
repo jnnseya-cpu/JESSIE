@@ -1,4 +1,6 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -7,7 +9,9 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import {
   BODY_PATHWAYS,
@@ -86,4 +90,53 @@ export class BodyAssessmentDto {
   @IsOptional()
   @IsBoolean()
   optedIntoBodyMetrics?: boolean;
+}
+
+export class ReadingDto {
+  @IsString()
+  @MaxLength(10)
+  day!: string;
+
+  @IsNumber()
+  @Min(20)
+  @Max(400)
+  kg!: number;
+}
+
+/** The inputs for the loop: a person's own readings and their own week. */
+export class ProgressDto {
+  @IsInt()
+  @Min(10)
+  @Max(120)
+  age!: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(120)
+  bmi?: number;
+
+  @IsArray()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => ReadingDto)
+  readings!: ReadingDto[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(400)
+  daysMoved?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(400)
+  mealsChecked?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(400)
+  windowDays?: number;
 }

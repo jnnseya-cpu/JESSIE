@@ -20,6 +20,20 @@ import { SaveMark, useAutosave, useSavedState } from './autosave';
  * eventually anyway.
  */
 
+interface Basket {
+  products: number;
+  weighed: number;
+  totals: {
+    key: string;
+    label: string;
+    total: number;
+    days: number;
+    topContributors: { name: string; amount: number }[];
+  }[];
+  flags: { nutrient: string; says: string; action: string }[];
+  note: string;
+}
+
 interface Scanned {
   barcode: string;
   found: boolean;
@@ -91,6 +105,34 @@ export function ScannerModule() {
   }, [loaded, state]);
 
   const saveState = useAutosave('scanner.list', scans, restored);
+
+  // The trolley, added up. Recomputed whenever it changes, because the
+  // interesting number in a supermarket is the shop, not the item.
+  const [basket, setBasket] = useState<Basket | null>(null);
+  useEffect(() => {
+    const found = scans.filter((s) => s.found);
+    if (found.length === 0) {
+      setBasket(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${apiBase()}/foodlens/basket`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ products: found }),
+        });
+        if (res.ok && !cancelled) setBasket((await res.json()).data as Basket);
+      } catch {
+        /* a total that will not compute simply does not draw */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scans]);
 
   const supported = typeof window !== 'undefined' && 'BarcodeDetector' in window;
   // An installed app has no address bar, so any advice about a padlock in
@@ -325,6 +367,48 @@ export function ScannerModule() {
         </button>
       </div>
       {note && <p className="acct__note">{note}</p>}
+
+      {basket && basket.totals.length > 0 && (
+        <div className="tdv__result">
+          <h4 className="fl__h">Your trolley · {basket.products} items</h4>
+          <div className="chart__wbars">
+            {basket.totals.map((t) => (
+              <div key={t.key} className="chart__wbar">
+                <span className="chart__wlabel">
+                  {t.label}
+                  <em className="scan__amount">
+                    {t.total}
+                    {t.key === 'energyKcal' ? ' kcal' : 'g'}
+                  </em>
+                </span>
+                <span className="chart__wtrack">
+                  <span
+                    className="chart__wfill"
+                    style={{
+                      width: `${Math.min(100, (t.days / 14) * 100)}%`,
+                      background:
+                        t.days > 10
+                          ? 'linear-gradient(90deg, #b45309, #f59e0b)'
+                          : 'linear-gradient(90deg, #00a99d, #2dd4bf)',
+                    }}
+                  />
+                </span>
+                <span className="chart__wvalue">{t.days}d</span>
+              </div>
+            ))}
+          </div>
+          <p className="chart__note">
+            Days of one adult&rsquo;s reference intake, whole packs. {basket.note}
+          </p>
+
+          {basket.flags.map((f) => (
+            <div key={f.nutrient} className="warn warn--caution">
+              <strong>{f.says}</strong>
+              <em>{f.action}</em>
+            </div>
+          ))}
+        </div>
+      )}
 
       {scans.length > 0 && (
         <ul className="scan__list">

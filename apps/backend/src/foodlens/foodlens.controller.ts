@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { AnalyzeDto, ReadBarcodeDto } from './foodlens.dto';
+import { basketFrom, type BasketProduct } from './basket.logic';
 import { FoodlensService } from './foodlens.service';
 
 @Controller('foodlens')
@@ -32,6 +33,12 @@ export class FoodlensController {
   @Post('barcode/read')
   readBarcode(@Body() body: ReadBarcodeDto): Promise<Record<string, unknown>> {
     return this.foodlens.readBarcode(body.mimeType, body.dataBase64);
+  }
+
+  /** The trolley, added up: totals, days of food, and what to swap. */
+  @Post('basket')
+  basket(@Body() body: { products?: BasketProduct[] }) {
+    return basketFrom(body?.products ?? []);
   }
 
   @Post('analyze')

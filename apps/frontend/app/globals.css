@@ -5867,3 +5867,45 @@ textarea:focus-visible {
   color: #f4faf9;
   box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.35);
 }
+
+/* ---- warnings: specific, actionable, never alarmist ---- */
+.warn {
+  margin: 8px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border-left: 3px solid;
+}
+.warn strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #f4faf9;
+  font-weight: 600;
+}
+.warn em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(244, 250, 249, 0.7);
+}
+.warn--note {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.7);
+}
+.warn--caution {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.8);
+}
+.warn--stop {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.85);
+}
+
+.scan__amount {
+  display: block;
+  font-style: normal;
+  font-size: 11.5px;
+  color: rgba(244, 250, 249, 0.45);
+}

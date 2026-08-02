@@ -638,7 +638,7 @@ export function AccountPanel() {
 
           {section === 'body' && (
             <>
-              <BodyCommandModule me={me} />
+              <BodyCommandModule me={me} dashboard={dash} />
               <WearablesModule />
             </>
           )}

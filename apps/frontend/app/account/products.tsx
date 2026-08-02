@@ -150,7 +150,13 @@ const GOALS = [
   { key: 'GAIN', label: 'Gain weight safely' },
 ] as const;
 
-export function BodyCommandModule({ me }: { me: Subject }) {
+export function BodyCommandModule({
+  me,
+  dashboard,
+}: {
+  me: Subject;
+  dashboard?: { daysMovedInWindow: number; foodChecks: number } | null;
+}) {
   const [heightCm, setHeightCm] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [waistCm, setWaistCm] = useState('');
@@ -161,7 +167,14 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   useEffect(() => {
     if (!loaded) return;
     const saved = state['body.inputs'] as
-      | { heightCm?: string; weightKg?: string; waistCm?: string; goal?: string; history?: number[] }
+      | {
+          heightCm?: string;
+          weightKg?: string;
+          waistCm?: string;
+          goal?: string;
+          history?: number[];
+          readings?: { day: string; kg: number }[];
+        }
       | undefined;
     if (!saved) return;
     if (saved.heightCm) setHeightCm(saved.heightCm);
@@ -169,11 +182,19 @@ export function BodyCommandModule({ me }: { me: Subject }) {
     if (saved.waistCm) setWaistCm(saved.waistCm);
     if (saved.goal) setGoal(saved.goal);
     if (Array.isArray(saved.history)) setHistory(saved.history);
+    if (Array.isArray(saved.readings)) setReadings(saved.readings);
   }, [loaded, state]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [result, setResult] = useState<Assessment | null>(null);
   const [history, setHistory] = useState<number[]>([]);
+  const [readings, setReadings] = useState<{ day: string; kg: number }[]>([]);
+  const [progress, setProgress] = useState<{
+    trend: { kgPerWeek: number | null; changeKg: number | null; spanDays: number; readings: number; direction: string; says: string };
+    warnings: { level: string; says: string; action: string }[];
+    alongside: { daysMoved: number; mealsChecked: number; windowDays: number; says: string };
+    howItWorks: string[];
+  } | null>(null);
   const minor = me.age < 18;
 
   const assess = async () => {
@@ -191,10 +212,34 @@ export function BodyCommandModule({ me }: { me: Subject }) {
         optedIntoBodyMetrics: !minor,
       });
       setResult(data as Assessment);
-      // The reading becomes history, which is what lets a trajectory exist.
+      // The reading becomes history, which is what lets a trajectory and
+      // a trend exist at all.
       if (!minor && weightKg) {
         void recordActivity({ kind: 'body_read', value: Number(weightKg) });
         setHistory((h) => [...h, Number(weightKg)]);
+        const today = new Date().toISOString().slice(0, 10);
+        const nextReadings = [
+          ...readings.filter((r) => r.day !== today),
+          { day: today, kg: Number(weightKg) },
+        ];
+        setReadings(nextReadings);
+
+        // The loop: what has changed, what to watch, what you were doing.
+        const metrics = (data as Assessment).metrics;
+        try {
+          setProgress(
+            (await post('/body/progress', {
+              age: me.age,
+              bmi: metrics?.bmi,
+              readings: nextReadings,
+              daysMoved: dashboard?.daysMovedInWindow ?? 0,
+              mealsChecked: dashboard?.foodChecks ?? 0,
+              windowDays: 14,
+            })) as typeof progress,
+          );
+        } catch {
+          /* the assessment still stands without the loop around it */
+        }
       }
     } catch (e) {
       setNote(`could not assess: ${(e as Error).message}`);
@@ -206,7 +251,7 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   const metrics = result?.metrics;
   const saveState = useAutosave(
     'body.inputs',
-    { heightCm, weightKg, waistCm, goal, history },
+    { heightCm, weightKg, waistCm, goal, history, readings },
     restored,
   );
 
@@ -305,10 +350,57 @@ export function BodyCommandModule({ me }: { me: Subject }) {
             </p>
           )}
 
+          {!minor && progress && (
+            <>
+              <h4 className="fl__h">What has changed</h4>
+              <p className="tdv__line">{progress.trend.says}</p>
+              {progress.trend.changeKg !== null && (
+                <p className="fl__big">
+                  {progress.trend.changeKg > 0 ? '+' : ''}
+                  {progress.trend.changeKg}kg
+                  <span className="fl__unit"> over {progress.trend.spanDays} days</span>
+                </p>
+              )}
+
+              {progress.warnings.length > 0 && (
+                <>
+                  <h4 className="fl__h">Worth knowing</h4>
+                  {progress.warnings.map((w) => (
+                    <div key={w.says} className={`warn warn--${w.level}`}>
+                      <strong>{w.says}</strong>
+                      <em>{w.action}</em>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <h4 className="fl__h">What you were doing alongside</h4>
+              <p className="tdv__line">{progress.alongside.says}</p>
+
+              <details className="mm__agents">
+                <summary>How this works</summary>
+                <ul className="mm__nine">
+                  {progress.howItWorks.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </details>
+            </>
+          )}
+
           {!minor && (
             <>
               <h4 className="fl__h">Your trajectory</h4>
               <Cone history={history} label="Weight trajectory with widening uncertainty" />
+              {readings.length > 0 && (
+                <p className="chart__note">
+                  Your readings:{' '}
+                  {readings
+                    .slice(-6)
+                    .map((r) => `${r.day.slice(5)} ${r.kg}kg`)
+                    .join(' · ')}
+                </p>
+              )}
             </>
           )}
 
