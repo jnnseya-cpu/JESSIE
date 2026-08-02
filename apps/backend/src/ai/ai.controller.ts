@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   IsArray,
   IsIn,
@@ -17,6 +18,9 @@ import {
   type AiProvider,
   type AiRole,
 } from '@jessmove/shared';
+import { AdminOnly } from '../auth/auth.guard';
+import { AuthService } from '../auth/auth.service';
+import { tokenFrom } from '../auth/auth.guard';
 import { AiGatewayService } from './ai-gateway.service';
 
 class AiMessageDto {
@@ -51,18 +55,41 @@ class CompletionDto {
   maxTokens?: number;
 }
 
+/**
+ * The raw gateway.
+ *
+ * Both routes are staff-only, and neither is how a member reaches a model.
+ * A member goes through MOVA or FoodLens, where the age register, the
+ * published refusals and the allowance all apply. This controller applies
+ * none of them: it takes any agent, any model and any token budget. Left
+ * open it was a way to spend the platform's provider budget from the
+ * internet, and a way around every under-18 protection at the same time.
+ *
+ * Which models are configured is staff information too — the deployment's
+ * provider names are not something a public endpoint should hand out.
+ */
 @Controller('ai')
 export class AiController {
-  constructor(private readonly gateway: AiGatewayService) {}
+  constructor(
+    private readonly gateway: AiGatewayService,
+    private readonly auth: AuthService,
+  ) {}
 
   /** Provider configuration and routing, for the Admin Super Control Centre. */
+  @AdminOnly()
   @Get('providers')
   providers() {
     return this.gateway.health();
   }
 
+  @AdminOnly()
   @Post('complete')
-  complete(@Body() body: CompletionDto) {
-    return this.gateway.complete(body);
+  complete(@Req() req: Request, @Body() body: CompletionDto) {
+    const token = tokenFrom(req);
+    const uid = token ? this.auth.verify(token)?.uid : undefined;
+    if (!uid) throw new UnauthorizedException('this endpoint needs a signed-in administrator');
+    // Staff use is metered like everyone else's: an unmetered call is a
+    // bill nobody sees.
+    return this.gateway.complete({ ...body, billTo: uid });
   }
 }

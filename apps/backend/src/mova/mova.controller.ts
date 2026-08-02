@@ -1,6 +1,9 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import type { Request } from 'express';
 import { MOVA_REFUSES, PRESENCE_DEFINITIONS } from '@jessmove/shared';
+import { AuthService } from '../auth/auth.service';
+import { tokenFrom } from '../auth/auth.guard';
 import { MovaService } from './mova.service';
 
 class AskDto {
@@ -22,7 +25,24 @@ class AskDto {
 
 @Controller('mova')
 export class MovaController {
-  constructor(private readonly mova: MovaService) {}
+  constructor(
+    private readonly mova: MovaService,
+    private readonly auth: AuthService,
+  ) {}
+
+  /**
+   * Whose allowance pays for the answer.
+   *
+   * Without this the coach — the most-used model call on the platform —
+   * ran free: the service has always accepted a payer, but nothing was
+   * ever handed one, so every conversation was a provider bill against
+   * nobody's balance. An anonymous ask still answers; it simply has no
+   * wallet to charge.
+   */
+  private billTo(req: Request): string | undefined {
+    const token = tokenFrom(req);
+    return (token ? this.auth.verify(token)?.uid : undefined) ?? undefined;
+  }
 
   /** What the coach will and will not do — published, not implied. */
   @Get('policy')
@@ -35,7 +55,7 @@ export class MovaController {
   }
 
   @Post('ask')
-  ask(@Body() body: AskDto) {
-    return this.mova.ask(body.question, body.age, body.displayName);
+  ask(@Req() req: Request, @Body() body: AskDto) {
+    return this.mova.ask(body.question, body.age, body.displayName, this.billTo(req));
   }
 }

@@ -17,8 +17,8 @@ const ENDPOINTS: ReadonlyArray<{
 }> = [
   { verb: 'GET', path: '/health', what: 'Liveness plus AI-gateway status.' },
   { verb: 'GET', path: '/system', what: 'The operating system’s invariants, machine-readable.' },
-  { verb: 'GET', path: '/ai/providers', what: 'Provider configuration and resolved model names.' },
-  { verb: 'POST', path: '/ai/complete', what: 'Gateway completion, scoped to a registered agent.' },
+  { verb: 'GET', path: '/ai/providers', what: 'Provider configuration. Staff session required.' },
+  { verb: 'POST', path: '/ai/complete', what: 'Raw gateway completion. Staff session required, and metered.' },
   { verb: 'GET', path: '/movements', what: 'The published library.' },
   { verb: 'GET', path: '/movements/gate', what: 'The publishing contract, in full.' },
   { verb: 'POST', path: '/movements/:id/check', what: 'Dry-run the five-variant gate.' },

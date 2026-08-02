@@ -54,9 +54,19 @@ export class AcuController {
     };
   }
 
+  /**
+   * A subject's wallet, created only if they do not have one.
+   *
+   * This used to create unconditionally, which meant a second call for the
+   * same person produced a second wallet. Every grant and spend on the
+   * server goes through `forSubject`, so the money stayed in the first one
+   * while a caller holding the second id saw an empty balance — and once
+   * two wallets exist for one subject, which one `forSubject` finds is
+   * decided by iteration order. One subject, one wallet.
+   */
   @Post('wallets')
   create(@Body() body: CreateWalletDto) {
-    return this.wallets.create(body.subjectType, body.subjectId);
+    return this.wallets.forSubject(body.subjectType, body.subjectId);
   }
 
   /** A person's own wallet, found or created by their user id. */

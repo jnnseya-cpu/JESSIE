@@ -59,7 +59,7 @@ const PROBES: readonly Probe[] = [
     method: 'GET',
     path: '/ai/providers',
     label: 'AI providers',
-    note: 'Configuration and resolved model names. Unconfigured providers are skipped, not fatal.',
+    note: 'Configuration and resolved model names. Staff session required — 401 here is the guard working.',
     expect: 200,
   },
   {
