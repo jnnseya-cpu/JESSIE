@@ -22,6 +22,7 @@ import {
   WearablesModule,
 } from './products';
 import { shrinkImage } from './image-shrink';
+import { useAutosave, useSavedState } from './autosave';
 
 interface Me {
   userId: string;
@@ -170,6 +171,16 @@ export function AccountPanel() {
       }),
     [],
   );
+
+  type Section = 'today' | 'food' | 'body' | 'team' | 'you';
+  const [section, setSection] = useState<Section>('today');
+  const { loaded: stateLoaded, state: savedState, restored } = useSavedState();
+  useEffect(() => {
+    if (!stateLoaded) return;
+    const prefs = savedState['ui.preferences'] as { section?: Section } | undefined;
+    if (prefs?.section) setSection(prefs.section);
+  }, [stateLoaded, savedState]);
+  useAutosave('ui.preferences', { section }, restored);
 
   const { data: dash, refresh: refreshDash } = useDashboard();
   const onActivity = (fresh: Dashboard | null) => {
@@ -586,21 +597,60 @@ export function AccountPanel() {
           </div>
         </section>
 
-        {/* ---- Modules ---- */}
-        <div className="acct__grid">
-          <DashboardModule data={dash} />
-          <MovaModule me={me} />
-          <SnapModule me={me} onActivity={onActivity} />
-          <FoodLensModule me={me} onActivity={onActivity} />
-          <ScannerModule />
-          <BodyCommandModule me={me} />
-          <WearablesModule />
-          <ChallengesModule me={me} />
-          <GroupsModule me={me} />
+        {/* ---- One console, five places to stand ---- */}
+        <nav className="acct__tabs" aria-label="Sections">
+          {(
+            [
+              ['today', 'Today'],
+              ['food', 'Food'],
+              ['body', 'Body'],
+              ['team', 'Team'],
+              ['you', 'You'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={section === key ? 'acct__tab acct__tab--on' : 'acct__tab'}
+              aria-current={section === key ? 'page' : undefined}
+              onClick={() => setSection(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
 
-          {/* Builder's tools — staff only. A member's console shows the
-              product, not the scaffolding it was built with. */}
-          {me.kind === 'platform_staff' && (
+        <div className="acct__grid">
+          {section === 'today' && (
+            <>
+              <DashboardModule data={dash} />
+              <SnapModule me={me} onActivity={onActivity} />
+              <MovaModule me={me} />
+            </>
+          )}
+
+          {section === 'food' && (
+            <>
+              <FoodLensModule me={me} onActivity={onActivity} />
+              <ScannerModule />
+            </>
+          )}
+
+          {section === 'body' && (
+            <>
+              <BodyCommandModule me={me} />
+              <WearablesModule />
+            </>
+          )}
+
+          {section === 'team' && (
+            <>
+              <ChallengesModule me={me} />
+              <GroupsModule me={me} />
+            </>
+          )}
+
+          {section === 'you' && me.kind === 'platform_staff' && (
             <section className="acct__module">
               <h3>Explore</h3>
               <nav className="acct__links" aria-label="Account shortcuts">
@@ -620,7 +670,7 @@ export function AccountPanel() {
             </section>
           )}
 
-          {me.kind === 'platform_staff' && (
+          {section === 'you' && me.kind === 'platform_staff' && (
             <section className="acct__module acct__module--admin">
               <h3>
                 Admin <span className="acct__adminchip">platform staff</span>
@@ -688,7 +738,8 @@ export function AccountPanel() {
           )}
         </div>
 
-        {/* ---- Danger zone ---- */}
+        {/* ---- Danger zone: under You, where a member expects it ---- */}
+        {section === 'you' && (
         <section className="acct__danger">
           <div className="acct__dangerhead">
             <h3>Danger zone</h3>
@@ -735,6 +786,7 @@ export function AccountPanel() {
             </div>
           )}
         </section>
+        )}
       </div>
     );
   }

@@ -155,7 +155,7 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   const [weightKg, setWeightKg] = useState('');
   const [waistCm, setWaistCm] = useState('');
   const [goal, setGoal] = useState<string>('REDUCE');
-  const { loaded, state } = useSavedState();
+  const { loaded, state, restored } = useSavedState();
 
   // Come back tomorrow and your height is still there.
   useEffect(() => {
@@ -207,7 +207,7 @@ export function BodyCommandModule({ me }: { me: Subject }) {
   const saveState = useAutosave(
     'body.inputs',
     { heightCm, weightKg, waistCm, goal, history },
-    loaded,
+    restored,
   );
 
   return (

@@ -5830,3 +5830,40 @@ textarea:focus-visible {
 .save--error {
   color: rgba(251, 191, 36, 0.85);
 }
+
+/* ---- one console, five places to stand ---- */
+.acct__tabs {
+  display: flex;
+  gap: 6px;
+  margin: 22px 0 18px;
+  padding: 5px;
+  border-radius: 14px;
+  background: rgba(4, 18, 31, 0.5);
+  border: 1px solid rgba(244, 250, 249, 0.09);
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  backdrop-filter: blur(10px);
+  overflow-x: auto;
+}
+.acct__tab {
+  flex: 1;
+  min-width: 68px;
+  padding: 11px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(244, 250, 249, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.acct__tab:hover {
+  color: #f4faf9;
+}
+.acct__tab--on {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.22), rgba(96, 165, 250, 0.16));
+  color: #f4faf9;
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.35);
+}

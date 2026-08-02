@@ -22,7 +22,16 @@ const MAX_INTERVAL_MS = 6_000;
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
-/** Loads every saved draft once, so each module can restore itself. */
+/**
+ * Loads every saved draft once, so each module can restore itself.
+ *
+ * `restored` is the important half. A module that starts autosaving
+ * before its restore has been applied will write its empty initial
+ * values over the draft it was about to load — an autosave that deletes
+ * your work, which is worse than none at all. So a module gates its
+ * saving on `restored`, which only becomes true after the load has
+ * finished and the module has had a render to apply it.
+ */
 export function useSavedState() {
   const [loaded, setLoaded] = useState(false);
   const [state, setState] = useState<Record<string, unknown>>({});
@@ -44,7 +53,15 @@ export function useSavedState() {
     };
   }, []);
 
-  return { loaded, state };
+  // One frame after the load, every restore effect has run.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (!loaded) return;
+    const id = setTimeout(() => setRestored(true), 0);
+    return () => clearTimeout(id);
+  }, [loaded, state]);
+
+  return { loaded, state, restored };
 }
 
 /**

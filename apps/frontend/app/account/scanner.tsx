@@ -60,7 +60,7 @@ export function ScannerModule() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const seenRef = useRef<Set<string>>(new Set());
-  const { loaded, state } = useSavedState();
+  const { loaded, state, restored } = useSavedState();
 
   // A trolley half-scanned is still a trolley: restore the list.
   useEffect(() => {
@@ -72,7 +72,7 @@ export function ScannerModule() {
     }
   }, [loaded, state]);
 
-  const saveState = useAutosave('scanner.list', scans, loaded);
+  const saveState = useAutosave('scanner.list', scans, restored);
 
   const supported = typeof window !== 'undefined' && 'BarcodeDetector' in window;
   // An installed app has no address bar, so any advice about a padlock in
