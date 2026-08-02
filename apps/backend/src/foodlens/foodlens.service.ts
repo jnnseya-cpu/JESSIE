@@ -9,7 +9,9 @@ import {
   type Allergen,
   type EvidenceSource,
 } from '@jessmove/foodlens';
+import { AiGatewayError } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
+import { adviseOnVisionFailure } from './vision-advice.logic';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
 import {
   VISION_PROMPT,
@@ -60,6 +62,67 @@ export class FoodlensService {
       processingStages: PROCESSING_STAGES,
       underEighteen: 'No calorie, weight or BMI framing, in any mode, under any consent setting.',
     };
+  }
+
+  /**
+   * A one-request answer to "why did the photo not get analysed".
+   * Sends a 1×1 PNG through the same path a meal takes and returns what
+   * each provider said — model name included, because a model the key
+   * cannot reach is the most common cause by far.
+   */
+  async probeVision(): Promise<Record<string, unknown>> {
+    // A real, minimal PNG. The point is the round trip, not the pixels.
+    const onePixelPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+
+    const started = Date.now();
+    try {
+      const completion = await this.gateway.complete({
+        agent: 'LENS',
+        messages: [
+          { role: 'system', content: VISION_PROMPT },
+          { role: 'user', content: 'Analyse this meal photograph.' },
+        ],
+        images: [{ mediaType: 'image/png', dataBase64: onePixelPng.toString('base64') }],
+        jsonSchema: VISION_SCHEMA as unknown as Record<string, unknown>,
+      });
+
+      let parses = true;
+      try {
+        JSON.parse(completion.text);
+      } catch {
+        parses = false;
+      }
+
+      return {
+        ok: true,
+        provider: completion.provider,
+        model: completion.model,
+        ...(completion.fellBackFrom?.length ? { fellBackFrom: completion.fellBackFrom } : {}),
+        returnedJson: parses,
+        ms: Date.now() - started,
+        advice: parses
+          ? 'Vision works end to end. A photo that still fails is about the photo, not the configuration.'
+          : `The model answered but not as JSON, so analysis discards it. First 200 characters: ${completion.text.slice(0, 200)}`,
+      };
+    } catch (error) {
+      // A gateway that never reached a provider carries its reason in the
+      // message, not in causes — advice must see both or it misreads an
+      // unconfigured deployment as an unknown failure.
+      const reported = error instanceof AiGatewayError ? error.causes : {};
+      const causes = Object.keys(reported).length
+        ? reported
+        : { gateway: (error as Error).message };
+      return {
+        ok: false,
+        ms: Date.now() - started,
+        attempted: error instanceof AiGatewayError ? error.attempted : [],
+        causes,
+        advice: adviseOnVisionFailure(causes),
+      };
+    }
   }
 
   async analyze(request: AnalyzeRequest): Promise<Record<string, unknown>> {

@@ -69,3 +69,38 @@ test('meal intelligence rates the analysis, and better evidence scores higher', 
   const b = (barcode.intelligence as { score: number }).score;
   assert.ok(b > p, 'a barcode must outrank a photograph');
 });
+
+/* ------------------------------------------------------------------ *
+ * Vision failure advice — "unavailable" is not an instruction
+ * ------------------------------------------------------------------ */
+
+test('vision advice names the fix for each real failure mode', async () => {
+  const { adviseOnVisionFailure } = await import('../src/foodlens/vision-advice.logic.ts');
+
+  assert.match(
+    adviseOnVisionFailure({ anthropic: 'No AI provider is configured.' }),
+    /ANTHROPIC_API_KEY/,
+  );
+  assert.match(
+    adviseOnVisionFailure({ anthropic: 'anthropic 404: model claude-opus-5 not found' }),
+    /ANTHROPIC_MODEL/,
+  );
+  assert.match(
+    adviseOnVisionFailure({ openai: 'openai 401: invalid api key' }),
+    /Re-copy the key/,
+  );
+  assert.match(
+    adviseOnVisionFailure({ openai: 'openai 429: rate limit exceeded' }),
+    /quota or billing/,
+  );
+  assert.match(
+    adviseOnVisionFailure({ gemini: 'unsupported image media type for this model' }),
+    /vision-capable/,
+  );
+  assert.match(adviseOnVisionFailure({ openai: 'fetch failed' }), /network or timeout/);
+  // Anything unrecognised still hands over the provider's exact words.
+  assert.match(
+    adviseOnVisionFailure({ gemini: 'something entirely new' }),
+    /something entirely new/,
+  );
+});

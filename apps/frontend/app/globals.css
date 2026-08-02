@@ -4467,6 +4467,38 @@ textarea:focus-visible {
 .tdv__askrow input::placeholder {
   color: rgba(244, 250, 249, 0.4);
 }
+.tdv__field {
+  display: block;
+  margin-bottom: 10px;
+}
+.tdv__field span {
+  display: block;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(244, 250, 249, 0.55);
+  margin-bottom: 6px;
+}
+.tdv__field select {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(244, 250, 249, 0.18);
+  background: rgba(11, 37, 64, 0.6);
+  color: #f4faf9;
+  font-size: 15px;
+}
+.tdv__bignum {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #f4faf9;
+}
+.tdv__bignum span {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(244, 250, 249, 0.6);
+}
 .tdv__chips {
   display: flex;
   flex-wrap: wrap;

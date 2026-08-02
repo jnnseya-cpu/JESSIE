@@ -120,13 +120,33 @@ interface Assessment {
   pathway: string;
   pathwayFocus: string[];
   ageMode: string;
-  metrics: Record<string, unknown> | null;
-  safety?: { status: string; note?: string };
+  metrics: {
+    bmi?: number;
+    waistToHeightRatio?: number;
+    waistToHeightApplicable?: boolean;
+    bmiUnreliable?: boolean;
+    reasons?: string[];
+    confidence?: number;
+  } | null;
+  safety?: { status: string; note?: string; reasons?: string[] };
+  surfacePolicy?: { mayDisplay: boolean; mayTarget: boolean; reason?: string };
 }
+
+/** The goals an adult may choose. The engine holds nine; these are the
+ *  five a member picks between — the rest are set by circumstance. */
+const GOALS = [
+  { key: 'REDUCE', label: 'Lose weight steadily' },
+  { key: 'WAIST', label: 'Bring my waist down' },
+  { key: 'RECOMPOSITION', label: 'Get stronger, leaner' },
+  { key: 'MAINTAIN', label: 'Stay where I am' },
+  { key: 'GAIN', label: 'Gain weight safely' },
+] as const;
 
 export function BodyCommandModule({ me }: { me: Subject }) {
   const [heightCm, setHeightCm] = useState('');
   const [weightKg, setWeightKg] = useState('');
+  const [waistCm, setWaistCm] = useState('');
+  const [goal, setGoal] = useState<string>('REDUCE');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [result, setResult] = useState<Assessment | null>(null);
@@ -142,6 +162,8 @@ export function BodyCommandModule({ me }: { me: Subject }) {
         age: me.age,
         ...(heightCm ? { heightCm: Number(heightCm) } : {}),
         ...(weightKg && !minor ? { weightKg: Number(weightKg) } : {}),
+        ...(waistCm && !minor ? { waistCm: Number(waistCm) } : {}),
+        ...(minor ? {} : { requestedPathway: goal }),
         optedIntoBodyMetrics: !minor,
       });
       setResult(data as Assessment);
@@ -152,6 +174,8 @@ export function BodyCommandModule({ me }: { me: Subject }) {
     }
   };
 
+  const metrics = result?.metrics;
+
   return (
     <section className="acct__module">
       <h3>
@@ -160,14 +184,28 @@ export function BodyCommandModule({ me }: { me: Subject }) {
       <p className="tdv__what">
         {minor
           ? 'Find which pathway fits you and what it focuses on. Under 18 there are no numbers about your body — ever.'
-          : 'A read of where you are today, and the pathway that follows from it. Nothing here is a verdict on you.'}
+          : 'Tell it your goal and your measurements. You get the numbers, what they do and do not mean, and the pathway that follows. Nothing here is a verdict on you.'}
       </p>
+
+      {!minor && (
+        <label className="tdv__field">
+          <span>What are you here for?</span>
+          <select value={goal} onChange={(e) => setGoal(e.target.value)}>
+            {GOALS.map((g) => (
+              <option key={g.key} value={g.key}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <div className="tdv__askrow">
         <input
           value={heightCm}
           onChange={(e) => setHeightCm(e.target.value)}
           inputMode="numeric"
-          placeholder="Height in cm (optional)"
+          placeholder="Height in cm"
           aria-label="Height in centimetres"
         />
         {!minor && (
@@ -175,27 +213,68 @@ export function BodyCommandModule({ me }: { me: Subject }) {
             value={weightKg}
             onChange={(e) => setWeightKg(e.target.value)}
             inputMode="numeric"
-            placeholder="Weight in kg (optional)"
+            placeholder="Weight in kg"
             aria-label="Weight in kilograms"
+          />
+        )}
+        {!minor && (
+          <input
+            value={waistCm}
+            onChange={(e) => setWaistCm(e.target.value)}
+            inputMode="numeric"
+            placeholder="Waist in cm (optional)"
+            aria-label="Waist in centimetres"
           />
         )}
       </div>
       <button className="btn btn--primary" type="button" disabled={busy} onClick={() => void assess()}>
-        {busy ? 'Reading…' : 'Show me my pathway'}
+        {busy ? 'Reading…' : 'Show me where I am'}
       </button>
       {note && <p className="acct__note">{note}</p>}
+
       {result && (
         <div className="tdv__result">
-          <p className="tdv__snapname">{result.pathway.replace(/_/g, ' ').toLowerCase()}</p>
-          <p className="tdv__line">
-            <strong>What it focuses on:</strong> {result.pathwayFocus.join(' · ')}
-          </p>
+          {metrics?.bmi !== undefined && (
+            <>
+              <p className="tdv__bignum">
+                BMI {metrics.bmi}
+                {metrics.waistToHeightRatio !== undefined && (
+                  <span> · waist-to-height {metrics.waistToHeightRatio}</span>
+                )}
+              </p>
+              <p className="tdv__line">
+                BMI is never used on its own here — it cannot tell muscle from fat, and it
+                says nothing about your health on its own.
+                {metrics.waistToHeightRatio === undefined && metrics.waistToHeightApplicable
+                  ? ' Add your waist measurement above and this reading gets materially better.'
+                  : ''}
+              </p>
+              {(metrics.reasons ?? []).map((r) => (
+                <p key={r} className="tdv__line">
+                  {r}
+                </p>
+              ))}
+              {metrics.confidence !== undefined && (
+                <p className="tdv__line">
+                  <strong>Confidence in this reading:</strong>{' '}
+                  {Math.round(metrics.confidence * 100)}% — more measurements raise it.
+                </p>
+              )}
+            </>
+          )}
+
           {result.metrics === null && (
             <p className="tdv__line tdv__line--guard">
-              No body numbers are calculated or shown for this account.
+              {result.surfacePolicy?.reason ??
+                'No body numbers are calculated or shown for this account.'}
             </p>
           )}
-          {result.safety?.note && <p className="tdv__line">{result.safety.note}</p>}
+
+          <p className="tdv__line">
+            <strong>Your pathway:</strong>{' '}
+            {result.pathway.replace(/_/g, ' ').toLowerCase()} — {result.pathwayFocus.join(' · ')}
+          </p>
+          {result.safety?.note && <p className="tdv__line tdv__line--guard">{result.safety.note}</p>}
         </div>
       )}
     </section>
