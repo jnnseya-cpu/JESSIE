@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Header,
   Patch,
   Post,
   Query,
@@ -36,10 +35,11 @@ export class AuthController {
   /**
    * The guardian's confirmation click — a plain HTML page, because the
    * person opening it is a parent on their phone, not an API client.
+   * Writes the response itself: the platform-wide JSON envelope must not
+   * wrap a browser page, or the parent sees the plumbing around it.
    */
   @Get('guardian/confirm')
-  @Header('content-type', 'text/html; charset=utf-8')
-  async guardianConfirm(@Query('token') token?: string): Promise<string> {
+  async guardianConfirm(@Query('token') token: string | undefined, @Res() res: Response): Promise<void> {
     const page = (title: string, body: string) =>
       `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1">` +
       `<title>${title} — JESS MOVE</title></head>` +
@@ -48,18 +48,19 @@ export class AuthController {
       `<p><a href="https://www.jessmove.com" style="color:#2dd4bf">jessmove.com</a></p></div></body></html>`;
 
     const result = token ? await this.auth.confirmGuardian(token) : null;
-    if (!result) {
-      return page(
-        'This link is not valid',
-        'It may have expired (links work for 7 days) or been used with a different account. ' +
-          'Ask for a fresh request from the account page.',
-      );
-    }
-    return page(
-      'Thank you — confirmed',
-      `You are now the confirmed guardian for ${result.minorName}. Their JESS MOVE account is active, ` +
-        'with every under-18 protection on: no calorie, weight or appearance framing, ever.',
-    );
+    const html = !result
+      ? page(
+          'This link is not valid',
+          'It may have expired (links work for 7 days) or been used with a different account. ' +
+            'Ask for a fresh request from the account page.',
+        )
+      : page(
+          'Thank you — confirmed',
+          `You are now the confirmed guardian for ${result.minorName}. Their JESS MOVE account is active, ` +
+            'with every under-18 protection on: no calorie, weight or appearance framing, ever.',
+        );
+    res.status(200).setHeader('content-type', 'text/html; charset=utf-8');
+    res.send(html);
   }
 
   /** Admin: find an account by name, email or exact id. */
