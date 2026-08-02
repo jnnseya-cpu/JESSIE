@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { apiBase } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
+import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
 import { BodyCommandModule, ChallengesModule, MovaModule, WearablesModule } from './products';
 import { shrinkImage } from './image-shrink';
 
@@ -162,6 +163,11 @@ export function AccountPanel() {
       }),
     [],
   );
+
+  const { data: dash, refresh: refreshDash } = useDashboard();
+  const onActivity = (fresh: Dashboard | null) => {
+    if (fresh) refreshDash();
+  };
 
   const [wallet, setWallet] = useState<{ balance: number } | null>(null);
   const [grantTarget, setGrantTarget] = useState('');
@@ -575,9 +581,10 @@ export function AccountPanel() {
 
         {/* ---- Modules ---- */}
         <div className="acct__grid">
+          <DashboardModule data={dash} />
           <MovaModule me={me} />
-          <SnapModule me={me} />
-          <FoodLensModule me={me} />
+          <SnapModule me={me} onActivity={onActivity} />
+          <FoodLensModule me={me} onActivity={onActivity} />
           <BodyCommandModule me={me} />
           <WearablesModule />
           <ChallengesModule me={me} />

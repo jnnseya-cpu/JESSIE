@@ -12,6 +12,7 @@ import { DbModule } from './db/db.module';
 import { FoodlensModule } from './foodlens/foodlens.module';
 import { MovaModule } from './mova/mova.module';
 import { ChallengesModule } from './challenges/challenges.module';
+import { ActivityModule } from './activity/activity.module';
 import { GrowthModule } from './growth/growth.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { HealthModule } from './health/health.module';
@@ -36,6 +37,7 @@ import { StripeModule } from './stripe/stripe.module';
     FoodlensModule,
     MovaModule,
     ChallengesModule,
+    ActivityModule,
     GrowthModule,
     WearablesModule,
     MailModule,

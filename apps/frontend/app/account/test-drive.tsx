@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { modeForAge } from '@jessmove/shared';
 import { apiBase } from '../api-base';
 import { shrinkImage } from './image-shrink';
+import { recordActivity, type Dashboard } from './dashboard';
 
 /**
  * The two live test surfaces on the account console: point FoodLens at a
@@ -43,7 +44,13 @@ interface FoodLensResult {
   underEighteen: boolean;
 }
 
-export function FoodLensModule({ me }: { me: Subject }) {
+export function FoodLensModule({
+  me,
+  onActivity,
+}: {
+  me: Subject;
+  onActivity?: (d: Dashboard | null) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [result, setResult] = useState<FoodLensResult | null>(null);
@@ -77,6 +84,7 @@ export function FoodLensModule({ me }: { me: Subject }) {
         const json = await res.json();
         if (!res.ok) throw new Error(json.message ?? `${res.status}`);
         setResult(json.data as FoodLensResult);
+        onActivity?.(await recordActivity({ kind: 'food_checked' }));
       } catch (e) {
         setNote(`analysis failed: ${(e as Error).message}`);
       } finally {
@@ -201,10 +209,17 @@ interface Hold {
   retryAfterSeconds: number;
 }
 
-export function SnapModule({ me }: { me: Subject }) {
+export function SnapModule({
+  me,
+  onActivity,
+}: {
+  me: Subject;
+  onActivity?: (d: Dashboard | null) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [snap, setSnap] = useState<Snap | null>(null);
+  const [done, setDone] = useState(false);
   const [hold, setHold] = useState<Hold | null>(null);
 
   const ask = async () => {
@@ -240,8 +255,17 @@ export function SnapModule({ me }: { me: Subject }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? `${res.status}`);
       const data = json.data as Snap | Hold;
-      if ('held' in data && data.held) setHold(data);
-      else setSnap(data as Snap);
+      if ('held' in data && data.held) {
+        setHold(data);
+        onActivity?.(await recordActivity({ kind: 'snap_held', detail: data.blocks.join(', ') }));
+      } else {
+        const issued = data as Snap;
+        setSnap(issued);
+        setDone(false);
+        onActivity?.(
+          await recordActivity({ kind: 'snap_offered', category: issued.movement.category }),
+        );
+      }
     } catch (e) {
       setNote(`the engine said no: ${(e as Error).message}`);
     } finally {
@@ -296,6 +320,27 @@ export function SnapModule({ me }: { me: Subject }) {
           )}
 
           <p className="tdv__line">{snap.why}</p>
+
+          {/* The act that makes every chart on this page possible. */}
+          <div className="tdv__chips">
+            <button
+              type="button"
+              disabled={done}
+              onClick={async () => {
+                setDone(true);
+                onActivity?.(
+                  await recordActivity({
+                    kind: 'snap_completed',
+                    category: snap.movement.category,
+                    seconds: snap.dose.durationSeconds * snap.dose.rounds,
+                  }),
+                );
+              }}
+            >
+              {done ? 'Logged — nice one' : 'I did it'}
+            </button>
+          </div>
+
           <p className="tdv__fine">
             Safety-checked against {snap.safety.rulesEvaluated} rules before it reached you ·
             worth ~{snap.sparksEstimate} Sparks when you finish · best used before{' '}
