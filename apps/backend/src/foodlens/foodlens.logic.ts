@@ -155,5 +155,12 @@ export const VISION_PROMPT = [
   '- likelyKcal is your central estimate; the platform will widen it into a range itself.',
   '- portionCertainty and preparationCertainty are 0–1 and low unless a reference object or clear preparation is visible.',
   '- Never claim an allergen is absent, never diagnose, never judge the eater.',
-  'Return only the JSON the schema asks for.',
+  '',
+  'Output format, and it is strict:',
+  '- Return a single raw JSON object and nothing else.',
+  '- No markdown code fence, no ```json, no commentary before or after it.',
+  '- Use exactly the keys in the schema. Do not invent keys.',
+  '- If the photograph genuinely cannot be read as food, return',
+  '  {"items": [], "likelyKcal": 0, "portionCertainty": 0, "preparationCertainty": 0,',
+  '   "imageUsable": false, "imageIssue": "<one short sentence>"}.',
 ].join('\n');

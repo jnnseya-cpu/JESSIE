@@ -12,6 +12,7 @@ import {
 import { AiGatewayError } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
 import { adviseOnVisionFailure } from './vision-advice.logic';
+import { parseVisionJson } from './vision-parse.logic';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
 import {
   VISION_PROMPT,
@@ -89,23 +90,23 @@ export class FoodlensService {
         jsonSchema: VISION_SCHEMA as unknown as Record<string, unknown>,
       });
 
-      let parses = true;
-      try {
-        JSON.parse(completion.text);
-      } catch {
-        parses = false;
-      }
+      const parsed = parseVisionJson(completion.text);
+      const fenced = /```/.test(completion.text);
 
       return {
         ok: true,
         provider: completion.provider,
         model: completion.model,
         ...(completion.fellBackFrom?.length ? { fellBackFrom: completion.fellBackFrom } : {}),
-        returnedJson: parses,
+        readable: parsed.ok,
+        wrappedInMarkdown: fenced,
+        // The probe image is a single pixel, so "no food here" is the
+        // correct answer and proves the whole path works.
+        sawNoFood: Boolean(parsed.value?.unusable),
         ms: Date.now() - started,
-        advice: parses
-          ? 'Vision works end to end. A photo that still fails is about the photo, not the configuration.'
-          : `The model answered but not as JSON, so analysis discards it. First 200 characters: ${completion.text.slice(0, 200)}`,
+        advice: parsed.ok
+          ? `Vision works end to end${fenced ? ' (the model fences its JSON; the parser handles that)' : ''}. Photograph a real meal and it will be analysed.`
+          : `The model answered but the reply could not be read: ${parsed.why}. First 200 characters: ${completion.text.slice(0, 200)}`,
       };
     } catch (error) {
       // A gateway that never reached a provider carries its reason in the
@@ -163,11 +164,26 @@ export class FoodlensService {
           images: [{ mediaType: `image/${sniffed.format}`, dataBase64: clean.toString('base64') }],
           jsonSchema: VISION_SCHEMA as unknown as Record<string, unknown>,
         });
-        vision = JSON.parse(completion.text) as VisionResult;
-        mode = 'live';
+        // Models wrap JSON in a markdown fence far more often than not,
+        // and a bare JSON.parse turns that into a phantom outage.
+        const parsed = parseVisionJson(completion.text);
+        if (parsed.ok && parsed.value) {
+          if (parsed.value.unusable) {
+            // The model read the photo and says it is not a meal. That is
+            // an answer, not a failure, and the member deserves the words.
+            visionNote = parsed.value.unusable;
+            mode = 'live';
+          } else {
+            vision = parsed.value as VisionResult;
+            mode = 'live';
+          }
+        } else {
+          visionNote = 'The photograph could not be read this time. Declared facts only.';
+          this.logger.warn(`vision parse failed: ${parsed.why ?? 'unknown'}`);
+        }
       } catch (err) {
-        // No provider, provider refusal, or unparseable output: the
-        // deterministic layer still answers — it just says so.
+        // No provider or provider refusal: the deterministic layer still
+        // answers — it just says so.
         visionNote =
           err instanceof Error && err.message.includes('No AI provider')
             ? 'No AI provider is configured, so the photograph was not analysed. Declared facts only.'

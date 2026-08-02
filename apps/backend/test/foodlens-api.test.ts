@@ -104,3 +104,63 @@ test('vision advice names the fix for each real failure mode', async () => {
     /something entirely new/,
   );
 });
+
+/* ------------------------------------------------------------------ *
+ * Vision JSON parsing — the packaging is not the answer
+ * ------------------------------------------------------------------ */
+
+test('a fenced JSON reply is read, not treated as an outage', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  const fenced =
+    '```json\n{"items":[{"name":"roast chicken","confidencePct":91}],"likelyKcal":540,' +
+    '"portionCertainty":0.4,"preparationCertainty":0.5}\n```';
+  const out = parseVisionJson(fenced);
+  assert.equal(out.ok, true);
+  assert.equal(out.value?.items[0]?.name, 'roast chicken');
+  assert.equal(out.value?.likelyKcal, 540);
+});
+
+test('prose either side of the object does not defeat the parser', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  const chatty =
+    'Sure — here is the analysis:\n{"items":[{"name":"rice","confidencePct":80}],' +
+    '"likelyKcal":300,"portionCertainty":0.3,"preparationCertainty":0.3}\nHope that helps.';
+  assert.equal(parseVisionJson(chatty).ok, true);
+});
+
+test('a brace inside a food name cannot truncate the object', async () => {
+  const { extractJsonObject } = await import('../src/foodlens/vision-parse.logic.ts');
+  const tricky = 'x {"items":[{"name":"rice {special}","confidencePct":80}],"likelyKcal":1} y';
+  const extracted = extractJsonObject(tricky);
+  assert.ok(extracted?.endsWith('}'));
+  assert.equal((JSON.parse(extracted!) as { likelyKcal: number }).likelyKcal, 1);
+});
+
+test('a model that says the photo is not food gives a reason, not a failure', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  const out = parseVisionJson(
+    '{"items":[],"likelyKcal":0,"portionCertainty":0,"preparationCertainty":0,' +
+      '"imageUsable":false,"imageIssue":"No food is visible in this photograph."}',
+  );
+  assert.equal(out.ok, true);
+  assert.match(out.value?.unusable ?? '', /No food is visible/);
+});
+
+test('invented keys are ignored and out-of-range numbers are clamped', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  const out = parseVisionJson(
+    '{"items":[{"name":"soup","confidencePct":900}],"likelyKcal":99999,' +
+      '"portionCertainty":5,"preparationCertainty":-2,"moodOfTheChef":"cheerful"}',
+  );
+  assert.equal(out.value?.items[0]?.confidencePct, 100);
+  assert.equal(out.value?.likelyKcal, 6000);
+  assert.equal(out.value?.portionCertainty, 1);
+  assert.equal(out.value?.preparationCertainty, 0);
+  assert.equal((out.value as Record<string, unknown>).moodOfTheChef, undefined);
+});
+
+test('an empty answer with no reason is a parse failure that says why', async () => {
+  const { parseVisionJson } = await import('../src/foodlens/vision-parse.logic.ts');
+  assert.equal(parseVisionJson('I could not analyse that.').ok, false);
+  assert.match(parseVisionJson('{"items":[]}').why ?? '', /no foods and gave no reason/);
+});
