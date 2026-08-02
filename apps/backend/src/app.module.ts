@@ -10,6 +10,7 @@ import { CommsModule } from './comms/comms.module';
 import { ContextModule } from './context/context.module';
 import { DbModule } from './db/db.module';
 import { FoodlensModule } from './foodlens/foodlens.module';
+import { MovaModule } from './mova/mova.module';
 import { GrowthModule } from './growth/growth.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { HealthModule } from './health/health.module';
@@ -32,6 +33,7 @@ import { StripeModule } from './stripe/stripe.module';
     ContextModule,
     DbModule,
     FoodlensModule,
+    MovaModule,
     GrowthModule,
     WearablesModule,
     MailModule,

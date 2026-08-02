@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { modeForAge } from '@jessmove/shared';
 import { apiBase } from '../api-base';
+import { shrinkImage } from './image-shrink';
 
 /**
  * The two live test surfaces on the account console: point FoodLens at a
@@ -56,29 +57,21 @@ export function FoodLensModule({ me }: { me: Subject }) {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      if (file.size > 10_000_000) {
-        setNote('That photo is over 10MB — choose a smaller one.');
-        return;
-      }
       setBusy(true);
       setNote(null);
       setResult(null);
       try {
-        const buffer = await file.arrayBuffer();
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        }
+        // Camera photos are far bigger than the request pipeline allows;
+        // shrink in the browser so the upload always fits and travels fast.
+        const photo = await shrinkImage(file, 1280, 0.85);
         const res = await fetch(`${apiBase()}/foodlens/analyze`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             age: me.age,
-            mimeType: file.type,
-            dataBase64: btoa(binary),
+            mimeType: photo.mimeType,
+            dataBase64: photo.dataBase64,
           }),
         });
         const json = await res.json();
@@ -98,11 +91,11 @@ export function FoodLensModule({ me }: { me: Subject }) {
   return (
     <section className="acct__module">
       <h3>
-        FoodLens <span className="tdv__chip">live</span>
+        FoodLens 360° <span className="tdv__chip">live</span>
       </h3>
-      <p className="acct__note" style={{ marginTop: 0 }}>
-        Photograph a meal and the vision engine reads the plate — items, an honest energy
-        range, never a judgement.
+      <p className="tdv__what">
+        Photograph any meal and see what is on the plate. You get an honest energy range
+        rather than a fake exact number, and never a judgement about you or the food.
       </p>
       <button className="btn btn--primary" type="button" onClick={analyse} disabled={busy}>
         {busy ? 'Reading the plate…' : 'Photograph a meal'}
@@ -172,12 +165,33 @@ export function FoodLensModule({ me }: { me: Subject }) {
 interface Snap {
   prescriptionId: string;
   movement: { name: string; category: string; variant: string };
+  guide?: { what: string; steps: string[]; feel: string; stopIf: string };
   dose: { durationSeconds: number; rounds: number; tempo: string };
   expectedRpe: number;
   why: string;
   safety: { verdict: string; rulesEvaluated: number };
   sparksEstimate: number;
   expiresAt: string;
+}
+
+/** "96s × 1 round" is engine-speak. A person hears time. */
+function friendlyDuration(dose: Snap['dose']): string {
+  const total = dose.durationSeconds * dose.rounds;
+  const minutes = total / 60;
+  const time =
+    minutes < 1.25
+      ? 'about a minute'
+      : minutes < 1.75
+        ? 'about a minute and a half'
+        : `about ${Math.round(minutes)} minutes`;
+  return dose.rounds > 1 ? `${time}, in ${dose.rounds} short rounds` : time;
+}
+
+function friendlyEffort(rpe: number): string {
+  if (rpe <= 2) return 'Very gentle';
+  if (rpe <= 4) return 'Gentle — you could hold a conversation the whole way';
+  if (rpe <= 6) return 'Moderate — working, but comfortable';
+  return 'Strong effort';
 }
 
 interface Hold {
@@ -238,11 +252,11 @@ export function SnapModule({ me }: { me: Subject }) {
   return (
     <section className="acct__module">
       <h3>
-        Your next Snap <span className="tdv__chip">{modeForAge(me.age)} mode</span>
+        Micro-Movement <span className="tdv__chip">{modeForAge(me.age)} mode</span>
       </h3>
-      <p className="acct__note" style={{ marginTop: 0 }}>
-        One movement, dosed for your age mode and the moment you're in, safety-checked
-        before it reaches you.
+      <p className="tdv__what">
+        One short movement you can do right now, wherever you are — no kit, no changing, no
+        gym. It is sized for your age and checked for safety before you ever see it.
       </p>
       <button className="btn btn--primary" type="button" onClick={() => void ask()} disabled={busy}>
         {busy ? 'Asking the engine…' : 'Give me a Snap'}
@@ -261,15 +275,30 @@ export function SnapModule({ me }: { me: Subject }) {
       {snap && (
         <div className="tdv__result">
           <p className="tdv__snapname">{snap.movement.name}</p>
+          {snap.guide && <p className="tdv__line">{snap.guide.what}</p>}
           <p className="tdv__line">
-            <strong>Dose:</strong> {snap.dose.durationSeconds}s × {snap.dose.rounds}{' '}
-            {snap.dose.rounds === 1 ? 'round' : 'rounds'}, {snap.dose.tempo} tempo · effort
-            about {snap.expectedRpe}/10
+            <strong>{friendlyDuration(snap.dose)}</strong>, taken slowly.{' '}
+            {friendlyEffort(snap.expectedRpe)}.
           </p>
+
+          {snap.guide && (
+            <>
+              <ol className="tdv__steps">
+                {snap.guide.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <p className="tdv__line">
+                <strong>You should feel:</strong> {snap.guide.feel}
+              </p>
+              <p className="tdv__line tdv__line--guard">{snap.guide.stopIf}</p>
+            </>
+          )}
+
           <p className="tdv__line">{snap.why}</p>
-          <p className="tdv__line">
-            <strong>Safety:</strong> {snap.safety.verdict} after {snap.safety.rulesEvaluated}{' '}
-            rules · <strong>Sparks:</strong> ~{snap.sparksEstimate} · expires{' '}
+          <p className="tdv__fine">
+            Safety-checked against {snap.safety.rulesEvaluated} rules before it reached you ·
+            worth ~{snap.sparksEstimate} Sparks when you finish · best used before{' '}
             {new Date(snap.expiresAt).toLocaleTimeString('en-GB', {
               hour: '2-digit',
               minute: '2-digit',

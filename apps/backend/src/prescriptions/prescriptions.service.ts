@@ -12,6 +12,7 @@ import {
   type MovementVariant,
 } from '@jessmove/shared';
 import { ContextService, type ContextSignals } from '../context/context.service';
+import { guideFor } from './guide.logic';
 
 export interface PrescriptionRequest {
   userId: string;
@@ -32,6 +33,13 @@ export interface Prescription {
     name: string;
     category: MovementCategory;
     variant: MovementVariant;
+  };
+  /** The coaching. A member reads this, not the telemetry. */
+  guide: {
+    what: string;
+    steps: string[];
+    feel: string;
+    stopIf: string;
   };
   dose: { durationSeconds: number; rounds: number; tempo: 'slow' | 'steady' };
   expectedRpe: number;
@@ -115,6 +123,7 @@ export class PrescriptionsService {
         category,
         variant,
       },
+      guide: guideFor(category, variant),
       dose: { durationSeconds, rounds: durationSeconds > 180 ? 2 : 1, tempo: 'slow' },
       expectedRpe,
       why: this.explain(decision, durationSeconds),

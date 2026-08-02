@@ -305,3 +305,63 @@ test('wearables: a disclosure names what is accessed and what never is', () => {
   assert.ok(d.willNotAccess.length >= NEVER_INGESTED.length);
   assert.match(d.howToDisconnect, /One tap/);
 });
+
+/* ------------------------------------------------------------------ *
+ * Prescription coaching guides
+ * ------------------------------------------------------------------ */
+
+test('every movement category coaches every variant in full', async () => {
+  const { guideFor } = await import('../src/prescriptions/guide.logic.ts');
+  const { MOVEMENT_VARIANTS } = await import('@jessmove/shared');
+  const categories = ['mobility', 'posture', 'balance', 'strength', 'breath', 'cardio', 'neuro', 'eye', 'play', 'skill'] as const;
+
+  for (const category of categories) {
+    for (const variant of MOVEMENT_VARIANTS) {
+      const guide = guideFor(category, variant);
+      assert.ok(guide.what.length > 10, `${category}/${variant} says what it is`);
+      assert.equal(guide.steps.length, 5, `${category}/${variant} has setup + four steps`);
+      assert.ok(guide.feel.length > 10, `${category}/${variant} says how it should feel`);
+      assert.match(guide.stopIf, /never hurt/, 'the stop line is always present');
+      // The first step is the variant's setup — a seated guide must not
+      // open by telling someone to stand.
+      if (variant === 'seated') assert.match(guide.steps[0]!, /Sit/);
+      if (variant === 'bed_recliner') assert.doesNotMatch(guide.steps[0]!, /Stand/);
+    }
+  }
+});
+
+/* ------------------------------------------------------------------ *
+ * MOVA — the coach's assembled prompt and its final guard
+ * ------------------------------------------------------------------ */
+
+test('MOVA: an under-18 prompt states the body rules as absolutes', async () => {
+  const { systemPromptFor } = await import('../src/mova/mova.logic.ts');
+  const child = systemPromptFor({ age: 12 });
+  assert.match(child, /under 18/i);
+  assert.match(child, /Never mention calories, weight, BMI/);
+  const adult = systemPromptFor({ age: 40 });
+  assert.doesNotMatch(adult, /Never mention calories/);
+});
+
+test('MOVA: every published refusal reaches the model', async () => {
+  const { systemPromptFor } = await import('../src/mova/mova.logic.ts');
+  const { MOVA_REFUSES } = await import('@jessmove/shared');
+  const prompt = systemPromptFor({ age: 34 });
+  for (const refusal of MOVA_REFUSES) {
+    assert.ok(prompt.includes(refusal.ask), `"${refusal.ask}" is in the prompt`);
+  }
+});
+
+test('MOVA: a body-shaped answer to a minor is refused by the platform, not the model', async () => {
+  const { violatesMinorRules } = await import('../src/mova/mova.logic.ts');
+  assert.equal(violatesMinorRules('That meal is about 600 calories.'), true);
+  assert.equal(violatesMinorRules('Your BMI suggests…'), true);
+  assert.equal(violatesMinorRules('Try a two-minute walk to wake your legs up.'), false);
+});
+
+test('MOVA: the register matches the age mode it was built for', async () => {
+  const { systemPromptFor } = await import('../src/mova/mova.logic.ts');
+  assert.match(systemPromptFor({ age: 15 }), /teen mode/);
+  assert.match(systemPromptFor({ age: 30 }), /momentum mode/);
+  assert.match(systemPromptFor({ age: 82 }), /vitality mode/);
+});

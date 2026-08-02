@@ -12,6 +12,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { apiBase } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
+import { BodyCommandModule, ChallengesModule, MovaModule, WearablesModule } from './products';
+import { shrinkImage } from './image-shrink';
 
 interface Me {
   userId: string;
@@ -276,24 +278,16 @@ export function AccountPanel() {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      if (file.size > 10_000_000) {
-        setProfileNote('That photo is over 10MB — choose a smaller one.');
-        return;
-      }
       setUploading(slot);
       setProfileNote(null);
       try {
-        const buffer = await file.arrayBuffer();
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        }
+        // Shrunk in the browser: a camera photo would blow the request
+        // pipeline's body limit; a cover needs at most 1600px anyway.
+        const photo = await shrinkImage(file, slot === 'cover' ? 1600 : 640, 0.85);
         const res = await api('/auth/me/media', {
           slot,
-          mimeType: file.type,
-          dataBase64: btoa(binary),
+          mimeType: photo.mimeType,
+          dataBase64: photo.dataBase64,
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.message ?? `${res.status}`);
@@ -581,8 +575,12 @@ export function AccountPanel() {
 
         {/* ---- Modules ---- */}
         <div className="acct__grid">
-          <FoodLensModule me={me} />
+          <MovaModule me={me} />
           <SnapModule me={me} />
+          <FoodLensModule me={me} />
+          <BodyCommandModule me={me} />
+          <WearablesModule />
+          <ChallengesModule me={me} />
 
           {/* Builder's tools — staff only. A member's console shows the
               product, not the scaffolding it was built with. */}
