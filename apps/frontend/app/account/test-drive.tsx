@@ -51,6 +51,9 @@ interface FoodLensResult {
   frontOfPack: Record<string, 'green' | 'amber' | 'red'> | null;
   per100g: { fatG: number; saturatesG: number; sugarsG: number; saltG: number } | null;
   wheel: Record<string, number | null>;
+  capture: { checks: { check: string; passed: boolean; detail: string }[]; passRate: number };
+  swaps: { level: number; action: string; effect: string; keeps: string }[];
+  plants: { distinct: string[]; count: number };
   allergens: { allergen: string; status: string; note?: string }[];
   underEighteen: boolean;
 }
@@ -174,8 +177,61 @@ export function FoodLensModule({
             </>
           )}
 
+          {result.capture && (
+            <>
+              <h4 className="fl__h">Capture quality · {result.capture.passRate}% passed</h4>
+              <ul className="fl__checks">
+                {result.capture.checks.map((c) => (
+                  <li key={c.check} className={c.passed ? 'fl__check fl__check--ok' : 'fl__check'}>
+                    <span>{c.passed ? '✓' : '!'}</span>
+                    <div>
+                      <strong>{c.check}</strong>
+                      <em>{c.detail}</em>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {result.plants && result.plants.count > 0 && (
+            <>
+              <h4 className="fl__h">Plant diversity · {result.plants.count} on this plate</h4>
+              <div className="tdv__chips tdv__chips--static">
+                {result.plants.distinct.map((p) => (
+                  <span key={p} className="fl__plant">
+                    {p}
+                  </span>
+                ))}
+              </div>
+              <p className="fl__note">
+                A count of distinct plants, not a target you are failing.
+              </p>
+            </>
+          )}
+
           <h4 className="fl__h">The Food Intelligence Wheel</h4>
           <FoodWheel wheel={result.wheel ?? {}} />
+
+          {result.swaps && result.swaps.length > 0 && (
+            <>
+              <h4 className="fl__h">The swap ladder · smallest change first</h4>
+              <ol className="fl__ladder">
+                {result.swaps.map((sw) => (
+                  <li key={sw.level}>
+                    <strong>{sw.action}</strong>
+                    <em>{sw.effect}</em>
+                    <span>Keeps: {sw.keeps}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="fl__note">
+                &ldquo;Choose something else&rdquo; is level five, because a suggestion that
+                ignores what you actually feel like eating is a suggestion nobody takes. A
+                short walk after a meal supports your movement — it never cancels out food.
+              </p>
+            </>
+          )}
 
           <h4 className="fl__h">All 14 UK declarable allergens</h4>
           <AllergenGrid allergens={result.allergens} />

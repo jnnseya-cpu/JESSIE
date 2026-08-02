@@ -197,3 +197,74 @@ test('foods and energy are found even when the model nests or renames them', asy
   assert.equal(out.value?.items[0]?.name, 'lentil dahl');
   assert.equal(out.value?.likelyKcal, 430);
 });
+
+test('capture quality names the specific fix for each failed check', async () => {
+  const { captureQualityFrom } = await import('../src/foodlens/foodlens.logic.ts');
+  const poor = captureQualityFrom({
+    age: 40,
+    items: [{ name: 'stew', confidencePct: 40 }],
+    likelyKcal: 500,
+    source: 'ai_visual_estimate',
+    portionCertainty: 0.2,
+    preparationCertainty: 0.2,
+  });
+  assert.ok(poor.passRate < 50);
+  const barcode = poor.checks.find((c) => c.check === 'Verified source');
+  assert.match(barcode?.detail ?? '', /scan the barcode/);
+  const portion = poor.checks.find((c) => c.check === 'Portion pinned down');
+  assert.match(portion?.detail ?? '', /second photo/);
+
+  const good = captureQualityFrom({
+    age: 40,
+    items: [{ name: 'chicken', confidencePct: 95 }],
+    likelyKcal: 500,
+    source: 'barcode_verified_product',
+    portionCertainty: 0.9,
+    preparationCertainty: 0.9,
+    allergenEvidence: { source: 'verified_manufacturer_label', declaresFullList: true },
+  });
+  assert.equal(good.passRate, 100);
+});
+
+test('the swap ladder starts small and ends with a different meal', async () => {
+  const { swapLadderFor } = await import('../src/foodlens/foodlens.logic.ts');
+  const ladder = swapLadderFor({
+    age: 40,
+    items: [],
+    likelyKcal: 800,
+    source: 'ai_visual_estimate',
+    per100g: { fatG: 22, saturatesG: 6, sugarsG: 3, saltG: 1.8 },
+    portionCertainty: 0.4,
+    preparationCertainty: 0.3,
+  });
+  assert.equal(ladder[0]?.level, 1);
+  assert.match(ladder[0]?.action ?? '', /half the sauce/);
+  assert.match(ladder[1]?.action ?? '', /Grill or air-fry/);
+  assert.equal(ladder[4]?.level, 5);
+  assert.match(ladder[4]?.action ?? '', /different meal/);
+});
+
+test('a minor gets no swap ladder and no energy figures', async () => {
+  const { analyse } = await import('../src/foodlens/foodlens.logic.ts');
+  const result = analyse({
+    age: 14,
+    items: [{ name: 'pasta', confidencePct: 90 }],
+    likelyKcal: 600,
+    source: 'ai_visual_estimate',
+    portionCertainty: 0.5,
+    preparationCertainty: 0.5,
+  }) as Record<string, unknown>;
+  assert.deepEqual(result.swaps, []);
+  assert.equal((result.energy as { withheld?: boolean }).withheld, true);
+});
+
+test('plants are counted from what was actually named', async () => {
+  const { plantsFrom } = await import('../src/foodlens/foodlens.logic.ts');
+  const plants = plantsFrom([
+    { name: 'Fried ripe plantain slices', confidencePct: 80 },
+    { name: 'Black beans', confidencePct: 70 },
+    { name: 'Grilled chicken', confidencePct: 90 },
+    { name: 'black beans', confidencePct: 60 },
+  ]);
+  assert.equal(plants.count, 2, 'chicken is not a plant and duplicates count once');
+});

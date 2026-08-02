@@ -106,6 +106,9 @@ export function analyse(facts: AnalysisFacts): Record<string, unknown> {
       return { allergen, status, ...(status === 'unknown' ? { note: ALLERGEN_UNKNOWN_COPY } : {}) };
     }),
     wheel: wheelFrom(facts, score, minor),
+    capture: captureQualityFrom(facts),
+    swaps: minor ? [] : swapLadderFor(facts),
+    plants: plantsFrom(facts.items),
     framing: { permitted: PERMITTED_FRAMINGS, banned: BANNED_FRAMINGS },
     neverClaimed: NEVER_CLAIM,
     underEighteen: minor,
@@ -154,6 +157,140 @@ export function wheelFrom(
     allergenConfidence,
     mealConfidence: intelligenceScore,
   };
+}
+
+/**
+ * What the photograph gave us, and what would have made it better. Every
+ * failed check is a specific instruction rather than a scolding — a
+ * barcode or a second angle is worth more than any amount of model
+ * confidence, and the member is the only one who can supply them.
+ */
+export function captureQualityFrom(facts: AnalysisFacts): {
+  checks: { check: string; passed: boolean; detail: string }[];
+  passRate: number;
+} {
+  const namedWell =
+    facts.items.length > 0 &&
+    facts.items.every((i) => i.confidencePct >= 60);
+
+  const checks = [
+    {
+      check: 'Food recognised',
+      passed: facts.items.length > 0,
+      detail: facts.items.length > 0
+        ? `${facts.items.length} item${facts.items.length === 1 ? '' : 's'} named.`
+        : 'Nothing on the plate could be named.',
+    },
+    {
+      check: 'Named with confidence',
+      passed: namedWell,
+      detail: namedWell
+        ? 'Every item was recognised clearly.'
+        : 'At least one item is a guess. Correcting it narrows everything below.',
+    },
+    {
+      check: 'Portion pinned down',
+      passed: facts.portionCertainty >= 0.6,
+      detail:
+        facts.portionCertainty >= 0.6
+          ? 'The portion is reasonably clear.'
+          : 'A second photo from the side resolves depth, which is most of portion size.',
+    },
+    {
+      check: 'Preparation known',
+      passed: facts.preparationCertainty >= 0.6,
+      detail:
+        facts.preparationCertainty >= 0.6
+          ? 'The cooking method is visible.'
+          : 'Cooking method is unclear, and that is where the hidden oil lives.',
+    },
+    {
+      check: 'Verified source',
+      passed: facts.source === 'barcode_verified_product' || facts.source === 'user_confirmed_quantity',
+      detail:
+        facts.source === 'barcode_verified_product' || facts.source === 'user_confirmed_quantity'
+          ? 'A verified source is in play, so the range can collapse.'
+          : 'If it came in a packet, scan the barcode. It beats any estimate.',
+    },
+    {
+      check: 'Allergens declared',
+      passed: Boolean(facts.allergenEvidence?.declaresFullList),
+      detail: facts.allergenEvidence?.declaresFullList
+        ? 'A complete declaration is available.'
+        : 'No verifiable declaration, so absence can never be stated.',
+    },
+  ];
+
+  return {
+    checks,
+    passRate: Math.round((checks.filter((c) => c.passed).length / checks.length) * 100),
+  };
+}
+
+/**
+ * The swap ladder: the smallest change first. "Choose something else" is
+ * level five, because a suggestion that ignores what you actually feel
+ * like eating is a suggestion nobody takes.
+ */
+export function swapLadderFor(facts: AnalysisFacts): {
+  level: number;
+  action: string;
+  effect: string;
+  keeps: string;
+}[] {
+  const fatty = (facts.per100g?.fatG ?? 0) >= 17.5 || facts.preparationCertainty < 0.5;
+  const salty = (facts.per100g?.saltG ?? 0) >= 1.5;
+
+  const ladder = [
+    {
+      level: 1,
+      action: salty ? 'Use half the sauce or dressing.' : 'Keep the meal, reduce one element.',
+      effect: 'Directional: less salt and less added fat, same meal.',
+      keeps: 'Everything you actually wanted to eat.',
+    },
+    {
+      level: 2,
+      action: fatty ? 'Grill or air-fry instead of deep-frying.' : 'Change the cooking method.',
+      effect: 'Directional: the largest single change to added oil.',
+      keeps: 'The same dish, sauce and sides.',
+    },
+    {
+      level: 3,
+      action: 'Replace one side — half the chips or rice for vegetables or salad.',
+      effect: 'Directional: more fibre, more volume, less energy density.',
+      keeps: 'The main part of the plate.',
+    },
+    {
+      level: 4,
+      action: 'Rebuild the plate: keep the protein, reduce the starch, add vegetables.',
+      effect: 'Directional: a different balance, same ingredients.',
+      keeps: 'The food you already have in.',
+    },
+    {
+      level: 5,
+      action: 'Choose a different meal.',
+      effect: 'The last resort, deliberately.',
+      keeps: 'Nothing — which is why it is last.',
+    },
+  ];
+  return ladder;
+}
+
+/** Distinct plants on the plate. A count, never a target you are failing. */
+export function plantsFrom(items: readonly DetectedFood[]): {
+  distinct: string[];
+  count: number;
+} {
+  const PLANTS =
+    /(bean|lentil|chickpea|pea|spinach|kale|cabbage|broccoli|carrot|tomato|pepper|onion|garlic|ginger|turmeric|coriander|parsley|basil|mushroom|courgette|aubergine|cucumber|lettuce|salad|avocado|potato|sweetcorn|corn|rice|oat|wheat|barley|quinoa|banana|apple|berry|berries|orange|mango|plantain|nut|almond|walnut|cashew|seed|sesame|olive|leek|celery|beetroot|squash|pumpkin|yam|cassava|okra|spring onion)/i;
+  const distinct = [
+    ...new Set(
+      items
+        .map((i) => i.name.toLowerCase().trim())
+        .filter((name) => PLANTS.test(name)),
+    ),
+  ].sort();
+  return { distinct, count: distinct.length };
 }
 
 function clamp01(v: number): number {
