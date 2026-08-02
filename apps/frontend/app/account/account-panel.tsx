@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
  */
 
 import { apiBase } from '../api-base';
+import { FoodLensModule, SnapModule } from './test-drive';
 
 interface Me {
   userId: string;
@@ -580,23 +581,30 @@ export function AccountPanel() {
 
         {/* ---- Modules ---- */}
         <div className="acct__grid">
-          <section className="acct__module">
-            <h3>Explore</h3>
-            <nav className="acct__links" aria-label="Account shortcuts">
-              <a href="/try">
-                <span>Try it as…</span>
-                <em>Every age mode, side by side</em>
-              </a>
-              <a href="/console">
-                <span>API console</span>
-                <em>The engine, hands on</em>
-              </a>
-              <a href="/status">
-                <span>Platform status</span>
-                <em>Live, from the API itself</em>
-              </a>
-            </nav>
-          </section>
+          <FoodLensModule me={me} />
+          <SnapModule me={me} />
+
+          {/* Builder's tools — staff only. A member's console shows the
+              product, not the scaffolding it was built with. */}
+          {me.kind === 'platform_staff' && (
+            <section className="acct__module">
+              <h3>Explore</h3>
+              <nav className="acct__links" aria-label="Account shortcuts">
+                <a href="/try">
+                  <span>Try it as…</span>
+                  <em>Every age mode, side by side</em>
+                </a>
+                <a href="/console">
+                  <span>API console</span>
+                  <em>The engine, hands on</em>
+                </a>
+                <a href="/status">
+                  <span>Platform status</span>
+                  <em>Live, from the API itself</em>
+                </a>
+              </nav>
+            </section>
+          )}
 
           {me.kind === 'platform_staff' && (
             <section className="acct__module acct__module--admin">

@@ -4375,6 +4375,74 @@ textarea:focus-visible {
   border-bottom: 1px solid rgba(45, 212, 191, 0.35);
 }
 
+/* ---- test-drive modules (FoodLens live, next Snap) ---- */
+.tdv__chip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  background: rgba(45, 212, 191, 0.08);
+  vertical-align: middle;
+}
+.tdv__result {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(244, 250, 249, 0.05);
+  border: 1px solid rgba(244, 250, 249, 0.1);
+}
+.tdv__mode {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: rgba(244, 250, 249, 0.55);
+}
+.tdv__items {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tdv__items li {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  font-size: 13.5px;
+  color: #f4faf9;
+}
+.tdv__items li em {
+  font-style: normal;
+  color: rgba(244, 250, 249, 0.55);
+  margin-left: 6px;
+  font-size: 12px;
+}
+.tdv__line {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(244, 250, 249, 0.85);
+}
+.tdv__line strong {
+  color: #f4faf9;
+}
+.tdv__line--guard {
+  color: #fbbf24;
+}
+.tdv__snapname {
+  margin: 0 0 6px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #f4faf9;
+}
+
 /* ---- shared buttons on the dark canvas ---- */
 .acct__ghostbtn {
   border: 1px solid rgba(244, 250, 249, 0.22);
