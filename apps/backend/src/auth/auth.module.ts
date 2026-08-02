@@ -5,6 +5,7 @@ import { AccountsModule } from '../accounts/accounts.module';
 import { MailModule } from '../mail/mail.module';
 import { PushModule } from '../push/push.module';
 import { AuthController } from './auth.controller';
+import { AbuseService } from './abuse.service';
 import { AuthService } from './auth.service';
 import { SessionGuard } from './auth.guard';
 import { UserStore } from './user-store';
@@ -14,11 +15,12 @@ import { UserStore } from './user-store';
   controllers: [AuthController],
   providers: [
     AuthService,
+    AbuseService,
     UserStore,
     // Global: every request gets its session resolved; @Protected routes
     // are enforced when AUTH_ENFORCE is on.
     { provide: APP_GUARD, useClass: SessionGuard },
   ],
-  exports: [AuthService, UserStore],
+  exports: [AuthService, AbuseService, UserStore],
 })
 export class AuthModule {}

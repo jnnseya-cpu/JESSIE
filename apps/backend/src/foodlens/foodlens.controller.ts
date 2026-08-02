@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { AbuseService } from '../auth/abuse.service';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
 import { AnalyzeDto, LogEntryDto, ReadBarcodeDto } from './foodlens.dto';
@@ -24,7 +25,21 @@ export class FoodlensController {
     private readonly foodlens: FoodlensService,
     private readonly foodLog: FoodLogService,
     private readonly auth: AuthService,
+    private readonly abuse: AbuseService,
   ) {}
+
+  /**
+   * A paid call with nobody to bill it to.
+   *
+   * The public pages let anybody try this, which is how people decide to
+   * sign up — so it stays open, with a real but small daily allowance per
+   * address. A member with a session never reaches this: their allowance is
+   * their own balance, and it is metered.
+   */
+  private guardAnonymous(req: Request, uid: string | undefined, action: string): void {
+    if (uid) return;
+    this.abuse.assertAnonymousAllowance(req.ip ?? 'unknown', action);
+  }
 
   /** Whose allowance pays, and whose ledger this lands in. */
   private who(req: Request): string | undefined {
@@ -167,7 +182,9 @@ export class FoodlensController {
   /** Read a barcode off a photograph, for devices that will not stream. */
   @Post('barcode/read')
   readBarcode(@Req() req: Request, @Body() body: ReadBarcodeDto): Promise<Record<string, unknown>> {
-    return this.foodlens.readBarcode(body.mimeType, body.dataBase64, this.who(req));
+    const uid = this.who(req);
+    this.guardAnonymous(req, uid, 'foodlens.barcode.read');
+    return this.foodlens.readBarcode(body.mimeType, body.dataBase64, uid);
   }
 
   /** The trolley, added up: totals, days of food, and what to swap. */
@@ -179,6 +196,7 @@ export class FoodlensController {
   @Post('analyze')
   async analyze(@Req() req: Request, @Body() body: AnalyzeDto): Promise<Record<string, unknown>> {
     const uid = this.who(req);
+    this.guardAnonymous(req, uid, 'foodlens.analyze');
     const result = await this.foodlens.analyze({ ...body, billTo: uid });
 
     // A meal joins the ledger by itself — no save button, and nothing for

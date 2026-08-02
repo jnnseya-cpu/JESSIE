@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import type { Request } from 'express';
 import { MOVA_REFUSES, PRESENCE_DEFINITIONS } from '@jessmove/shared';
+import { AbuseService } from '../auth/abuse.service';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
 import { MovaService } from './mova.service';
@@ -28,6 +29,7 @@ export class MovaController {
   constructor(
     private readonly mova: MovaService,
     private readonly auth: AuthService,
+    private readonly abuse: AbuseService,
   ) {}
 
   /**
@@ -56,6 +58,9 @@ export class MovaController {
 
   @Post('ask')
   ask(@Req() req: Request, @Body() body: AskDto) {
-    return this.mova.ask(body.question, body.age, body.displayName, this.billTo(req));
+    const uid = this.billTo(req);
+    // A stranger gets a small daily allowance; a member spends their own.
+    if (!uid) this.abuse.assertAnonymousAllowance(req.ip ?? 'unknown', 'mova.ask');
+    return this.mova.ask(body.question, body.age, body.displayName, uid);
   }
 }

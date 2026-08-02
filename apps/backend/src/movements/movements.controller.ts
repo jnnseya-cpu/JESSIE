@@ -7,6 +7,7 @@ import {
   type Movement,
 } from '@jessmove/shared';
 import { MovementsService } from './movements.service';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('movements')
 export class MovementsController {
@@ -33,6 +34,7 @@ export class MovementsController {
     };
   }
 
+  @AdminOnly()
   @Post()
   upsert(@Body() movement: Movement) {
     return this.movements.upsert(movement);
@@ -45,6 +47,7 @@ export class MovementsController {
     return { found: true, failures: this.movements.checkGate(movement) };
   }
 
+  @AdminOnly()
   @Post(':id/publish')
   publish(@Param('id') id: string) {
     return this.movements.publish(id);

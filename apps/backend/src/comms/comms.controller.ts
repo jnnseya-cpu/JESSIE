@@ -12,6 +12,7 @@ import {
 } from '@jessmove/shared';
 import { CommsService } from './comms.service';
 import { SendEventDto } from './comms.dto';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('comms')
 export class CommsController {
@@ -50,21 +51,25 @@ export class CommsController {
   }
 
   /** Resolve without sending — the dry run behind "why did I not get this?" */
+  @AdminOnly()
   @Post('preview')
   preview(@Body() body: SendEventDto) {
     return this.comms.preview(body.event, body.to, body.values ?? {});
   }
 
+  @AdminOnly()
   @Post('send')
   send(@Body() body: SendEventDto) {
     return this.comms.send(body.event, body.to, body.values ?? {});
   }
 
+  @AdminOnly()
   @Get('deliveries')
   deliveries(@Query('limit') limit?: string) {
     return this.comms.deliveries(Number(limit) || 40);
   }
 
+  @AdminOnly()
   @Get('stats')
   stats() {
     return this.comms.stats();

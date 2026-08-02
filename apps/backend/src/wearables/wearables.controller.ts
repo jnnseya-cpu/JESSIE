@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { CallbackDto, ConnectDto, IngestDto, RevokeDto, ScopesDto } from './wearables.dto';
 import { WearablesService } from './wearables.service';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('wearables')
 export class WearablesController {
@@ -36,6 +37,7 @@ export class WearablesController {
     return this.wearables.revoke(body.userId, body.provider);
   }
 
+  @SelfOnly('userId')
   @Get('status/:userId')
   status(@Param('userId') userId: string): Record<string, unknown> {
     return this.wearables.status(userId);

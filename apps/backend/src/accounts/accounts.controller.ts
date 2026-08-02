@@ -28,6 +28,7 @@ import {
 import { CreateAccountDto, MediaCheckDto, SaveDto, UploadMediaDto } from './accounts.dto';
 import { StorageService } from '../storage/storage.service';
 import { ProfilesService } from './profiles.service';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('accounts')
 export class AccountsController {
@@ -112,6 +113,7 @@ export class AccountsController {
     return this.profiles.createAccount(body.userId, body.kind, body.age, body.guardianId);
   }
 
+  @AdminOnly()
   @Get('profiles')
   list() {
     return this.profiles.list();
@@ -125,6 +127,7 @@ export class AccountsController {
    * — because closing an account is the one irreversible thing somebody
    * does while upset, and a month to reconsider costs nothing.
    */
+  @AdminOnly()
   @Delete('profiles/:userId')
   remove(@Param('userId') userId: string) {
     return this.profiles.remove(userId);
@@ -137,6 +140,7 @@ export class AccountsController {
    * explicitly set. A reset endpoint that works in production is a reset
    * endpoint that eventually runs there.
    */
+  @AdminOnly()
   @Post('reset')
   reset() {
     const production = process.env.NODE_ENV === 'production';
@@ -153,6 +157,7 @@ export class AccountsController {
    * Create one account of every kind, so the platform can be tried from
    * each side. Idempotent — running it twice adds nothing.
    */
+  @AdminOnly()
   @Post('seed')
   seed() {
     const result = this.profiles.seed();

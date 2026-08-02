@@ -19,7 +19,7 @@ import {
   requiredAcus,
   type CostInput,
 } from '@jessmove/body-command';
-import { AdminOnly } from '../auth/auth.guard';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 import { WalletService, type SpendControls, type SpendRequest } from './wallet.service';
 
 @Controller('acu')
@@ -64,12 +64,14 @@ export class AcuController {
    * two wallets exist for one subject, which one `forSubject` finds is
    * decided by iteration order. One subject, one wallet.
    */
+  @AdminOnly()
   @Post('wallets')
   create(@Body() body: CreateWalletDto) {
     return this.wallets.forSubject(body.subjectType, body.subjectId);
   }
 
   /** A person's own wallet, found or created by their user id. */
+  @SelfOnly('userId')
   @Get('balance/:userId')
   async balanceFor(@Param('userId') userId: string) {
     const wallet = await this.wallets.forSubject('user', userId);
@@ -80,6 +82,7 @@ export class AcuController {
     };
   }
 
+  @AdminOnly()
   @Get('wallets/:id')
   async balance(@Param('id') id: string) {
     const wallet = await this.wallets.get(id);
@@ -94,12 +97,14 @@ export class AcuController {
     };
   }
 
+  @AdminOnly()
   @Post('wallets/:id/subscription')
   async deposit(@Param('id') id: string, @Body() body: SubscriptionDepositDto) {
     const grant = await this.wallets.depositSubscription(id, body.amountPaidGbp);
     return grant ?? { skipped: 'rollover cap reached' };
   }
 
+  @AdminOnly()
   @Post('wallets/:id/topup')
   topup(@Param('id') id: string, @Body() body: TopUpDto) {
     return this.wallets.purchase(id, body.amountGbp, body.bonusAcus ?? 0);
@@ -122,6 +127,7 @@ export class AcuController {
     return { walletId: wallet.id, granted, balance: await this.wallets.balance(wallet.id) };
   }
 
+  @AdminOnly()
   @Post('wallets/:id/spend')
   spend(@Param('id') id: string, @Body() body: SpendDto) {
     return this.wallets.spend({ ...body, walletId: id });

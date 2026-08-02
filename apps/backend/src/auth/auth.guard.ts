@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   SetMetadata,
   UnauthorizedException,
@@ -65,6 +66,26 @@ export class SessionGuard implements CanActivate {
       context.getClass(),
     ]);
 
+    const selfParam = this.reflector.getAllAndOverride<string>(SELF_ONLY_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    // One person's records, asked for by that person — or by staff.
+    if (selfParam) {
+      if (!session) {
+        throw new UnauthorizedException('this endpoint needs a signed-in session');
+      }
+      if (session.kind !== 'platform_staff') {
+        const params = req.params as Record<string, string | undefined>;
+        const asked = params?.[selfParam] ?? (req.body as Record<string, unknown> | undefined)?.[selfParam];
+        if (typeof asked === 'string' && asked !== session.uid) {
+          throw new ForbiddenException('that is somebody else’s account');
+        }
+      }
+      return true;
+    }
+
     if (!needsAuth && !needsAdmin) return true;
 
     // Administration is never relaxed.
@@ -100,3 +121,24 @@ export const CurrentSession = createParamDecorator(
     return req.session ?? null;
   },
 );
+
+/**
+ * The route reads or writes one person's records, and that person must be
+ * the one asking.
+ *
+ * `@AdminOnly` covers the platform's own doors. This covers the other
+ * shape, which is more common and was wide open before a public launch:
+ * `/acu/balance/:userId`, `/wearables/status/:userId`,
+ * `/accounts/profiles/:userId` and their siblings all took an id from the
+ * URL and answered with that account's data, to anybody who asked. A
+ * member id is not a secret — it appears in the member's own responses —
+ * so the only thing standing between one member and another's records was
+ * that nobody had tried.
+ *
+ * Staff pass, because support has to be able to look. Everybody else must
+ * be asking about themselves.
+ */
+export const SELF_ONLY_KEY = 'jm:self-only';
+
+/** @param param the route parameter carrying the account id. */
+export const SelfOnly = (param = 'userId') => SetMetadata(SELF_ONLY_KEY, param);

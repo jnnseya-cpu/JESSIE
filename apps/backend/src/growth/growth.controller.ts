@@ -28,6 +28,7 @@ import {
   trustScore,
 } from '@jessmove/shared';
 import { PayoutDto, RevenueDto, TrustDto } from './growth.dto';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('growth')
 export class GrowthController {
@@ -77,6 +78,7 @@ export class GrowthController {
   }
 
   /** Price a commission. Shows the working, not just the number. */
+  @AdminOnly()
   @Post('commission')
   commission(@Body() body: RevenueDto) {
     const { kind, verifiedPaidReferrals, lifetimeAlreadyPaidGbp, ...revenue } = body;
@@ -98,12 +100,14 @@ export class GrowthController {
   }
 
   /** Score a referral against the fraud signals. */
+  @AdminOnly()
   @Post('trust')
   trust(@Body() body: TrustDto) {
     return { referralId: body.referralId ?? null, ...trustScore(body.signals ?? []) };
   }
 
   /** Can this balance be paid out right now, and if not, why not. */
+  @AdminOnly()
   @Post('payout')
   payout(@Body() body: PayoutDto) {
     return payoutDecision(body);

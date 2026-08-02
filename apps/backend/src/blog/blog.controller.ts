@@ -13,6 +13,7 @@ import { BlogAnalyticsService } from './analytics.service';
 import { BlogService } from './blog.service';
 import { DraftPostDto, TransitionDto, ViewDto } from './blog.dto';
 import { SeoAgentService } from './seo-agent.service';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('blog')
 export class BlogController {
@@ -68,6 +69,7 @@ export class BlogController {
   }
 
   /** Commission a draft. Returns the draft and its audit — never a published page. */
+  @AdminOnly()
   @Post('agent/draft')
   async draft(@Body() body: DraftPostDto) {
     const result = await this.agent.draft(body);
@@ -87,6 +89,7 @@ export class BlogController {
   }
 
   /** Where the next article should come from. */
+  @AdminOnly()
   @Get('agent/gaps')
   gaps() {
     return this.agent.gaps(this.posts.publishedClusterKeys());
@@ -99,6 +102,7 @@ export class BlogController {
     return post.audit ?? { audited: false, reason: post.auditNote };
   }
 
+  @AdminOnly()
   @Post('posts/:slug/status')
   transition(@Param('slug') slug: string, @Body() body: TransitionDto) {
     return this.posts.transition(slug, body.to, body.reviewer);

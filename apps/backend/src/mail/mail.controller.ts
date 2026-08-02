@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 import { MailService } from './mail.service';
 import { PreviewMailDto, SendMailDto } from './mail.dto';
 
@@ -23,6 +24,7 @@ export class MailController {
   }
 
   /** Render a catalogue event without sending it. */
+  @AdminOnly()
   @Post('preview')
   preview(@Body() body: PreviewMailDto) {
     try {
@@ -33,6 +35,7 @@ export class MailController {
   }
 
   /** Send a test. Records as sandbox when SMTP is not configured. */
+  @AdminOnly()
   @Post('send')
   async send(@Body() body: SendMailDto) {
     try {
@@ -42,6 +45,7 @@ export class MailController {
     }
   }
 
+  @AdminOnly()
   @Get('recent')
   async recent(@Query('limit') limit?: string) {
     return this.mail.recent(Number(limit) || 25);

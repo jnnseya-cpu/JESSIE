@@ -87,29 +87,71 @@ export class StripeService {
   }
 
   /** Fast path memory, durable path processed_events. */
-  private async wasSeen(id: string): Promise<boolean> {
-    if (this.seenEvents.has(id)) return true;
-    if (!this.pool) return false;
+  /**
+   * Takes the event, or reports that somebody else already has it.
+   *
+   * This used to be a read followed later by a write, which is a race with
+   * money on the end of it: Stripe retries, and can deliver the same event
+   * to two instances at once. Both read "not seen", both grant the plan's
+   * allowance, and both then insert with ON CONFLICT DO NOTHING. One
+   * payment, two grants.
+   *
+   * The unique key on event_id was always the lock — it was being taken
+   * too late. The insert is now the claim, and it is atomic. A claim left
+   * `processing` for a quarter of an hour is a crashed attempt, and the
+   * retry is allowed to take it over, which is what the old ordering was
+   * protecting and this keeps.
+   */
+  private async claim(id: string, type: string): Promise<boolean> {
+    if (!this.pool) {
+      // Memory mode: one instance, so the set is the whole truth.
+      if (this.seenEvents.has(id)) return false;
+      this.seenEvents.add(id);
+      return true;
+    }
     try {
-      const result = await this.pool.query('SELECT 1 FROM processed_events WHERE event_id = $1', [id]);
-      return result.rows.length > 0;
+      const result = await this.pool.query(
+        `INSERT INTO processed_events (event_id, kind, status, claimed_at)
+         VALUES ($1, $2, 'processing', now())
+         ON CONFLICT (event_id) DO UPDATE
+           SET status = 'processing', claimed_at = now(), kind = EXCLUDED.kind
+         WHERE processed_events.status = 'processing'
+           AND processed_events.claimed_at < now() - interval '15 minutes'
+         RETURNING event_id`,
+        [id, type],
+      );
+      const won = result.rows.length > 0;
+      if (won) this.seenEvents.add(id);
+      return won;
     } catch (err) {
-      this.logger.warn(`event dedupe read failed: ${err instanceof Error ? err.message : String(err)}`);
+      // A dedupe store that cannot be reached must not become a way to
+      // process an event twice, so the safe answer is "somebody has it".
+      this.logger.error(`event claim failed: ${err instanceof Error ? err.message : String(err)}`);
       return false;
     }
   }
 
-  /** Recorded only after processing, so a crash mid-event lets Stripe retry. */
-  private async recordSeen(id: string, type: string): Promise<void> {
-    this.seenEvents.add(id);
+  /** Marks a claimed event finished, so no retry ever repeats it. */
+  private async settle(id: string): Promise<void> {
     if (!this.pool) return;
     try {
       await this.pool.query(
-        'INSERT INTO processed_events (event_id, kind) VALUES ($1, $2) ON CONFLICT (event_id) DO NOTHING',
-        [id, type],
+        `UPDATE processed_events SET status = 'done' WHERE event_id = $1`,
+        [id],
       );
     } catch (err) {
-      this.logger.warn(`event dedupe write failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.warn(`event settle failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** Releases a claim whose work threw, so Stripe's retry can pick it up. */
+  private async release(id: string): Promise<void> {
+    this.seenEvents.delete(id);
+    if (!this.pool) return;
+    try {
+      await this.pool.query('DELETE FROM processed_events WHERE event_id = $1', [id]);
+    } catch (err) {
+      this.logger.warn(`event release failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -322,16 +364,36 @@ export class StripeService {
 
     if (!id) throw new BadRequestException('the event has no id');
 
-    if (await this.wasSeen(id)) {
+    // Claimed before any work happens, so two deliveries of one event
+    // cannot both act on it.
+    if (!(await this.claim(id, type))) {
       return { id, type, outcome: 'duplicate', detail: 'Already processed. Nothing repeated.' };
     }
 
     if (!isHandled(type)) {
-      // Recorded as seen so a retry of the same unknown event is cheap.
-      await this.recordSeen(id, type);
+      await this.settle(id);
       return { id, type, outcome: 'ignored', detail: 'Not an event this platform acts on.' };
     }
 
+    try {
+      return await this.applyClaimed(id, type, event);
+    } catch (error) {
+      await this.release(id);
+      throw error;
+    }
+  }
+
+  /** The work itself, with the event already claimed. */
+  private async applyClaimed(
+    id: string,
+    type: string,
+    event: Record<string, unknown>,
+  ): Promise<{
+    id: string;
+    type: string;
+    outcome: 'applied' | 'duplicate' | 'ignored';
+    detail: string;
+  }> {
     const data = (event.data ?? {}) as Record<string, unknown>;
     const object = (data.object ?? {}) as Record<string, unknown>;
     const userId = this.userFor(event, object);
@@ -436,7 +498,7 @@ export class StripeService {
       }
     }
 
-    await this.recordSeen(id, type);
+    await this.settle(id);
     return { id, type, outcome: 'applied', detail };
   }
 }
