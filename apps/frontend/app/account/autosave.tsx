@@ -19,6 +19,8 @@ import { apiBase } from '../api-base';
 
 const DEBOUNCE_MS = 900;
 const MAX_INTERVAL_MS = 6_000;
+/** How long a payload that has just failed is left alone. */
+const RETRY_AFTER_MS = 30_000;
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -73,10 +75,19 @@ export function useAutosave(key: string, value: unknown, enabled = true): SaveSt
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef<string>('');
   const lastAttemptAt = useRef<number>(0);
+  /** The payload that failed, and when — so it is not retried on a loop. */
+  const failed = useRef<{ payload: string; at: number } | null>(null);
 
   const push = useCallback(
     async (serialised: string) => {
       setSaveState('saving');
+      // An attempt clock, not a success clock. Recording it only on
+      // success meant a failing save always looked overdue, which skipped
+      // the debounce and retried immediately — and since callers pass a
+      // fresh object each render, the re-render scheduled the next retry
+      // straight away. A signed-out tab put fifty requests a minute into
+      // the API, forever.
+      lastAttemptAt.current = Date.now();
       try {
         const res = await fetch(`${apiBase()}/state/${encodeURIComponent(key)}`, {
           method: 'PUT',
@@ -86,11 +97,12 @@ export function useAutosave(key: string, value: unknown, enabled = true): SaveSt
         });
         if (!res.ok) throw new Error(String(res.status));
         lastSaved.current = serialised;
-        lastAttemptAt.current = Date.now();
+        failed.current = null;
         setSaveState('saved');
       } catch {
         // A failed save is not an error the member caused, and the next
         // change will try again, so it is stated once and quietly.
+        failed.current = { payload: serialised, at: Date.now() };
         setSaveState('error');
       }
     },
@@ -106,6 +118,18 @@ export function useAutosave(key: string, value: unknown, enabled = true): SaveSt
       return;
     }
     if (serialised === lastSaved.current || serialised === 'null') return;
+
+    // This exact draft has just failed — no session, no signal, or the
+    // server said no. Leave it alone until it changes or the cooldown
+    // passes; a retry loop helps nobody and costs everybody.
+    const lastFailure = failed.current;
+    if (
+      lastFailure &&
+      lastFailure.payload === serialised &&
+      Date.now() - lastFailure.at < RETRY_AFTER_MS
+    ) {
+      return;
+    }
 
     if (timer.current) clearTimeout(timer.current);
     // Someone typing continuously still gets saved, rather than only
