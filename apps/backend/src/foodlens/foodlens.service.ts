@@ -13,7 +13,7 @@ import { AiGatewayError } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
 import { BarcodeService, type LabelFacts } from './barcode.service';
 import { adviseOnVisionFailure } from './vision-advice.logic';
-import { parseVisionJson } from './vision-parse.logic';
+import { extractJsonObject, parseVisionJson } from './vision-parse.logic';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
 import {
   VISION_PROMPT,
@@ -231,19 +231,28 @@ export class FoodlensService {
         ],
       });
 
-      const parsed = parseVisionJson(
-        // The shared parser wants a food list; give it one so the same
-        // fence-stripping and clamping applies to this reply too.
-        completion.text.replace(/^\s*\{/, '{"items":[{"name":"x","confidencePct":1}],'),
-      );
-      const per100g = parsed.value?.per100g;
-      if (!per100g) return null;
-      const complete =
-        typeof per100g.fatG === 'number' &&
-        typeof per100g.saturatesG === 'number' &&
-        typeof per100g.sugarsG === 'number' &&
-        typeof per100g.saltG === 'number';
-      return complete ? (per100g as { fatG: number; saturatesG: number; sugarsG: number; saltG: number }) : null;
+      // Parse it directly: the shared vision parser expects a food list
+      // and would reject a bare nutrition object, which is exactly what
+      // this call asks for.
+      const json = extractJsonObject(completion.text);
+      if (!json) return null;
+      const raw = JSON.parse(json) as Record<string, unknown>;
+
+      const num = (key: string): number | null => {
+        const value = raw[key];
+        return typeof value === 'number' && Number.isFinite(value)
+          ? Math.min(100, Math.max(0, value))
+          : null;
+      };
+      const fatG = num('fatG');
+      const saturatesG = num('saturatesG');
+      const sugarsG = num('sugarsG');
+      const saltG = num('saltG');
+      if (fatG === null || saturatesG === null || sugarsG === null || saltG === null) return null;
+      // All zeros is a non-answer wearing a measurement's clothes.
+      if (fatG + saturatesG + sugarsG + saltG === 0) return null;
+
+      return { fatG, saturatesG, sugarsG, saltG };
     } catch (error) {
       this.logger.warn(`per100g second pass failed: ${(error as Error).message}`);
       return null;
