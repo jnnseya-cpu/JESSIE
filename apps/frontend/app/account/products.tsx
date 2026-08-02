@@ -565,3 +565,211 @@ export function ChallengesModule({ me }: { me: Subject }) {
     </section>
   );
 }
+
+/* ------------------------------------------------------------------ *
+ * Household & organisation — one list, two very different promises
+ * ------------------------------------------------------------------ */
+
+interface GroupSummary {
+  id: string;
+  kind: 'household' | 'organisation';
+  name: string;
+  joinCode: string;
+  isOwner: boolean;
+  size: number;
+}
+
+type GroupReport =
+  | {
+      kind: 'household';
+      size: number;
+      people: { displayName: string; daysMoved: number; minor: boolean }[];
+      sharedDays: number;
+      note: string;
+    }
+  | {
+      kind: 'organisation';
+      size: number;
+      suppressed: boolean;
+      participationPct: number | null;
+      activeMembers: number | null;
+      medianDaysMoved: number | null;
+      floor: number;
+      note: string;
+    };
+
+export function GroupsModule({ me }: { me: Subject }) {
+  const [groups, setGroups] = useState<GroupSummary[] | null>(null);
+  const [reports, setReports] = useState<Record<string, GroupReport>>({});
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${apiBase()}/groups/mine`, { credentials: 'include' });
+      if (!res.ok) {
+        setGroups([]);
+        return;
+      }
+      const list = ((await res.json()).data.groups ?? []) as GroupSummary[];
+      setGroups(list);
+      for (const g of list) {
+        const r = await fetch(`${apiBase()}/groups/${g.id}/report`, { credentials: 'include' });
+        if (!r.ok) continue;
+        const report = ((await r.json()).data as GroupReport);
+        setReports((prev) => ({ ...prev, [g.id]: report }));
+      }
+    } catch {
+      setGroups([]);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const run = async (fn: () => Promise<unknown>, failure: string) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await fn();
+      await load();
+    } catch (e) {
+      setNote(`${failure}: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="acct__module">
+      <h3>
+        Household &amp; team <span className="tdv__chip">shared</span>
+      </h3>
+      <p className="tdv__what">
+        A household sees each other by name — that is what makes a grandparent-and-grandchild
+        streak possible. An organisation sees participation above a privacy floor and never a
+        person, however senior they are.
+      </p>
+
+      {(groups ?? []).map((g) => {
+        const report = reports[g.id];
+        return (
+          <div key={g.id} className="tdv__result">
+            <p className="tdv__snapname">
+              {g.name} <span className="tdv__chip">{g.kind}</span>
+            </p>
+
+            {report?.kind === 'household' && (
+              <>
+                <div className="chart__wbars">
+                  {report.people.map((p) => (
+                    <div key={p.displayName} className="chart__wbar">
+                      <span className="chart__wlabel">
+                        {p.displayName}
+                        {p.minor ? ' · under 18' : ''}
+                      </span>
+                      <span className="chart__wtrack">
+                        <span
+                          className="chart__wfill"
+                          style={{
+                            width: `${Math.min(100, (p.daysMoved / 14) * 100)}%`,
+                            background: 'linear-gradient(90deg, #00a99d, #2dd4bf)',
+                          }}
+                        />
+                      </span>
+                      <span className="chart__wvalue">{p.daysMoved}d</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="tdv__line">
+                  <strong>{report.sharedDays}</strong> day{report.sharedDays === 1 ? '' : 's'}{' '}
+                  where everybody moved — the thing a family actually plays for.
+                </p>
+                <p className="chart__note">{report.note}</p>
+              </>
+            )}
+
+            {report?.kind === 'organisation' && (
+              <>
+                {report.suppressed ? (
+                  <>
+                    <p className="tdv__line tdv__line--guard">
+                      Suppressed — {report.size} of {report.floor} people needed.
+                    </p>
+                    <p className="chart__note">{report.note}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="fl__big">{report.participationPct}%</p>
+                    <p className="tdv__line">
+                      of {report.size} people moved at least once in the fortnight · median{' '}
+                      {report.medianDaysMoved} days each
+                    </p>
+                    <p className="chart__note">{report.note}</p>
+                  </>
+                )}
+              </>
+            )}
+
+            <p className="acct__note">
+              Join code: <strong>{g.joinCode}</strong>
+            </p>
+          </div>
+        );
+      })}
+
+      <div className="tdv__askrow" style={{ marginTop: 12 }}>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Name it — e.g. The Nseyas"
+          aria-label="Group name"
+          maxLength={60}
+        />
+      </div>
+      <div className="tdv__chips">
+        <button
+          type="button"
+          disabled={busy || name.trim().length < 2}
+          onClick={() => void run(() => post('/groups', { kind: 'household', name }), 'could not create')}
+        >
+          Start a household
+        </button>
+        {me.age >= 18 && (
+          <button
+            type="button"
+            disabled={busy || name.trim().length < 2}
+            onClick={() =>
+              void run(() => post('/groups', { kind: 'organisation', name }), 'could not create')
+            }
+          >
+            Start an organisation
+          </button>
+        )}
+      </div>
+
+      <div className="tdv__askrow" style={{ marginTop: 10 }}>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="Join with a code"
+          aria-label="Group join code"
+          maxLength={12}
+        />
+        <button
+          className="btn acct__ghostbtn"
+          type="button"
+          disabled={busy || code.length < 4}
+          onClick={() => void run(async () => { await post('/groups/join', { code }); setCode(''); }, 'could not join')}
+        >
+          Join
+        </button>
+      </div>
+      {note && <p className="acct__note">{note}</p>}
+    </section>
+  );
+}

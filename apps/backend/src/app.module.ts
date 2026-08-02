@@ -13,6 +13,7 @@ import { FoodlensModule } from './foodlens/foodlens.module';
 import { MovaModule } from './mova/mova.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { ActivityModule } from './activity/activity.module';
+import { GroupsModule } from './groups/groups.module';
 import { GrowthModule } from './growth/growth.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { HealthModule } from './health/health.module';
@@ -38,6 +39,7 @@ import { StripeModule } from './stripe/stripe.module';
     MovaModule,
     ChallengesModule,
     ActivityModule,
+    GroupsModule,
     GrowthModule,
     WearablesModule,
     MailModule,

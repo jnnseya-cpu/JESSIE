@@ -13,7 +13,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiBase } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
-import { BodyCommandModule, ChallengesModule, MovaModule, WearablesModule } from './products';
+import {
+  BodyCommandModule,
+  ChallengesModule,
+  GroupsModule,
+  MovaModule,
+  WearablesModule,
+} from './products';
 import { shrinkImage } from './image-shrink';
 
 interface Me {
@@ -588,6 +594,7 @@ export function AccountPanel() {
           <BodyCommandModule me={me} />
           <WearablesModule />
           <ChallengesModule me={me} />
+          <GroupsModule me={me} />
 
           {/* Builder's tools — staff only. A member's console shows the
               product, not the scaffolding it was built with. */}
