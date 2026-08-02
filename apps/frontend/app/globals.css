@@ -6150,3 +6150,8 @@ textarea:focus-visible {
 .fl__light--unmeasured .fl__lightval { color: var(--jm-faint); font-weight: 400; }
 .fl__light--unmeasured .fl__lightband { color: var(--jm-dim); letter-spacing: 0.02em; }
 .fl__light--unmeasured .fl__lightbasis { color: var(--jm-teal); }
+
+/* A published composition figure. Real, useful, and not a reading of this
+   particular plate — the tile is banded like any other but the word under
+   it says where it came from. */
+.fl__light--reference .fl__lightbasis { color: var(--jm-sky); }

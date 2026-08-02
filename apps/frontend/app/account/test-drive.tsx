@@ -64,7 +64,7 @@ interface FoodLensResult {
         grams: number | null;
         band: 'green' | 'amber' | 'red' | null;
         derived: boolean;
-        basis: 'label' | 'estimate' | 'calculated' | 'unmeasured';
+        basis: 'label' | 'estimate' | 'calculated' | 'reference' | 'unmeasured';
       }[]
     | null;
   wheel: Record<string, number | null>;
@@ -284,8 +284,10 @@ export function FoodLensModule({
                 colour because colour alone is not an accessible signal. Each figure says how
                 it was arrived at: <strong>from the label</strong> when a barcode or a
                 confirmed label supplied it, <strong>worked out</strong> when it came from the
-                plate&rsquo;s own macros and weight, and <strong>estimated</strong> when the
-                model read it from the photograph. A tile reading <strong>not measured</strong>
+                plate&rsquo;s own macros and weight, <strong>typical for this dish</strong> when
+                it came from published composition figures for a food of that name, and{' '}
+                <strong>estimated</strong> when the model read it from the photograph. A tile
+                reading <strong>not measured</strong>
                 is exactly that — nobody measured it, and this refuses to print a zero in its
                 place, because 0g bands as LOW and LOW is a claim. Scan the barcode and every
                 one of them becomes a fact off the packet.

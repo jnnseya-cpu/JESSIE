@@ -39,6 +39,13 @@ export interface AnalysisFacts {
   /** How the energy figure is evidenced. */
   readonly source: EvidenceSource;
   readonly per100g?: Partial<{ fatG: number; saturatesG: number; sugarsG: number; saltG: number }>;
+  /**
+   * Set when those figures came from the shipped composition table rather
+   * than from the plate itself. It changes the word under each tile, and
+   * it must: a typical composition for a dish of that name is a different
+   * kind of claim from a reading of what is actually in front of somebody.
+   */
+  readonly per100gFromReference?: readonly string[];
   /** Total edible weight, which is what makes a per-100g figure derivable. */
   readonly plateGrams?: number;
   readonly grams?: { proteinG: number; carbohydrateG: number; fatG: number };
@@ -146,7 +153,7 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
   grams: number | null;
   band: 'green' | 'amber' | 'red' | null;
   derived: boolean;
-  basis: 'label' | 'estimate' | 'calculated' | 'unmeasured';
+  basis: 'label' | 'estimate' | 'calculated' | 'reference' | 'unmeasured';
 }[] {
   // A figure from a barcode or a confirmed label is a fact. The same
   // figure from a photograph is an estimate, and the row must say so.
@@ -180,7 +187,13 @@ export function frontOfPackFrom(facts: AnalysisFacts): {
       grams: Math.round(value * 10) / 10,
       band: bandFor(value, spec.low, spec.high),
       derived,
-      basis: derived ? ('calculated' as const) : verified ? ('label' as const) : ('estimate' as const),
+      basis: derived
+        ? ('calculated' as const)
+        : verified
+          ? ('label' as const)
+          : facts.per100gFromReference?.length
+            ? ('reference' as const)
+            : ('estimate' as const),
     };
   });
 }

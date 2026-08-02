@@ -9,6 +9,7 @@ import {
   type Allergen,
   type EvidenceSource,
 } from '@jessmove/foodlens';
+import { plateComposition } from '@jessmove/foodlens';
 import { AiGatewayError } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
 import { BarcodeService, type LabelFacts } from './barcode.service';
@@ -283,6 +284,10 @@ export class FoodlensService {
     let vision: VisionResult | null = null;
     let mode: 'live' | 'sandbox' = 'sandbox';
     let visionNote: string | null = null;
+    /** Filled from the shipped composition table, or the model's second pass. */
+    let resolvedPer100g: { fatG: number; saturatesG: number; sugarsG: number; saltG: number } | undefined;
+    /** Which table entries matched, so the panel can say where it came from. */
+    let referenceUsed: string[] | null = null;
     // Kept only for this request, and returned only when explicitly
     // asked for: when a panel is missing, the model's own words are the
     // difference between fixing it and guessing at it.
@@ -369,13 +374,32 @@ export class FoodlensService {
 
     // A model asked for per-100g figures in a schema will still sometimes
     // omit them — only some providers enforce a schema at all — and the
-    // front-of-pack panel then silently vanishes. Rather than let that
-    // happen, ask again in plain words for the one thing that is missing.
-    if (vision && !vision.per100g && vision.items.length > 0) {
-      const second = await this.estimatePer100g(vision.items.map((i) => i.name), request.billTo);
-      trace.secondPassRan = true;
-      trace.secondPassResult = second;
-      vision.per100g = second ?? undefined;
+    // front-of-pack panel then had nothing to draw. That made the panel
+    // intermittent, which is worse than wrong: a table that is there on
+    // Tuesday and gone on Wednesday cannot be trusted on either day.
+    //
+    // So the fallback is the shipped composition table first. It is
+    // instant, free, offline and identical on every request, which is what
+    // makes the panel stable. The model is asked only for a plate whose
+    // foods are not in the table at all.
+    const named = vision?.items ?? request.declaredItems ?? [];
+    if (!request.per100g && !vision?.per100g && named.length > 0) {
+      const table = plateComposition(named);
+      if (table) {
+        referenceUsed = table.matched;
+        trace.compositionMatched = table.matched;
+        resolvedPer100g = {
+          fatG: table.composition.fatG,
+          saturatesG: table.composition.saturatesG,
+          sugarsG: table.composition.sugarsG,
+          saltG: table.composition.saltG,
+        };
+      } else {
+        const second = await this.estimatePer100g(named.map((i) => i.name), request.billTo);
+        trace.secondPassRan = true;
+        trace.secondPassResult = second;
+        resolvedPer100g = second ?? undefined;
+      }
     }
 
     // A scanned label outranks everything a photograph can offer, so it
@@ -392,7 +416,10 @@ export class FoodlensService {
       likelyKcal:
         request.userConfirmedKcal ?? request.declaredKcal ?? vision?.likelyKcal ?? null,
       source,
-      per100g: request.per100g ?? label?.per100g ?? vision?.per100g,
+      per100g: request.per100g ?? label?.per100g ?? vision?.per100g ?? resolvedPer100g,
+      ...(referenceUsed && !request.per100g && !label?.per100g && !vision?.per100g
+        ? { per100gFromReference: referenceUsed }
+        : {}),
       plateGrams: vision?.plateGrams,
       grams: request.grams ?? vision?.grams,
       portionCertainty: vision?.portionCertainty ?? (request.userConfirmedKcal ? 1 : 0.35),

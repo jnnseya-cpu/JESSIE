@@ -26,7 +26,7 @@ export interface TrafficLight {
   grams: number | null;
   band: 'green' | 'amber' | 'red' | null;
   derived: boolean;
-  basis: 'label' | 'estimate' | 'calculated' | 'unmeasured';
+  basis: 'label' | 'estimate' | 'calculated' | 'reference' | 'unmeasured';
 }
 
 /** How the figure was arrived at. A row never poses as more than it is. */
@@ -34,6 +34,7 @@ const BASIS_WORD: Record<string, string> = {
   label: 'from the label',
   estimate: 'estimated',
   calculated: 'worked out',
+  reference: 'typical for this dish',
   unmeasured: 'scan the barcode',
 };
 
