@@ -358,11 +358,13 @@ test('missing front-of-pack figures are absent, never zero', async () => {
   const none = parseVisionJson('{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940}');
   assert.equal(none.value?.per100g, undefined, 'no panel rather than 0g LOW across the board');
 
-  // A partial object is not a measurement either.
+  // A partial object keeps what was stated and invents nothing to fill
+  // the gaps: one real figure is worth showing, three zeros are not.
   const partial = parseVisionJson(
     '{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940,"per100g":{"fatG":12}}',
   );
-  assert.equal(partial.value?.per100g, undefined);
+  assert.equal(partial.value?.per100g?.fatG, 12);
+  assert.equal(partial.value?.per100g?.saltG, undefined);
 
   // All zeros is what a defaulting bug looks like, so it is refused too.
   const zeros = parseVisionJson(
@@ -371,10 +373,64 @@ test('missing front-of-pack figures are absent, never zero', async () => {
   );
   assert.equal(zeros.value?.per100g, undefined);
 
-  // A real measurement still comes through.
+  // A real measurement still comes through, and a partial one keeps only
+  // the nutrients that were actually stated.
   const real = parseVisionJson(
     '{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940,' +
       '"per100g":{"fatG":11.4,"saturatesG":3.2,"sugarsG":4.1,"saltG":1.7}}',
   );
   assert.equal(real.value?.per100g?.saltG, 1.7);
+
+  const someStated = parseVisionJson(
+    '{"items":[{"name":"stew","confidencePct":80}],"likelyKcal":940,' +
+      '"per100g":{"fatG":11.4,"saltG":1.7}}',
+  );
+  assert.equal(someStated.value?.per100g?.fatG, 11.4);
+  assert.equal(someStated.value?.per100g?.sugarsG, undefined, 'unstated stays unstated');
+});
+
+test('front-of-pack shows only nutrients that exist, and marks what it worked out', async () => {
+  const { frontOfPackFrom } = await import('../src/foodlens/foodlens.logic.ts');
+
+  // Nothing stated and no plate weight: no panel at all.
+  assert.equal(
+    frontOfPackFrom({
+      age: 40,
+      items: [],
+      likelyKcal: 940,
+      source: 'ai_visual_estimate',
+      portionCertainty: 0.3,
+      preparationCertainty: 0.3,
+    }),
+    null,
+  );
+
+  // Macros plus a plate weight make fat derivable — and only fat.
+  const derived = frontOfPackFrom({
+    age: 40,
+    items: [],
+    likelyKcal: 940,
+    source: 'ai_visual_estimate',
+    grams: { proteinG: 20, carbohydrateG: 80, fatG: 40 },
+    plateGrams: 400,
+    portionCertainty: 0.5,
+    preparationCertainty: 0.5,
+  });
+  assert.equal(derived?.length, 1);
+  assert.equal(derived?.[0]?.nutrient, 'fat');
+  assert.equal(derived?.[0]?.grams, 10, '40g of fat in 400g of food is 10g per 100g');
+  assert.equal(derived?.[0]?.band, 'amber');
+  assert.equal(derived?.[0]?.derived, true);
+
+  // A stated figure is preferred and is not marked as worked out.
+  const stated = frontOfPackFrom({
+    age: 40,
+    items: [],
+    likelyKcal: 940,
+    source: 'barcode_verified_product',
+    per100g: { saltG: 1.9 },
+    portionCertainty: 0.9,
+    preparationCertainty: 0.9,
+  });
+  assert.deepEqual(stated, [{ nutrient: 'salt', grams: 1.9, band: 'red', derived: false }]);
 });

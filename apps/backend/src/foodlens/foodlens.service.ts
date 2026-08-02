@@ -133,8 +133,9 @@ export class FoodlensService {
       likelyKcal: number;
       portionCertainty: number;
       preparationCertainty: number;
-      per100g?: AnalyzeRequest['per100g'];
+      per100g?: Partial<{ fatG: number; saturatesG: number; sugarsG: number; saltG: number }>;
       grams?: AnalyzeRequest['grams'];
+      plateGrams?: number;
     }
     let vision: VisionResult | null = null;
     let mode: 'live' | 'sandbox' = 'sandbox';
@@ -221,6 +222,7 @@ export class FoodlensService {
         request.userConfirmedKcal ?? request.declaredKcal ?? vision?.likelyKcal ?? null,
       source,
       per100g: request.per100g ?? vision?.per100g,
+      plateGrams: vision?.plateGrams,
       grams: request.grams ?? vision?.grams,
       portionCertainty: vision?.portionCertainty ?? (request.userConfirmedKcal ? 1 : 0.35),
       preparationCertainty: vision?.preparationCertainty ?? (request.barcode ? 0.9 : 0.3),

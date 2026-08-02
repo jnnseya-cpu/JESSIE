@@ -58,8 +58,9 @@ interface FoodLensResult {
         confidence: string;
       };
   macros: { proteinPct: number; carbohydratePct: number; fatPct: number } | null;
-  frontOfPack: Record<string, 'green' | 'amber' | 'red'> | null;
-  per100g: { fatG: number; saturatesG: number; sugarsG: number; saltG: number } | null;
+  frontOfPack:
+    | { nutrient: string; grams: number; band: 'green' | 'amber' | 'red'; derived: boolean }[]
+    | null;
   wheel: Record<string, number | null>;
   capture: { checks: { check: string; passed: boolean; detail: string }[]; passRate: number };
   swaps: { level: number; action: string; effect: string; keeps: string }[];
@@ -208,7 +209,24 @@ export function FoodLensModule({
       {note && <p className="acct__note">{note}</p>}
 
       {result && (
-        <div className="tdv__result">
+        <div className="tdv__result fl__reveal">
+          {photos.length > 0 && (
+            <figure className="fl__hero">
+              <img src={`data:${photos[0]!.mimeType};base64,${photos[0]!.dataBase64}`} alt="The meal you photographed" />
+              <figcaption>
+                {result.items.length > 0 ? (
+                  <>
+                    <span className="fl__herofound">Found on your plate</span>
+                    <span className="fl__heronames">
+                      {result.items.map((i) => i.name).join(' · ')}
+                    </span>
+                  </>
+                ) : (
+                  <span className="fl__herofound">Nothing on this plate could be named</span>
+                )}
+              </figcaption>
+            </figure>
+          )}
           <p className="tdv__mode">
             {result.mode === 'live'
               ? 'Analysed by the live vision engine.'
@@ -249,13 +267,16 @@ export function FoodLensModule({
             </>
           )}
 
-          {result.frontOfPack && Object.keys(result.frontOfPack).length > 0 && (
+          {result.frontOfPack && result.frontOfPack.length > 0 && (
             <>
               <h4 className="fl__h">Per 100g · UK front-of-pack</h4>
-              <TrafficLights bands={result.frontOfPack} per100g={result.per100g} />
+              <TrafficLights lights={result.frontOfPack} />
               <p className="fl__note">
-                Bands follow the published UK thresholds. The word is printed beside the
-                colour, because colour on its own is not an accessible signal.
+                Bands follow the published UK thresholds, and the word is printed beside the
+                colour because colour alone is not an accessible signal. Only nutrients this
+                photograph could actually produce are shown — a missing one is missing, not
+                zero. &ldquo;Worked out&rdquo; means it came from the plate&rsquo;s own macros
+                and weight rather than a label.
               </p>
             </>
           )}

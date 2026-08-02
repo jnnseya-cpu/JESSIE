@@ -12,7 +12,6 @@ import {
   intelligenceBand,
   macroSplit,
   mealIntelligence,
-  trafficLightsPer100g,
   type Allergen,
   type EvidenceSource,
 } from '@jessmove/foodlens';
@@ -39,7 +38,9 @@ export interface AnalysisFacts {
   readonly likelyKcal: number | null;
   /** How the energy figure is evidenced. */
   readonly source: EvidenceSource;
-  readonly per100g?: { fatG: number; saturatesG: number; sugarsG: number; saltG: number };
+  readonly per100g?: Partial<{ fatG: number; saturatesG: number; sugarsG: number; saltG: number }>;
+  /** Total edible weight, which is what makes a per-100g figure derivable. */
+  readonly plateGrams?: number;
   readonly grams?: { proteinG: number; carbohydrateG: number; fatG: number };
   readonly portionCertainty: number;
   readonly preparationCertainty: number;
@@ -99,10 +100,7 @@ export function analyse(facts: AnalysisFacts): Record<string, unknown> {
     energy,
     macros: !minor && facts.grams ? macroSplit(facts.grams) : null,
     energyAgreement: agreement,
-    frontOfPack: facts.per100g ? trafficLightsPer100g(facts.per100g) : null,
-    // The grams behind the bands, so the surface can print the figure
-    // beside the colour — colour alone is not an accessible signal.
-    per100g: facts.per100g ?? null,
+    frontOfPack: frontOfPackFrom(facts),
     allergens: UK_ALLERGENS.map((allergen) => {
       const status = facts.allergenEvidence
         ? allergenStatus(allergen, facts.allergenEvidence)
@@ -117,6 +115,53 @@ export function analyse(facts: AnalysisFacts): Record<string, unknown> {
     neverClaimed: NEVER_CLAIM,
     underEighteen: minor,
   };
+}
+
+/** UK front-of-pack thresholds per 100g, for the nutrients we can band. */
+const BANDS = {
+  fatG: { low: 3, high: 17.5, label: 'fat' },
+  saturatesG: { low: 1.5, high: 5, label: 'saturates' },
+  sugarsG: { low: 5, high: 22.5, label: 'sugars' },
+  saltG: { low: 0.3, high: 1.5, label: 'salt' },
+} as const;
+
+/**
+ * Front-of-pack, built only from figures that exist.
+ *
+ * Every nutrient here is either stated by the source or worked out from
+ * the plate's own macros and weight, and each row says which. A nutrient
+ * nobody measured does not appear — it does not appear as 0g, and it
+ * does not appear as a grey box, because a panel with a hole in it is
+ * more honest than a panel that fills the hole.
+ */
+export function frontOfPackFrom(facts: AnalysisFacts): {
+  nutrient: string;
+  grams: number;
+  band: 'green' | 'amber' | 'red';
+  derived: boolean;
+}[] | null {
+  const rows: { nutrient: string; grams: number; band: 'green' | 'amber' | 'red'; derived: boolean }[] = [];
+
+  const bandFor = (value: number, low: number, high: number): 'green' | 'amber' | 'red' =>
+    value <= low ? 'green' : value >= high ? 'red' : 'amber';
+
+  for (const key of ['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const) {
+    const stated = facts.per100g?.[key];
+    let value: number | undefined = typeof stated === 'number' && stated > 0 ? stated : undefined;
+    let derived = false;
+
+    // Fat is the one the plate's own macros can produce exactly.
+    if (value === undefined && key === 'fatG' && facts.grams && facts.plateGrams && facts.plateGrams > 20) {
+      value = Number(((facts.grams.fatG / facts.plateGrams) * 100).toFixed(1));
+      derived = true;
+    }
+    if (value === undefined) continue;
+
+    const spec = BANDS[key];
+    rows.push({ nutrient: spec.label, grams: value, band: bandFor(value, spec.low, spec.high), derived });
+  }
+
+  return rows.length > 0 ? rows : null;
 }
 
 /**
@@ -152,9 +197,9 @@ export function wheelFrom(
     proteinStrength: proteinShare == null ? null : Math.round(Math.min(1, proteinShare / 0.35) * 100),
     fibreStrength: null,
     plantDiversity: null,
-    fatQuality: per100g ? invert(per100g.saturatesG, 1.5, 5) : null,
-    sugarLoad: per100g ? invert(per100g.sugarsG, 5, 22.5) : null,
-    saltLoad: per100g ? invert(per100g.saltG, 0.3, 1.5) : null,
+    fatQuality: typeof per100g?.saturatesG === 'number' ? invert(per100g.saturatesG, 1.5, 5) : null,
+    sugarLoad: typeof per100g?.sugarsG === 'number' ? invert(per100g.sugarsG, 5, 22.5) : null,
+    saltLoad: typeof per100g?.saltG === 'number' ? invert(per100g.saltG, 0.3, 1.5) : null,
     processingLevel: null,
     portionAlignment: Math.round(clamp01(facts.portionCertainty) * 100),
     personalFit: null,
@@ -341,6 +386,7 @@ export const VISION_SCHEMA = {
       },
     },
     likelyKcal: { type: 'number', minimum: 0, maximum: 6000 },
+    plateGrams: { type: 'number', minimum: 0, maximum: 5000 },
     portionCertainty: { type: 'number', minimum: 0, maximum: 1 },
     preparationCertainty: { type: 'number', minimum: 0, maximum: 1 },
     grams: {
@@ -375,7 +421,9 @@ export const VISION_PROMPT = [
   '- Never default to 50. If you are sure, say 90+. If you are guessing, say 20.',
   '- likelyKcal is your central estimate; the platform will widen it into a range itself.',
   '- grams holds your best estimate of protein, carbohydrate and fat for the whole plate.',
-  '- per100g holds fat, saturates, sugars and salt per 100g, so front-of-pack bands can be shown.',
+  '- per100g holds fat, saturates, sugars and salt per 100g. Give real figures — never zeros.',
+  '- plateGrams is the total edible weight of the meal in grams, your best estimate.',
+  '- If you cannot judge per100g, still give grams and plateGrams and the platform derives it.',
   '- portionCertainty and preparationCertainty are 0–1 and low unless a reference object or clear preparation is visible.',
   '- Never claim an allergen is absent, never diagnose, never judge the eater.',
   '',

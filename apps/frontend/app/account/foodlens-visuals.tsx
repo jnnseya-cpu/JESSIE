@@ -20,17 +20,14 @@ export interface Energy {
   confidence: string;
 }
 
-/** The engine bands per nutrient; the grams come alongside. */
-export type TrafficBands = Record<string, 'green' | 'amber' | 'red'>;
-export type Per100g = { fatG: number; saturatesG: number; sugarsG: number; saltG: number };
+export interface TrafficLight {
+  nutrient: string;
+  grams: number;
+  band: 'green' | 'amber' | 'red';
+  derived: boolean;
+}
 
 const BAND_WORD: Record<string, string> = { green: 'low', amber: 'medium', red: 'high' };
-const GRAM_KEY: Record<string, keyof Per100g> = {
-  fat: 'fatG',
-  saturates: 'saturatesG',
-  sugars: 'sugarsG',
-  salt: 'saltG',
-};
 
 /** The meal-intelligence gauge: how well the plate is understood. */
 export function IntelligenceGauge({
@@ -140,20 +137,19 @@ export function MacroBars({
 }
 
 /** UK front-of-pack bands. The word is printed beside the colour. */
-export function TrafficLights({ bands, per100g }: { bands: TrafficBands; per100g: Per100g | null }) {
+export function TrafficLights({ lights }: { lights: TrafficLight[] }) {
   return (
     <div className="fl__lights">
-      {Object.entries(bands).map(([nutrient, band]) => {
-        const gramKey = GRAM_KEY[nutrient];
-        const grams = gramKey && per100g ? per100g[gramKey] : null;
-        return (
-          <div key={nutrient} className={`fl__light fl__light--${band}`}>
-            <span className="fl__lightname">{nutrient}</span>
-            <span className="fl__lightval">{grams === null ? '—' : `${grams}g`}</span>
-            <span className="fl__lightband">{BAND_WORD[band] ?? band}</span>
-          </div>
-        );
-      })}
+      {lights.map((l) => (
+        <div key={l.nutrient} className={`fl__light fl__light--${l.band}`}>
+          <span className="fl__lightname">{l.nutrient}</span>
+          <span className="fl__lightval">{l.grams}g</span>
+          <span className="fl__lightband">
+            {BAND_WORD[l.band] ?? l.band}
+            {l.derived ? ' · worked out' : ''}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

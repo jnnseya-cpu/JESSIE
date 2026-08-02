@@ -18,13 +18,16 @@ export interface DetectedFood {
   confidencePct: number | null;
 }
 
+export type Per100g = { fatG: number; saturatesG: number; sugarsG: number; saltG: number };
+
 export interface VisionPayload {
   items: DetectedFood[];
   likelyKcal: number | null;
   portionCertainty: number;
   preparationCertainty: number;
-  per100g?: { fatG: number; saturatesG: number; sugarsG: number; saltG: number };
+  per100g?: Partial<Per100g>;
   grams?: { proteinG: number; carbohydrateG: number; fatG: number };
+  plateGrams?: number;
   /** Set when the model says the photograph cannot be read as a meal. */
   unusable?: string;
 }
@@ -201,18 +204,19 @@ export function parseVisionJson(text: string): ParseOutcome {
     per100gRaw && typeof per100gRaw === 'object'
       ? (['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const).map((k) => per100gRaw[k])
       : [];
-  const per100gComplete =
-    per100gValues.length === 4 &&
-    per100gValues.every((v) => typeof v === 'number' && Number.isFinite(v)) &&
-    per100gValues.some((v) => (v as number) > 0);
-  const per100g = per100gComplete
-    ? {
-        fatG: clamp(per100gRaw!.fatG, 0, 100, 0),
-        saturatesG: clamp(per100gRaw!.saturatesG, 0, 100, 0),
-        sugarsG: clamp(per100gRaw!.sugarsG, 0, 100, 0),
-        saltG: clamp(per100gRaw!.saltG, 0, 100, 0),
+  // Keep every figure the model actually stated and nothing else. A
+  // missing nutrient stays missing: 0g bands as LOW, which would state
+  // something nobody measured.
+  const kept: Record<string, number> = {};
+  if (per100gRaw && typeof per100gRaw === 'object') {
+    for (const key of ['fatG', 'saturatesG', 'sugarsG', 'saltG'] as const) {
+      const value = per100gRaw[key];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        kept[key] = Math.min(100, Math.max(0, value));
       }
-    : undefined;
+    }
+  }
+  const per100g = Object.keys(kept).length > 0 ? (kept as Partial<Per100g>) : undefined;
 
   const gramsRaw = raw.grams as Record<string, unknown> | undefined;
   const grams =
@@ -224,6 +228,11 @@ export function parseVisionJson(text: string): ParseOutcome {
         }
       : undefined;
 
+  const plateGrams =
+    typeof raw.plateGrams === 'number' && Number.isFinite(raw.plateGrams) && raw.plateGrams > 0
+      ? Math.min(5000, raw.plateGrams)
+      : undefined;
+
   return {
     ok: true,
     value: {
@@ -232,6 +241,7 @@ export function parseVisionJson(text: string): ParseOutcome {
       portionCertainty: clamp(raw.portionCertainty, 0, 1, 0.3),
       preparationCertainty: clamp(raw.preparationCertainty, 0, 1, 0.3),
       ...(per100g ? { per100g } : {}),
+      ...(plateGrams ? { plateGrams } : {}),
       ...(grams && grams.proteinG + grams.carbohydrateG + grams.fatG > 0 ? { grams } : {}),
       ...(unusable ? { unusable } : {}),
     },
