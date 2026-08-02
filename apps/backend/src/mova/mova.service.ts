@@ -30,9 +30,10 @@ export class MovaService {
 
   constructor(private readonly ai: AiGatewayService) {}
 
-  private async say(system: string, question: string): Promise<string> {
+  private async say(system: string, question: string, billTo?: string): Promise<string> {
     const response = await this.ai.complete({
       agent: 'JESS',
+      billTo,
       maxTokens: 700,
       messages: [
         { role: 'system', content: system },
@@ -42,13 +43,18 @@ export class MovaService {
     return response.text ?? '';
   }
 
-  async ask(question: string, age: number, displayName?: string): Promise<AskResult> {
+  async ask(
+    question: string,
+    age: number,
+    displayName?: string,
+    billTo?: string,
+  ): Promise<AskResult> {
     const mode = modeForAge(age);
     const base = { mode, refusals: MOVA_REFUSES.length };
     const system = systemPromptFor({ age, displayName });
 
     try {
-      let answer = (await this.say(system, question)).trim();
+      let answer = (await this.say(system, question, billTo)).trim();
 
       // The tone sample must never become "facts" about the member. If a
       // number from it survived into the answer, ask once more with the
@@ -62,6 +68,7 @@ export class MovaService {
               'you cannot know, taken from the tone sample. Answer again with no invented ' +
               'context: no durations, no clock times, no history.',
             question,
+            billTo,
           )
         ).trim();
       }

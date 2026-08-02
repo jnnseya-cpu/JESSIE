@@ -66,13 +66,29 @@ export class SessionGuard implements CanActivate {
     ]);
 
     if (!needsAuth && !needsAdmin) return true;
+
+    // Administration is never relaxed.
+    //
+    // AUTH_ENFORCE exists so the pilot's demo surfaces stay usable before
+    // everyone has an account. It must never have applied to @AdminOnly:
+    // with enforcement off, any unauthenticated request could mint
+    // allowance, read the member directory or push notifications to
+    // anybody. A convenience switch that also unlocks the money is not a
+    // convenience switch.
+    if (needsAdmin) {
+      if (!session) {
+        throw new UnauthorizedException('this endpoint needs a signed-in administrator');
+      }
+      if (session.kind !== 'platform_staff') {
+        throw new UnauthorizedException('this endpoint needs a platform administrator');
+      }
+      return true;
+    }
+
     if (!this.auth.enforcing()) return true;
 
     if (!session) {
       throw new UnauthorizedException('this endpoint needs a signed-in session');
-    }
-    if (needsAdmin && session.kind !== 'platform_staff') {
-      throw new UnauthorizedException('this endpoint needs a platform administrator');
     }
     return true;
   }

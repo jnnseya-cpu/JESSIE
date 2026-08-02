@@ -41,6 +41,13 @@ export interface AiImage {
 }
 
 export interface AiCompletionRequest {
+  /**
+   * Whose allowance pays for this call. Without it the work still runs —
+   * a platform diagnostic or an anonymous demo has nobody to charge —
+   * but with it the meter actually moves, which is the difference
+   * between a priced product and a promise about pricing.
+   */
+  readonly billTo?: string;
   /** Which agent is calling. Drives cost ceiling and tool allow-list. */
   agent: AgentCode;
   messages: AiMessage[];

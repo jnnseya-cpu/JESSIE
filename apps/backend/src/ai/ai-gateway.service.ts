@@ -11,6 +11,8 @@ import {
   type AiProvider,
   type AiProviderHealth,
 } from '@jessmove/shared';
+import { ACU_PER_GBP, COST_PROTECTION_MULTIPLE } from '@jessmove/body-command';
+import { WalletService } from '../acu/wallet.service';
 import { MODEL_PROVIDERS, type ModelProvider } from './provider.interface';
 
 /**
@@ -32,7 +34,39 @@ export class AiGatewayService {
   constructor(
     @Inject(MODEL_PROVIDERS) private readonly providers: ModelProvider[],
     private readonly config: ConfigService,
+    private readonly wallets: WalletService,
   ) {}
+
+  /**
+   * Draw the call's cost from the member's allowance.
+   *
+   * Best-effort on purpose: a wallet that cannot be reached must not
+   * swallow an answer the member has already waited for. What it must
+   * never do is stay silent — an unmetered call is a bill nobody sees.
+   */
+  private async meter(
+    billTo: string | undefined,
+    agent: string,
+    acu: number,
+    model: string,
+  ): Promise<void> {
+    if (!billTo || acu <= 0) return;
+    try {
+      const wallet = await this.wallets.forSubject('user', billTo);
+      const result = await this.wallets.spend({
+        walletId: wallet.id,
+        agentCode: agent,
+        reason: `${agent} via ${model}`,
+        // The provider's own figure, priced by the Cost Governor.
+        cost: { providerCostGbp: acu / ACU_PER_GBP / COST_PROTECTION_MULTIPLE },
+      });
+      if (!result.allowed) {
+        this.logger.warn(`[${billTo}] allowance refused: ${result.reason}`);
+      }
+    } catch (error) {
+      this.logger.warn(`could not meter ${agent} for ${billTo}: ${(error as Error).message}`);
+    }
+  }
 
   /** Ordered chain, honouring AI_DEFAULT_PROVIDER and AI_FALLBACK_ORDER. */
   private chainFor(requested?: AiProvider): ModelProvider[] {
@@ -124,6 +158,10 @@ export class AiGatewayService {
           `[${traceId}] ${request.agent} -> ${provider.name}/${result.model} ` +
             `${result.usage.acu} ACU in ${latencyMs}ms`,
         );
+
+        // The meter runs after the work succeeds, never before: nobody is
+        // charged for an answer they did not get.
+        await this.meter(request.billTo, request.agent, result.usage.acu, result.model);
 
         return {
           ...result,

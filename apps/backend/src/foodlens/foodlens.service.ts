@@ -39,6 +39,8 @@ export interface AnalyzeRequest {
   allergensFullList?: boolean;
   /** Returns the model's own reply alongside the analysis. Off by default. */
   debug?: boolean;
+  /** Whose allowance pays for the model call. */
+  billTo?: string;
 }
 
 /**
@@ -82,7 +84,11 @@ export class FoodlensService {
    * phone can take one — so the model reads the number and the lookup
    * carries on exactly as if it had been scanned.
    */
-  async readBarcode(mimeType: string | undefined, dataBase64: string): Promise<Record<string, unknown>> {
+  async readBarcode(
+    mimeType: string | undefined,
+    dataBase64: string,
+    billTo?: string,
+  ): Promise<Record<string, unknown>> {
     const bytes = Buffer.from(dataBase64, 'base64');
     const sniffed = sniffImage(bytes);
     if (!sniffed.format) {
@@ -97,6 +103,7 @@ export class FoodlensService {
     try {
       const completion = await this.gateway.complete({
         agent: 'LENS',
+        billTo,
         maxTokens: 60,
         messages: [
           {
@@ -214,10 +221,12 @@ export class FoodlensService {
    */
   private async estimatePer100g(
     names: string[],
+    billTo?: string,
   ): Promise<{ fatG: number; saturatesG: number; sugarsG: number; saltG: number } | null> {
     try {
       const completion = await this.gateway.complete({
         agent: 'LENS',
+        billTo,
         maxTokens: 200,
         messages: [
           {
@@ -316,6 +325,7 @@ export class FoodlensService {
       try {
         const completion = await this.gateway.complete({
           agent: 'LENS',
+          billTo: request.billTo,
           messages: [
             { role: 'system', content: VISION_PROMPT },
             {
@@ -362,7 +372,7 @@ export class FoodlensService {
     // front-of-pack panel then silently vanishes. Rather than let that
     // happen, ask again in plain words for the one thing that is missing.
     if (vision && !vision.per100g && vision.items.length > 0) {
-      const second = await this.estimatePer100g(vision.items.map((i) => i.name));
+      const second = await this.estimatePer100g(vision.items.map((i) => i.name), request.billTo);
       trace.secondPassRan = true;
       trace.secondPassResult = second;
       vision.per100g = second ?? undefined;
