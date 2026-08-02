@@ -5278,3 +5278,54 @@ textarea:focus-visible {
 .tdv__chips--static {
   gap: 6px;
 }
+
+/* ---- micro-movement facts and agent trace ---- */
+.mm__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.mm__facts span {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(244, 250, 249, 0.05);
+  border: 1px solid rgba(244, 250, 249, 0.1);
+  font-size: 12px;
+  color: rgba(244, 250, 249, 0.6);
+  line-height: 1.4;
+}
+.mm__facts strong {
+  display: block;
+  font-size: 18px;
+  color: #f4faf9;
+}
+.mm__agents {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.mm__agents summary {
+  cursor: pointer;
+  color: #2dd4bf;
+  font-size: 12.5px;
+}
+.mm__agents ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mm__agents li strong {
+  display: block;
+  color: #f4faf9;
+  font-size: 13px;
+}
+.mm__agents li em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: rgba(244, 250, 249, 0.5);
+  line-height: 1.45;
+}

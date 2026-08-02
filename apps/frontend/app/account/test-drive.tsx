@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { modeForAge } from '@jessmove/shared';
+import {
+  AGENT_REGISTRY,
+  AGE_MODE_DEFINITIONS,
+  MOVEMENT_VARIANTS,
+  VARIANT_LABELS,
+  modeForAge,
+} from '@jessmove/shared';
 import { apiBase } from '../api-base';
 import { shrinkImage } from './image-shrink';
 import { recordActivity, type Dashboard } from './dashboard';
@@ -296,6 +302,7 @@ export function SnapModule({
   me: Subject;
   onActivity?: (d: Dashboard | null) => void;
 }) {
+  const mode = modeForAge(me.age);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [snap, setSnap] = useState<Snap | null>(null);
@@ -314,7 +321,7 @@ export function SnapModule({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           userId: me.userId,
-          mode: modeForAge(me.age),
+          mode,
           availableSeconds: 900,
           capabilityNormaliser: 1,
           permittedVariants: ['seated', 'standing'],
@@ -420,6 +427,21 @@ export function SnapModule({
               {done ? 'Logged — nice one' : 'I did it'}
             </button>
           </div>
+
+          <details className="mm__agents">
+            <summary>Which agents decided this</summary>
+            <ul>
+              {(['SIA', 'CTX', 'RX', 'SAFE', 'ADA'] as const).map((code) => {
+                const agent = AGENT_REGISTRY[code];
+                return agent ? (
+                  <li key={code}>
+                    <strong>{agent.name}</strong>
+                    <em>{agent.output}</em>
+                  </li>
+                ) : null;
+              })}
+            </ul>
+          </details>
 
           <p className="tdv__fine">
             Safety-checked against {snap.safety.rulesEvaluated} rules before it reached you ·

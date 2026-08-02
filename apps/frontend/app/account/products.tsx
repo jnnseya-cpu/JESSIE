@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CHALLENGE_TEMPLATES, modeForAge } from '@jessmove/shared';
+import {
+  CHALLENGE_TEMPLATES,
+  DELIVERY_TIERS,
+  DELIVERY_TIER_DEFINITIONS,
+  modeForAge,
+} from '@jessmove/shared';
 import { apiBase } from '../api-base';
 import { Cone, WeightedBars } from './charts';
 import { recordActivity } from './dashboard';
@@ -329,47 +334,55 @@ interface Provider {
 }
 
 export function WearablesModule() {
-  const [providers, setProviders] = useState<Provider[] | null>(null);
+  const [status, setStatus] = useState<{ providers?: { provider: string; configured: boolean }[] } | null>(null);
 
   useEffect(() => {
     void fetch(`${apiBase()}/wearables/providers`)
       .then((r) => r.json())
-      .then((j) => {
-        const data = j.data;
-        const list: Provider[] = Array.isArray(data) ? data : (data?.providers ?? []);
-        setProviders(list);
-      })
-      .catch(() => setProviders([]));
+      .then((j) => setStatus(j.data))
+      .catch(() => setStatus(null));
   }, []);
 
-  const ready = providers?.filter((p) => p.configured) ?? [];
+  const live = (status?.providers ?? []).filter((p) => p.configured);
 
   return (
     <section className="acct__module">
       <h3>
-        Wearables <span className="tdv__chip">bring your own</span>
+        Wearables &amp; reach <span className="tdv__chip">four tiers</span>
       </h3>
       <p className="tdv__what">
-        Connect a watch or ring and JESS MOVE reads only what it needs — movement and
-        activity. It never ingests anything an under-18 account is protected from, whatever
-        the device offers.
+        The lowest tier defines the product. A council programme cannot assume smartphones and
+        a care group cannot assume wearables, so messaging and assisted delivery are real
+        tiers with their own rules — not an accessibility afterthought.
       </p>
-      {providers === null ? (
-        <p className="acct__note">Checking which devices are available…</p>
-      ) : ready.length > 0 ? (
-        <div className="tdv__chips">
-          {ready.map((p) => (
-            <a key={p.provider} className="tdv__connect" href={p.connect ?? '#'}>
-              Connect {p.label ?? p.provider.replace(/_/g, ' ')}
-            </a>
-          ))}
-        </div>
-      ) : (
-        <p className="acct__note">
-          No device partner is switched on yet. Each one needs its own developer keys before
-          the connect button can be honest — phone motion still works without any of them.
-        </p>
-      )}
+
+      <ul className="tdv__list">
+        {DELIVERY_TIERS.map((t) => {
+          const def = DELIVERY_TIER_DEFINITIONS[t];
+          return (
+            <li key={t}>
+              <strong>
+                {t} — {def.name}
+              </strong>
+              <em>
+                {def.dataAvailable} · {def.channels.map((c) => c.replace(/_/g, ' ')).join(' · ')}
+              </em>
+            </li>
+          );
+        })}
+      </ul>
+
+      <p className="fl__note">
+        You are on <strong>T2 — phone-only</strong>: phone motion and your own confirmation,
+        which needs no device at all.
+        {live.length === 0
+          ? ' No wearable partner is switched on yet — each needs its own developer keys from that company before a connect button could be honest.'
+          : ` Connected: ${live.map((p) => p.provider).join(', ')}.`}
+      </p>
+      <p className="fl__note">
+        Whatever a device offers, an under-18 account never ingests body measurements. The
+        refusal is in the server, not in a settings screen.
+      </p>
     </section>
   );
 }
