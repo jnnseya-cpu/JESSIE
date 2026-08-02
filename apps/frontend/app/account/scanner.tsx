@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { apiBase } from '../api-base';
+import { cameraBlockedMessage, deviceFrom } from './camera-advice';
 import { shrinkImage } from './image-shrink';
 import { SaveMark, useAutosave, useSavedState } from './autosave';
 
@@ -87,6 +88,14 @@ export function ScannerModule() {
   // Pack sizes the member fills in for records that carry none.
   const [sizes, setSizes] = useState<Record<string, string>>({});
   const [live, setLive] = useState(false);
+  /**
+   * The camera has been asked for and refused on this device.
+   *
+   * Kept so the button goes away rather than sitting there inviting a
+   * second refusal. The photograph path below does the same job and needs
+   * no permission, which is why it is the primary action.
+   */
+  const [liveRefused, setLiveRefused] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -139,12 +148,6 @@ export function ScannerModule() {
   }, [scans, sizes]);
 
   const supported = typeof window !== 'undefined' && 'BarcodeDetector' in window;
-  // An installed app has no address bar, so any advice about a padlock in
-  // one is advice nobody can follow.
-  const installed =
-    typeof window !== 'undefined' &&
-    (window.matchMedia?.('(display-mode: standalone)').matches ||
-      (window.navigator as { standalone?: boolean }).standalone === true);
 
   const lookup = async (barcode: string) => {
     if (seenRef.current.has(barcode)) return;
@@ -163,6 +166,7 @@ export function ScannerModule() {
     }
   };
 
+  /** Once the camera has been refused, stop offering something that cannot work. */
   const stop = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -185,11 +189,10 @@ export function ScannerModule() {
       // "Could not be opened" is not a diagnosis. Say which wall we hit,
       // because each one has a different way round it.
       const name = (error as { name?: string })?.name ?? '';
+      if (name === 'NotAllowedError') setLiveRefused(true);
       const why =
         name === 'NotAllowedError'
-          ? installed
-            ? 'Camera access is blocked for the installed app. Press and hold the JESS MOVE icon on your home screen → App info → Permissions → Camera → Allow. Until then, use Photograph a barcode above — it opens your normal camera app and needs no permission here.'
-            : 'Camera access is blocked for this site. Tap the padlock in the address bar, allow Camera, then try again — or photograph the barcode instead.'
+          ? cameraBlockedMessage(deviceFrom())
           : name === 'NotFoundError'
             ? 'No camera was found on this device.'
             : name === 'NotReadableError'
@@ -321,12 +324,14 @@ export function ScannerModule() {
         {busy ? 'Reading the barcode…' : 'Photograph a barcode'}
       </button>
       <p className="fl__note">
-        This opens your normal camera app, so it works in the installed app and needs no extra
-        permission. Fill the frame with the bars.
+        This is the way that always works. It opens your normal camera app, needs no permission
+        from this app at all, and reads the packet the same way. Fill the frame with the bars.
       </p>
 
       <div className="tdv__chips">
-        {supported && (
+        {/* Offered only where it can work, and withdrawn once refused —
+            a button that cannot do its job is worse than no button. */}
+        {supported && !liveRefused && (
           <button type="button" onClick={() => (live ? stop() : void start())}>
             {live ? 'Stop scanning' : 'Scan continuously (needs camera access)'}
           </button>
