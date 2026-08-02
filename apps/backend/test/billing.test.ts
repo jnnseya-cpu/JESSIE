@@ -21,7 +21,7 @@ import {
   parseSignatureHeader,
   verifyWebhook,
 } from '../src/stripe/signature.ts';
-import { buildMessage } from '../src/mail/smtp.ts';
+import { buildMessage, isConnectFailure, probeAdvice, type ProbeResult } from '../src/mail/smtp.ts';
 
 /* ------------------------------------------------------------------ *
  * Plans and money
@@ -246,4 +246,49 @@ test('a reply-to is included only when given', () => {
     'b',
   );
   assert.match(withIt, /Reply-To: help@jessmove\.com/);
+});
+
+/* ------------------------------------------------------------------ *
+ * SMTP reachability: failure classification and probe advice
+ * ------------------------------------------------------------------ */
+
+test('network failures are retryable on the other port, mail rejections are not', () => {
+  assert.equal(isConnectFailure('SMTP connect timed out'), true);
+  assert.equal(isConnectFailure('connect ETIMEDOUT 1.2.3.4:465'), true);
+  assert.equal(isConnectFailure('connect ECONNREFUSED 1.2.3.4:465'), true);
+  assert.equal(isConnectFailure('getaddrinfo ENOTFOUND smtp.example.com'), true);
+  // The server answered — a different port would give the same answer.
+  assert.equal(isConnectFailure('SMTP AUTH password failed: 535 authentication failed'), false);
+  assert.equal(isConnectFailure('SMTP RCPT TO failed: 550 mailbox unavailable'), false);
+});
+
+const probeRow = (port: number, ok: boolean, detail: string): ProbeResult => ({
+  port,
+  encryption: port === 465 ? 'implicit TLS' : 'STARTTLS',
+  ok,
+  detail,
+  ms: 12,
+});
+
+test('probe advice: configured port working needs no change', () => {
+  const advice = probeAdvice(465, [probeRow(465, true, 'ok'), probeRow(587, false, 'SMTP connect timed out')]);
+  assert.match(advice, /Port 465 works end to end/);
+});
+
+test('probe advice: a working alternate names the exact variable change', () => {
+  const advice = probeAdvice(465, [probeRow(465, false, 'SMTP connect timed out'), probeRow(587, true, 'ok')]);
+  assert.match(advice, /SMTP_PORT=587/);
+  assert.match(advice, /falls back to it automatically/);
+});
+
+test('probe advice: a 535 on both ports points at the mailbox password', () => {
+  const detail = 'SMTP AUTH password failed: 535 authentication failed';
+  const advice = probeAdvice(465, [probeRow(465, false, detail), probeRow(587, false, detail)]);
+  assert.match(advice, /SMTP_PASS/);
+});
+
+test('probe advice: both ports dark points at egress, not credentials', () => {
+  const detail = 'SMTP connect timed out';
+  const advice = probeAdvice(465, [probeRow(465, false, detail), probeRow(587, false, detail)]);
+  assert.match(advice, /network egress, not credentials/);
 });

@@ -12,6 +12,16 @@ export class MailController {
     return this.mail.status();
   }
 
+  /**
+   * Live reachability test: connects and logs in on both submission
+   * ports from the instance serving this request, sends nothing, and
+   * says which door works. One page load answers "password or network".
+   */
+  @Get('probe')
+  async probe() {
+    return this.mail.probeConnection();
+  }
+
   /** Render a catalogue event without sending it. */
   @Post('preview')
   preview(@Body() body: PreviewMailDto) {

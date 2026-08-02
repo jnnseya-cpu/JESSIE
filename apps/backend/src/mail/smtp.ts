@@ -146,13 +146,12 @@ async function send(socket: AnySocket, line: string, stage: string, timeoutMs: n
 }
 
 /**
- * Delivers one message. Resolves with the final server reply, which is
- * worth keeping — it usually contains the provider's message id.
+ * Opens a connection and authenticates: connect, greeting, EHLO,
+ * STARTTLS where the port calls for it, AUTH LOGIN. Returns a socket
+ * ready for MAIL FROM. On any failure the socket is destroyed before
+ * the error propagates, so callers never hold a half-open connection.
  */
-export async function deliver(config: SmtpConfig, message: MailMessage): Promise<string> {
-  const timeoutMs = config.timeoutMs ?? 15_000;
-  const boundary = `jm-${createHmac('sha256', config.host).update(message.to).digest('hex').slice(0, 24)}`;
-
+async function open(config: SmtpConfig, timeoutMs: number): Promise<AnySocket> {
   let socket: AnySocket = config.secure
     ? tlsConnect({ host: config.host, port: config.port, servername: config.host })
     : createConnection({ host: config.host, port: config.port });
@@ -193,6 +192,92 @@ export async function deliver(config: SmtpConfig, message: MailMessage): Promise
     await send(socket, Buffer.from(config.user).toString('base64'), 'AUTH user', timeoutMs, 3);
     await send(socket, Buffer.from(config.pass).toString('base64'), 'AUTH password', timeoutMs);
 
+    return socket;
+  } catch (error) {
+    socket.destroy();
+    throw error;
+  }
+}
+
+/**
+ * Whether a delivery failure happened before the server said anything —
+ * the network refused us, rather than the mail being rejected. These are
+ * the failures where trying the other submission port is worth it.
+ */
+export function isConnectFailure(message: string): boolean {
+  return /connect timed out|read timed out|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH|ENOTFOUND|EPIPE/i.test(
+    message,
+  );
+}
+
+export interface ProbeResult {
+  port: number;
+  encryption: 'implicit TLS' | 'STARTTLS';
+  ok: boolean;
+  detail: string;
+  ms: number;
+}
+
+/**
+ * Connects and authenticates without sending anything, then QUITs.
+ * Success proves the whole chain — network path, TLS, mailbox
+ * credentials — from wherever this process is actually running, which is
+ * the only place that matters on serverless.
+ */
+export async function probe(base: SmtpConfig, port: number, timeoutMs = 8_000): Promise<ProbeResult> {
+  const config: SmtpConfig = { ...base, port, secure: port === 465 };
+  const encryption = config.secure ? ('implicit TLS' as const) : ('STARTTLS' as const);
+  const started = Date.now();
+  try {
+    const socket = await open(config, timeoutMs);
+    try {
+      await send(socket, 'QUIT', 'QUIT', timeoutMs);
+    } catch {
+      // Connection already proved everything; a rude QUIT is fine.
+    }
+    socket.destroy();
+    return {
+      port,
+      encryption,
+      ok: true,
+      detail: 'Connected, TLS negotiated, credentials accepted.',
+      ms: Date.now() - started,
+    };
+  } catch (error) {
+    return { port, encryption, ok: false, detail: (error as Error).message, ms: Date.now() - started };
+  }
+}
+
+/** Turns two probe rows into the one sentence the operator needs. */
+export function probeAdvice(configuredPort: number, results: ProbeResult[]): string {
+  const working = results.filter((r) => r.ok);
+  const configured = results.find((r) => r.port === configuredPort);
+
+  if (configured?.ok) {
+    return `Port ${configuredPort} works end to end — connection, TLS and login all passed. If a message still fails, the reason will be in lastFailure on /mail/status.`;
+  }
+  if (working.length > 0) {
+    const alt = working[0]!;
+    return `Port ${configuredPort} is unreachable from here, but port ${alt.port} works and sending falls back to it automatically. To make it the first choice, set SMTP_PORT=${alt.port} and redeploy.`;
+  }
+  const authFailure = results.find((r) => /535|AUTH/i.test(r.detail));
+  if (authFailure) {
+    return `The server was reached but rejected the login (${authFailure.detail}). Reset the mailbox password in Hostinger → Emails, update SMTP_PASS, and redeploy.`;
+  }
+  return `Neither port ${results.map((r) => r.port).join(' nor ')} could be reached from this deployment (${results[0]?.detail ?? 'no detail'}). That points at network egress, not credentials.`;
+}
+
+/**
+ * Delivers one message. Resolves with the final server reply, which is
+ * worth keeping — it usually contains the provider's message id.
+ */
+export async function deliver(config: SmtpConfig, message: MailMessage): Promise<string> {
+  const timeoutMs = config.timeoutMs ?? 15_000;
+  const boundary = `jm-${createHmac('sha256', config.host).update(message.to).digest('hex').slice(0, 24)}`;
+
+  const socket = await open(config, timeoutMs);
+
+  try {
     const envelopeFrom = config.from.match(/<([^>]+)>/)?.[1] ?? config.from;
     await send(socket, `MAIL FROM:<${envelopeFrom}>`, 'MAIL FROM', timeoutMs);
     await send(socket, `RCPT TO:<${message.to}>`, 'RCPT TO', timeoutMs);

@@ -9,7 +9,14 @@ import {
   renderSubject,
   type TemplateToken,
 } from '@jessmove/shared';
-import { deliver, type MailMessage, type SmtpConfig } from './smtp';
+import {
+  deliver,
+  isConnectFailure,
+  probe,
+  probeAdvice,
+  type MailMessage,
+  type SmtpConfig,
+} from './smtp';
 
 /**
  * Outbound email.
@@ -118,6 +125,10 @@ export class MailService {
       sent: this.log.filter((r) => r.status === 'sent').length,
       sandboxed: this.log.filter((r) => r.status === 'sandbox').length,
       failed: this.log.filter((r) => r.status === 'failed').length,
+      // The newest failure's reason, inline — /mail/recent lives on one
+      // serverless instance's memory and may miss it; this may too, but
+      // whichever instance failed will say why here.
+      lastFailure: this.log.find((r) => r.status === 'failed') ?? null,
       unitCostGbp: CHANNEL_DEFINITIONS.email.unitCostGbp,
       note: smtp
         ? 'Live. Messages are delivered over SMTP.'
@@ -200,14 +211,14 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
     }
 
     try {
-      const reply = await deliver(smtp, message);
+      const { reply, port } = await this.deliverWithPortFallback(smtp, message);
       const record: SentRecord = {
         id: this.counter,
         event: eventKey,
         to,
         subject: rendered.subject,
         status: 'sent',
-        detail: reply,
+        detail: port === smtp.port ? reply : `via fallback port ${port} — ${reply}`,
         at,
       };
       this.log.unshift(record);
@@ -226,6 +237,62 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
       this.log.unshift(record);
       return record;
     }
+  }
+
+  /**
+   * Tries the configured submission port; if the network never let us
+   * reach the server (timeout, refusal — not a mail rejection), tries the
+   * other standard port before giving up. 465 and 587 are the same
+   * mailbox behind different doors, and serverless egress sometimes
+   * filters exactly one of them.
+   */
+  private async deliverWithPortFallback(
+    smtp: SmtpConfig,
+    message: MailMessage,
+  ): Promise<{ reply: string; port: number }> {
+    try {
+      return { reply: await deliver(smtp, message), port: smtp.port };
+    } catch (error) {
+      const first = error as Error;
+      if (!isConnectFailure(first.message)) throw first;
+
+      const fallbackPort = smtp.port === 465 ? 587 : 465;
+      this.logger.warn(
+        `port ${smtp.port} unreachable (${first.message}) — retrying on ${fallbackPort}`,
+      );
+      try {
+        const alternate: SmtpConfig = { ...smtp, port: fallbackPort, secure: fallbackPort === 465 };
+        return { reply: await deliver(alternate, message), port: fallbackPort };
+      } catch (secondError) {
+        const second = secondError as Error;
+        throw new Error(`port ${smtp.port}: ${first.message}; port ${fallbackPort}: ${second.message}`);
+      }
+    }
+  }
+
+  /**
+   * Live reachability test from this very process: connect, TLS, log in,
+   * hang up — both submission ports, nothing sent. The answer to "is it
+   * the password or the network" in one page load.
+   */
+  async probeConnection() {
+    const smtp = this.smtp();
+    if (!smtp) {
+      return {
+        configured: false,
+        note: 'SMTP_USER or SMTP_PASS is missing, so there is nothing to probe.',
+      };
+    }
+
+    const ports = smtp.port === 465 ? [465, 587] : [smtp.port, 465];
+    const results = await Promise.all(ports.map((port) => probe(smtp, port)));
+    return {
+      host: smtp.host,
+      user: smtp.user,
+      configuredPort: smtp.port,
+      results,
+      advice: probeAdvice(smtp.port, results),
+    };
   }
 
   recent(limit = 25): readonly SentRecord[] {

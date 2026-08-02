@@ -70,6 +70,7 @@ t POST /stripe/webhook 400 '{"id":"evt_x","type":"invoice.paid"}' "unsigned webh
 t POST /stripe/checkout 400 '{"userId":"u","plan":"premium_monthly","successUrl":"http://x.test/a","cancelUrl":"http://x.test/b"}' "checkout without a key explains itself"
 t POST /mail/preview 201 '{"event":"account.registration.requested","values":{"name":"Sam"}}' "render an email"
 t POST /mail/preview 400 '{"event":"not.a.real.event"}' "unknown event refused"
+t GET /mail/probe 200 '' "smtp probe explains itself without credentials"
 t POST /accounts/seed 201 '{}' "seed one account of every kind"
 python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    ->',len(d['personas']),'personas')" 2>/dev/null
 t POST /accounts/seed 201 '{}' "seeding twice adds nothing"
