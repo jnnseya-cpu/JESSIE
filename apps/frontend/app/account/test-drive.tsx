@@ -273,7 +273,8 @@ export function FoodLensModule({
             </>
           )}
 
-          {result.frontOfPack && result.frontOfPack.length > 0 && (
+          {/* A set of zeros is not a panel — heading and all, it stays away. */}
+          {result.frontOfPack && result.frontOfPack.some((l) => l.grams > 0) && (
             <>
               <h4 className="fl__h">Per 100g · UK front-of-pack</h4>
               <TrafficLights lights={result.frontOfPack} />

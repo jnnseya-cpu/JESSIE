@@ -81,3 +81,55 @@ test('a big shop is not scolded for being big', () => {
   ]);
   assert.deepEqual(flags, []);
 });
+
+test('a bag of apples is not flagged for sugar', () => {
+  // The comparison only means something once there is a shop to read.
+  const basket = basketFrom([
+    {
+      barcode: '9',
+      name: 'Apples',
+      quantity: '500g',
+      kcalPer100g: 52,
+      per100g: { fatG: 0.2, saturatesG: 0, sugarsG: 10.4, saltG: 0 },
+    },
+  ]);
+  assert.deepEqual(basket.flags, [], 'half a kilo of fruit is not a verdict on the week');
+  assert.match(basket.note, /Too little here to read as a shop yet/);
+});
+
+test('a nutrient nobody has bought much of is not named', () => {
+  const flags = flagsFor([
+    { key: 'energyKcal', label: 'Energy', total: 4000, days: 2, topContributors: [] },
+    { key: 'saltG', label: 'Salt', total: 4.2, days: 0.7, topContributors: [] },
+  ]);
+  assert.deepEqual(flags, [], 'under a day of salt is not a salt problem');
+});
+
+test('a real shop still gets its flag', () => {
+  const basket = basketFrom([
+    {
+      barcode: '1',
+      name: 'Mature Cheddar',
+      quantity: '400g',
+      kcalPer100g: 416,
+      per100g: { fatG: 34.9, saturatesG: 21.7, sugarsG: 0.1, saltG: 1.8 },
+    },
+    {
+      barcode: '4',
+      name: 'White Bread',
+      quantity: '800g',
+      kcalPer100g: 235,
+      per100g: { fatG: 1.5, saturatesG: 0.3, sugarsG: 3.4, saltG: 0.98 },
+    },
+    {
+      barcode: '5',
+      name: 'Chicken Breast',
+      quantity: '1 kg',
+      kcalPer100g: 106,
+      per100g: { fatG: 1.1, saturatesG: 0.3, sugarsG: 0, saltG: 0.2 },
+    },
+  ]);
+  const saturates = basket.flags.find((f) => f.nutrient === 'saturates');
+  assert.ok(saturates, 'a fortnight of saturates against a few days of food still fires');
+  assert.match(saturates?.action ?? '', /Mature Cheddar/);
+});

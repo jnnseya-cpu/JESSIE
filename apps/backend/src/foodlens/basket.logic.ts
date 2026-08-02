@@ -143,17 +143,34 @@ export function basketFrom(products: BasketProduct[]): Basket {
     };
   }).filter((t) => t.total > 0);
 
+  const unweighed = products.length - weighed;
+  const energyDays = built.find((t) => t.key === 'energyKcal')?.days ?? 0;
+  const notes = [
+    unweighed === 0
+      ? 'Totals are for the whole packs, against UK adult reference intakes.'
+      : `${unweighed} item${unweighed === 1 ? '' : 's'} had no readable pack size and ${unweighed === 1 ? 'is' : 'are'} left out rather than guessed at.`,
+  ];
+  if (weighed > 0 && energyDays < MIN_BASKET_DAYS) {
+    notes.push('Too little here to read as a shop yet — keep scanning and the balance appears.');
+  }
+
   return {
     products: products.length,
     weighed,
     totals: built,
     flags: flagsFor(built),
-    note:
-      weighed === products.length
-        ? 'Totals are for the whole packs, against UK adult reference intakes.'
-        : `${products.length - weighed} item${products.length - weighed === 1 ? '' : 's'} had no readable pack size and ${products.length - weighed === 1 ? 'is' : 'are'} left out rather than guessed at.`,
+    note: notes.join(' '),
   };
 }
+
+/**
+ * A basket has to be a shop before it can be read as one. Below a day of
+ * food the "days of X against days of food" comparison is arithmetic on
+ * almost nothing — half a kilo of apples is six days of sugars against a
+ * tenth of a day of food, and flagging fruit is exactly the sort of
+ * nonsense that makes people stop trusting a scanner.
+ */
+export const MIN_BASKET_DAYS = 1;
 
 /**
  * A flag fires when one nutrient dominates the basket relative to the
@@ -164,10 +181,13 @@ export function basketFrom(products: BasketProduct[]): Basket {
 export function flagsFor(totals: NutrientTotal[]): BasketFlag[] {
   const energy = totals.find((t) => t.key === 'energyKcal');
   const flags: BasketFlag[] = [];
-  if (!energy || energy.days <= 0) return flags;
+  if (!energy || energy.days < MIN_BASKET_DAYS) return flags;
 
   for (const total of totals) {
     if (total.key === 'energyKcal') continue;
+    // A nutrient nobody has actually bought much of is not worth naming,
+    // however lopsided the ratio looks.
+    if (total.days < MIN_BASKET_DAYS) continue;
     // Out of step with the food itself: this basket carries far more of
     // this nutrient than it does of the energy it came with.
     const ratio = total.days / energy.days;

@@ -21,3 +21,6 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Generated at build time from public/sw.template.js
+apps/frontend/public/sw.js

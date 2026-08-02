@@ -19,7 +19,19 @@
  * signal; your data does not appear without a network.
  */
 
-const VERSION = 'jm-v3';
+/*
+ * Stamped at build time by scripts/stamp-sw.mjs — never edit by hand and
+ * never hard-code it back to a constant.
+ *
+ * A service worker is only reinstalled when its own bytes change. With a
+ * fixed version string this file is identical on every deploy, so the
+ * browser never fetches a new worker, `activate` never runs, and the caches
+ * below outlive every release — an app installed in April keeps serving
+ * April's JavaScript in August. Stamping the commit in means each deploy is
+ * a new worker with new cache names, and `activate` deletes what came
+ * before.
+ */
+const VERSION = '__JM_BUILD__';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const OFFLINE_URL = '/offline';
@@ -54,7 +66,9 @@ self.addEventListener('install', (event) => {
           }
         }),
       );
-      await self.skipWaiting();
+      // Deliberately no skipWaiting here: the new worker waits until the
+      // page says to take over, so nobody is reloaded mid-exercise. The
+      // page applies it the moment the app is put down — see pwa.tsx.
     })(),
   );
 });

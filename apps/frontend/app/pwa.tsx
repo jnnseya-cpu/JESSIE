@@ -7,11 +7,14 @@ import { useEffect, useState } from 'react';
  *
  * Three behaviours worth being deliberate about.
  *
- * **The update is offered, never forced.** A worker that calls
- * `skipWaiting` on its own reloads the page under whoever is using it. In a
- * movement app that means interrupting somebody mid-exercise, which is
- * exactly the kind of small rudeness that gets an app deleted. The new
- * version waits until it is accepted.
+ * **The update is offered, never forced — but it is never left to rot.** A
+ * worker that calls `skipWaiting` on its own reloads the page under whoever
+ * is using it, which in a movement app means interrupting somebody
+ * mid-exercise. So the new version waits. It is applied when the app is put
+ * down: on the way to the background there is nothing to interrupt, and the
+ * person comes back to current code rather than to a build from weeks ago.
+ * An installed app that is never told to check would otherwise run the same
+ * JavaScript indefinitely, which reads as features vanishing.
  *
  * **The install prompt is deferred, not fired on load.** A browser
  * install banner shown two seconds after arrival is dismissed by almost
@@ -38,14 +41,23 @@ export function PwaRuntime() {
 
     // Registering after load keeps the worker off the critical path — it
     // must never compete with the first render for bandwidth.
+    let registration: ServiceWorkerRegistration | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
     const register = async (): Promise<void> => {
       try {
-        const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        // updateViaCache: 'none' keeps the worker script itself out of the
+        // HTTP cache. Without it the browser can revalidate against a
+        // months-old copy and conclude, wrongly, that nothing has changed.
+        registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/',
+          updateViaCache: 'none',
+        });
 
         if (registration.waiting) setWaiting(registration.waiting);
 
         registration.addEventListener('updatefound', () => {
-          const installing = registration.installing;
+          const installing = registration?.installing;
           if (!installing) return;
           installing.addEventListener('statechange', () => {
             // `controller` being set means this is an update rather than a
@@ -55,14 +67,52 @@ export function PwaRuntime() {
             }
           });
         });
+
+        // Registration alone does not ask whether there is a new version.
+        // An installed app is opened from the home screen and may not make
+        // a single navigation for weeks, so the check has to be explicit:
+        // now, hourly while open, and every time it comes back to the front.
+        void registration.update();
+        timer = setInterval(() => void registration?.update(), 60 * 60 * 1000);
       } catch {
         /* A failed registration is not an error the visitor needs to see. */
       }
     };
 
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') void registration?.update();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     if (document.readyState === 'complete') void register();
     else window.addEventListener('load', () => void register(), { once: true });
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      if (timer) clearInterval(timer);
+    };
   }, []);
+
+  /**
+   * Apply a waiting update the moment the app goes to the background. The
+   * reload happens against a page nobody is looking at, so the choice
+   * between "interrupt them" and "leave them on old code" does not have to
+   * be made at all.
+   */
+  useEffect(() => {
+    if (!waiting) return;
+    const onHidden = (): void => {
+      if (document.visibilityState !== 'hidden') return;
+      waiting.postMessage('skip-waiting');
+      navigator.serviceWorker.addEventListener(
+        'controllerchange',
+        () => window.location.reload(),
+        { once: true },
+      );
+    };
+    document.addEventListener('visibilitychange', onHidden);
+    return () => document.removeEventListener('visibilitychange', onHidden);
+  }, [waiting]);
 
   useEffect(() => {
     const onPrompt = (event: Event): void => {
@@ -95,8 +145,8 @@ export function PwaRuntime() {
     return (
       <div className="pwa" role="status">
         <p>
-          <strong>A new version is ready.</strong> It will apply next time you open the app, or
-          now if you prefer.
+          <strong>A new version is ready.</strong> It applies the moment you put the app down,
+          or now if you prefer.
         </p>
         <div className="pwa__row">
           <button type="button" className="btn btn--primary" onClick={applyUpdate}>

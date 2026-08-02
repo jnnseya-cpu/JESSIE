@@ -144,8 +144,19 @@ export function MacroBars({
   );
 }
 
-/** UK front-of-pack bands. The word is printed beside the colour. */
+/**
+ * UK front-of-pack bands. The word is printed beside the colour.
+ *
+ * The last guard against a fabricated panel. The analysis already refuses
+ * to send a set of zeros — a nutrient nobody measured is absent, not 0g —
+ * but four tiles reading "0g LOW" is the single worst thing this module
+ * could put on a screen, because it looks like a measurement and is not
+ * one. If a set of zeros ever reaches here, from a cached old reply or a
+ * future bug, nothing is drawn.
+ */
 export function TrafficLights({ lights }: { lights: TrafficLight[] }) {
+  if (lights.length === 0 || lights.every((l) => !(l.grams > 0))) return null;
+
   return (
     <div className="fl__lights">
       {lights.map((l) => (
