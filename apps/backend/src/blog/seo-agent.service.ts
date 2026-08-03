@@ -2,11 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   AGENT_REGISTRY,
   BANNED_LEXICON,
+  LINK_TARGETS,
+  SEED_POSTS,
   SEO_RULES,
   TOPIC_CLUSTERS,
   countWords,
+  isKnownPath,
+  normalisePath,
   seoAudit,
   slugify,
+  withAutoLinks,
   type PostCategory,
   type PostDraft,
   type SeoAudit,
@@ -117,10 +122,51 @@ export class SeoAgentService {
         `Link up to the pillar at ${cluster.pillarPath}, and across to at least one sibling subject:`,
         ...cluster.supporting.map((s) => `  - ${s}`),
       );
-    } else {
-      lines.push('', 'Link to at least two relevant pages on the site.');
     }
+
+    /*
+     * The whole registry, given rather than left to memory.
+     *
+     * Asked for internal links without this, a model produces
+     * `/blog/movement-guide` and `/features/foodlens` — paths that look
+     * exactly like ours and do not exist. Every one is a 404 for a reader
+     * and wasted crawl for everyone else. Handing over the real list turns
+     * an invention problem into a selection problem, and the audit rejects
+     * anything that still is not on it.
+     */
+    lines.push(
+      '',
+      'These are the only pages on this site. Link to at least ' +
+        `${SEO_RULES.internalLinksMin} of them and never to a path that is not in this list:`,
+      ...LINK_TARGETS.filter((t) => !t.noIndex).map((t) => `  ${t.path} — ${t.summary}`),
+      ...this.knownSlugs().map((slug) => `  /blog/${slug} — an existing article`),
+      '',
+      'Put the links inside sentences where the subject already comes up, not in a list at the end.',
+    );
     return lines.join('\n');
+  }
+
+  /** The article slugs that exist, so a sibling link is not called dead. */
+  private knownSlugs(): readonly string[] {
+    return SEED_POSTS.map((p) => p.slug);
+  }
+
+  /**
+   * Drops anything the site does not have.
+   *
+   * Belt and braces with the audit: the audit reports a dead link as a
+   * blocker so a person sees it, and this stops the obviously-invented ones
+   * reaching the audit at all — which means the repair pass spends its one
+   * attempt on prose rather than on re-listing URLs.
+   */
+  private realLinksOnly(links: readonly string[]): string[] {
+    const slugs = this.knownSlugs();
+    const kept: string[] = [];
+    for (const link of links) {
+      const path = normalisePath(link);
+      if (!kept.includes(path) && isKnownPath(path, slugs)) kept.push(path);
+    }
+    return kept;
   }
 
   /** Pull the first JSON object out of a response that may be fenced or prefaced. */
@@ -142,17 +188,30 @@ export class SeoAgentService {
     req: DraftRequest,
   ): PostDraft {
     const title = String(parsed.title ?? req.topic).trim();
-    const body = String(parsed.body ?? '');
-    const links = Array.isArray(parsed.internalLinks)
-      ? parsed.internalLinks.map(String)
-      : [];
+    const slug = slugify(title);
     const secondary = Array.isArray(parsed.secondaryKeywords)
       ? parsed.secondaryKeywords.map(String)
       : [];
 
+    /*
+     * The body gains its contextual links here rather than being asked for
+     * them, because a model asked to place links in prose either forgets or
+     * overdoes it, and neither is worth a repair pass. The linker is
+     * deterministic, bounded, and knows where the real pages are: one link
+     * per destination, first mention only, never inside a heading or an
+     * existing link. What the model is left to do is write.
+     */
+    const body = withAutoLinks(String(parsed.body ?? ''), { selfPath: `/blog/${slug}` });
+
+    // Declared links, plus whatever the prose picked up, minus anything
+    // that does not exist. The article's real outbound set.
+    const declared = Array.isArray(parsed.internalLinks) ? parsed.internalLinks.map(String) : [];
+    const inProse = [...body.matchAll(/\]\((\/[^)]*)\)/g)].map((m) => m[1] ?? '');
+    const links = this.realLinksOnly([...declared, ...inProse]);
+
     return {
       title,
-      slug: slugify(title),
+      slug,
       description: String(parsed.description ?? '').trim(),
       category: req.category,
       keyword: String(parsed.keyword ?? req.keyword).trim(),
@@ -198,7 +257,11 @@ export class SeoAgentService {
       secondaryKeywords: cluster ? [...cluster.supporting].slice(0, 3) : [],
       body,
       clusterKey: req.clusterKey,
-      internalLinks: cluster ? [cluster.pillarPath, '/how-it-works'] : ['/how-it-works', '/about'],
+      internalLinks: this.realLinksOnly(
+        cluster
+          ? [cluster.pillarPath, '/how-it-works', '/blog', '/about']
+          : ['/how-it-works', '/blog', '/about', '/micro-movement'],
+      ),
     };
   }
 

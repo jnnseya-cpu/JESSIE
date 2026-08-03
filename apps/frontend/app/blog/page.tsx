@@ -9,7 +9,12 @@ export const metadata: Metadata = {
   description:
     'Engineering notes and product decisions, written up properly — including the arguments ' +
     'we lost and the releases they delayed.',
-  alternates: { canonical: 'https://jessmove.com/blog' },
+  alternates: {
+    canonical: 'https://jessmove.com/blog',
+    // Autodiscovery. A reader who wants to follow this without checking the
+    // site, and an aggregator that would otherwise never find the feed.
+    types: { 'application/rss+xml': 'https://jessmove.com/blog/feed.xml' },
+  },
 };
 
 /** The editorial pipeline, in the order it runs. */

@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TOPIC_CLUSTERS } from '@jessmove/shared';
+import { TOPIC_CLUSTERS, backlinksTo } from '@jessmove/shared';
 import { Footer, Nav, SkipLink } from '../../ui';
 import { POSTS, postBySlug } from '../posts';
+import { SITE_GRAPH } from '../graph';
+import { Linked, newLinkBudget } from '../linked';
 import { ViewBeacon } from '../view-beacon';
 
 const SITE = 'https://jessmove.com';
@@ -48,6 +50,15 @@ export default function Post({ params }: { params: { slug: string } }) {
     ...others.filter((p) => p.clusterKey && p.clusterKey === post.clusterKey),
     ...others.filter((p) => !p.clusterKey || p.clusterKey !== post.clusterKey),
   ].slice(0, 3);
+
+  // One budget for the whole article, spent as the reader goes down it, so
+  // the links land in the opening argument rather than in the footnotes.
+  const budget = newLinkBudget(6);
+  const selfPath = `/blog/${post.slug}`;
+
+  // What on this site points here. The graph read backwards — internal
+  // backlinks, which are the part of "backlinks" anybody actually controls.
+  const backlinks = backlinksTo(SITE_GRAPH, selfPath).slice(0, 6);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -97,7 +108,9 @@ export default function Post({ params }: { params: { slug: string } }) {
               <Link href="/blog">Blog</Link> <span aria-hidden="true">/</span> {post.category}
             </p>
             <h1>{post.title}</h1>
-            <p className="phero__lede">{post.lede}</p>
+            <p className="phero__lede">
+              <Linked text={post.lede} selfPath={selfPath} budget={budget} />
+            </p>
             <p className="article__meta">
               <time dateTime={post.publishedAt}>{post.displayDate}</time>
               <span aria-hidden="true"> · </span>
@@ -117,7 +130,9 @@ export default function Post({ params }: { params: { slug: string } }) {
                 <section key={s.h}>
                   <h2>{s.h}</h2>
                   {s.p.map((paragraph) => (
-                    <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+                    <p key={paragraph.slice(0, 48)}>
+                      <Linked text={paragraph} selfPath={selfPath} budget={budget} />
+                    </p>
                   ))}
                 </section>
               ))}
@@ -160,6 +175,34 @@ export default function Post({ params }: { params: { slug: string } }) {
                   regenerates daily. <Link href="/privacy">How that works</Link>.
                 </p>
               </article>
+
+              {/*
+                The graph read backwards. A page nothing links to is a page
+                a crawler reaches late and a reader never reaches at all, so
+                the inbound links are shown rather than merely counted —
+                which also means an orphan is visible on the page itself
+                instead of only in an audit nobody opens.
+              */}
+              {backlinks.length > 0 && (
+                <article className="card card--12 card--light">
+                  <div className="card__head">
+                    <h3 className="card__t">Linked from</h3>
+                    <span className="card__tag">{backlinks.length} pages</span>
+                  </div>
+                  <p className="card__note">
+                    Other pages here that point at this one. Internal links are the part of
+                    “backlinks” a site actually controls — nothing on this platform buys or
+                    exchanges the other kind.
+                  </p>
+                  <ul className="pills">
+                    {backlinks.map((n) => (
+                      <li key={n.path}>
+                        <Link href={n.path}>{n.label}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              )}
             </div>
           </div>
         </section>

@@ -16,6 +16,7 @@
  */
 
 import { BANNED_LEXICON, BANNED_LEXICON_STRICT } from './brand';
+import { isKnownPath, normalisePath } from './site-paths';
 
 /* ------------------------------------------------------------------ *
  * Taxonomy
@@ -164,8 +165,18 @@ export const SEO_RULES = {
   bodyWordsMin: 600,
   bodyWordsMax: 2600,
   headingsMin: 3,
-  /** Internal links out of the article, to the pillar and to siblings. */
-  internalLinksMin: 2,
+  /**
+   * Internal links out of the article, to the pillar and to siblings.
+   *
+   * Raised from two. Two is the floor at which an article is not an
+   * island; it is not the number that makes a cluster read as one subject
+   * to a crawler. Four means the pillar, a sibling, and two of the product
+   * pages the article actually talks about — which is what an article
+   * written by somebody who knew the site would contain anyway.
+   */
+  internalLinksMin: 4,
+  /** Past this the links stop being navigation and start being a farm. */
+  internalLinksMax: 12,
   /** Above this, repetition reads as stuffing to a reader and a ranker alike. */
   keywordDensityMax: 0.025,
   keywordDensityMin: 0.003,
@@ -287,7 +298,12 @@ const WEIGHTS: Readonly<Record<FindingSeverity, number>> = {
  * Deterministic. The same draft always produces the same audit, which is
  * what makes it usable as a build gate rather than a suggestion.
  */
-export function seoAudit(draft: PostDraft, strict = false): SeoAudit {
+export function seoAudit(
+  draft: PostDraft,
+  strict = false,
+  /** Article slugs that exist, so a link to a sibling is not called dead. */
+  knownSlugs: readonly string[] = SEED_POSTS.map((p) => p.slug),
+): SeoAudit {
   const findings: SeoFinding[] = [];
   const add = (
     rule: string,
@@ -370,11 +386,49 @@ export function seoAudit(draft: PostDraft, strict = false): SeoAudit {
   /* --- linking --- */
   if (draft.internalLinks.length < SEO_RULES.internalLinksMin) {
     add('links.internal', 'warning', `${draft.internalLinks.length} internal links`,
-      `At least ${SEO_RULES.internalLinksMin} — one to the cluster pillar, one to a sibling.`);
+      `At least ${SEO_RULES.internalLinksMin} — the cluster pillar, a sibling article, and the product pages the article actually discusses.`);
+  } else if (draft.internalLinks.length > SEO_RULES.internalLinksMax) {
+    add('links.internal', 'note', `${draft.internalLinks.length} internal links`,
+      `Past ${SEO_RULES.internalLinksMax} each link is worth less and the page reads as a list. Cut to the ones a reader would follow.`);
   }
-  if (draft.clusterKey && !TOPIC_CLUSTERS.some((c) => c.key === draft.clusterKey)) {
-    add('links.cluster', 'warning', `unknown cluster "${draft.clusterKey}"`,
-      'Assign the article to a real cluster, or leave it unassigned.');
+
+  /*
+   * A link to a page that does not exist is worse than no link. It sends a
+   * reader to a 404, it spends crawl budget on nothing, and it is the
+   * failure a model makes most often — inventing a plausible URL from the
+   * shape of the others. So the paths are checked against the registry
+   * rather than trusted, and an invented one is a blocker.
+   */
+  const seen = new Set<string>();
+  for (const link of draft.internalLinks) {
+    const path = normalisePath(link);
+    if (/^https?:\/\//i.test(link.trim())) {
+      add('links.external', 'warning', `"${link}" is an absolute URL`,
+        'Internal links are site-relative paths, so they survive a domain change.');
+      continue;
+    }
+    if (seen.has(path)) {
+      add('links.duplicate', 'note', `"${path}" is linked more than once`,
+        'One link per destination. The second one adds nothing.');
+      continue;
+    }
+    seen.add(path);
+    if (!isKnownPath(path, knownSlugs)) {
+      add('links.dead', 'blocker', `"${path}" does not exist on this site`,
+        'Link to a real page. An invented path is a 404 for the reader and wasted crawl for everyone else.');
+    }
+  }
+
+  if (draft.clusterKey) {
+    const cluster = TOPIC_CLUSTERS.find((c) => c.key === draft.clusterKey);
+    if (!cluster) {
+      add('links.cluster', 'warning', `unknown cluster "${draft.clusterKey}"`,
+        'Assign the article to a real cluster, or leave it unassigned.');
+    } else if (!seen.has(normalisePath(cluster.pillarPath))) {
+      // The single most valuable link an article in a cluster can carry.
+      add('links.pillar', 'warning', `no link up to the "${cluster.pillar}" pillar`,
+        `Link to ${cluster.pillarPath}. A cluster whose articles do not point at their pillar is not a cluster.`);
+    }
   }
 
   /* --- editorial safety, always last and always heaviest --- */

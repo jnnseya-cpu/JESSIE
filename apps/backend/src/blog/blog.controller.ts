@@ -13,6 +13,7 @@ import { BlogAnalyticsService } from './analytics.service';
 import { BlogService } from './blog.service';
 import { DraftPostDto, TransitionDto, ViewDto } from './blog.dto';
 import { SeoAgentService } from './seo-agent.service';
+import { SeoAutopilotService } from './seo-autopilot.service';
 import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 
 @Controller('blog')
@@ -21,7 +22,48 @@ export class BlogController {
     private readonly posts: BlogService,
     private readonly agent: SeoAgentService,
     private readonly analytics: BlogAnalyticsService,
+    private readonly autopilot: SeoAutopilotService,
   ) {}
+
+  /**
+   * The link graph, open.
+   *
+   * Published rather than kept behind the admin guard because it contains
+   * nothing private — it is the shape of a public website — and because a
+   * site that shows its own orphans and dead links is one somebody can
+   * check rather than take on trust.
+   */
+  @Get('links')
+  links() {
+    return {
+      ...this.autopilot.linkAudit(),
+      internal:
+        'These are internal links: pages here pointing at other pages here. That is the part ' +
+        'of link authority a site controls, and it is the part this platform works on.',
+      external:
+        'Nothing on this platform buys, exchanges or generates links from other sites. Those are ' +
+        'earned by being worth citing, and the machinery for that is a sitemap, a feed, canonical ' +
+        'URLs and structured data — all of which are live.',
+    };
+  }
+
+  /** What autopilot is doing, and the list of what it will never do. */
+  @AdminOnly()
+  @Get('agent/autopilot')
+  autopilotStatus() {
+    return this.autopilot.status();
+  }
+
+  /**
+   * Runs a cycle now. Admin-only, and `force` skips only the weekly
+   * cadence — the queue limit, the coverage check and the audit all still
+   * apply, and the result still lands in review rather than on the site.
+   */
+  @AdminOnly()
+  @Post('agent/autopilot/run')
+  runAutopilot(@Query('force') force?: string) {
+    return this.autopilot.run(force === 'true');
+  }
 
   /** The editorial contract, machine-readable. Nothing here is secret. */
   @Get('policy')
