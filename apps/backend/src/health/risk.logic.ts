@@ -28,7 +28,27 @@
  * cholesterol, free sugars and dental and weight outcomes, excess weight
  * and type 2 diabetes, inactivity and cardiovascular disease. Nothing here
  * is novel and nothing here is invented.
+ *
+ * ---------------------------------------------------------------------
+ * A sixth rule, added once conditions arrived: **general guidance stops
+ * where a condition starts.** Everything above is written for a general
+ * adult population, and for some people it is wrong. Telling somebody
+ * with pancreatic insufficiency to watch their fat, or cheering a falling
+ * weight at somebody whose falling weight is the symptom, is not a
+ * cautious reading of the data — it is the harmful one. So where a
+ * declared condition changes what a figure means, the general reading is
+ * suppressed rather than shown alongside, because two contradictory cards
+ * on one screen leave the person to guess which applies to them.
  */
+
+import {
+  CONDITIONS,
+  NOT_MEDICAL_ADVICE,
+  effectsOf,
+  type ConditionCard,
+  type ConditionEffects,
+  type ConditionId,
+} from '@jessmove/shared';
 
 export const HEALTHY_BMI = { min: 18.5, max: 24.9 } as const;
 
@@ -74,6 +94,26 @@ export interface BmiPath {
   steps: string[];
 }
 
+/**
+ * A condition, read against what this person actually recorded.
+ *
+ * The card is the published guidance. `noticed` is the part that makes it
+ * worth showing at all: the specific thing in their own ledger that the
+ * guidance speaks to, or nothing when there is nothing to say yet.
+ */
+export interface ConditionFinding {
+  id: ConditionId;
+  label: string;
+  group: ConditionCard['group'];
+  inShort: string;
+  watches: string[];
+  helps: string[];
+  careful: string[];
+  clinicianOnly: string[];
+  /** What was actually seen in this member's figures, if anything. */
+  noticed: string[];
+}
+
 export interface HealthInsight {
   available: boolean;
   why?: string;
@@ -81,6 +121,12 @@ export interface HealthInsight {
   bmi: BmiPath;
   /** How the gap actually gets closed. */
   plan: GapPlan;
+  /** The conditions declared, and what they change here. */
+  conditions: ConditionFinding[];
+  /** The general readings a declared condition has taken off the screen. */
+  suppressed: string[];
+  /** Present whenever a condition is in play. Shown verbatim. */
+  notMedicalAdvice?: string;
   /** What the picture was built from, so nobody mistakes it for complete. */
   builtFrom: string[];
   limits: string[];
@@ -109,12 +155,35 @@ export interface InsightInput {
   activity?: { daysMoved: number; windowDays: number } | null;
   /** From BodyCommand's own trend, when there is one. */
   trend?: { kgPerWeek: number; direction: 'up' | 'down' | 'level' } | null;
+  /**
+   * What the member has told us they live with. Never inferred, never
+   * guessed from a basket — only ever what they chose themselves.
+   */
+  conditions?: readonly ConditionId[] | null;
 }
 
 const round = (value: number, places = 1): number => {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
 };
+
+/** Everything the declared conditions change, combined. */
+export function effectsFor(input: InsightInput): ConditionEffects {
+  return effectsOf(declaredIn(input));
+}
+
+/** The declared conditions, filtered to ones the catalogue actually knows. */
+function declaredIn(input: InsightInput): ConditionId[] {
+  return (input.conditions ?? []).filter((id) => Boolean(CONDITIONS[id]));
+}
+
+/** The conditions that put a particular effect in play, named. */
+function becauseOf(input: InsightInput, key: keyof ConditionEffects): string {
+  const labels = declaredIn(input)
+    .filter((id) => CONDITIONS[id].effects[key])
+    .map((id) => CONDITIONS[id].label);
+  return labels.join(' and ');
+}
 
 export function bmiFrom(heightCm?: number | null, weightKg?: number | null): number | null {
   if (!heightCm || !weightKg || heightCm < 50 || weightKg < 15) return null;
@@ -159,6 +228,34 @@ export function bmiPathFor(input: InsightInput): BmiPath {
   };
   const band = bandFor(bmi);
   const weight = input.weightKg as number;
+
+  // Rule four, and the one that matters most. Where a condition makes a
+  // falling weight a symptom to report rather than a result to be pleased
+  // about, the whole reduction narrative comes off the screen — not
+  // softened, not shown with a caveat underneath. The BMI itself is still
+  // stated, because hiding a number somebody gave us would be its own kind
+  // of dishonesty; what is withheld is the instruction to act on it.
+  const effects = effectsFor(input);
+  if (effects.weightLossIsAWarning && (band === 'over' || band === 'well_over' || band === 'under')) {
+    const why = becauseOf(input, 'weightLossIsAWarning');
+    return {
+      bmi,
+      band,
+      healthyRangeKg,
+      gapKg: null,
+      weeksAtSafeRate: null,
+      safeRateKgPerWeek: null,
+      says:
+        `Your BMI is ${bmi}. With ${why}, this platform does not turn that into a target to lose ` +
+        'towards — weight coming down on its own is a thing to report to your team, not a result ' +
+        'to chase, and general weight advice is written for people who do not have this.',
+      steps: [
+        'Weigh yourself on a regular day and keep the numbers. A trend over weeks is what your team can use; a single reading is not.',
+        'If the weight is drifting down without you trying, tell them — that is one of the signs they watch for.',
+        'Anything about a target weight belongs in that conversation, where your case is known.',
+      ],
+    };
+  }
 
   let gapKg: number | null = null;
   if (band === 'over' || band === 'well_over') gapKg = round(weight - healthyRangeKg.max, 1);
@@ -207,26 +304,41 @@ export function bmiPathFor(input: InsightInput): BmiPath {
 export function risksFor(input: InsightInput): RiskFinding[] {
   const risks: RiskFinding[] = [];
   const food = input.food;
+  const effects = effectsFor(input);
 
   // Three days of food, not three days of scanning. A whole week's shop
   // goes into the basket in one trip, and that is still a week's evidence.
   if (food && food.daysCovered >= 3) {
     const salt = food.perDay.saltG ?? 0;
-    if (salt > DAILY_REFERENCE.saltG) {
+    // Where a condition makes salt matter more, the line moves down to it
+    // rather than a general card being shown next to a stricter one.
+    const saltLimit = effects.saltMattersMore ? DAILY_REFERENCE.saltG * 0.8 : DAILY_REFERENCE.saltG;
+    if (salt > saltLimit) {
+      const substituteWarning = effects.noSaltSubstitute
+        ? ` Not a low-sodium salt substitute, though — with ${becauseOf(input, 'noSaltSubstitute')} those are usually potassium chloride and are the one swap to avoid.`
+        : '';
       risks.push({
         factor: 'Salt',
-        level: salt > DAILY_REFERENCE.saltG * 1.5 ? 'high' : 'raised',
-        evidence: `${round(salt)}g a day across the ${food.daysCovered} days of food scanned, against a 6g guideline.`,
+        level: salt > saltLimit * 1.5 ? 'high' : 'raised',
+        evidence: effects.saltMattersMore
+          ? `${round(salt)}g a day across the ${food.daysCovered} days of food scanned. The general guideline is 6g; with ${becauseOf(input, 'saltMattersMore')} it is read against ${round(saltLimit)}g.`
+          : `${round(salt)}g a day across the ${food.daysCovered} days of food scanned, against a 6g guideline.`,
         associatedWith: ['raised blood pressure', 'stroke', 'heart disease', 'kidney disease'],
-        action: food.topSalt
-          ? `${food.topSalt} is carrying the most of it. Changing that one item moves the whole week.`
-          : 'Most salt arrives in bread, sauces and processed meat rather than the salt cellar.',
+        action:
+          (food.topSalt
+            ? `${food.topSalt} is carrying the most of it. Changing that one item moves the whole week.`
+            : 'Most salt arrives in bread, sauces and processed meat rather than the salt cellar.') +
+          substituteWarning,
         from: 'foodlens',
       });
     }
 
     const saturates = food.perDay.saturatesG ?? 0;
-    if (saturates > DAILY_REFERENCE.saturatesG) {
+    // Not for everybody. Where enzyme replacement is what makes fat
+    // digestible, the current guidance is not to restrict it, and a card
+    // saying otherwise is the out-of-date advice that causes the weight
+    // loss and the vitamin deficiency in the first place.
+    if (!effects.doNotFlagFat && saturates > DAILY_REFERENCE.saturatesG) {
       risks.push({
         factor: 'Saturated fat',
         level: saturates > DAILY_REFERENCE.saturatesG * 1.5 ? 'high' : 'raised',
@@ -255,7 +367,7 @@ export function risksFor(input: InsightInput): RiskFinding[] {
   }
 
   const bmi = bmiFrom(input.heightCm, input.weightKg);
-  if (bmi !== null) {
+  if (bmi !== null && !effects.weightLossIsAWarning) {
     const band = bandFor(bmi);
     if (band === 'over' || band === 'well_over') {
       risks.push({
@@ -308,19 +420,206 @@ export function risksFor(input: InsightInput): RiskFinding[] {
     }
   }
 
-  if (input.trend && input.trend.direction === 'down' && input.trend.kgPerWeek < -1) {
-    risks.push({
-      factor: 'Rate of loss',
-      level: 'raised',
-      evidence: `Losing ${round(Math.abs(input.trend.kgPerWeek))}kg a week.`,
-      associatedWith: ['muscle loss', 'gallstones', 'nutrient shortfalls'],
-      action: 'Eat a little more and keep the strength work. Half a kilo a week is the rate that stays off.',
-      from: 'bodycommand',
-    });
+  // A falling weight means two entirely different things depending on who
+  // is standing on the scale. For most people it is a rate to slow down;
+  // for somebody whose condition makes it a symptom it is the reason to
+  // ring their team this week, and the threshold for saying so is far
+  // lower than a kilogram.
+  if (input.trend && input.trend.direction === 'down') {
+    const perWeek = round(Math.abs(input.trend.kgPerWeek));
+    if (effects.weightLossIsAWarning && input.trend.kgPerWeek < -0.2) {
+      risks.push({
+        factor: 'Weight going down',
+        level: 'high',
+        evidence: `Down about ${perWeek}kg a week, and you have told us about ${becauseOf(input, 'weightLossIsAWarning')}.`,
+        associatedWith: [
+          'a sign your team watches for, rather than a result to be pleased about',
+        ],
+        action:
+          'Tell the team treating you, this week. Unintended weight loss is one of the things they use to judge whether what you are on is working — it is information they need, not a failure on your part.',
+        from: 'bodycommand',
+      });
+    } else if (!effects.weightLossIsAWarning && input.trend.kgPerWeek < -1) {
+      risks.push({
+        factor: 'Rate of loss',
+        level: 'raised',
+        evidence: `Losing ${perWeek}kg a week.`,
+        associatedWith: ['muscle loss', 'gallstones', 'nutrient shortfalls'],
+        action: 'Eat a little more and keep the strength work. Half a kilo a week is the rate that stays off.',
+        from: 'bodycommand',
+      });
+    }
   }
 
   const order: Record<RiskLevel, number> = { high: 0, raised: 1, watch: 2 };
   return risks.sort((a, b) => order[a.level] - order[b.level]);
+}
+
+/**
+ * The declared conditions, each read against this member's own figures.
+ *
+ * The published guidance is the same for everybody who has the condition,
+ * and on its own it is a leaflet. What makes it worth a screen is
+ * `noticed`: the line in their own ledger the guidance speaks to. Where
+ * there is nothing to point at yet, `noticed` is empty and the card says
+ * so by saying nothing, rather than inventing a concern.
+ */
+export function conditionFindings(input: InsightInput): ConditionFinding[] {
+  return declaredIn(input).map((id) => {
+    const card = CONDITIONS[id];
+    return {
+      id: card.id,
+      label: card.label,
+      group: card.group,
+      inShort: card.inShort,
+      watches: [...card.watches],
+      helps: [...card.helps],
+      careful: [...card.careful],
+      clinicianOnly: [...card.clinicianOnly],
+      noticed: noticedFor(id, input),
+    };
+  });
+}
+
+function noticedFor(id: ConditionId, input: InsightInput): string[] {
+  const seen: string[] = [];
+  const food = input.food;
+  const perDay = food?.perDay ?? {};
+  const enough = Boolean(food && food.daysCovered >= 3);
+  const falling = input.trend?.direction === 'down' ? Math.abs(input.trend.kgPerWeek) : 0;
+
+  const salt = (): void => {
+    if (!enough || !perDay.saltG) return;
+    seen.push(
+      perDay.saltG > DAILY_REFERENCE.saltG * 0.8
+        ? `${round(perDay.saltG)}g of salt a day in what you scanned — worth more attention here than the general 6g line suggests.`
+        : `${round(perDay.saltG)}g of salt a day in what you scanned, which is where you want it.`,
+    );
+  };
+  const sugars = (): void => {
+    if (!enough || !perDay.sugarsG) return;
+    const drink = (food?.topSugarItems ?? []).find((item) =>
+      /cola|lemonade|juice|squash|energy|drink|soda|smoothie|tonic/i.test(item.name),
+    );
+    seen.push(
+      drink
+        ? `${round(perDay.sugarsG)}g of sugars a day, and ${drink.name} is one of the largest lines in it.`
+        : `${round(perDay.sugarsG)}g of sugars a day in what you scanned.`,
+    );
+  };
+  const lowEnergy = (): void => {
+    if (!enough || !perDay.energyKcal) return;
+    if (perDay.energyKcal < DAILY_REFERENCE.energyKcal * 0.7) {
+      seen.push(
+        `${Math.round(perDay.energyKcal)} kcal a day across what you scanned. Taking in too little is the risk here rather than too much — if that figure is real and not just unscanned meals, it is worth mentioning.`,
+      );
+    }
+  };
+  const weightFalling = (): void => {
+    if (falling > 0.2) {
+      seen.push(`Your weight is down about ${round(falling)}kg a week, which is one to report.`);
+    }
+  };
+  const movement = (): void => {
+    if (!input.activity || input.activity.windowDays < 7) return;
+    const perWeek = (input.activity.daysMoved / input.activity.windowDays) * 7;
+    if (perWeek < ACTIVE_DAYS_TARGET) {
+      seen.push(`Movement on about ${round(perWeek)} days a week — the part food cannot do for you.`);
+    }
+  };
+
+  switch (id) {
+    case 'pancreatic_insufficiency':
+      lowEnergy();
+      weightFalling();
+      break;
+    case 'ibd':
+      lowEnergy();
+      weightFalling();
+      break;
+    case 'heart_failure':
+      salt();
+      weightFalling();
+      break;
+    case 'hypertension':
+    case 'chronic_kidney_disease':
+      salt();
+      break;
+    case 'type_2_diabetes':
+      sugars();
+      movement();
+      break;
+    case 'type_1_diabetes':
+      sugars();
+      break;
+    case 'nafld':
+    case 'gout':
+      sugars();
+      break;
+    case 'high_cholesterol':
+      if (enough && perDay.saturatesG) {
+        seen.push(
+          `${round(perDay.saturatesG)}g of saturated fat a day in what you scanned, against a 20g guideline${food?.topSaturates ? ` — ${food.topSaturates} carries most of it` : ''}.`,
+        );
+      }
+      break;
+    case 'osteoporosis':
+      movement();
+      break;
+    case 'coeliac':
+    case 'lactose_intolerance':
+      seen.push(
+        'Every barcode you scan has its declared allergens read off the label, so this is checked on each one rather than remembered.',
+      );
+      break;
+    default:
+      break;
+  }
+
+  return seen;
+}
+
+/**
+ * What a declared condition has taken off the screen, said out loud.
+ *
+ * Silently removing a card is how somebody ends up trusting a page that is
+ * quietly incomplete. If the general reading has been withheld, the reason
+ * is shown in its place.
+ */
+export function suppressionsFor(input: InsightInput): string[] {
+  const effects = effectsFor(input);
+  const out: string[] = [];
+  if (effects.doNotFlagFat) {
+    out.push(
+      `Fat is not flagged here. With ${becauseOf(input, 'doNotFlagFat')} the current guidance is not to restrict it — enzyme replacement is what makes fat digestible, and cutting it out instead is what causes the weight loss and the vitamin problems. The general saturated-fat card would have told you the opposite.`,
+    );
+  }
+  if (effects.weightLossIsAWarning) {
+    out.push(
+      `No weight-loss plan is shown. With ${becauseOf(input, 'weightLossIsAWarning')}, weight coming down is a symptom to report rather than a goal to chase.`,
+    );
+  }
+  if (effects.deficitNeedsClinician && !effects.weightLossIsAWarning) {
+    out.push(
+      `The calorie-gap plan is held back. With ${becauseOf(input, 'deficitNeedsClinician')} a deliberate deficit is a decision to make with a clinician first, because it changes doses and rates that are not this platform's to set.`,
+    );
+  }
+  if (effects.saltMattersMore) {
+    out.push(
+      `Salt is read against a tighter line than the general 6g, because of ${becauseOf(input, 'saltMattersMore')}.`,
+    );
+  }
+  if (effects.noSaltSubstitute) {
+    out.push(
+      `Low-sodium salt substitutes are never suggested here. They are usually potassium chloride, which with ${becauseOf(input, 'noSaltSubstitute')} can be genuinely dangerous.`,
+    );
+  }
+  if (effects.doNotPushProtein) {
+    out.push(
+      `Nothing here will push protein at you. With ${becauseOf(input, 'doNotPushProtein')} the target comes from your bloods and belongs to a renal dietitian.`,
+    );
+  }
+  return out;
 }
 
 export function insightFor(input: InsightInput): HealthInsight {
@@ -355,6 +654,11 @@ export function insightFor(input: InsightInput): HealthInsight {
         projection: [],
         safety: [],
       },
+      // Rule five. A declared condition does not unlock any of this for a
+      // child — if anything it is the strongest reason to keep an app out
+      // of it, and the answer stays the clinician who knows them.
+      conditions: [],
+      suppressed: [],
       builtFrom: [],
       limits: [],
       seeSomeone: ['Anything worrying about a young person’s growth belongs with a GP.'],
@@ -374,17 +678,29 @@ export function insightFor(input: InsightInput): HealthInsight {
   if (input.heightCm && input.weightKg) builtFrom.push('BodyCommand — your height and weight');
   if (input.trend) builtFrom.push('BodyCommand — your weight trend');
 
+  const conditions = conditionFindings(input);
+  if (conditions.length > 0) {
+    builtFrom.push(
+      `What you live with — ${conditions.map((c) => c.label).join(', ')}, because you told us`,
+    );
+  }
+
   return {
     available: true,
     risks,
     bmi: bmiPathFor(input),
     plan: gapPlanFor(input),
+    conditions,
+    suppressed: suppressionsFor(input),
+    ...(conditions.length > 0 ? { notMedicalAdvice: NOT_MEDICAL_ADVICE } : {}),
     builtFrom,
     limits: [
       'None of this is a diagnosis. Each item is an association found across populations, not a statement about you.',
       'It is built from what you scanned and recorded, which is never everything you ate or did.',
       'BMI cannot tell muscle from fat and reads differently across ethnic groups. It is one signal among several here, never a verdict.',
-      'Nothing here accounts for medication, pregnancy, a diagnosed condition or a family history. Those change the picture and only a clinician can weigh them.',
+      conditions.length === 0
+        ? 'Nothing here accounts for medication, pregnancy, a diagnosed condition or a family history. Those change the picture and only a clinician can weigh them.'
+        : 'What you told us you live with is taken into account above. Your medication, your test results and your family history are not — this platform holds none of them, and they change the picture more than anything on this page.',
     ],
     seeSomeone: [
       'Chest pain, breathlessness at rest, or a sudden change you cannot explain — that is urgent care, today, not an app.',
@@ -495,6 +811,30 @@ export function gapPlanFor(input: InsightInput): GapPlan {
     return {
       ...empty,
       why: 'Below the healthy range, this platform will not plan a reduction. That conversation belongs with a GP or a dietitian.',
+    };
+  }
+
+  // Two different silences, and they are not the same silence.
+  //
+  // Where weight loss is a warning sign, there is no plan at all — the
+  // question of a deficit does not arise. Where a deficit merely needs
+  // agreeing first, the plan is withheld rather than abolished: the
+  // arithmetic is sound, it is the decision to run it that is not ours.
+  const effects = effectsFor(input);
+  if (effects.weightLossIsAWarning) {
+    return {
+      ...empty,
+      why:
+        `With ${becauseOf(input, 'weightLossIsAWarning')}, weight coming down is something to report rather than something to aim at, ` +
+        'so there is no reduction plan here. If losing weight is genuinely the right goal for you, that is a decision to make with the team treating you, and this platform will follow it rather than lead it.',
+    };
+  }
+  if (effects.deficitNeedsClinician) {
+    return {
+      ...empty,
+      why:
+        `A deliberate calorie gap changes things that ${becauseOf(input, 'deficitNeedsClinician')} makes somebody else's decision — insulin and other medication doses, and how fast is safe for you. ` +
+        'The arithmetic is not the difficult part and the plan would be the same one; agreeing to run it is not this platform’s call. Take it to your clinician and it can be turned on afterwards.',
     };
   }
 

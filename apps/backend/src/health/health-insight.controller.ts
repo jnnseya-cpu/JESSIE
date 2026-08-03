@@ -1,10 +1,22 @@
-import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
-import { IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
+import { Body, Controller, Delete, Get, Post, Put, Req, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
+import { CONDITIONS, CONDITION_IDS, NOT_MEDICAL_ADVICE } from '@jessmove/shared';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
 import { ActivityService } from '../activity/activity.service';
 import { FoodLogService } from '../foodlens/food-log.service';
+import { ConditionsService } from './conditions.service';
+import { MAX_CONDITIONS } from './conditions.logic';
 import {
   ACTIVE_DAYS_TARGET,
   DAILY_REFERENCE,
@@ -12,6 +24,37 @@ import {
   insightFor,
   type InsightInput,
 } from './risk.logic';
+
+/**
+ * The privacy of this one section, stated rather than assumed.
+ *
+ * Everything on this platform is private. This is more private than that,
+ * and the difference is worth spelling out where somebody is deciding
+ * whether to tick a box about their pancreas. Each line below is a
+ * property of the code rather than a promise about intentions — the table
+ * has one row per member and no reporting route reads it, the draft
+ * autosave refuses anything clinical outright, and deleting the account
+ * takes the row with it in the database rather than in a callback
+ * somebody has to remember to write.
+ */
+const PRIVACY = [
+  'Only you ever see this. It is not in any household or organisation report, at any group size — in a household of two, "somebody has coeliac disease" is a name.',
+  'It is never sent to a marketer, an insurer, an employer or an advertiser. There is no route in this platform that could.',
+  'It is not part of the ordinary draft autosave, which refuses anything clinical outright. It is saved only here, only by you, and only when you tick a box.',
+  'Nothing is inferred. Scanning gluten-free bread for a fortnight will never make this platform decide anything about you.',
+  'One button deletes it, and deleting your account deletes it with everything else.',
+];
+
+class ConditionsDto {
+  /**
+   * Catalogue identifiers only. Anything the catalogue does not know is
+   * dropped rather than stored, so this can never become free text.
+   */
+  @IsArray()
+  @ArrayMaxSize(MAX_CONDITIONS)
+  @IsString({ each: true })
+  conditions!: string[];
+}
 
 class InsightDto {
   @IsOptional()
@@ -55,6 +98,7 @@ export class HealthInsightController {
     private readonly auth: AuthService,
     private readonly foodLog: FoodLogService,
     private readonly activity: ActivityService,
+    private readonly conditions: ConditionsService,
   ) {}
 
   /** The rules this module works to, published rather than implied. */
@@ -76,6 +120,73 @@ export class HealthInsightController {
     };
   }
 
+  /**
+   * The whole catalogue, published.
+   *
+   * Open, because a person deciding whether to tell a platform about their
+   * pancreas is entitled to read exactly what it would then say — before
+   * telling it anything. Nothing about any member is in this response; it
+   * is the same list for everybody.
+   */
+  @Get('conditions/catalogue')
+  catalogue() {
+    return {
+      conditions: CONDITION_IDS.map((id) => CONDITIONS[id]),
+      max: MAX_CONDITIONS,
+      notMedicalAdvice: NOT_MEDICAL_ADVICE,
+      privacy: PRIVACY,
+      neverDoes: [
+        'infer a condition from anything you scan — it is only ever what you chose',
+        'suggest, change or comment on any medication',
+        'store severity, dates, test results or free text',
+        'include any of this in a household or organisation report, at any group size',
+        'show any of this to anyone under 18',
+        'send any of it to a marketer, an insurer, an employer or an advertiser — there is no such route in this platform',
+      ],
+      note:
+        'Telling us is optional and reversible in one action. What it changes is how the rest of this page reads your own figures.',
+    };
+  }
+
+  /** What this member has told us. Their own session, never a parameter. */
+  @Get('conditions')
+  async myConditions(@Req() req: Request) {
+    const declared = await this.conditions.forUser(this.session(req).uid);
+    return {
+      conditions: declared,
+      max: MAX_CONDITIONS,
+      notMedicalAdvice: NOT_MEDICAL_ADVICE,
+      privacy: PRIVACY,
+    };
+  }
+
+  @Put('conditions')
+  async setConditions(@Req() req: Request, @Body() body: ConditionsDto) {
+    const session = this.session(req);
+    // Rule five, enforced at the door rather than only at the render. A
+    // child cannot declare a condition, so there is nothing held about a
+    // child to leak later.
+    const me = await this.auth.me(session);
+    if (me.age < 18) {
+      throw new UnauthorizedException(
+        'Under 18 this platform does not hold conditions or read figures against them. That belongs with a GP.',
+      );
+    }
+    const saved = await this.conditions.set(session.uid, body.conditions);
+    return {
+      conditions: saved,
+      max: MAX_CONDITIONS,
+      notMedicalAdvice: NOT_MEDICAL_ADVICE,
+      privacy: PRIVACY,
+    };
+  }
+
+  /** Told us and would rather not have. One call, nothing left behind. */
+  @Delete('conditions')
+  clearConditions(@Req() req: Request) {
+    return this.conditions.clear(this.session(req).uid);
+  }
+
   @Post()
   async insight(@Req() req: Request, @Body() body: InsightDto) {
     const session = this.session(req);
@@ -87,6 +198,7 @@ export class HealthInsightController {
       windowDays <= 7 ? 'week' : windowDays <= 31 ? 'month' : windowDays <= 366 ? 'year' : 'all',
     );
     const dashboard = await this.activity.dashboard(session.uid);
+    const declared = await this.conditions.forUser(session.uid);
 
     const perNutrient = (key: string): number | undefined =>
       summary.totals.find((t) => t.key === key)?.perDay;
@@ -118,6 +230,7 @@ export class HealthInsightController {
         daysMoved: dashboard.daysMovedInWindow,
         windowDays: dashboard.days.length,
       },
+      conditions: declared,
       trend:
         typeof body.kgPerWeek === 'number'
           ? {

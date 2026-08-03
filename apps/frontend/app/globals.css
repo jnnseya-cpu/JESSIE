@@ -6082,6 +6082,156 @@ textarea:focus-visible {
 .risk__limits li::before { content: '·'; position: absolute; left: 4px; color: var(--jm-teal); font-weight: 700; }
 .risk__limits--urgent li::before { color: var(--jm-critical); }
 
+/* ── What somebody lives with ───────────────────────────────────────── */
+
+.cond { margin: 4px 0 18px; }
+
+.cond__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  color: var(--jm-ink);
+  background: color-mix(in srgb, var(--jm-teal) 8%, transparent);
+  border: 1px solid var(--jm-hairline);
+  border-radius: 11px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.cond__toggle:hover { background: color-mix(in srgb, var(--jm-teal) 14%, transparent); }
+.cond__toggle > span:last-child { font-size: 20px; line-height: 1; color: var(--jm-dim); }
+
+.cond__body {
+  border: 1px solid var(--jm-hairline);
+  border-top: 0;
+  border-radius: 0 0 11px 11px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+/* Not a footnote in grey. It is the accurate description of the thing. */
+.cond__notice {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border-left: 3px solid var(--jm-action);
+  background: color-mix(in srgb, var(--jm-action) 7%, transparent);
+}
+
+.cond__group { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+
+.cond__group legend {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--jm-dim);
+  padding: 0;
+  margin-bottom: 2px;
+}
+
+.cond__opt {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid var(--jm-hairline);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.cond__opt:hover { border-color: var(--jm-teal); }
+.cond__opt input { margin-top: 3px; flex: 0 0 auto; }
+.cond__opt strong { display: block; font-size: 14px; font-weight: 600; }
+.cond__opt em { display: block; font-style: normal; font-size: 12px; color: var(--jm-dim); line-height: 1.5; margin-top: 3px; }
+
+.cond__opt--full { opacity: 0.45; cursor: not-allowed; }
+.cond__opt--full:hover { border-color: var(--jm-hairline); }
+
+.cond__privacy {
+  border: 1px solid var(--jm-hairline);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.cond__privacy summary { cursor: pointer; font-weight: 600; }
+.cond__privacy ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; color: var(--jm-dim); line-height: 1.55; }
+.cond__privacy li { padding-left: 15px; position: relative; }
+.cond__privacy li::before { content: '·'; position: absolute; left: 4px; color: var(--jm-teal); font-weight: 700; }
+
+.cond__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cond__saved { margin: 0; font-size: 13px; color: var(--jm-teal); }
+
+.cond__suppressed {
+  list-style: none;
+  margin: 6px 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cond__suppressed li {
+  padding: 9px 11px 9px 14px;
+  border-left: 3px solid var(--jm-teal);
+  border-radius: 0 9px 9px 0;
+  background: color-mix(in srgb, var(--jm-teal) 7%, transparent);
+}
+
+.cond__card {
+  border: 1px solid var(--jm-hairline);
+  border-left: 4px solid var(--jm-teal);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.cond__noticed {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--jm-action) 8%, transparent);
+}
+
+.cond__noticed strong,
+.cond__block strong {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--jm-dim);
+  margin-bottom: 5px;
+}
+
+.cond__noticed ul,
+.cond__block ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cond__noticed li,
+.cond__block li { padding-left: 14px; position: relative; }
+.cond__noticed li::before,
+.cond__block li::before { content: '·'; position: absolute; left: 3px; font-weight: 700; }
+
+.cond__block { margin-top: 10px; }
+.cond__block--help li::before { color: var(--jm-teal); }
+.cond__block--careful li::before { color: var(--jm-action); }
+.cond__block--clinician li::before { color: var(--jm-critical); }
+
 /* ── The BMI path ───────────────────────────────────────────────────── */
 
 .bmi { display: flex; align-items: center; gap: 16px; margin: 6px 0 12px; }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiBase } from '../api-base';
 import { Curve } from './charts';
+import { ConditionCards, ConditionsPicker, type ConditionCard } from './conditions';
 
 /**
  * What everything, taken together, is allowed to say.
@@ -56,6 +57,9 @@ interface Insight {
     projection: { week: number; weightKg: number }[];
     safety: string[];
   };
+  conditions: (ConditionCard & { noticed: string[] })[];
+  suppressed: string[];
+  notMedicalAdvice?: string;
   builtFrom: string[];
   limits: string[];
   seeSomeone: string[];
@@ -85,8 +89,18 @@ export function InsightModule({
   const [insight, setInsight] = useState<Insight | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
+  /**
+   * Reloading must not empty the screen.
+   *
+   * Declaring a condition asks this section to read itself again, and the
+   * first version of that dropped back to "loading" — which unmounted the
+   * picker mid-tick, threw away the scroll position, and collapsed the
+   * section somebody was in the middle of using. So only the *first* load
+   * shows a placeholder. After that the previous picture stays on screen
+   * until the new one is ready to replace it.
+   */
   const load = useCallback(async () => {
-    setState('loading');
+    setState((was) => (was === 'ready' ? 'ready' : 'loading'));
     try {
       const res = await fetch(`${apiBase()}/insight`, {
         method: 'POST',
@@ -102,11 +116,20 @@ export function InsightModule({
       setInsight((await res.json()).data as Insight);
       setState('ready');
     } catch {
-      setState('error');
+      // A refresh that failed leaves the picture that was already there.
+      // Replacing a working page with an error because a background
+      // reload timed out is how a section people were reading disappears.
+      setState((was) => (was === 'ready' ? 'ready' : 'error'));
     }
   }, [heightCm, weightKg, kgPerWeek]);
 
   useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Stable, so declaring a condition asks this section to re-read itself
+  // once rather than handing the picker a new callback on every render.
+  const reread = useCallback(() => {
     void load();
   }, [load]);
 
@@ -150,6 +173,13 @@ export function InsightModule({
         </div>
       </header>
 
+      {/*
+        Before the warnings, not after them. What somebody lives with
+        decides which of the warnings below are even true for them, so
+        asking underneath would be asking too late.
+      */}
+      <ConditionsPicker onChange={reread} />
+
       {/* ---- the warnings ---- */}
       {insight.risks.length === 0 ? (
         <p className="acct__note">
@@ -179,6 +209,17 @@ export function InsightModule({
           ))}
         </div>
       )}
+
+      {/*
+        And what the declared conditions changed, including the general
+        cards they took off the screen. A page that quietly drops a warning
+        is worse than one that never had it.
+      */}
+      <ConditionCards
+        findings={insight.conditions ?? []}
+        suppressed={insight.suppressed ?? []}
+        notice={insight.notMedicalAdvice}
+      />
 
       {/* ---- the route to a green BMI ---- */}
       <h4 className="fl__h">Getting to a green BMI</h4>
