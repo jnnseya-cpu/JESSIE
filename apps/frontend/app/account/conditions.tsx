@@ -249,8 +249,8 @@ export function ConditionsPicker({ onChange }: { onChange?: (ids: string[]) => v
             whether to tell a platform about their pancreas is entitled to
             know where it goes first.
           */}
-          <details className="cond__privacy" open>
-            <summary>Who sees this</summary>
+          <details className="cond__privacy">
+            <summary>Who sees this — only you, and it never leaves your account</summary>
             <ul>
               {privacy.map((line) => (
                 <li key={line}>{line}</li>
@@ -259,9 +259,9 @@ export function ConditionsPicker({ onChange }: { onChange?: (ids: string[]) => v
           </details>
 
           <p className="acct__note">
-            Optional and reversible. Tick what applies, up to {max} — it saves itself, and the
-            page below changes as soon as it has. No severity, no dates, no medication, no test
-            results: this is a list of conditions and nothing else.
+            Tick what applies, up to {max}. It saves itself and the page below changes as soon as
+            it has — the full guidance for anything you tick appears there. No severity, no dates,
+            no medication, no test results: this is a list of conditions and nothing else.
           </p>
 
           {GROUP_ORDER.filter((group) => catalogue.some((c) => c.group === group)).map((group) => (
@@ -274,7 +274,9 @@ export function ConditionsPicker({ onChange }: { onChange?: (ids: string[]) => v
                   return (
                     <label
                       key={card.id}
-                      className={`cond__opt${!ticked && atLimit ? ' cond__opt--full' : ''}`}
+                      className={`cond__opt${ticked ? ' cond__opt--on' : ''}${
+                        !ticked && atLimit ? ' cond__opt--full' : ''
+                      }`}
                     >
                       <input
                         type="checkbox"

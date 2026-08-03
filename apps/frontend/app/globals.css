@@ -2406,7 +2406,8 @@ button:focus-visible {
   font-size: 14px;
   font-weight: 600;
 }
-.field input,
+/* Same exclusion as .acct — a tick box is never a full-width text field. */
+.field input:not([type='checkbox']):not([type='radio']),
 .field select,
 .field textarea {
   font: inherit;
@@ -4335,8 +4336,17 @@ textarea:focus-visible {
   letter-spacing: 0.04em;
   color: rgba(244, 250, 249, 0.65);
 }
-.acct input,
-.acct-auth input {
+/*
+ * Text fields, and only text fields.
+ *
+ * This rule used to say `input`, full stop, which meant width: 100% and a
+ * 12px padding landed on the first checkbox anybody added — a white slab
+ * filling the whole row, with the label it belonged to shoved off the
+ * right-hand edge of the phone. A tick box is not a text field and must
+ * not be dressed as one.
+ */
+.acct input:not([type='checkbox']):not([type='radio']),
+.acct-auth input:not([type='checkbox']):not([type='radio']) {
   font: inherit;
   font-size: 15.5px;
   padding: 12px 14px;
@@ -5552,7 +5562,7 @@ textarea:focus-visible {
 }
 
 /* ---- inputs that look considered ---- */
-.acct__module input,
+.acct__module input:not([type='checkbox']):not([type='radio']),
 .acct__module select {
   background: rgba(4, 18, 31, 0.55);
   border: 1px solid rgba(244, 250, 249, 0.14);
@@ -5921,7 +5931,7 @@ textarea:focus-visible {
   color: rgba(244, 250, 249, 0.5);
   margin-bottom: 4px;
 }
-.scan__size input {
+.scan__size input:not([type='checkbox']):not([type='radio']) {
   width: 100%;
   padding: 9px 12px;
   border-radius: 9px;
@@ -6139,18 +6149,62 @@ textarea:focus-visible {
 
 .cond__opt {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
-  padding: 9px 10px;
+  padding: 12px;
   border: 1px solid var(--jm-hairline);
-  border-radius: 9px;
+  border-radius: 10px;
   cursor: pointer;
 }
 
 .cond__opt:hover { border-color: var(--jm-teal); }
-.cond__opt input { margin-top: 3px; flex: 0 0 auto; }
-.cond__opt strong { display: block; font-size: 14px; font-weight: 600; }
-.cond__opt em { display: block; font-style: normal; font-size: 12px; color: var(--jm-dim); line-height: 1.5; margin-top: 3px; }
+.cond__opt--on { border-color: var(--jm-teal); background: color-mix(in srgb, var(--jm-teal) 9%, transparent); }
+
+/* A tick box, at the size a thumb expects, and never wider. */
+.cond__opt input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  margin: 1px 0 0;
+  padding: 0;
+  border-radius: 6px;
+  accent-color: var(--jm-teal);
+}
+
+/* And the text takes whatever is left, wrapping rather than overflowing. */
+.cond__opt > span { flex: 1 1 auto; min-width: 0; }
+.cond__opt strong { display: block; font-size: 15px; font-weight: 600; line-height: 1.35; }
+/*
+ * Two lines while you are scanning, all of it once you have ticked.
+ *
+ * Eighteen conditions at six lines each is a page nobody reads — the
+ * labels, which are the thing being looked for, end up buried in prose
+ * written for somebody who has just been told they have it. So the
+ * description is clamped while the list is being scanned and opens in
+ * full on the one you chose, where it is confirmation rather than noise.
+ */
+.cond__opt em {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-style: normal;
+  font-size: 13px;
+  color: var(--jm-dim);
+  line-height: 1.5;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.cond__opt--on em {
+  display: block;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+  overflow: visible;
+  color: var(--jm-ink);
+}
 
 .cond__opt--full { opacity: 0.45; cursor: not-allowed; }
 .cond__opt--full:hover { border-color: var(--jm-hairline); }
@@ -6162,7 +6216,15 @@ textarea:focus-visible {
   font-size: 13px;
 }
 
-.cond__privacy summary { cursor: pointer; font-weight: 600; }
+/*
+ * Closed by default, but the summary carries the answer.
+ *
+ * The assurance somebody wants before ticking a box about their pancreas
+ * is "only me" — five paragraphs of it, open, is a wall standing between
+ * them and the task. So the one-line version is always visible and the
+ * detail is one tap away.
+ */
+.cond__privacy summary { cursor: pointer; font-weight: 600; line-height: 1.45; }
 .cond__privacy ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; color: var(--jm-dim); line-height: 1.55; }
 .cond__privacy li { padding-left: 15px; position: relative; }
 .cond__privacy li::before { content: '·'; position: absolute; left: 4px; color: var(--jm-teal); font-weight: 700; }

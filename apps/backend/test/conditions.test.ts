@@ -420,6 +420,38 @@ test('re-reading the section never empties the screen somebody is using', () => 
   assert.match(parent, /setState\(\(was\) => \(was === 'ready' \? 'ready' : 'error'\)\)/);
 });
 
+test('a tick box is not styled as a text field', () => {
+  // `.acct input { width: 100% }` landed on the first checkbox anybody
+  // added: a white slab filling the row, with the condition name it
+  // belonged to pushed off the right edge of the phone. The list was
+  // unreadable and the fix has to hold for every future checkbox, not
+  // just this one.
+  const css = readFileSync(new URL('../../frontend/app/globals.css', import.meta.url), 'utf8');
+  const rules = css.split('}');
+  for (const rule of rules) {
+    const [selector = '', body = ''] = rule.split('{');
+    if (!/width:\s*100%/.test(body)) continue;
+    if (!/\binput\b/.test(selector)) continue;
+    assert.match(
+      selector,
+      /:not\(\[type='checkbox'\]\)/,
+      `a full-width rule still catches checkboxes: ${selector.trim().slice(0, 90)}`,
+    );
+  }
+  assert.match(css, /\.cond__opt input\[type='checkbox'\][\s\S]{0,220}min-width: 22px/,
+    'and the box has a size of its own');
+  assert.match(css, /\.cond__opt > span \{ flex: 1 1 auto; min-width: 0; \}/,
+    'while the label takes what is left and wraps');
+});
+
+test('the picker stays scannable rather than becoming a wall of prose', () => {
+  const css = readFileSync(new URL('../../frontend/app/globals.css', import.meta.url), 'utf8');
+  assert.match(css, /\.cond__opt em \{[\s\S]{0,300}-webkit-line-clamp: 2/,
+    'eighteen descriptions in full buries the labels being looked for');
+  assert.match(css, /\.cond__opt--on em \{[\s\S]{0,200}-webkit-line-clamp: none/,
+    'and the one that was ticked opens in full');
+});
+
 test('a member is told where this goes before they tick anything', () => {
   const source = readFileSync(
     new URL('../src/health/health-insight.controller.ts', import.meta.url),

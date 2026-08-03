@@ -38,7 +38,7 @@ import {
  * somebody has to remember to write.
  */
 const PRIVACY = [
-  'Only you ever see this. It is not in any household or organisation report, at any group size — in a household of two, "somebody has coeliac disease" is a name.',
+  'Only you ever see this. It is not in any household or organisation report, at any group size — in a household of two, “somebody has coeliac disease” is a name.',
   'It is never sent to a marketer, an insurer, an employer or an advertiser. There is no route in this platform that could.',
   'It is not part of the ordinary draft autosave, which refuses anything clinical outright. It is saved only here, only by you, and only when you tick a box.',
   'Nothing is inferred. Scanning gluten-free bread for a fortnight will never make this platform decide anything about you.',
