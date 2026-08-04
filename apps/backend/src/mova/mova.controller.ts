@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import type { Request } from 'express';
-import { MOVA_REFUSES, PRESENCE_DEFINITIONS } from '@jessmove/shared';
+import { MOVA_REFUSES, PLATFORM_PAYERS, PRESENCE_DEFINITIONS } from '@jessmove/shared';
 import { AbuseService } from '../auth/abuse.service';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
@@ -38,12 +38,16 @@ export class MovaController {
    * Without this the coach — the most-used model call on the platform —
    * ran free: the service has always accepted a payer, but nothing was
    * ever handed one, so every conversation was a provider bill against
-   * nobody's balance. An anonymous ask still answers; it simply has no
-   * wallet to charge.
+   * nobody's balance.
+   *
+   * There is now no such thing as an unbilled ask. A member pays from
+   * their own allowance; a visitor with no account draws on the platform's
+   * daily trial budget, which is a real balance that runs out. Both are
+   * gated before the call rather than counted after it.
    */
-  private billTo(req: Request): string | undefined {
+  private billTo(req: Request): string {
     const token = tokenFrom(req);
-    return (token ? this.auth.verify(token)?.uid : undefined) ?? undefined;
+    return (token ? this.auth.verify(token)?.uid : undefined) ?? PLATFORM_PAYERS.trial;
   }
 
   /** What the coach will and will not do — published, not implied. */

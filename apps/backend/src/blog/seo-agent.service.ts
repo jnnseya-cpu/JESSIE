@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   AGENT_REGISTRY,
   BANNED_LEXICON,
+  PLATFORM_PAYERS,
   LINK_TARGETS,
   SEED_POSTS,
   SEO_RULES,
@@ -17,7 +18,7 @@ import {
   type SeoAudit,
   type TopicCluster,
 } from '@jessmove/shared';
-import { AiGatewayService } from '../ai/ai-gateway.service';
+import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
 
 /**
  * The SEO agent.
@@ -278,6 +279,11 @@ export class SeoAgentService {
         agent: SeoAgentService.CODE,
         modelClass: definition.modelClass,
         maxTokens: 4000,
+        // Editorial has no member behind it, which used to mean it had no
+        // bill either. It draws on the platform's own daily budget now, so
+        // an agent looping on a bad prompt runs out of allowance rather
+        // than out of somebody's card.
+        billTo: PLATFORM_PAYERS.editorial,
         jsonSchema: OUTPUT_SHAPE as unknown as Record<string, unknown>,
         messages: [
           { role: 'system', content: this.systemPrompt(strict) },
@@ -289,6 +295,12 @@ export class SeoAgentService {
     } catch (error) {
       // No provider, a timeout, or every provider refusing. None of those
       // should turn an editorial request into a 500.
+      //
+      // An exhausted editorial budget is different: falling back to a
+      // brief would report "no provider configured" for what is really
+      // "today's budget is spent", and autopilot would go on commissioning
+      // against a wall it cannot see.
+      if (error instanceof AllowanceExhaustedError) throw error;
       this.logger.warn(
         `SEO agent falling back to a brief: ${(error as Error).message}`,
       );
@@ -325,6 +337,7 @@ export class SeoAgentService {
           agent: SeoAgentService.CODE,
           modelClass: definition.modelClass,
           maxTokens: 4000,
+          billTo: PLATFORM_PAYERS.editorial,
           jsonSchema: OUTPUT_SHAPE as unknown as Record<string, unknown>,
           messages: [
             { role: 'system', content: this.systemPrompt(strict) },

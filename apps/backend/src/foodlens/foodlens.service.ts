@@ -10,8 +10,8 @@ import {
   type EvidenceSource,
 } from '@jessmove/foodlens';
 import { plateComposition } from '@jessmove/foodlens';
-import { AiGatewayError } from '@jessmove/shared';
-import { AiGatewayService } from '../ai/ai-gateway.service';
+import { AiGatewayError, PLATFORM_PAYERS } from '@jessmove/shared';
+import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
 import { BarcodeService, type LabelFacts } from './barcode.service';
 import { adviseOnVisionFailure } from './vision-advice.logic';
 import { extractJsonObject, parseVisionJson } from './vision-parse.logic';
@@ -134,6 +134,7 @@ export class FoodlensService {
       }
       return this.scan(code);
     } catch (error) {
+      if (error instanceof AllowanceExhaustedError) throw error;
       this.logger.warn(`barcode read failed: ${(error as Error).message}`);
       return {
         found: false,
@@ -170,6 +171,11 @@ export class FoodlensService {
     try {
       const completion = await this.gateway.complete({
         agent: 'LENS',
+        // A probe is a real provider call and costs real money, so it is
+        // billed like one — to the platform, which is who asked for it.
+        // A diagnostic that quietly bypassed metering would be the first
+        // unbilled path back into the system.
+        billTo: PLATFORM_PAYERS.editorial,
         messages: [
           { role: 'system', content: VISION_PROMPT },
           { role: 'user', content: 'Analyse this meal photograph.' },
@@ -266,6 +272,10 @@ export class FoodlensService {
 
       return { fatG, saturatesG, sugarsG, saltG };
     } catch (error) {
+      // The second pass is optional refinement, so an exhausted allowance
+      // here degrades the answer rather than losing it — the member has
+      // already been charged for and given the first pass.
+      if (error instanceof AllowanceExhaustedError) return null;
       this.logger.warn(`per100g second pass failed: ${(error as Error).message}`);
       return null;
     }
@@ -364,6 +374,11 @@ export class FoodlensService {
           this.logger.warn(`vision parse failed: ${parsed.why ?? 'unknown'}`);
         }
       } catch (err) {
+        // "You are out of allowance" and "the model is down" are different
+        // sentences with different actions behind them, and telling
+        // somebody the second when the first is true guarantees they wait
+        // for a recovery that will never come.
+        if (err instanceof AllowanceExhaustedError) throw err;
         visionNote =
           err instanceof Error && err.message.includes('No AI provider')
             ? 'No AI provider is configured, so the photograph was not analysed. Declared facts only.'

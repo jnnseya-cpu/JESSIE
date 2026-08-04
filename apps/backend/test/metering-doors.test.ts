@@ -52,17 +52,23 @@ test('the coach charges the member who asked', () => {
 
 test('FoodLens still charges the member who asked', () => {
   const controller = read('../src/foodlens/foodlens.controller.ts');
-  // The payer and the ledger's owner are the same session, resolved once.
-  assert.match(controller, /billTo: uid/, 'analysis is billed');
+  /*
+   * The payer and the ledger's owner used to be the same value, so the
+   * bill was `billTo: uid` and an anonymous scan carried no payer at all.
+   * They have come apart: the ledger still belongs to the member (a
+   * visitor has no ledger), while the bill always resolves to somebody —
+   * the member, or the platform's own trial budget.
+   */
+  assert.match(controller, /billTo: this\.payer\(req\)/, 'analysis is billed to somebody, always');
   assert.match(controller, /this\.foodlens\.readBarcode\([^)]*uid\)/s, 'reading a barcode from a photo is billed');
   assert.match(controller, /guardAnonymous\(req, uid, 'foodlens\.analyze'\)/, 'anonymous analysis is capped');
   assert.match(controller, /private who\(req: Request\)/, 'the payer comes from the session');
 });
 
 test('every member-facing model call names a payer', () => {
-  // The gateway meters on `billTo`; a call site that omits it is a bill
-  // nobody sees. The blog agent is the platform's own cost, not a
-  // member's, and is the one deliberate exception.
+  // The gateway now refuses a call that names no payer, so there is no
+  // longer any exception to this — the blog agent, which used to be the
+  // deliberate one, bills the platform's own editorial budget.
   const service = read('../src/foodlens/foodlens.service.ts');
   const calls = service.split('this.gateway.complete(').length - 1;
   const billed = service.split('billTo').length - 1;

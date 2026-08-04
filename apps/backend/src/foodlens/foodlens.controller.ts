@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { PLATFORM_PAYERS } from '@jessmove/shared';
 import { AbuseService } from '../auth/abuse.service';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
@@ -41,10 +42,23 @@ export class FoodlensController {
     this.abuse.assertAnonymousAllowance(req.ip ?? 'unknown', action);
   }
 
-  /** Whose allowance pays, and whose ledger this lands in. */
+  /** Whose ledger a scan lands in. Undefined for somebody with no account. */
   private who(req: Request): string | undefined {
     const token = tokenFrom(req);
     return (token ? this.auth.verify(token)?.uid : undefined) ?? undefined;
+  }
+
+  /**
+   * Whose allowance pays. Never undefined.
+   *
+   * A member pays from their own balance. A visitor trying the platform
+   * draws on the platform's daily trial budget — a real wallet with a real
+   * balance, so the trial is metered and bounded rather than free. When
+   * the day's budget is gone the trial pauses and says so, which is a
+   * better outcome than an unbounded bill nobody is watching.
+   */
+  private payer(req: Request): string {
+    return this.who(req) ?? PLATFORM_PAYERS.trial;
   }
 
   private requireWho(req: Request): string {
@@ -197,7 +211,7 @@ export class FoodlensController {
   async analyze(@Req() req: Request, @Body() body: AnalyzeDto): Promise<Record<string, unknown>> {
     const uid = this.who(req);
     this.guardAnonymous(req, uid, 'foodlens.analyze');
-    const result = await this.foodlens.analyze({ ...body, billTo: uid });
+    const result = await this.foodlens.analyze({ ...body, billTo: this.payer(req) });
 
     // A meal joins the ledger by itself — no save button, and nothing for
     // the member to remember. Only figures that were actually produced go

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MOVA_REFUSES, REGISTERS, modeForAge } from '@jessmove/shared';
-import { AiGatewayService } from '../ai/ai-gateway.service';
+import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
 import {
   MINOR_REFUSAL,
   UNAVAILABLE_NOTE,
@@ -83,6 +83,16 @@ export class MovaService {
 
       return { ...base, answer, live: true };
     } catch (error) {
+      /*
+       * An empty allowance is not an outage, and must not be dressed as
+       * one. This catch used to swallow everything, so a member out of ACU
+       * was told "nothing is wrong with your account — the coaching model
+       * is temporarily unavailable", which is false in both halves: there
+       * is something to fix, it is theirs to fix, and no amount of waiting
+       * will fix it. It goes up to the filter, which answers 402 with the
+       * wallet's own explanation.
+       */
+      if (error instanceof AllowanceExhaustedError) throw error;
       this.logger.warn(`coach unavailable: ${(error as Error).message}`);
       return { ...base, answer: UNAVAILABLE_NOTE, live: false };
     }

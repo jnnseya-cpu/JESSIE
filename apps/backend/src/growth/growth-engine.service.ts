@@ -14,7 +14,7 @@ import {
   type GrowthToolId,
   type PlatformId,
 } from '@jessmove/shared';
-import { AiGatewayService } from '../ai/ai-gateway.service';
+import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
 import { GrowthResultsService } from './growth-results.service';
 
 /**
@@ -264,6 +264,9 @@ export class GrowthEngineService {
       provider = response.provider;
       parsed = this.parse(response.text);
     } catch (error) {
+      // A partner out of allowance is told so, with a top-up offered —
+      // not handed "nothing was written" and left guessing why.
+      if (error instanceof AllowanceExhaustedError) throw error;
       this.logger.warn(`growth engine: ${(error as Error).message}`);
       const outputId = await this.results.saveOutput(req.partnerId, {
         toolId: req.toolId,

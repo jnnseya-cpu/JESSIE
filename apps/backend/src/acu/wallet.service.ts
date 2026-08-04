@@ -79,6 +79,14 @@ export type SpendResult =
       customerChargeGbp: number;
       balanceAfter: number;
       drawnFrom: { bucket: WalletBucket; amount: number }[];
+      /**
+       * The exact grants the ACUs came out of.
+       *
+       * Needed so an unspent hold goes back where it was taken from. A
+       * refund into a fresh grant would quietly turn purchased allowance
+       * into an expiring one, and the member would never be told.
+       */
+      grants: { grantId: string; amount: number }[];
     }
   | {
       allowed: false;
@@ -411,6 +419,7 @@ export class WalletService implements OnModuleDestroy {
     // Draw down in precedence order: promotional, then subscription,
     // then purchased — so the shortest-lived allowance is used first.
     const drawnFrom: { bucket: WalletBucket; amount: number }[] = [];
+    const grantLines: { grantId: string; amount: number }[] = [];
     let outstanding = acusRequired;
 
     for (const bucket of WALLET_PRECEDENCE) {
@@ -427,6 +436,7 @@ export class WalletService implements OnModuleDestroy {
         const entry = drawnFrom.find((d) => d.bucket === bucket);
         if (entry) entry.amount += take;
         else drawnFrom.push({ bucket, amount: take });
+        grantLines.push({ grantId: grant.id, amount: take });
       }
     }
 
@@ -440,7 +450,54 @@ export class WalletService implements OnModuleDestroy {
       customerChargeGbp,
       balanceAfter: balance - acusRequired,
       drawnFrom,
+      grants: grantLines,
     };
+  }
+
+  /**
+   * Puts unspent ACUs back where they came from.
+   *
+   * The gateway holds an agent's ceiling before it calls a provider and
+   * settles to the real figure afterwards, so most calls end with something
+   * to give back. It has to go back to the *same grants* rather than into a
+   * fresh one: crediting a promotional grant for a refund of purchased
+   * allowance would silently convert money the member paid into an
+   * allowance that expires, and they would never see it happen.
+   *
+   * Nothing here can create allowance. `remaining` is capped at the
+   * grant's original `amount`, so a double refund is absorbed rather than
+   * minting ACUs out of a bug.
+   */
+  async refund(
+    walletId: string,
+    grants: readonly { grantId: string; amount: number }[],
+    now = new Date(),
+  ): Promise<{ refunded: number }> {
+    const wallet = await this.get(walletId);
+    if (!wallet) return { refunded: 0 };
+
+    let refunded = 0;
+    for (const line of grants) {
+      if (line.amount <= 0) continue;
+      const grant = wallet.grants.find((g) => g.id === line.grantId);
+      if (!grant) continue;
+      const room = grant.amount - grant.remaining;
+      const give = Math.min(room, line.amount);
+      if (give <= 0) continue;
+      grant.remaining += give;
+      refunded += give;
+    }
+
+    if (refunded === 0) return { refunded: 0 };
+
+    // The daily and monthly counters move with it, or a held-and-released
+    // ceiling would eat a member's own daily limit for spend that never
+    // happened.
+    wallet.spentToday = Math.max(0, wallet.spentToday - refunded);
+    wallet.spentThisMonth = Math.max(0, wallet.spentThisMonth - refunded);
+    await this.persist(wallet);
+    void now;
+    return { refunded };
   }
 
   private refuse(
