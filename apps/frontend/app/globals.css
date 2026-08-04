@@ -5563,6 +5563,7 @@ textarea:focus-visible {
 
 /* ---- inputs that look considered ---- */
 .acct__module input:not([type='checkbox']):not([type='radio']),
+.acct__module textarea,
 .acct__module select {
   background: rgba(4, 18, 31, 0.55);
   border: 1px solid rgba(244, 250, 249, 0.14);
@@ -5572,7 +5573,10 @@ textarea:focus-visible {
   font-size: 15px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.acct__module textarea { width: 100%; font: inherit; resize: vertical; min-height: 96px; }
+
 .acct__module input:focus,
+.acct__module textarea:focus,
 .acct__module select:focus {
   outline: none;
   border-color: var(--jm-accent, var(--jm-move));
@@ -6091,6 +6095,89 @@ textarea:focus-visible {
 .risk__limits li { padding-left: 16px; position: relative; }
 .risk__limits li::before { content: '·'; position: absolute; left: 4px; color: var(--jm-teal); font-weight: 700; }
 .risk__limits--urgent li::before { color: var(--jm-critical); }
+
+/* ── The AI Growth Engine ───────────────────────────────────────────── */
+
+.ge__tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+
+.ge__tab {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--jm-hairline);
+  background: transparent;
+  color: var(--jm-dim);
+  cursor: pointer;
+}
+
+.ge__tab--on { background: var(--jm-teal); border-color: var(--jm-teal); color: #05121c; font-weight: 600; }
+
+.ge__panel { display: grid; gap: 14px; }
+
+.ge__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+
+.ge__tool {
+  font: inherit;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--jm-hairline);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--jm-ink);
+  cursor: pointer;
+}
+
+.ge__tool:hover { border-color: var(--jm-teal); }
+.ge__tool--on { border-color: var(--jm-teal); background: color-mix(in srgb, var(--jm-teal) 10%, transparent); }
+.ge__tool strong { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.ge__tool span { font-size: 11px; color: var(--jm-dim); }
+
+.ge__what { margin: 0; font-size: 14px; line-height: 1.55; }
+.ge__spec { display: block; margin-top: 5px; font-style: normal; font-size: 12px; color: var(--jm-dim); line-height: 1.5; }
+.ge__row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.ge__says { margin: 0; font-size: 14px; line-height: 1.55; }
+
+/*
+ * Held copy and delivered copy must not look alike. A partner scanning the
+ * screen decides in about a second whether there is something to paste,
+ * and a red rule down the left is the fastest way to say "not this one".
+ */
+.ge__out { border-radius: 11px; padding: 13px; border-left: 4px solid var(--jm-teal); background: color-mix(in srgb, var(--jm-teal) 7%, transparent); display: grid; gap: 10px; }
+.ge__out--held { border-left-color: var(--jm-critical); background: color-mix(in srgb, var(--jm-critical) 8%, transparent); }
+
+.ge__copy { display: grid; gap: 12px; }
+.ge__field strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--jm-dim); margin-bottom: 4px; }
+.ge__field p { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+.ge__field ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 1.55; }
+.ge__sub { display: block; }
+.ge__sub em { font-style: normal; color: var(--jm-dim); }
+
+.ge__report { border: 1px solid var(--jm-hairline); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.ge__refresh { font: inherit; font-size: 13px; background: none; border: 0; color: var(--jm-teal); cursor: pointer; padding: 0; text-decoration: underline; }
+
+.ge__totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+.ge__total { text-align: center; padding: 10px 6px; border-radius: 9px; background: color-mix(in srgb, var(--jm-teal) 8%, transparent); }
+.ge__total strong { display: block; font-size: 17px; line-height: 1.2; }
+.ge__total span { font-size: 11px; color: var(--jm-dim); }
+
+.ge__recs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ge__rec { padding: 11px 12px; border-radius: 10px; border-left: 3px solid var(--jm-hairline); background: color-mix(in srgb, var(--jm-teal) 5%, transparent); }
+.ge__rec strong { display: block; font-size: 14px; }
+.ge__rec p { margin: 5px 0 0; font-size: 13px; color: var(--jm-dim); line-height: 1.55; }
+.ge__rec--strong { border-left-color: var(--jm-teal); }
+.ge__rec--worth-trying { border-left-color: var(--jm-action); }
+.ge__rec--thin { border-left-color: var(--jm-hairline); }
+.ge__conf { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--jm-dim); }
+
+/* Wide tables scroll inside themselves rather than pushing the page sideways. */
+.ge__table { width: 100%; border-collapse: collapse; font-size: 13px; display: block; overflow-x: auto; }
+.ge__table th, .ge__table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--jm-hairline); white-space: nowrap; }
+.ge__table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--jm-dim); font-weight: 600; }
+.ge__thin { opacity: 0.55; }
+.ge__thin em { font-style: normal; font-size: 11px; color: var(--jm-dim); }
 
 /* ── What somebody lives with ───────────────────────────────────────── */
 

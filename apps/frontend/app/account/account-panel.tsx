@@ -15,6 +15,7 @@ import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
 import { ScannerModule } from './scanner';
 import { LedgerModule } from './ledger';
+import { GrowthEngineModule } from './growth-engine';
 import { InsightModule } from './insight';
 import {
   BodyCommandModule,
@@ -174,8 +175,21 @@ export function AccountPanel() {
     [],
   );
 
-  type Section = 'today' | 'food' | 'body' | 'team' | 'you';
+  type Section = 'today' | 'food' | 'body' | 'grow' | 'team' | 'you';
   const [section, setSection] = useState<Section>('today');
+
+  /*
+   * Who sees the growth engine.
+   *
+   * Partners and staff. It is a set of marketing tools, and putting them
+   * in front of somebody who joined to move more raises a reasonable
+   * question about what they signed up to. The guard is on the server as
+   * well — this only decides whether a tab is drawn.
+   */
+  const canGrow =
+    me?.kind === 'growth_partner' ||
+    me?.kind === 'platform_staff' ||
+    me?.kind === 'organisation_admin';
   const { loaded: stateLoaded, state: savedState, restored } = useSavedState();
   useEffect(() => {
     if (!stateLoaded) return;
@@ -615,6 +629,13 @@ export function AccountPanel() {
               ['food', 'Food'],
               ['body', 'Body'],
               ['team', 'Team'],
+              /*
+                The engine is a partner's tool, so it is a partner's tab.
+                Showing it to everybody would put a set of marketing
+                controls in front of people who came here to move more, and
+                every one of them would wonder what they had signed up to.
+              */
+              ...(canGrow ? ([['grow', 'Grow']] as const) : []),
               ['you', 'You'],
             ] as const
           ).map(([key, label]) => (
@@ -654,6 +675,8 @@ export function AccountPanel() {
               <WearablesModule />
             </>
           )}
+
+          {section === 'grow' && canGrow && <GrowthEngineModule />}
 
           {section === 'team' && (
             <>
