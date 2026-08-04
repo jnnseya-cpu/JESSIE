@@ -1,8 +1,7 @@
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import type { Request } from 'express';
-import { MOVA_REFUSES, PLATFORM_PAYERS, PRESENCE_DEFINITIONS } from '@jessmove/shared';
-import { AbuseService } from '../auth/abuse.service';
+import { MOVA_REFUSES, PRESENCE_DEFINITIONS } from '@jessmove/shared';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
 import { MovaService } from './mova.service';
@@ -29,7 +28,6 @@ export class MovaController {
   constructor(
     private readonly mova: MovaService,
     private readonly auth: AuthService,
-    private readonly abuse: AbuseService,
   ) {}
 
   /**
@@ -40,14 +38,15 @@ export class MovaController {
    * ever handed one, so every conversation was a provider bill against
    * nobody's balance.
    *
-   * There is now no such thing as an unbilled ask. A member pays from
-   * their own allowance; a visitor with no account draws on the platform's
-   * daily trial budget, which is a real balance that runs out. Both are
-   * gated before the call rather than counted after it.
+   * There is now no such thing as an unbilled ask, and no anonymous one
+   * either. A member pays from their own allowance — which on a new
+   * account is the free tier, fifty ACUs a month for two months. Somebody
+   * with no account has no allowance to pay from, so the gateway refuses
+   * with the sentence that says what an account would give them.
    */
-  private billTo(req: Request): string {
+  private billTo(req: Request): string | undefined {
     const token = tokenFrom(req);
-    return (token ? this.auth.verify(token)?.uid : undefined) ?? PLATFORM_PAYERS.trial;
+    return (token ? this.auth.verify(token)?.uid : undefined) ?? undefined;
   }
 
   /** What the coach will and will not do — published, not implied. */
@@ -64,7 +63,6 @@ export class MovaController {
   ask(@Req() req: Request, @Body() body: AskDto) {
     const uid = this.billTo(req);
     // A stranger gets a small daily allowance; a member spends their own.
-    if (!uid) this.abuse.assertAnonymousAllowance(req.ip ?? 'unknown', 'mova.ask');
     return this.mova.ask(body.question, body.age, body.displayName, uid);
   }
 }

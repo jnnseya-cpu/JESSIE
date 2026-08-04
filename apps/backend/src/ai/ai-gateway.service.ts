@@ -5,7 +5,11 @@ import {
   AGENT_REGISTRY,
   AI_PROVIDERS,
   AiGatewayError,
+  FREE_TIER,
   NEVER_SEND_TO_MODEL,
+  NO_ACCOUNT_NO_AI,
+  freeGrantReference,
+  freeGrantsDue,
   isPlatformPayer,
   platformDailyAcu,
   type AiCompletionRequest,
@@ -73,24 +77,27 @@ export class AiGatewayService {
   }
 
   /**
-   * The wallet behind a payer, member or platform.
+   * The wallet behind a payer.
    *
-   * The public trial and the editorial agent have no member to charge, and
-   * the easy answer would be to let them through unbilled. They are not
-   * unbilled, they are billed to us — and a model call nothing counts is a
-   * cost nobody can see and nobody can cap. So each has a real wallet with
-   * a real daily balance, and when it is gone the action stops exactly as
-   * it would for a member.
+   * A member's own wallet, topped up with the free tier if any of it is
+   * still owed. The one exception is the editorial agent, which writes the
+   * blog: it has no member to charge and the easy answer would be to let
+   * it through unbilled. It is not unbilled — it is billed to us, and a
+   * model call nothing counts is a cost nobody can see and nobody can cap.
+   * It draws a daily budget an operator sets, so an agent looping on a bad
+   * prompt runs out of allowance rather than out of our card.
    *
-   * The daily grant is topped up on read rather than on a schedule,
-   * because a serverless deployment has no scheduler and a cron nobody
-   * runs is a promise nobody keeps. It is idempotent within a day: the
-   * grant carries the date in its reference, so a hundred concurrent
-   * requests on the same morning still produce one day's budget.
+   * That budget is topped up on read rather than on a schedule, because a
+   * serverless deployment has no scheduler and a cron nobody runs is a
+   * promise nobody keeps. It is idempotent within a day: the grant carries
+   * the date in its reference, so concurrent requests on the same morning
+   * still produce one day's budget.
    */
   private async walletFor(billTo: string): Promise<{ id: string }> {
     if (!isPlatformPayer(billTo)) {
-      return this.wallets.forSubject('user', billTo);
+      const wallet = await this.wallets.forSubject('user', billTo);
+      await this.grantFreeTier(wallet.id, billTo);
+      return wallet;
     }
 
     const wallet = await this.wallets.forSubject('organisation', billTo);
@@ -109,6 +116,43 @@ export class AiGatewayService {
   }
 
   /**
+   * The free tier: fifty ACUs a month, for two months, and then never.
+   *
+   * Issued here rather than at registration for two reasons. An account
+   * that never touches an AI feature never needs the grant, so the second
+   * month is not spent on somebody who is not using it. And a grant made
+   * at signup would sit there expiring while a member who came back in
+   * week five found an empty wallet and no explanation.
+   *
+   * Idempotent by construction: each month's grant carries the account's
+   * own reference, so a hundred concurrent calls on the same morning
+   * produce one grant. When both months are used, nothing happens here
+   * ever again and the hold below refuses.
+   */
+  private async grantFreeTier(walletId: string, userId: string): Promise<void> {
+    const wallet = await this.wallets.get(walletId);
+    if (!wallet) return;
+
+    const created = wallet.grants
+      .map((g) => g.grantedAt.getTime())
+      .reduce((earliest, at) => Math.min(earliest, at), Date.now());
+    const issued = wallet.grants.map((g) => g.sourceRef ?? '');
+
+    const due = freeGrantsDue(new Date(created), new Date(), issued, userId);
+    for (const month of due) {
+      await this.wallets.depositAllowance(
+        walletId,
+        FREE_TIER.acusPerMonth,
+        freeGrantReference(userId, month),
+      );
+      this.logger.log(
+        `[${userId}] free tier month ${month + 1} of ${FREE_TIER.months}: ` +
+          `${FREE_TIER.acusPerMonth} ACU`,
+      );
+    }
+  }
+
+  /**
    * The hold, taken before a single token is sent to a provider.
    *
    * This replaces a meter that ran *after* the call and only logged when
@@ -124,10 +168,10 @@ export class AiGatewayService {
    *
    * Two refusals, and both stop the call:
    *
-   *  * **No payer.** A model call with nobody to bill is a bill somebody
-   *    else pays. There is no anonymous free tier here — the public trial
-   *    draws on a funded platform wallet, so even that is gated by a real
-   *    balance that can run out.
+   *  * **No payer.** There is no anonymous AI at all. The only free
+   *    allowance on the platform is the free tier on an account — fifty
+   *    ACUs a month for two months — so a call with nobody to charge is
+   *    somebody who has not signed up, and they are told so.
    *  * **No balance.** A hard stop, not a warning. Non-AI features are
    *    untouched; only new model work pauses.
    *
@@ -147,13 +191,18 @@ export class AiGatewayService {
 
     const billTo = request.billTo;
     if (!billTo) {
-      throw new AiGatewayError(
-        `${request.agent} was called with nobody to bill. Every AI action on this platform is ` +
-          'metered against an ACU balance — there is no unbilled path, and a call that names no ' +
-          'payer is a bug rather than a free action.',
-        [],
-        { metering: 'no billTo' },
-      );
+      /*
+       * There is no anonymous AI. The only free allowance on the platform
+       * is fifty ACUs a month for two months on an account, so a call with
+       * nobody to charge is somebody who has not signed up — and the right
+       * answer is the sentence explaining that, not an internal error.
+       */
+      throw new AllowanceExhaustedError('no_account', NO_ACCOUNT_NO_AI, {
+        required: ceiling,
+        balance: 0,
+        agent: request.agent,
+        payer: 'anonymous',
+      });
     }
 
     const wallet = await this.walletFor(billTo);

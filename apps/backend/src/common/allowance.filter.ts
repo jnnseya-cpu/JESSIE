@@ -1,6 +1,6 @@
 import { Catch, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
-import { METERING_RULE, PLATFORM_PAYERS, TRIAL_EXHAUSTED } from '@jessmove/shared';
+import { METERING_RULE } from '@jessmove/shared';
 import { AllowanceExhaustedError } from '../ai/ai-gateway.service';
 
 /**
@@ -23,20 +23,16 @@ export class AllowanceFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
 
     /*
-     * Whose refusal this is decides what it should say.
-     *
-     * A member has ACUs and can top them up, so the wallet's own sentence
-     * is right for them. A visitor trying the platform has no ACUs at all
-     * — telling them theirs have run out is nonsense they cannot act on,
-     * and the useful sentence is that today's shared trial budget is spent
-     * and an account comes with its own.
+     * The message is written where the refusal is raised, because that is
+     * the only place that knows which refusal it is: no account at all, an
+     * empty balance, a daily limit the member set themselves, or a spend
+     * that needs a guardian's approval. Those want four different
+     * responses and only one of them is "top up".
      */
-    const trial = error.detail.payer === PLATFORM_PAYERS.trial;
-
     response.status(402).json({
       error: 'allowance_exhausted',
-      reason: trial ? 'trial_budget_spent' : error.reason,
-      message: trial ? TRIAL_EXHAUSTED : error.memberMessage,
+      reason: error.reason,
+      message: error.memberMessage,
       required: error.detail.required,
       balance: error.detail.balance,
       agent: error.detail.agent,

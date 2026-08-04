@@ -10,8 +10,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { PLATFORM_PAYERS } from '@jessmove/shared';
-import { AbuseService } from '../auth/abuse.service';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
 import { AnalyzeDto, LogEntryDto, ReadBarcodeDto } from './foodlens.dto';
@@ -26,21 +24,7 @@ export class FoodlensController {
     private readonly foodlens: FoodlensService,
     private readonly foodLog: FoodLogService,
     private readonly auth: AuthService,
-    private readonly abuse: AbuseService,
   ) {}
-
-  /**
-   * A paid call with nobody to bill it to.
-   *
-   * The public pages let anybody try this, which is how people decide to
-   * sign up — so it stays open, with a real but small daily allowance per
-   * address. A member with a session never reaches this: their allowance is
-   * their own balance, and it is metered.
-   */
-  private guardAnonymous(req: Request, uid: string | undefined, action: string): void {
-    if (uid) return;
-    this.abuse.assertAnonymousAllowance(req.ip ?? 'unknown', action);
-  }
 
   /** Whose ledger a scan lands in. Undefined for somebody with no account. */
   private who(req: Request): string | undefined {
@@ -49,16 +33,16 @@ export class FoodlensController {
   }
 
   /**
-   * Whose allowance pays. Never undefined.
+   * Whose allowance pays.
    *
-   * A member pays from their own balance. A visitor trying the platform
-   * draws on the platform's daily trial budget — a real wallet with a real
-   * balance, so the trial is metered and bounded rather than free. When
-   * the day's budget is gone the trial pauses and says so, which is a
-   * better outcome than an unbounded bill nobody is watching.
+   * The same session that owns the ledger, and nobody else — there is no
+   * anonymous analysis any more. The only free AI on the platform is the
+   * free tier on an account, so a visitor reaches the gateway with no
+   * payer and is told what an account would give them rather than being
+   * quietly served at somebody else's expense.
    */
-  private payer(req: Request): string {
-    return this.who(req) ?? PLATFORM_PAYERS.trial;
+  private payer(req: Request): string | undefined {
+    return this.who(req);
   }
 
   private requireWho(req: Request): string {
@@ -197,7 +181,6 @@ export class FoodlensController {
   @Post('barcode/read')
   readBarcode(@Req() req: Request, @Body() body: ReadBarcodeDto): Promise<Record<string, unknown>> {
     const uid = this.who(req);
-    this.guardAnonymous(req, uid, 'foodlens.barcode.read');
     return this.foodlens.readBarcode(body.mimeType, body.dataBase64, uid);
   }
 
@@ -210,7 +193,6 @@ export class FoodlensController {
   @Post('analyze')
   async analyze(@Req() req: Request, @Body() body: AnalyzeDto): Promise<Record<string, unknown>> {
     const uid = this.who(req);
-    this.guardAnonymous(req, uid, 'foodlens.analyze');
     const result = await this.foodlens.analyze({ ...body, billTo: this.payer(req) });
 
     // A meal joins the ledger by itself — no save button, and nothing for

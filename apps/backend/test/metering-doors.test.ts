@@ -43,8 +43,10 @@ test('the coach charges the member who asked', () => {
   const controller = read('../src/mova/mova.controller.ts');
   assert.match(controller, /this\.mova\.ask\([^)]*uid\)/s, 'MovaController must hand the service a payer');
   assert.match(controller, /private billTo\(req: Request\)/, 'the payer comes from the session');
-  // And a stranger spends the platform's money only within an allowance.
-  assert.match(controller, /assertAnonymousAllowance/, 'anonymous use is capped');
+  // A stranger no longer spends anything, because there is nothing free
+  // to spend: the anonymous allowance is gone and the gateway refuses a
+  // call that names no payer.
+  assert.ok(!/assertAnonymousAllowance/.test(controller), 'the anonymous allowance is gone');
 
   const module = read('../src/mova/mova.module.ts');
   assert.match(module, /AuthModule/, 'the controller cannot read a session without AuthModule');
@@ -61,7 +63,7 @@ test('FoodLens still charges the member who asked', () => {
    */
   assert.match(controller, /billTo: this\.payer\(req\)/, 'analysis is billed to somebody, always');
   assert.match(controller, /this\.foodlens\.readBarcode\([^)]*uid\)/s, 'reading a barcode from a photo is billed');
-  assert.match(controller, /guardAnonymous\(req, uid, 'foodlens\.analyze'\)/, 'anonymous analysis is capped');
+  assert.ok(!/guardAnonymous/.test(controller), 'the anonymous allowance is gone');
   assert.match(controller, /private who\(req: Request\)/, 'the payer comes from the session');
 });
 
@@ -98,15 +100,25 @@ test('the destructive and the personal routes are behind a door', () => {
   }
 });
 
-test('a stranger can try the paid features, within an allowance', () => {
-  const abuse = read('../src/auth/abuse.service.ts');
-  assert.match(abuse, /ANONYMOUS_DAILY_LIMIT/);
-  assert.match(abuse, /statusCode: 429/, 'the refusal is a rate limit, not an error');
-
+test('a stranger cannot try the paid features at all', () => {
+  /*
+   * This test used to assert the opposite, and the reversal is the point.
+   * The anonymous daily allowance bounded a free tier that no longer
+   * exists — the only free AI is fifty ACUs a month for two months on an
+   * account. Leaving the limiter in front of the gate would have answered
+   * "you have used your five for today" to somebody who had used none,
+   * when the real answer is that AI needs an account.
+   */
   const foodlens = read('../src/foodlens/foodlens.controller.ts');
-  assert.match(foodlens, /guardAnonymous\(req, uid, 'foodlens\.analyze'\)/);
-  assert.match(foodlens, /guardAnonymous\(req, uid, 'foodlens\.barcode\.read'\)/);
-  assert.match(read('../src/mova/mova.controller.ts'), /assertAnonymousAllowance/);
+  const mova = read('../src/mova/mova.controller.ts');
+  for (const [name, source] of [['foodlens', foodlens], ['mova', mova]] as const) {
+    assert.ok(!/guardAnonymous|assertAnonymousAllowance/.test(source), `${name} still meters strangers`);
+    assert.ok(!/AbuseService/.test(source), `${name} still carries the unused limiter`);
+  }
+  // The payer may now be absent, which is what lets the gateway refuse
+  // with the right sentence instead of the controller guessing at one.
+  assert.match(foodlens, /private payer\(req: Request\): string \| undefined/);
+  assert.match(mova, /private billTo\(req: Request\): string \| undefined/);
 });
 
 test('a webhook event is claimed before it is acted on', () => {

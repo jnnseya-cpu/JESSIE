@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
+  FREE_TIER,
   METERING_RULE,
+  NO_ACCOUNT_NO_AI,
   PLATFORM_PAYERS,
   PLATFORM_PAYER_IDS,
-  TRIAL_EXHAUSTED,
+  freeGrantReference,
+  freeGrantsDue,
+  freeTierState,
   isPlatformPayer,
   platformDailyAcu,
 } from '@jessmove/shared';
@@ -44,7 +48,7 @@ test('the hold is taken before the provider chain, not after it', () => {
 
 test('a call with nobody to bill does not run', () => {
   assert.match(GATEWAY, /const billTo = request\.billTo;\s*\n\s*if \(!billTo\) \{/);
-  assert.match(GATEWAY, /there is no unbilled path/);
+  assert.match(GATEWAY, /There is no anonymous AI at all/);
   // The old escape hatch, which made an unnamed payer a free action.
   assert.ok(
     !/if \(!billTo \|\| acu <= 0\) return;/.test(GATEWAY),
@@ -148,20 +152,17 @@ test('every AI call site in the platform names a payer', () => {
   assert.deepEqual(offenders, [], `unbilled AI calls:\n${offenders.join('\n')}`);
 });
 
-test('the anonymous paths bill the platform rather than nobody', () => {
-  assert.match(
-    src('foodlens/foodlens.controller.ts'),
-    /private payer\(req: Request\): string \{[\s\S]*?PLATFORM_PAYERS\.trial/,
-    'an anonymous scan has no payer',
-  );
-  assert.match(
-    src('mova/mova.controller.ts'),
-    /private billTo\(req: Request\): string \{[\s\S]*?PLATFORM_PAYERS\.trial/,
-    'an anonymous ask has no payer',
-  );
-  // The type is the guarantee: a payer that can be undefined is a payer
-  // that will be undefined.
-  assert.ok(!/private payer\(req: Request\): string \| undefined/.test(src('foodlens/foodlens.controller.ts')));
+test('there is no anonymous AI anywhere', () => {
+  // The only free allowance is on an account, so an anonymous call has no
+  // payer by design and the gateway refuses it.
+  for (const file of ['foodlens/foodlens.controller.ts', 'mova/mova.controller.ts']) {
+    const source = src(file);
+    assert.ok(!/PLATFORM_PAYERS\.trial/.test(source), `${file} still funds an anonymous call`);
+    assert.ok(!/guardAnonymous|assertAnonymousAllowance/.test(source), `${file} still meters strangers`);
+  }
+  // And the platform no longer has a trial payer to fund one with.
+  assert.ok(!(PLATFORM_PAYERS as Record<string, string>).trial, 'the trial payer is gone');
+  assert.equal(PLATFORM_PAYER_IDS.length, 1);
 });
 
 test('the editorial agent and the vision probe are billed too', () => {
@@ -181,7 +182,7 @@ test('the editorial agent and the vision probe are billed too', () => {
 /* ── the platform payers ───────────────────────────────────────────── */
 
 test('a platform payer is a real wallet with a real, exhaustible balance', () => {
-  assert.equal(PLATFORM_PAYER_IDS.length, 2);
+  assert.equal(PLATFORM_PAYER_IDS.length, 1, 'only editorial remains');
   for (const payer of PLATFORM_PAYER_IDS) {
     assert.ok(isPlatformPayer(payer));
     assert.ok(platformDailyAcu(payer) > 0, `${payer} has no budget`);
@@ -190,19 +191,16 @@ test('a platform payer is a real wallet with a real, exhaustible balance', () =>
   assert.equal(isPlatformPayer('platform:anything-else'), false, 'the prefix alone is not a licence');
 });
 
-test('the daily budget is a number an operator sets', () => {
-  assert.equal(
-    platformDailyAcu(PLATFORM_PAYERS.trial, { PLATFORM_TRIAL_DAILY_ACU: '500' }),
-    500,
-  );
+test('the editorial budget is a number an operator sets', () => {
+  assert.equal(platformDailyAcu(PLATFORM_PAYERS.editorial, { PLATFORM_EDITORIAL_DAILY_ACU: '500' }), 500);
   assert.equal(
     platformDailyAcu(PLATFORM_PAYERS.editorial, { PLATFORM_EDITORIAL_DAILY_ACU: '0' }),
     0,
-    'zero is a valid answer: it turns the trial off',
+    'zero is a valid answer: it stops the agent without a deploy',
   );
   assert.equal(
-    platformDailyAcu(PLATFORM_PAYERS.trial, { PLATFORM_TRIAL_DAILY_ACU: 'nonsense' }),
-    2_000,
+    platformDailyAcu(PLATFORM_PAYERS.editorial, { PLATFORM_EDITORIAL_DAILY_ACU: 'nonsense' }),
+    200,
     'and rubbish falls back to the default rather than to zero or infinity',
   );
 });
@@ -257,20 +255,109 @@ test('an empty allowance is a 402 with an explanation, not a 500', () => {
   assert.match(src('setup.ts'), /app\.useGlobalFilters\(new AllowanceFilter\(\)\)/);
 });
 
-test('a visitor is not told their ACUs have run out, because they have none', () => {
-  const filter = src('common/allowance.filter.ts');
-  assert.match(filter, /const trial = error\.detail\.payer === PLATFORM_PAYERS\.trial;/);
-  assert.match(filter, /message: trial \? TRIAL_EXHAUSTED : error\.memberMessage/);
-  assert.match(filter, /reason: trial \? 'trial_budget_spent'/);
-  // And the sentence a visitor gets points at the thing that fixes it.
-  assert.match(TRIAL_EXHAUSTED, /an account comes with its own allowance/i);
+test('somebody with no account is told what an account gives them', () => {
+  assert.match(GATEWAY, /throw new AllowanceExhaustedError\('no_account', NO_ACCOUNT_NO_AI/);
+  assert.match(NO_ACCOUNT_NO_AI, /AI features need an account/i);
+  assert.match(NO_ACCOUNT_NO_AI, /50 ACUs a month for 2 months/);
+  // Honest about the ending. A free tier described as free and then
+  // withdrawn without warning is the thing people rightly resent.
+  assert.match(NO_ACCOUNT_NO_AI, /it does not renew/i);
+  assert.match(NO_ACCOUNT_NO_AI, /works without an account and always will/i);
 });
 
 test('the rule is published rather than merely enforced', () => {
   assert.match(METERING_RULE, /Every AI action/i);
   assert.match(METERING_RULE, /no unbilled path/i);
   assert.match(METERING_RULE, /Nothing that is not AI is ever metered/i);
-  // The promise that makes the whole thing tolerable: an empty wallet
-  // degrades the product rather than breaking it.
-  assert.match(TRIAL_EXHAUSTED, /Everything that is not AI still works/i);
+  // The rule now carries the one free allowance, so a member reading it
+  // learns the shape of the thing rather than only its enforcement.
+  assert.match(METERING_RULE, /50 ACUs a month for 2 months on a new account/);
+  assert.match(METERING_RULE, /does not renew/i);
+});
+
+/* ── the free tier ─────────────────────────────────────────────────── */
+
+test('the free tier is fifty a month for two months, and nothing else', () => {
+  assert.equal(FREE_TIER.acusPerMonth, 50);
+  assert.equal(FREE_TIER.months, 2);
+});
+
+test('month one is due immediately and month two is not', () => {
+  const created = new Date('2026-08-01T09:00:00.000Z');
+  const uid = 'u_free';
+  assert.deepEqual(freeGrantsDue(created, created, [], uid), [0]);
+  assert.deepEqual(
+    freeGrantsDue(created, new Date('2026-08-20T09:00:00.000Z'), [freeGrantReference(uid, 0)], uid),
+    [],
+    'nineteen days in, month two is not owed',
+  );
+});
+
+test('month two arrives after thirty days and never comes twice', () => {
+  const created = new Date('2026-08-01T09:00:00.000Z');
+  const uid = 'u_free';
+  const after = new Date('2026-09-05T09:00:00.000Z');
+  assert.deepEqual(freeGrantsDue(created, after, [freeGrantReference(uid, 0)], uid), [1]);
+  assert.deepEqual(
+    freeGrantsDue(created, after, [freeGrantReference(uid, 0), freeGrantReference(uid, 1)], uid),
+    [],
+  );
+});
+
+test('there is no third month, however long somebody waits', () => {
+  const created = new Date('2026-01-01T00:00:00.000Z');
+  const uid = 'u_free';
+  const issued = [freeGrantReference(uid, 0), freeGrantReference(uid, 1)];
+  for (const when of ['2026-06-01', '2027-01-01', '2030-01-01']) {
+    assert.deepEqual(
+      freeGrantsDue(created, new Date(`${when}T00:00:00.000Z`), issued, uid),
+      [],
+      `a grant was owed on ${when}`,
+    );
+  }
+});
+
+test('coming back after both months are due hands over both, not a stream', () => {
+  // Somebody who signs up, disappears for three months and returns is owed
+  // the two months they never took — and only those two.
+  const created = new Date('2026-01-01T00:00:00.000Z');
+  const due = freeGrantsDue(created, new Date('2026-04-01T00:00:00.000Z'), [], 'u_free');
+  assert.deepEqual(due, [0, 1]);
+});
+
+test('a reference is unique per account, so one member cannot claim another', () => {
+  assert.notEqual(freeGrantReference('u_a', 0), freeGrantReference('u_b', 0));
+  assert.deepEqual(
+    freeGrantsDue(new Date(), new Date(), [freeGrantReference('u_b', 0)], 'u_a'),
+    [0],
+    'somebody else’s grant does not count against yours',
+  );
+});
+
+test('the member can see how much of the free tier is left', () => {
+  const uid = 'u_free';
+  assert.equal(freeTierState([], uid).monthsLeft, 2);
+  assert.match(freeTierState([], uid).says, /first free month/i);
+
+  const one = freeTierState([freeGrantReference(uid, 0)], uid);
+  assert.equal(one.monthsLeft, 1);
+  assert.equal(one.exhausted, false);
+
+  const done = freeTierState([freeGrantReference(uid, 0), freeGrantReference(uid, 1)], uid);
+  assert.equal(done.exhausted, true);
+  assert.match(done.says, /does not renew/i);
+  assert.match(done.says, /Everything that is not AI carries on unchanged/i);
+});
+
+test('the grant is issued on use rather than at signup', () => {
+  // An account that never touches AI never spends its second month, and a
+  // member returning in week five finds an allowance rather than an
+  // expired one and no explanation.
+  assert.match(GATEWAY, /private async grantFreeTier\(/);
+  assert.match(GATEWAY, /await this\.grantFreeTier\(wallet\.id, billTo\)/);
+  const walletFor = GATEWAY.slice(GATEWAY.indexOf('private async walletFor('));
+  assert.ok(
+    walletFor.indexOf('grantFreeTier') < walletFor.indexOf('isPlatformPayer(billTo)') + 400,
+    'the free tier is topped up before the hold is taken',
+  );
 });
