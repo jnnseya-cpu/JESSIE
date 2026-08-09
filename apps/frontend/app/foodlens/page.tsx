@@ -49,6 +49,7 @@ import {
   TrafficLights,
 } from '../charts';
 import { Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { EXAMPLE_MEAL } from './worked-example';
 
 export const metadata: Metadata = {
   title: 'FoodLens 360° — JESS MOVE',
@@ -260,6 +261,116 @@ export default function FoodLens() {
             'the engine rather than written by hand.'
           }
         />
+
+        {/*
+          ---------------- 0 · one meal, actually read ----------------
+
+          The demonstration, before any explanation of how it works.
+          Somebody deciding whether this is worth an account wants to see
+          the output, not a description of the pipeline that makes it —
+          and since the anonymous trial was removed there was nothing on
+          the public estate that showed it at all.
+
+          Stored rather than generated: no model call, no allowance, and
+          identical for everybody, which is more honest than a live demo
+          nobody could reproduce.
+        */}
+        <section className="section section--tint">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
+                One meal, actually read
+              </p>
+              <h2>What comes back, on a plate where only one thing had a label.</h2>
+              <p className="lede">{EXAMPLE_MEAL.what}</p>
+            </div>
+
+            <div className="dash">
+              <article className="card card--7 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">Energy</h3>
+                  <span className="card__tag">a range, not a number</span>
+                </div>
+                <p className="wex__energy">
+                  <strong>{EXAMPLE_MEAL.energy.minKcal}</strong>
+                  <span>to</span>
+                  <strong>{EXAMPLE_MEAL.energy.maxKcal}</strong>
+                  <em>kcal</em>
+                </p>
+                <p className="card__note">{EXAMPLE_MEAL.energy.says}</p>
+              </article>
+
+              <article className="card card--5 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">What was on the plate</h3>
+                </div>
+                <ul className="wex__items">
+                  {EXAMPLE_MEAL.items.map((item) => (
+                    <li key={item.name}>
+                      <strong>{item.name}</strong>
+                      <span>{item.confidencePct}% confident</span>
+                      <em>{item.source}</em>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="card card--12 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">Front of pack, with the basis of every figure</h3>
+                </div>
+                <div className="wex__scroll">
+                  <table className="wex__table">
+                    <thead>
+                      <tr>
+                        <th>Nutrient</th>
+                        <th>Amount</th>
+                        <th>Where it came from</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {EXAMPLE_MEAL.frontOfPack.map((row) => (
+                        <tr key={row.nutrient}>
+                          <td>
+                            <span className={`wex__band wex__band--${row.band}`} aria-hidden="true" />
+                            {row.nutrient}
+                          </td>
+                          <td className="wex__num">
+                            {row.grams}g
+                            <em>{row.basis}</em>
+                          </td>
+                          <td>{row.because}</td>
+                        </tr>
+                      ))}
+                      <tr className="wex__unmeasured">
+                        <td>
+                          <span className="wex__band wex__band--none" aria-hidden="true" />
+                          {EXAMPLE_MEAL.unmeasured.nutrient}
+                        </td>
+                        <td className="wex__num">
+                          not measured
+                          <em>unmeasured</em>
+                        </td>
+                        <td>{EXAMPLE_MEAL.unmeasured.says}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="card__note">
+                  <strong>The one thing worth noticing:</strong> {EXAMPLE_MEAL.theOneThing}
+                </p>
+              </article>
+
+              <article className="card card--12 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">Why it does not just give you a number</h3>
+                </div>
+                <p className="card__note">{EXAMPLE_MEAL.howThisDiffers}</p>
+                <p className="card__note">{EXAMPLE_MEAL.noModelWasCalled}</p>
+              </article>
+            </div>
+          </div>
+        </section>
 
         {/* ---------------- 1 · capture ---------------- */}
         <section className="section">

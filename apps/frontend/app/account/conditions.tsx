@@ -42,7 +42,7 @@ const DEBOUNCE_MS = 700;
 export interface ConditionCard {
   id: string;
   label: string;
-  group: 'digestive' | 'metabolic' | 'heart' | 'kidney' | 'bones' | 'other';
+  group: 'digestive' | 'metabolic' | 'heart' | 'kidney' | 'bones' | 'medication' | 'other';
   inShort: string;
   watches: string[];
   helps: string[];
@@ -51,6 +51,7 @@ export interface ConditionCard {
 }
 
 const GROUP_WORD: Record<ConditionCard['group'], string> = {
+  medication: 'Medication you are on',
   digestive: 'Digestion and gut',
   metabolic: 'Blood sugar and metabolism',
   heart: 'Heart and circulation',
@@ -60,6 +61,9 @@ const GROUP_WORD: Record<ConditionCard['group'], string> = {
 };
 
 const GROUP_ORDER: ConditionCard['group'][] = [
+  // Medication first: it changes the reading more than anything else here,
+  // and somebody on one is the likeliest person to be looking.
+  'medication',
   'digestive',
   'metabolic',
   'heart',

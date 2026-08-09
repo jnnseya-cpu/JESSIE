@@ -53,7 +53,8 @@ export type ConditionId =
   | 'heart_failure'
   | 'ibd'
   | 'nafld'
-  | 'pregnancy';
+  | 'pregnancy'
+  | 'appetite_suppressing_medication';
 
 /** What a condition changes about how the rest of the platform behaves. */
 export interface ConditionEffects {
@@ -72,13 +73,46 @@ export interface ConditionEffects {
   readonly noSaltSubstitute?: boolean;
   /** Protein is not something to push without a dietitian. */
   readonly doNotPushProtein?: boolean;
+
+  /* --- added for appetite-suppressing medication --- */
+
+  /**
+   * Protein sufficiency is the thing at risk, because appetite is low
+   * rather than because the person is choosing badly.
+   *
+   * Note the deliberate collision with `doNotPushProtein`. Somebody on
+   * appetite-suppressing medication who also has reduced kidney function
+   * has two true instructions that point opposite ways, and the platform
+   * is not the right place to resolve that — so the suppression wins and
+   * the card says why. A rule that cannot conflict is a rule that has not
+   * met a real patient.
+   */
+  readonly proteinMattersMore?: boolean;
+  /**
+   * Weight coming down fast risks taking muscle with it. Not a reason to
+   * stop; a reason to keep resistance work in and to say so.
+   */
+  readonly muscleLossRisk?: boolean;
+  /** Fluid is easy to forget when nothing is appealing. */
+  readonly hydrationMattersMore?: boolean;
+  /** Small and frequent beats three meals, when three are impossible. */
+  readonly smallFrequentMeals?: boolean;
+  /**
+   * Declared medication, not a diagnosis.
+   *
+   * A card carrying this is never shown to anyone under 18 under any
+   * circumstances, is never counted in a household or organisation view,
+   * and always states that the prescription and the dose belong to the
+   * prescriber.
+   */
+  readonly prescribedElsewhere?: boolean;
 }
 
 export interface ConditionCard {
   readonly id: ConditionId;
   readonly label: string;
   /** Grouped so a long list stays findable. */
-  readonly group: 'digestive' | 'metabolic' | 'heart' | 'kidney' | 'bones' | 'other';
+  readonly group: 'digestive' | 'metabolic' | 'heart' | 'kidney' | 'bones' | 'medication' | 'other';
   /** Plain English, for somebody who has just been told they have it. */
   readonly inShort: string;
   /** What this platform will watch for in what they scan and record. */
@@ -505,7 +539,101 @@ export const CONDITIONS: Readonly<Record<ConditionId, ConditionCard>> = {
     ],
     effects: { weightLossIsAWarning: true, deficitNeedsClinician: true },
   },
+
+  /**
+   * Appetite-suppressing medication — the one entry here that is not a
+   * condition, and the one that needed the most care.
+   *
+   * Somebody on a GLP-1 receptor agonist has a prescription, not an
+   * illness, and what they need from a food platform is the opposite of
+   * what a food platform usually offers. Nobody needs help eating less;
+   * appetite has been solved chemically. What is genuinely hard is getting
+   * enough protein into a day when nothing appeals, holding on to muscle
+   * while weight comes down fast, staying hydrated when thirst has gone
+   * quiet too, and finding anything tolerable during nausea.
+   *
+   * Three deliberate refusals in this card.
+   *
+   * It says nothing about the medication itself. Not a dose, not a
+   * schedule, not an injection site, not whether to keep taking it, not
+   * what to do about a missed one — every competitor treats those as
+   * first-class features and every one of them is a prescriber's decision.
+   *
+   * It does not congratulate a falling weight. The number going down is
+   * the medication working and needs no encouragement from us; what needs
+   * saying is what to protect while it does.
+   *
+   * And it is never shown to anyone under 18, which the platform enforces
+   * for every condition but which matters most here.
+   */
+  appetite_suppressing_medication: {
+    id: 'appetite_suppressing_medication',
+    label: 'Appetite-suppressing medication',
+    group: 'medication',
+    inShort:
+      'A prescribed medication that reduces appetite — a GLP-1 receptor agonist such as semaglutide or tirzepatide, or something similar. Eating less is the intended effect, so the difficult part is no longer restraint. It is getting enough of what your body still needs into a much smaller appetite.',
+    watches: [
+      'Days where very little was recorded at all — with appetite suppressed it is easy to reach evening on almost nothing.',
+      'Protein across the week, which is the first thing to fall away when portions shrink.',
+      'How fast weight is coming down, because faster is not better and muscle goes with it.',
+      'Long stretches with no movement recorded, which is when muscle loss accelerates.',
+    ],
+    helps: [
+      'Putting protein first in every meal, before anything else on the plate. When you can only manage a few mouthfuls, which mouthfuls they are decides what this month costs you.',
+      'Small and frequent rather than three sittings. Most people find a quarter of a plate five times a day easier than a plate twice.',
+      'Resistance work two or three times a week — this is the part food cannot do. It is the difference between coming down and coming down while keeping what you had.',
+      'Drinking to a schedule rather than to thirst, because thirst quietens along with appetite.',
+      'Cold, plain and simple food during nausea. Most people find it goes down when hot and rich food will not.',
+      'Recording what you actually managed rather than what you meant to. A thin day is information your team needs, not a failure to hide.',
+    ],
+    careful: [
+      'Days that end on almost nothing. It happens easily and it is the main way this goes wrong — the medication is doing its job and the shortfall is invisible until it is weeks deep.',
+      'Alcohol, which many people find they tolerate very differently and which displaces food there is no room for.',
+      'Very large or very rich meals, which are the usual trigger for feeling unwell on these medications.',
+      'Fibre supplements taken to fix constipation without also raising fluid, which makes it worse.',
+    ],
+    clinicianOnly: [
+      'Everything about the medication. The dose, the timing, the escalation, a missed one, and whether to continue — all of it belongs to whoever prescribed it, and this platform will not comment on any of it.',
+      'Persistent vomiting, severe abdominal pain, or being unable to keep fluid down, which need looking at rather than managing.',
+      'Whether you need supplements or blood tests while your intake is this low.',
+      'Muscle mass, if you want it measured. We can see that you are doing resistance work; we cannot see what it is preserving.',
+    ],
+    effects: {
+      proteinMattersMore: true,
+      muscleLossRisk: true,
+      hydrationMattersMore: true,
+      smallFrequentMeals: true,
+      prescribedElsewhere: true,
+      // Not weightLossIsAWarning: here the weight coming down is the point.
+      // But a deliberate deficit on top of a suppressed appetite is a
+      // decision for the prescriber, not for an app to plan.
+      deficitNeedsClinician: true,
+    },
+  },
 };
+
+/**
+ * Entries that are a medication rather than a diagnosis.
+ *
+ * Kept separate because they behave differently: the card never comments
+ * on the medication, the prescriber is named as the owner of every
+ * decision about it, and the platform's usual instinct — to help somebody
+ * eat less — is exactly wrong.
+ */
+export const MEDICATION_CONTEXTS: readonly ConditionId[] = ['appetite_suppressing_medication'];
+
+export function isMedicationContext(id: ConditionId): boolean {
+  return MEDICATION_CONTEXTS.includes(id);
+}
+
+/**
+ * The sentence a medication context carries, in place of the diagnosis one.
+ */
+export const MEDICATION_NOT_ADVICE =
+  'This is not medical advice and says nothing about your medication. The dose, the timing and ' +
+  'whether to continue are your prescriber’s, and nothing here will comment on any of them. What ' +
+  'this does is read what you have actually recorded and point at what is worth protecting while ' +
+  'your appetite is reduced.';
 
 export const CONDITION_IDS = Object.keys(CONDITIONS) as ConditionId[];
 

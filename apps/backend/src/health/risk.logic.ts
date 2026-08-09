@@ -43,8 +43,10 @@
 
 import {
   CONDITIONS,
+  MEDICATION_NOT_ADVICE,
   NOT_MEDICAL_ADVICE,
   effectsOf,
+  isMedicationContext,
   type ConditionCard,
   type ConditionEffects,
   type ConditionId,
@@ -127,6 +129,8 @@ export interface HealthInsight {
   suppressed: string[];
   /** Present whenever a condition is in play. Shown verbatim. */
   notMedicalAdvice?: string;
+  /** Present when a declared medication is in play. Also verbatim. */
+  medicationNote?: string;
   /** What the picture was built from, so nobody mistakes it for complete. */
   builtFrom: string[];
   limits: string[];
@@ -420,6 +424,66 @@ export function risksFor(input: InsightInput): RiskFinding[] {
     }
   }
 
+  /*
+   * Appetite-suppressing medication inverts the usual reading.
+   *
+   * Every other rule on this page watches for too much. Here the risk is
+   * a day that ended on almost nothing, and it is invisible: the
+   * medication is working exactly as intended, the scale is moving in the
+   * intended direction, and the shortfall only shows up weeks later as
+   * lost muscle and a tiredness nobody connected to it.
+   */
+  if (effects.proteinMattersMore && food && food.daysCovered >= 3) {
+    const kcal = food.perDay.energyKcal ?? 0;
+    if (kcal > 0 && kcal < DAILY_REFERENCE.energyKcal * 0.5) {
+      risks.push({
+        factor: 'How little is going in',
+        level: 'high',
+        evidence: `About ${Math.round(kcal)} kcal a day across the ${food.daysCovered} days recorded — under half a typical reference intake.`,
+        associatedWith: [
+          'losing muscle alongside fat',
+          'tiredness that is mistaken for the medication',
+          'shortfalls in things a small appetite cannot cover',
+        ],
+        action:
+          'Put protein first at every meal, before anything else on the plate. When you can only manage a few mouthfuls, which mouthfuls they are is the whole decision. If this is what a normal week looks like, tell whoever prescribed it.',
+        from: 'foodlens',
+      });
+    }
+  }
+
+  if (effects.muscleLossRisk && input.trend && input.trend.direction === 'down') {
+    const perWeek = Math.abs(input.trend.kgPerWeek);
+    // Above roughly 1% of body weight a week, muscle goes with the fat.
+    const fast = input.weightKg ? perWeek > input.weightKg * 0.01 : perWeek > 1;
+    if (fast) {
+      risks.push({
+        factor: 'How fast it is coming down',
+        level: 'raised',
+        evidence: `About ${round(perWeek)}kg a week. Faster is not better here — above roughly a percent of body weight a week, a meaningful share of what is lost is muscle.`,
+        associatedWith: ['loss of muscle and strength', 'a lower resting metabolism afterwards'],
+        action:
+          'Keep resistance work in two or three times a week. This is the part food cannot do, and it is what decides whether this is weight coming down or weight coming down while you keep what you had. The rate itself is a conversation for your prescriber.',
+        from: 'bodycommand',
+      });
+    }
+  }
+
+  if (effects.muscleLossRisk && input.activity && input.activity.windowDays >= 7) {
+    const perWeek = (input.activity.daysMoved / input.activity.windowDays) * 7;
+    if (perWeek < 2) {
+      risks.push({
+        factor: 'Muscle, while this is happening',
+        level: 'raised',
+        evidence: `Movement recorded on about ${round(perWeek)} days a week.`,
+        associatedWith: ['losing muscle alongside fat', 'strength and balance falling with it'],
+        action:
+          'Two sessions a week of something resistance-based is the floor here — bands, bodyweight, or anything you push or pull against. It matters more now than it does at any other time.',
+        from: 'activity',
+      });
+    }
+  }
+
   // A falling weight means two entirely different things depending on who
   // is standing on the scale. For most people it is a rate to slow down;
   // for somebody whose condition makes it a symptom it is the reason to
@@ -439,7 +503,17 @@ export function risksFor(input: InsightInput): RiskFinding[] {
           'Tell the team treating you, this week. Unintended weight loss is one of the things they use to judge whether what you are on is working — it is information they need, not a failure on your part.',
         from: 'bodycommand',
       });
-    } else if (!effects.weightLossIsAWarning && input.trend.kgPerWeek < -1) {
+    } else if (
+      !effects.weightLossIsAWarning &&
+      // Where appetite-suppressing medication is declared, the specific
+      // card above already covers a fast loss and covers it better — it
+      // names muscle as the thing at stake and hands the rate itself to
+      // the prescriber. Showing the general "eat a little more" alongside
+      // it would put two different answers to one question on one screen,
+      // which is the failure this whole design exists to prevent.
+      !effects.muscleLossRisk &&
+      input.trend.kgPerWeek < -1
+    ) {
       risks.push({
         factor: 'Rate of loss',
         level: 'raised',
@@ -566,6 +640,24 @@ function noticedFor(id: ConditionId, input: InsightInput): string[] {
     case 'osteoporosis':
       movement();
       break;
+    case 'appetite_suppressing_medication': {
+      // The inverted reading: too little, not too much.
+      if (enough && perDay.energyKcal) {
+        const kcal = Math.round(perDay.energyKcal);
+        seen.push(
+          kcal < DAILY_REFERENCE.energyKcal * 0.5
+            ? `About ${kcal} kcal a day in what you recorded — under half a typical reference intake. Which mouthfuls you manage matters more than how many.`
+            : `About ${kcal} kcal a day in what you recorded.`,
+        );
+      }
+      if (falling > 0) {
+        seen.push(
+          `Weight down about ${round(falling)}kg a week. Faster is not better — what is worth protecting while it happens is muscle.`,
+        );
+      }
+      movement();
+      break;
+    }
     case 'coeliac':
     case 'lactose_intolerance':
       seen.push(
@@ -617,6 +709,22 @@ export function suppressionsFor(input: InsightInput): string[] {
   if (effects.doNotPushProtein) {
     out.push(
       `Nothing here will push protein at you. With ${becauseOf(input, 'doNotPushProtein')} the target comes from your bloods and belongs to a renal dietitian.`,
+    );
+  }
+
+  /*
+   * The genuine clinical collision, said out loud rather than resolved
+   * silently.
+   *
+   * Somebody on appetite-suppressing medication needs protein prioritised.
+   * Somebody with reduced kidney function must not be pushed towards it.
+   * Both are true, they point opposite ways, and an app is the wrong place
+   * to decide between them — so the suppression wins, and the person is
+   * told that two things they declared disagree and who settles it.
+   */
+  if (effects.proteinMattersMore && effects.doNotPushProtein) {
+    out.push(
+      `Two things you have told us disagree: ${becauseOf(input, 'proteinMattersMore')} makes protein the thing to protect, and ${becauseOf(input, 'doNotPushProtein')} makes it something only your bloods can set. This platform has taken the cautious side and will not push protein at you — but that is a real question with a real answer, and the answer is a renal dietitian's rather than ours.`,
     );
   }
   return out;
@@ -692,7 +800,17 @@ export function insightFor(input: InsightInput): HealthInsight {
     plan: gapPlanFor(input),
     conditions,
     suppressed: suppressionsFor(input),
-    ...(conditions.length > 0 ? { notMedicalAdvice: NOT_MEDICAL_ADVICE } : {}),
+    ...(conditions.length > 0
+      ? {
+          notMedicalAdvice: NOT_MEDICAL_ADVICE,
+          // A declared medication needs a different sentence from a
+          // declared diagnosis: the thing this platform must promise is
+          // that it will not comment on the prescription.
+          ...(declaredIn(input).some(isMedicationContext)
+            ? { medicationNote: MEDICATION_NOT_ADVICE }
+            : {}),
+        }
+      : {}),
     builtFrom,
     limits: [
       'None of this is a diagnosis. Each item is an association found across populations, not a statement about you.',
