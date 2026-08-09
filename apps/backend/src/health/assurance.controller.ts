@@ -2,6 +2,11 @@ import { Controller, Get } from '@nestjs/common';
 import {
   ASSURANCE_CONTROLS,
   ASSURANCE_PREAMBLE,
+  HAZARDS,
+  HAZARD_LOG_PREAMBLE,
+  LIKELIHOOD_MEANING,
+  SEVERITY_MEANING,
+  hazardLog,
   CONDITIONS,
   CONDITION_IDS,
   FREE_TIER,
@@ -85,6 +90,38 @@ export class AssuranceController {
         what: 'Copy that may reach a minor uses a stricter word list than the general one, and it applies to partner marketing exactly as it applies to ours.',
         adds: ['body', 'shape', 'size', 'compete', 'beat', 'rank'],
       },
+    };
+  }
+
+  /**
+   * The DCB0129 hazard log, open.
+   *
+   * Open for the same reason as the rest of this controller: a clinical
+   * risk assessment nobody outside the company can read is an assertion
+   * rather than an assurance. It also means the officer, a reviewer and a
+   * buyer are all looking at the same document — which is not true of any
+   * hazard log kept in a spreadsheet.
+   */
+  @Get('hazards')
+  hazards() {
+    const log = hazardLog();
+    return {
+      preamble: HAZARD_LOG_PREAMBLE,
+      standard: 'DCB0129 — Clinical Risk Management: its Application in the Manufacture of Health IT Systems',
+      ...log,
+      matrix: {
+        severity: SEVERITY_MEANING,
+        likelihood: LIKELIHOOD_MEANING,
+        acceptability: {
+          '1-2': 'Acceptable.',
+          '3': 'Undesirable — acceptable only where further risk reduction is impractical.',
+          '4-5': 'Unacceptable. The system must not be deployed carrying this.',
+        },
+      },
+      whatThisIsNot:
+        'A hazard log is not a safety case. The safety case is the argument that these residual ' +
+        'risks are acceptable, made and signed by the Clinical Safety Officer. This is the ' +
+        'evidence that argument would be built from.',
     };
   }
 

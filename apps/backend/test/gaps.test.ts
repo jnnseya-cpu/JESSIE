@@ -352,7 +352,9 @@ test('the gaps are real gaps, named rather than hidden', () => {
   for (const gap of gaps) {
     assert.match(
       gap.evidence,
-      /not done|honest gap|there is no/i,
+      // "Not done", "no export exists", "incomplete" — the wording varies,
+      // but every gap must say plainly that the thing is not in place.
+      /not done|honest gap|there is no|is incomplete|not yet/i,
       `a gap that does not say it is missing: ${gap.claim}`,
     );
   }

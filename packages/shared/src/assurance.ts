@@ -84,9 +84,16 @@ export const ASSURANCE_CONTROLS: readonly AssuranceControl[] = [
   },
   {
     area: 'clinical_safety',
-    claim: 'A DCB0129 hazard log and a named clinical safety officer.',
+    claim: 'A DCB0129 hazard log covering the clinical risks this system introduces.',
     evidence:
-      'Not done. This is the single genuine gap for NHS procurement and it is an appointment and a document rather than an engineering task. Nothing else in this list substitutes for it.',
+      'Fourteen hazards with causes, effects, initial and residual ratings on the DCB0129 matrix, and controls that each name the mechanism enforcing them. Held as data rather than as a document so it cannot drift from the software, and published in full.',
+    status: 'implemented',
+  },
+  {
+    area: 'clinical_safety',
+    claim: 'A Clinical Safety Officer whose appointment satisfies DCB0129.',
+    evidence:
+      'An officer has been appointed and is named in the hazard log. The appointment record is incomplete: DCB0129 requires the officer to be a suitably qualified and experienced clinician holding current professional registration with training in clinical risk management, and the registration body, registration number, training evidence and date of appointment have not been recorded. The log reports itself as not yet valid for submission until they are, and this platform will not assert a clinical registration on anybody’s behalf.',
     status: 'gap',
   },
 

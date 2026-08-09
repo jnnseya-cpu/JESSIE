@@ -35,6 +35,7 @@ export * from './billing';
 export * from './conditions';
 export * from './growth-engine';
 export * from './assurance';
+export * from './clinical-safety';
 export * from './falls';
 export * from './metering';
 export * from './site-paths';
