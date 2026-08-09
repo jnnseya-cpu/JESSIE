@@ -18,6 +18,7 @@ interface DayPoint {
   offered: number;
   completed: number;
   held: number;
+  walks: number;
   seconds: number;
 }
 
@@ -44,6 +45,9 @@ export interface Dashboard {
   days: DayPoint[];
   todaySeconds: number;
   todayCompleted: number;
+  todayWalks: number;
+  walksInWindow: number;
+  /** Snaps only, both sides — a walk nobody offered is not evidence about timing. */
   completionRate: number | null;
   streak: number;
   daysMovedInWindow: number;
@@ -101,6 +105,117 @@ export async function recordActivity(body: {
   }
 }
 
+/** Logs a walk and returns the fresh dashboard. Minutes are the whole payload. */
+export async function logWalk(minutes: number, where?: string): Promise<Dashboard | null> {
+  try {
+    const res = await fetch(`${apiBase()}/activity/walk`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ minutes, where: where || undefined }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()).data as Dashboard;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Logging a walk.
+ *
+ * The one form of movement almost everybody already does, and the platform
+ * could not see it. Three presets and a free field, because the walk most
+ * people want to record is the one they have just finished and the number
+ * they know is roughly how long it took.
+ *
+ * What this deliberately does not ask for: distance, pace, route, steps.
+ * Each of those would either need a second sensor or a guess, and a guess
+ * dressed as a measurement is the thing this platform refuses everywhere
+ * else. Minutes are what somebody actually knows.
+ */
+function WalkLogger({ onLogged }: { onLogged: (next: Dashboard) => void }) {
+  const [open, setOpen] = useState(false);
+  const [minutes, setMinutes] = useState('');
+  const [where, setWhere] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState('');
+
+  const send = async (mins: number) => {
+    if (!Number.isFinite(mins) || mins < 1 || mins > 120) {
+      setSaid('Between 1 and 120 minutes. A longer walk goes in as two.');
+      return;
+    }
+    setBusy(true);
+    setSaid('');
+    const next = await logWalk(Math.round(mins), where.trim());
+    setBusy(false);
+    if (!next) {
+      setSaid('That did not save.');
+      return;
+    }
+    onLogged(next);
+    setMinutes('');
+    setWhere('');
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button type="button" className="btn btn--ghost dash__walkopen" onClick={() => setOpen(true)}>
+        I went for a walk
+      </button>
+    );
+  }
+
+  return (
+    <div className="dash__walk">
+      <p className="dash__walklab">Roughly how long were you walking?</p>
+      <div className="dash__walkpresets">
+        {[10, 20, 30].map((m) => (
+          <button key={m} type="button" className="btn btn--ghost" disabled={busy}
+            onClick={() => void send(m)}>
+            {m} min
+          </button>
+        ))}
+      </div>
+      <label className="field">
+        <span>Or say the number</span>
+        <input
+          inputMode="numeric"
+          value={minutes}
+          disabled={busy}
+          onChange={(e) => setMinutes(e.target.value)}
+          placeholder="e.g. 45"
+        />
+      </label>
+      <label className="field">
+        <span>Where, if you like</span>
+        <input
+          value={where}
+          disabled={busy}
+          onChange={(e) => setWhere(e.target.value)}
+          placeholder="e.g. to the shops and back"
+        />
+      </label>
+      <p className="acct__note">
+        Minutes only. No distance, no pace, no calories — none of those can be known from a
+        number typed into a phone, so none of them are asked for or invented.
+      </p>
+      <div className="dash__walkacts">
+        <button type="button" className="btn btn--primary" disabled={busy}
+          onClick={() => void send(Number(minutes))}>
+          {busy ? 'Saving…' : 'Log it'}
+        </button>
+        <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => setOpen(false)}>
+          Not now
+        </button>
+      </div>
+      {said && <p className="probe__err">{said}</p>}
+    </div>
+  );
+}
+
 const DAY_LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function dayLetter(iso: string): string {
@@ -116,7 +231,11 @@ function Fortnight({ days }: { days: DayPoint[] }) {
         const height = d.seconds === 0 ? 0 : Math.max(6, Math.round((d.seconds / peak) * 100));
         const minutes = Math.round(d.seconds / 60);
         return (
-          <span key={d.day} className="dash__bar" title={`${d.day}: ${minutes} min`}>
+          <span
+            key={d.day}
+            className="dash__bar"
+            title={`${d.day}: ${minutes} min${d.walks > 0 ? ` · ${d.walks} walk${d.walks === 1 ? '' : 's'}` : ''}`}
+          >
             <span className="dash__barfill" style={{ height: `${height}%` }} />
             {d.held > 0 && <span className="dash__held" title={`${d.held} prompt held`} />}
             <em>{dayLetter(d.day)}</em>
@@ -139,7 +258,13 @@ function ReadingTile({ reading }: { reading: Reading }) {
   );
 }
 
-export function DashboardModule({ data }: { data: Dashboard | null }) {
+export function DashboardModule({
+  data,
+  onActivity,
+}: {
+  data: Dashboard | null;
+  onActivity?: (fresh: Dashboard | null) => void;
+}) {
   if (!data) return null;
 
   const nothingYet = data.totalActs === 0;
@@ -153,15 +278,18 @@ export function DashboardModule({ data }: { data: Dashboard | null }) {
 
       {nothingYet ? (
         <p className="tdv__what">
-          Nothing recorded yet. Take a Snap and mark it done, or photograph a meal, and this
-          fills in with your own history — never anybody else&rsquo;s, and never a number we
-          made up.
+          Nothing recorded yet. Take a Snap and mark it done, photograph a meal, or log a walk
+          you already went on, and this fills in with your own history — never anybody
+          else&rsquo;s, and never a number we made up.
         </p>
       ) : (
         <p className="tdv__what">
           {minutesToday > 0
             ? `${minutesToday} minute${minutesToday === 1 ? '' : 's'} of movement today`
             : 'Nothing yet today'}
+          {data.todayWalks > 0
+            ? `, ${data.todayWalks === 1 ? 'a walk included' : `${data.todayWalks} walks included`}`
+            : ''}
           {data.streak > 1 ? ` · ${data.streak} days in a row` : ''} · moved on{' '}
           {data.daysMovedInWindow} of the last 14 days
           {data.completionRate !== null
@@ -169,6 +297,8 @@ export function DashboardModule({ data }: { data: Dashboard | null }) {
             : ''}
         </p>
       )}
+
+      <WalkLogger onLogged={(next) => onActivity?.(next)} />
 
       <h4 className="fl__h">Today</h4>
       <DayStrip events={data.today} />

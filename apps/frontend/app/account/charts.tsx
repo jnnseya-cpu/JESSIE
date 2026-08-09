@@ -13,6 +13,10 @@
 const TEAL = '#2dd4bf';
 const DEEP = '#00a99d';
 const AMBER = '#fbbf24';
+/* A walk. Its own colour rather than the completed teal, because the strip
+   is the one place a member can see what the platform prompted against what
+   they did on their own — and merging the two loses exactly that. */
+const VIOLET = '#a78bfa';
 
 /** A line with an area beneath it. Gaps in the data are gaps in the line. */
 export function Curve({
@@ -188,7 +192,15 @@ export function Heatmap({ grid }: { grid: number[][] }) {
 export function DayStrip({ events }: { events: { hour: number; kind: string }[] }) {
   const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 06:00–21:00
   const colourFor = (kind: string) =>
-    kind === 'snap_completed' ? TEAL : kind === 'snap_held' ? AMBER : 'rgba(244,250,249,0.35)';
+    kind === 'snap_completed'
+      ? TEAL
+      : kind === 'walk_logged'
+        ? VIOLET
+        : kind === 'snap_held'
+          ? AMBER
+          : 'rgba(244,250,249,0.35)';
+  const nameFor = (kind: string) =>
+    kind === 'walk_logged' ? 'a walk' : kind.replace('snap_', '');
 
   return (
     <div className="chart__day">
@@ -197,13 +209,14 @@ export function DayStrip({ events }: { events: { hour: number; kind: string }[] 
           const here = events.filter((e) => e.hour === h);
           const best =
             here.find((e) => e.kind === 'snap_completed') ??
+            here.find((e) => e.kind === 'walk_logged') ??
             here.find((e) => e.kind === 'snap_held') ??
             here[0];
           return (
             <span
               key={h}
               className="chart__dayhour"
-              title={`${String(h).padStart(2, '0')}:00${best ? ` — ${best.kind.replace('snap_', '')}` : ''}`}
+              title={`${String(h).padStart(2, '0')}:00${best ? ` — ${nameFor(best.kind)}` : ''}`}
               style={{ background: best ? colourFor(best.kind) : 'rgba(244,250,249,0.07)' }}
             />
           );
@@ -212,6 +225,9 @@ export function DayStrip({ events }: { events: { hour: number; kind: string }[] 
       <div className="chart__daykey">
         <span>
           <i style={{ background: TEAL }} /> completed
+        </span>
+        <span>
+          <i style={{ background: VIOLET }} /> walk
         </span>
         <span>
           <i style={{ background: AMBER }} /> held

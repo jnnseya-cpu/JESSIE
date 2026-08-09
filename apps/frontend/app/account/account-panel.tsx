@@ -655,7 +655,7 @@ export function AccountPanel() {
         <div className="acct__grid">
           {section === 'today' && (
             <>
-              <DashboardModule data={dash} />
+              <DashboardModule data={dash} onActivity={onActivity} />
               <SnapModule me={me} onActivity={onActivity} />
               <MovaModule me={me} />
             </>

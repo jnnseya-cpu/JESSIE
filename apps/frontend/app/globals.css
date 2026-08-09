@@ -6909,3 +6909,24 @@ textarea:focus-visible {
   .asr__controls li { grid-template-columns: 1fr; gap: 5px; }
   .asr__t { justify-self: start; padding: 3px 10px; }
 }
+
+/* ── Logging a walk ─────────────────────────────────────────────────
+   Sits directly under the day's summary rather than behind a menu,
+   because the moment somebody wants to record a walk is the moment they
+   have just got home, and a control they have to go looking for is a
+   control that gets used twice. Presets first: the answer is almost
+   always a round number, and three taps beats a keyboard. */
+
+.dash__walkopen { margin-top: 12px; }
+
+.dash__walk {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--jm-hairline);
+}
+.dash__walklab { margin: 0 0 10px; font-size: 15px; color: var(--jm-ink); }
+.dash__walkpresets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.dash__walkpresets .btn { font-size: 15px; padding: 10px 16px; }
+.dash__walkacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

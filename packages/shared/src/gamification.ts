@@ -169,3 +169,21 @@ export function bodySurfacePolicy(age: number, optedIn: boolean): BodySurfacePol
     reason: optedIn ? 'Adult, opted in.' : 'Adult, not opted in. Off by default.',
   };
 }
+
+/**
+ * Did movement happen on this day?
+ *
+ * Two kinds count and they are counted separately everywhere else: a Snap
+ * the engine offered and the member completed, and a walk the member did
+ * on their own and logged. Both are movement; only the first is evidence
+ * about the engine's timing, which is why they stay separate fields and
+ * meet only here.
+ *
+ * It lives in the shared package rather than beside the dashboard because
+ * the streak, the readings and the rewards all have to agree on it, and a
+ * predicate copied into three files is a predicate that will disagree in
+ * two of them within a year.
+ */
+export function movedOnDay(day: { completed: number; walks: number }): boolean {
+  return day.completed > 0 || day.walks > 0;
+}
