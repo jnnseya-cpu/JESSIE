@@ -438,3 +438,70 @@ test('the example shows the thing the category gets wrong', () => {
   assert.match(example, /250 to 345 calories/);
   assert.match(example, /Independent testing presented in 2026/);
 });
+
+/* ── reachable, not merely implemented ─────────────────────────────── */
+
+/*
+ * The failure these tests exist to stop.
+ *
+ * Both the falls programme and the assurance summary shipped as working
+ * endpoints with nothing rendering them, which meant the work was done and
+ * invisible — indistinguishable, from the outside, from not having been
+ * done at all. An endpoint is not a feature. These assert that each one has
+ * a surface somebody can actually reach, and that the surface is wired into
+ * the thing that renders it rather than sitting in the repository unused.
+ */
+
+test('the falls programme is rendered in the console, not just served', () => {
+  const module = readFileSync(
+    new URL('../../frontend/app/account/strength.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(module, /falls\/checks/, 'the module reads the catalogue');
+  assert.match(module, /falls\/history/, 'and the history');
+
+  const panel = readFileSync(
+    new URL('../../frontend/app/account/account-panel.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(panel, /import \{ StrengthModule \}/, 'the panel imports it');
+  assert.match(panel, /<StrengthModule \/>/, 'and renders it');
+});
+
+test('the strength screen puts the safety notes before the input, on the page', () => {
+  const module = readFileSync(
+    new URL('../../frontend/app/account/strength.tsx', import.meta.url),
+    'utf8',
+  );
+  // The safety block is rendered before the method and before the field.
+  const safety = module.indexOf('check.safety.map');
+  const how = module.indexOf('check.how.map');
+  const input = module.indexOf('readSafety[check.id]');
+  assert.ok(safety > -1 && how > safety, 'the method is rendered before the safety notes');
+  assert.ok(input > how, 'the input is rendered before the method');
+  // And the refusal sits above the result rather than under it.
+  const refusal = module.indexOf('notARiskScore');
+  const level = module.indexOf('str__level');
+  assert.ok(refusal > -1 && level > refusal, 'the level is shown before the refusal');
+});
+
+test('the assurance summary has a page a buyer can open', () => {
+  const page = readFileSync(
+    new URL('../../frontend/app/assurance/page.tsx', import.meta.url),
+    'utf8',
+  );
+  // Built from the module rather than retyped, so the two cannot drift.
+  assert.match(page, /assuranceByArea/);
+  assert.match(page, /assuranceGaps/);
+  assert.match(page, /hazardLog/);
+  // Both columns of every hazard, not only the flattering one.
+  assert.match(page, /initialAcceptability/);
+  assert.match(page, /residualAcceptability/);
+  // The gaps section is rendered before the controls section.
+  assert.ok(page.indexOf('id="gaps"') < page.indexOf('id="controls"'), 'the gaps are not first');
+});
+
+test('the assurance page is in the chrome, so it is not an orphan', () => {
+  const chrome = readFileSync(new URL('../../frontend/app/ui.tsx', import.meta.url), 'utf8');
+  assert.match(chrome, /href: '\/assurance'/, 'nothing links to the assurance page');
+});

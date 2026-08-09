@@ -188,6 +188,23 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     inChrome: true
   },
   {
+    path: '/assurance',
+    label: 'Assurance',
+    summary:
+      'What the platform refuses to do, how each refusal is enforced, and the clinical hazard log in full.',
+    phrases: [
+      'assurance summary',
+      'clinical safety',
+      'clinical risk',
+      'hazard log',
+      'dcb0129',
+      'dtac',
+      'digital technology assessment criteria',
+    ],
+    kind: 'company',
+    inChrome: true
+  },
+  {
     path: '/developers',
     label: 'Developers',
     summary: 'The API, and what it will and will not hand back.',

@@ -17,6 +17,7 @@ import { ScannerModule } from './scanner';
 import { LedgerModule } from './ledger';
 import { GrowthEngineModule } from './growth-engine';
 import { InsightModule } from './insight';
+import { StrengthModule } from './strength';
 import {
   BodyCommandModule,
   ChallengesModule,
@@ -672,6 +673,7 @@ export function AccountPanel() {
             <>
               <BodyCommandModule me={me} dashboard={dash} />
               <InsightModule heightCm={heightCm} weightKg={weightKg} />
+              <StrengthModule />
               <WearablesModule />
             </>
           )}

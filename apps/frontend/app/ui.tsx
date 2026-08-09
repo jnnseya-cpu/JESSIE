@@ -243,6 +243,7 @@ const FOOT_NAV: ReadonlyArray<{
       { href: '/try', label: 'Try it as…' },
       { href: '/account', label: 'Your account' },
       { href: '/status', label: 'Platform status' },
+      { href: '/assurance', label: 'Assurance & clinical safety' },
       { href: '/policies', label: 'All policies' },
       { href: '/terms', label: 'Terms of Service' },
       { href: '/privacy', label: 'Privacy Policy' },
