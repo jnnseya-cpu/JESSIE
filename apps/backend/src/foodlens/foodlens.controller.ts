@@ -118,18 +118,18 @@ export class FoodlensController {
       kcalPer100g: body.kcalPer100g ?? null,
       per100g: body.per100g ?? null,
     });
-    const saved = await this.foodLog.record(uid, {
-      kind: 'barcode',
-      name: entry.name,
-      barcode: entry.barcode,
-      grams: entry.grams,
-      kcal: entry.kcal,
-      fatG: entry.fatG,
-      saturatesG: entry.saturatesG,
-      sugarsG: entry.sugarsG,
-      saltG: entry.saltG,
-      basis: 'label',
-    });
+    /*
+     * Spread, not hand-copied.
+     *
+     * This used to list every field by name, and adding protein to the
+     * ledger promptly proved why that is a trap: two of the three write
+     * sites silently kept writing the old five, the row went in with a
+     * null protein figure, and nothing failed — the ledger just quietly
+     * had no protein in it. `id` and `at` are the record's to set, so they
+     * are the only two dropped.
+     */
+    const { id: _id, at: _at, ...fields } = entry;
+    const saved = await this.foodLog.record(uid, fields);
     return {
       saved: saved !== null,
       entry: saved,
@@ -160,18 +160,8 @@ export class FoodlensController {
           kcalPer100g: (result.kcalPer100g as number | null) ?? null,
           per100g: (result.per100g as BasketProduct['per100g']) ?? null,
         });
-        void this.foodLog.record(uid, {
-          kind: 'barcode',
-          name: entry.name,
-          barcode: entry.barcode,
-          grams: entry.grams,
-          kcal: entry.kcal,
-          fatG: entry.fatG,
-          saturatesG: entry.saturatesG,
-          sugarsG: entry.sugarsG,
-          saltG: entry.saltG,
-          basis: 'label',
-        });
+        const { id: _id, at: _at, ...fields } = entry;
+        void this.foodLog.record(uid, fields);
       }
     }
     return result;
@@ -211,6 +201,12 @@ export class FoodlensController {
         return row?.grams != null && scale ? Math.round(row.grams * scale * 10) / 10 : null;
       };
       const items = (result.items as { name: string }[] | undefined) ?? [];
+      /*
+       * Null under 18, because `plateMacros` is null under 18 — the ledger
+       * inherits the charter rule rather than restating it, so there is
+       * one place the rule can be got wrong instead of two.
+       */
+      const macros = result.plateMacros as { proteinG: number; carbohydrateG: number } | null;
 
       void this.foodLog.record(uid, {
         kind: body.mimeType ? 'photo' : 'declared',
@@ -222,6 +218,11 @@ export class FoodlensController {
         saturatesG: onThePlate('saturates'),
         sugarsG: onThePlate('sugars'),
         saltG: onThePlate('salt'),
+        proteinG: macros?.proteinG ?? null,
+        carbohydrateG: macros?.carbohydrateG ?? null,
+        // FoodLens does not estimate fibre from a photograph, and a guess
+        // here would be worse than the gap. Barcodes carry a real figure.
+        fibreG: null,
         basis: 'estimate',
       });
     }

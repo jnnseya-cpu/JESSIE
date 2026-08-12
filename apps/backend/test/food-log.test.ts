@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   RETENTION_DAYS,
@@ -134,4 +135,149 @@ test('a year is bucketed by month; a month is bucketed by day', () => {
 test('the windows and the retention period are the published ones', () => {
   assert.deepEqual(WINDOW_DAYS, { week: 7, month: 30, year: 365, all: 1095 });
   assert.equal(RETENTION_DAYS, 1095, 'three years');
+});
+
+/* ── macros in the ledger ──────────────────────────────────────────── */
+
+/*
+ * FoodLens estimated protein, carbohydrate and fat for every plate it read
+ * and then threw the grams away, because the ledger only held the UK
+ * front-of-pack five. Which meant the platform could tell somebody on
+ * appetite-suppressing medication to put protein first at every meal and
+ * had no way to tell them whether they had.
+ *
+ * The failure mode these tests exist for is not a missing number. It is a
+ * present one that is wrong in the dangerous direction: a protein total
+ * summed across scans that carried a figure, divided by every day in the
+ * window, reads far lower than the truth — and the action that follows an
+ * understated protein figure is "eat more protein", which is the one thing
+ * you must not say to somebody with reduced kidney function.
+ */
+
+const macroEntry = (over: Partial<FoodLogEntry>): FoodLogEntry => ({
+  id: `m_${Math.random().toString(36).slice(2, 8)}`,
+  at: new Date().toISOString(),
+  kind: 'photo',
+  name: 'Meal',
+  grams: 400,
+  kcal: 600,
+  basis: 'estimate',
+  ...over,
+});
+
+test('a missing protein figure is never counted as a zero', () => {
+  const measured = summarise(
+    [
+      macroEntry({ proteinG: 30 }),
+      macroEntry({ proteinG: 30 }),
+      macroEntry({ proteinG: 30 }),
+    ],
+    'week',
+  );
+  const withGaps = summarise(
+    [
+      macroEntry({ proteinG: 30 }),
+      macroEntry({ proteinG: 30 }),
+      macroEntry({ proteinG: 30 }),
+      macroEntry({ proteinG: null }),
+      macroEntry({ proteinG: null }),
+    ],
+    'week',
+  );
+
+  const protein = (s: ReturnType<typeof summarise>) => s.totals.find((t) => t.key === 'proteinG')!;
+  assert.equal(protein(measured).total, 90);
+  assert.equal(protein(withGaps).total, 90, 'the unmeasured scans changed the total');
+  assert.equal(protein(withGaps).measuredIn, 3);
+  assert.equal(protein(withGaps).ofEntries, 5);
+});
+
+test('a daily average is withheld when too little of the window carried a figure', () => {
+  const thin = summarise(
+    [
+      macroEntry({ proteinG: 30 }),
+      macroEntry({ proteinG: null }),
+      macroEntry({ proteinG: null }),
+      macroEntry({ proteinG: null }),
+    ],
+    'week',
+  );
+  const protein = thin.totals.find((t) => t.key === 'proteinG')!;
+  assert.equal(protein.total, 30, 'the total is real and is still shown');
+  assert.equal(
+    protein.dailyIsMeaningful,
+    false,
+    'one scan in four produced a daily protein figure, which is our missing data wearing a member’s habits',
+  );
+
+  // Salt, measured on all four, is fine.
+  const salty = summarise(
+    [
+      macroEntry({ saltG: 1 }),
+      macroEntry({ saltG: 1 }),
+      macroEntry({ saltG: 1 }),
+      macroEntry({ saltG: 1 }),
+    ],
+    'week',
+  );
+  assert.equal(salty.totals.find((t) => t.key === 'saltG')!.dailyIsMeaningful, true);
+});
+
+test('a label’s protein figure is scaled to the pack, and an absent one stays absent', () => {
+  const withProtein = entryFromProduct({
+    id: 'x',
+    name: 'Greek yoghurt',
+    grams: 500,
+    kcalPer100g: 97,
+    per100g: { fatG: 5, saturatesG: 3, sugarsG: 4, saltG: 0.1, proteinG: 9, fibreG: 0 },
+  });
+  assert.equal(withProtein.proteinG, 45, '9g per 100g across a 500g pot');
+  assert.equal(withProtein.fibreG, 0, 'a real zero on the label is a zero');
+
+  const withoutProtein = entryFromProduct({
+    id: 'y',
+    name: 'Own-brand something',
+    grams: 500,
+    kcalPer100g: 97,
+    per100g: { fatG: 5, saturatesG: 3, sugarsG: 4, saltG: 0.1 },
+  });
+  assert.equal(withoutProtein.proteinG, null, 'a label with no protein figure produced one');
+  assert.equal(withoutProtein.fibreG, null);
+});
+
+test('a scan carrying only macros is still ledger material', () => {
+  // The gate used to look at the front-of-pack five alone, so a plate the
+  // model read protein off and nothing else was dropped on the floor.
+  const summary = summarise([macroEntry({ kcal: null, proteinG: 28 })], 'week');
+  assert.equal(summary.entries, 1);
+  assert.ok(summary.totals.some((t) => t.key === 'proteinG'));
+});
+
+test('a ledger write never hand-copies the fields it stores', () => {
+  /*
+   * How protein first shipped broken. The controller listed every column
+   * by name at three write sites; adding a field updated one of them, the
+   * other two silently kept writing the old five, and nothing failed —
+   * rows just went in with a null protein figure and the ledger quietly
+   * had no protein in it.
+   *
+   * The fix is structural rather than a fourth careful edit: the entry is
+   * spread, so a field added to it cannot be dropped on the way to the
+   * database.
+   */
+  const controller = readFileSync(
+    new URL('../src/foodlens/foodlens.controller.ts', import.meta.url),
+    'utf8',
+  );
+  const barcodeWrites = [...controller.matchAll(/foodLog\.record\(uid, \{\s*\n\s*kind: 'barcode'/g)];
+  assert.deepEqual(
+    barcodeWrites,
+    [],
+    'a barcode ledger write lists its fields by hand, which is how a column gets silently dropped',
+  );
+  assert.equal(
+    (controller.match(/const \{ id: _id, at: _at, \.\.\.fields \} = entry;/g) ?? []).length,
+    2,
+    'both barcode write sites should spread the entry',
+  );
 });

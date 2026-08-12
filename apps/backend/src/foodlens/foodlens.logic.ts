@@ -106,6 +106,25 @@ export function analyse(facts: AnalysisFacts): Record<string, unknown> {
     },
     energy,
     macros: !minor && facts.grams ? macroSplit(facts.grams) : null,
+    /*
+     * The same three numbers as grams rather than as a share of the plate.
+     *
+     * The percentage answers "what kind of meal was this"; only the grams
+     * answer "have I had enough protein today", and that is the question
+     * the platform has been giving advice about without being able to
+     * check. Withheld under 18 for the same reason energy is — a share of
+     * a plate is a shape, a gram figure is a number about a body.
+     */
+    plateMacros:
+      !minor && facts.grams
+        ? {
+            proteinG: Math.round(facts.grams.proteinG),
+            carbohydrateG: Math.round(facts.grams.carbohydrateG),
+            fatG: Math.round(facts.grams.fatG),
+            basis: 'estimate' as const,
+            says: 'Estimated from the photograph, like the energy range. Not measured.',
+          }
+        : null,
     energyAgreement: agreement,
     frontOfPack: frontOfPackFrom(facts),
     allergens: UK_ALLERGENS.map((allergen) => {

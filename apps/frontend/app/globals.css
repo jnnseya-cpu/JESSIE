@@ -6930,3 +6930,23 @@ textarea:focus-visible {
 .dash__walkpresets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .dash__walkpresets .btn { font-size: 15px; padding: 10px 16px; }
 .dash__walkacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* Nutrients the ledger has a real total for but not enough coverage to
+   average. Deliberately not drawn as bars: a bar next to the well-measured
+   ones would say the platform is equally sure of both, and the one it is
+   least sure of is the one somebody would act on. */
+.ledger__partial { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.ledger__partial li {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--jm-hairline);
+}
+.ledger__partial strong { display: block; font-size: 15px; color: var(--jm-ink); }
+.ledger__partial span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--jm-dim);
+}

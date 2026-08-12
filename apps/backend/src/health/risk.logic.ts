@@ -61,6 +61,16 @@ export const DAILY_REFERENCE = {
   saturatesG: 20,
   sugarsG: 90,
   saltG: 6,
+  /*
+   * The front-of-pack reference, and nothing more than that. It is not a
+   * target: an older adult protecting muscle needs more, somebody with
+   * reduced kidney function may need less, and setting either number
+   * requires a weight, a blood result and a diagnosis. This platform
+   * compares against a published reference and says whose job the target
+   * is.
+   */
+  proteinG: 50,
+  fibreG: 30,
 } as const;
 
 /** The Chief Medical Officers' adult guideline, in days per week. */
@@ -146,7 +156,20 @@ export interface InsightInput {
     daysRecorded: number;
     /** Days of food those scans actually carry — see the ledger. */
     daysCovered: number;
-    perDay: { saltG?: number; saturatesG?: number; sugarsG?: number; energyKcal?: number };
+    perDay: {
+      saltG?: number;
+      saturatesG?: number;
+      sugarsG?: number;
+      energyKcal?: number;
+      /**
+       * Present only when enough of the window carried a protein figure
+       * for a daily average to mean anything — see `dailyIsMeaningful` in
+       * the ledger. Undefined means "not enough was measured", never
+       * "they ate none", and every rule below has to treat it that way.
+       */
+      proteinG?: number;
+      fibreG?: number;
+    };
     topSalt?: string | null;
     topSaturates?: string | null;
     topSugars?: string | null;
@@ -433,6 +456,47 @@ export function risksFor(input: InsightInput): RiskFinding[] {
    * intended direction, and the shortfall only shows up weeks later as
    * lost muscle and a tiredness nobody connected to it.
    */
+  /*
+   * The protein figure itself, now that the ledger carries one.
+   *
+   * Until this existed the platform said "put protein first at every
+   * meal" and measured energy, because energy was the only number it had.
+   * That is advice with no feedback loop: somebody could follow it
+   * perfectly or ignore it entirely and see the same page either way.
+   *
+   * Two guards, and both matter. `dailyIsMeaningful` upstream means an
+   * undefined figure is "not enough was measured" rather than "they ate
+   * none" — reporting a shortfall from a half-empty ledger would push
+   * somebody to eat more protein on the strength of our own missing data.
+   * And `doNotPushProtein` wins outright: where a declared condition says
+   * protein belongs to a renal dietitian, this stays silent even when the
+   * number is low, because a low protein figure may be exactly right.
+   */
+  if (
+    effects.proteinMattersMore &&
+    !effects.doNotPushProtein &&
+    food &&
+    food.daysCovered >= 3 &&
+    typeof food.perDay.proteinG === 'number'
+  ) {
+    const protein = food.perDay.proteinG;
+    if (protein < DAILY_REFERENCE.proteinG * 0.8) {
+      risks.push({
+        factor: 'Protein, against what you are trying to hold on to',
+        level: 'high',
+        evidence: `About ${Math.round(protein)}g a day across the ${food.daysCovered} days recorded, against a ${DAILY_REFERENCE.proteinG}g reference — and the reference is for an average adult, not for somebody protecting muscle on a small appetite.`,
+        associatedWith: [
+          'losing muscle alongside fat',
+          'strength work that does not translate into strength',
+          'tiredness that outlasts the appetite change',
+        ],
+        action:
+          'Protein first at every meal — before the vegetables, before the carbohydrate, before anything else on the plate. On a day when only a few mouthfuls are possible, which mouthfuls they are is the whole decision. Show these figures to whoever prescribed the medication.',
+        from: 'foodlens',
+      });
+    }
+  }
+
   if (effects.proteinMattersMore && food && food.daysCovered >= 3) {
     const kcal = food.perDay.energyKcal ?? 0;
     if (kcal > 0 && kcal < DAILY_REFERENCE.energyKcal * 0.5) {

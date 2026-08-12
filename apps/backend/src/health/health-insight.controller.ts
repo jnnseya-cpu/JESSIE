@@ -202,6 +202,17 @@ export class HealthInsightController {
 
     const perNutrient = (key: string): number | undefined =>
       summary.totals.find((t) => t.key === key)?.perDay;
+    /*
+     * A daily average, but only where the ledger actually supports one.
+     * See `dailyIsMeaningful` — the difference between "you ate little
+     * protein" and "we could only read protein on two of your nine scans"
+     * is the difference between useful advice and advice built from our
+     * own missing data.
+     */
+    const meaningfulPerDay = (key: string): number | undefined => {
+      const row = summary.totals.find((t) => t.key === key);
+      return row?.dailyIsMeaningful ? row.perDay : undefined;
+    };
     const topOf = (key: string): string | null =>
       summary.totals.find((t) => t.key === key)?.topContributors[0]?.name ?? null;
     const contributorsOf = (key: string): { name: string; amount: number }[] =>
@@ -219,6 +230,14 @@ export class HealthInsightController {
           saturatesG: perNutrient('saturatesG'),
           sugarsG: perNutrient('sugarsG'),
           energyKcal: perNutrient('energyKcal'),
+          /*
+           * Only when enough of the window carried a figure. `perNutrient`
+           * would happily average a protein total drawn from two scans out
+           * of nine, and every rule downstream would read the result as a
+           * shortfall rather than as a gap in the ledger.
+           */
+          proteinG: meaningfulPerDay('proteinG'),
+          fibreG: meaningfulPerDay('fibreG'),
         },
         topSalt: topOf('saltG'),
         topSaturates: topOf('saturatesG'),

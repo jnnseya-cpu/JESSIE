@@ -505,3 +505,92 @@ test('the assurance page is in the chrome, so it is not an orphan', () => {
   const chrome = readFileSync(new URL('../../frontend/app/ui.tsx', import.meta.url), 'utf8');
   assert.match(chrome, /href: '\/assurance'/, 'nothing links to the assurance page');
 });
+
+/* ── the protein figure, and who it must never be shown to ─────────── */
+
+test('a low protein figure is acted on for appetite suppression and never for kidney disease', async () => {
+  const { risksFor } = await import('../src/health/risk.logic.ts');
+
+  const food = {
+    daysRecorded: 7,
+    daysCovered: 7,
+    perDay: { energyKcal: 1400, proteinG: 30 },
+  };
+  const base = { age: 62, heightCm: 168, weightKg: 70, activity: null, trend: null } as const;
+
+  const onMedication = risksFor({
+    ...base,
+    food,
+    conditions: ['appetite_suppressing_medication'],
+  } as never);
+  assert.ok(
+    onMedication.some((r: { factor: string }) => /protein/i.test(r.factor)),
+    'the platform tells this person to put protein first and still cannot see whether they did',
+  );
+
+  /*
+   * The same 30g a day, and the answer must be different. On reduced
+   * kidney function a low protein figure may be exactly right, the target
+   * comes from bloods this platform does not hold, and "eat more protein"
+   * is the specific harm the condition card exists to prevent.
+   */
+  const kidney = risksFor({
+    ...base,
+    food,
+    conditions: ['chronic_kidney_disease'],
+  } as never);
+  assert.ok(
+    !kidney.some((r: { factor: string }) => /protein/i.test(r.factor)),
+    'a protein shortfall was raised against somebody whose protein belongs to a renal dietitian',
+  );
+
+  // And when both are declared, the cautious side wins — as the existing
+  // conflict rule already requires.
+  const both = risksFor({
+    ...base,
+    food,
+    conditions: ['appetite_suppressing_medication', 'chronic_kidney_disease'],
+  } as never);
+  assert.ok(!both.some((r: { factor: string }) => /protein/i.test(r.factor)));
+});
+
+test('a protein shortfall is never raised from a half-empty ledger', () => {
+  /*
+   * The controller only passes a daily protein figure through when enough
+   * of the window carried one. Without that guard the rule below fires on
+   * our own missing data and tells somebody to eat more protein because
+   * FoodLens could not read three of their scans.
+   */
+  const controller = readFileSync(
+    new URL('../src/health/health-insight.controller.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(controller, /proteinG: meaningfulPerDay\('proteinG'\)/);
+  assert.match(controller, /dailyIsMeaningful \? row\.perDay : undefined/);
+});
+
+test('the ledger holds no protein figure for anybody under 18', () => {
+  const controller = readFileSync(
+    new URL('../src/foodlens/foodlens.controller.ts', import.meta.url),
+    'utf8',
+  );
+  // The ledger inherits the charter rule from the analysis rather than
+  // restating it, so there is one place to get it wrong instead of two.
+  assert.match(controller, /result\.plateMacros as/);
+  assert.match(controller, /proteinG: macros\?\.proteinG \?\? null/);
+
+  const logic = readFileSync(
+    new URL('../src/foodlens/foodlens.logic.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(logic, /plateMacros:\s*\n?\s*!minor/, 'plate macros are produced for a minor');
+});
+
+test('the reference intake is published as a reference and not as a target', () => {
+  const analysis = readFileSync(
+    new URL('../../../packages/foodlens/src/analysis.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(analysis, /not a target/i);
+  assert.match(analysis, /renal dietitian|reduced kidney function/i);
+});

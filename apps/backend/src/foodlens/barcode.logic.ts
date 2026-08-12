@@ -10,7 +10,15 @@ export interface LabelFacts {
   name: string;
   brand: string | null;
   quantity: string | null;
-  per100g: { fatG?: number; saturatesG?: number; sugarsG?: number; saltG?: number };
+  per100g: {
+    fatG?: number;
+    saturatesG?: number;
+    sugarsG?: number;
+    saltG?: number;
+    proteinG?: number;
+    carbohydrateG?: number;
+    fibreG?: number;
+  };
   kcalPer100g: number | null;
   proteinPer100g: number | null;
   carbsPer100g: number | null;
@@ -80,6 +88,17 @@ export function toLabelFacts(code: string, product: Record<string, unknown>): La
   if (sat !== undefined) per100g.saturatesG = sat;
   if (sugars !== undefined) per100g.sugarsG = sugars;
   if (salt !== undefined) per100g.saltG = salt;
+  /*
+   * Carried through into the same shape as the front-of-pack four, so the
+   * ledger scales all seven the same way. The label is the only place a
+   * real protein figure comes from; a photograph can only estimate it.
+   */
+  const protein = num('proteins_100g');
+  const carbs = num('carbohydrates_100g');
+  const fibre = num('fiber_100g');
+  if (protein !== undefined) per100g.proteinG = protein;
+  if (carbs !== undefined) per100g.carbohydrateG = carbs;
+  if (fibre !== undefined) per100g.fibreG = fibre;
 
   return {
     barcode: code,

@@ -434,4 +434,25 @@ export const REFERENCE_INTAKE = {
   saturatesG: 20,
   sugarsG: 90,
   saltG: 6,
+  /*
+   * A reference, and specifically not a target.
+   *
+   * The five above are the UK front-of-pack reference intakes, which is a
+   * settled and slightly arbitrary set of numbers everybody agrees to
+   * compare against. These three are the same kind of thing and need
+   * saying more carefully, because protein is where a calorie counter
+   * would put a goal.
+   *
+   * 50g is the front-of-pack reference for protein. It is not what an
+   * older adult protecting muscle needs, which is higher; it is not what
+   * somebody with reduced kidney function should aim at, which may be
+   * lower and belongs to their renal dietitian. This platform shows what
+   * you ate against a published reference and does not tell anybody what
+   * their number should be — that requires knowing a person's weight,
+   * kidney function and what they are being treated for, and two of those
+   * three we deliberately do not hold.
+   */
+  proteinG: 50,
+  carbohydrateG: 260,
+  fibreG: 30,
 } as const;

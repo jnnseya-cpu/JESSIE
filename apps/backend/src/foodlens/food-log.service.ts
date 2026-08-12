@@ -41,7 +41,16 @@ export class FoodLogService implements OnModuleDestroy {
     // A row with no figures in it is a row nobody can total. It is not an
     // error — a photograph that named a food and no numbers is a real
     // outcome — it is simply not ledger material.
-    const hasFigures = [entry.kcal, entry.fatG, entry.saturatesG, entry.sugarsG, entry.saltG].some(
+    const hasFigures = [
+      entry.kcal,
+      entry.fatG,
+      entry.saturatesG,
+      entry.sugarsG,
+      entry.saltG,
+      entry.proteinG,
+      entry.carbohydrateG,
+      entry.fibreG,
+    ].some(
       (v) => typeof v === 'number' && Number.isFinite(v) && v > 0,
     );
     if (!hasFigures) return null;
@@ -56,8 +65,9 @@ export class FoodLogService implements OnModuleDestroy {
       try {
         await this.pool.query(
           `INSERT INTO food_log
-             (id, user_id, at, kind, name, barcode, grams, kcal, fat_g, saturates_g, sugars_g, salt_g, basis, detail)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)`,
+             (id, user_id, at, kind, name, barcode, grams, kcal, fat_g, saturates_g, sugars_g, salt_g,
+              protein_g, carbohydrate_g, fibre_g, basis, detail)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb)`,
           [
             row.id,
             userId,
@@ -71,6 +81,17 @@ export class FoodLogService implements OnModuleDestroy {
             row.saturatesG ?? null,
             row.sugarsG ?? null,
             row.saltG ?? null,
+            /*
+             * Null rather than zero, every time. A barcode record with no
+             * protein figure and a photograph the model would not put a
+             * number on are both "nobody measured this", and writing a 0
+             * would make them indistinguishable from a food that genuinely
+             * has none — which is how a protein total ends up understated
+             * and somebody gets told to eat more of it.
+             */
+            row.proteinG ?? null,
+            row.carbohydrateG ?? null,
+            row.fibreG ?? null,
             row.basis,
             JSON.stringify(entry.detail ?? {}),
           ],
@@ -92,7 +113,8 @@ export class FoodLogService implements OnModuleDestroy {
     if (this.pool) {
       try {
         const result = await this.pool.query(
-          `SELECT id, at, kind, name, barcode, grams, kcal, fat_g, saturates_g, sugars_g, salt_g, basis
+          `SELECT id, at, kind, name, barcode, grams, kcal, fat_g, saturates_g, sugars_g, salt_g,
+                  protein_g, carbohydrate_g, fibre_g, basis
              FROM food_log
             WHERE user_id = $1 AND at > now() - ($2 || ' days')::interval
             ORDER BY at DESC
@@ -111,6 +133,9 @@ export class FoodLogService implements OnModuleDestroy {
           saturatesG: num(r.saturates_g),
           sugarsG: num(r.sugars_g),
           saltG: num(r.salt_g),
+          proteinG: num(r.protein_g),
+          carbohydrateG: num(r.carbohydrate_g),
+          fibreG: num(r.fibre_g),
           basis: r.basis as FoodLogEntry['basis'],
         }));
       } catch (error) {

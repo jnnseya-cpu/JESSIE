@@ -27,6 +27,11 @@ interface Rollup {
   pctOfReference: number;
   fromLabelPct: number;
   topContributors: { name: string; amount: number }[];
+  /** How many scans in the window actually carried this nutrient. */
+  measuredIn: number;
+  ofEntries: number;
+  /** Whether the daily figure rests on enough of them to mean anything. */
+  dailyIsMeaningful: boolean;
 }
 
 interface Summary {
@@ -104,6 +109,20 @@ export function LedgerModule() {
   const energy = summary?.totals.find((t) => t.key === 'energyKcal');
   const nutrients = (summary?.totals ?? []).filter((t) => t.key !== 'energyKcal');
 
+  /*
+   * The bars split in two, and the split is the honest part.
+   *
+   * A nutrient measured on nine scans out of ten gets a daily figure. One
+   * measured on three does not — it gets its total, which is real, and a
+   * sentence saying how much of the ledger it came from. Drawing both as
+   * the same bar would put "38g of protein a day" next to "5.1g of salt a
+   * day" as though the platform were equally sure of them, and the one it
+   * is not sure of is the one somebody would act on.
+   */
+  const wellMeasured = nutrients.filter((n) => n.dailyIsMeaningful);
+  const partial = nutrients.filter((n) => !n.dailyIsMeaningful && n.total > 0);
+  const protein = summary?.totals.find((t) => t.key === 'proteinG');
+
   return (
     <section className="acct__module acct__module--food">
       <header>
@@ -156,11 +175,17 @@ export function LedgerModule() {
               <strong>{energy ? energy.perDay : 0}</strong>
               <span>kcal a day</span>
             </div>
+            {protein?.dailyIsMeaningful && (
+              <div className="ledger__head">
+                <strong>{protein.perDay}</strong>
+                <span>g protein a day</span>
+              </div>
+            )}
           </div>
 
           <h4 className="fl__h">A day, against the guideline</h4>
           <WeightedBars
-            items={nutrients.map((n) => ({
+            items={wellMeasured.map((n) => ({
               label: `${n.label} · ${n.perDay}g a day`,
               value: n.pctOfReference,
             }))}
@@ -168,8 +193,29 @@ export function LedgerModule() {
           />
           <p className="fl__note">
             Each bar is your daily figure as a percentage of the UK adult reference intake.
-            100% is the guideline, not a limit you have broken.
+            100% is the guideline, not a limit you have broken — and a reference is not a
+            target somebody set for you.
           </p>
+
+          {partial.length > 0 && (
+            <>
+              <h4 className="fl__h">Counted, but not on enough of your scans</h4>
+              <ul className="ledger__partial">
+                {partial.map((n) => (
+                  <li key={n.key}>
+                    <strong>
+                      {n.label} · {n.total}g in total
+                    </strong>
+                    <span>
+                      From {n.measuredIn} of your {n.ofEntries} scans. Too few for a daily
+                      figure to mean anything, so there is not one — the rest is missing rather
+                      than zero.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <h4 className="fl__h">Day by day</h4>
           <Curve

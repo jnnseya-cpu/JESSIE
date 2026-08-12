@@ -31,6 +31,15 @@ export class Per100gDto {
   @IsNumber() @Min(0) saturatesG!: number;
   @IsNumber() @Min(0) sugarsG!: number;
   @IsNumber() @Min(0) saltG!: number;
+  /*
+   * Optional, because most labels carry them and some do not, and a
+   * required field would turn a partial label into a rejected scan.
+   * Absent stays absent: there is no default here for the same reason
+   * there is no zero in the ledger.
+   */
+  @IsOptional() @IsNumber() @Min(0) proteinG?: number;
+  @IsOptional() @IsNumber() @Min(0) carbohydrateG?: number;
+  @IsOptional() @IsNumber() @Min(0) fibreG?: number;
 }
 
 export class GramsDto {

@@ -38,11 +38,32 @@ export interface FoodLogEntry {
   saturatesG?: number | null;
   sugarsG?: number | null;
   saltG?: number | null;
+  /**
+   * The three FoodLens has always estimated and never kept.
+   *
+   * Null means nobody measured it — a barcode whose record carries no
+   * protein figure, or a photograph the model would not put a number on.
+   * Never zero, and never filled in with an average, because the whole
+   * point of a protein total is that it is the member's own.
+   */
+  proteinG?: number | null;
+  carbohydrateG?: number | null;
+  fibreG?: number | null;
   basis: 'label' | 'calculated' | 'estimate';
 }
 
+export type NutrientKey =
+  | 'energyKcal'
+  | 'fatG'
+  | 'saturatesG'
+  | 'sugarsG'
+  | 'saltG'
+  | 'proteinG'
+  | 'carbohydrateG'
+  | 'fibreG';
+
 export interface NutrientRollup {
-  key: 'energyKcal' | 'fatG' | 'saturatesG' | 'sugarsG' | 'saltG';
+  key: NutrientKey;
   label: string;
   total: number;
   /** Per day across the window, which is the figure guidance is written in. */
@@ -52,7 +73,40 @@ export interface NutrientRollup {
   /** How much of the total came from a label rather than a photograph. */
   fromLabelPct: number;
   topContributors: { name: string; amount: number }[];
+  /**
+   * How many of the entries in the window actually carried this nutrient.
+   *
+   * The number that stops the whole rollup lying, and it matters for
+   * protein far more than for salt. Nearly every scan carries salt;
+   * protein is missing whenever a barcode record has no figure or the
+   * vision model would not estimate one. Summing what is present and
+   * dividing by the days the ledger covers silently treats every missing
+   * entry as a zero, which reports somebody eating far less protein than
+   * they are — and the action that follows an understated protein figure
+   * is "eat more protein", which is exactly the wrong thing to tell
+   * somebody with reduced kidney function.
+   *
+   * So the count travels with the figure, all the way to the page.
+   */
+  measuredIn: number;
+  ofEntries: number;
+  /**
+   * True when enough of the window carried a figure for the daily average
+   * to mean anything. Below that the total is still shown — it is real —
+   * but the per-day figure and the percentage are not.
+   */
+  dailyIsMeaningful: boolean;
 }
+
+/**
+ * How much of a window has to carry a nutrient before a daily average is
+ * worth printing.
+ *
+ * Two thirds is a judgement, not a standard. Below it the missing entries
+ * dominate and the average says more about what FoodLens could read than
+ * about what somebody ate.
+ */
+export const DAILY_AVERAGE_COVERAGE = 2 / 3;
 
 export interface FoodLogSummary {
   window: LogWindow;
@@ -85,6 +139,14 @@ const NUTRIENTS = [
   { key: 'saturatesG', label: 'Saturates', field: 'saturatesG', reference: REFERENCE_INTAKE.saturatesG },
   { key: 'sugarsG', label: 'Sugars', field: 'sugarsG', reference: REFERENCE_INTAKE.sugarsG },
   { key: 'saltG', label: 'Salt', field: 'saltG', reference: REFERENCE_INTAKE.saltG },
+  { key: 'proteinG', label: 'Protein', field: 'proteinG', reference: REFERENCE_INTAKE.proteinG },
+  {
+    key: 'carbohydrateG',
+    label: 'Carbohydrate',
+    field: 'carbohydrateG',
+    reference: REFERENCE_INTAKE.carbohydrateG,
+  },
+  { key: 'fibreG', label: 'Fibre', field: 'fibreG', reference: REFERENCE_INTAKE.fibreG },
 ] as const;
 
 const round = (value: number, places = 1): number => {
@@ -116,11 +178,13 @@ export function summarise(
   const totals: NutrientRollup[] = NUTRIENTS.map((nutrient) => {
     let total = 0;
     let fromLabel = 0;
+    let measuredIn = 0;
     const byName = new Map<string, number>();
 
     for (const entry of inWindow) {
       const amount = entry[nutrient.field as keyof FoodLogEntry] as number | null | undefined;
       if (typeof amount !== 'number' || !Number.isFinite(amount)) continue;
+      measuredIn += 1;
       total += amount;
       if (entry.basis === 'label') fromLabel += amount;
       byName.set(entry.name, (byName.get(entry.name) ?? 0) + amount);
@@ -139,6 +203,10 @@ export function summarise(
       perDay: nutrient.key === 'energyKcal' ? Math.round(perDay) : round(perDay),
       pctOfReference: Math.round((perDay / nutrient.reference) * 100),
       fromLabelPct: total > 0 ? Math.round((fromLabel / total) * 100) : 0,
+      measuredIn,
+      ofEntries: inWindow.length,
+      dailyIsMeaningful:
+        inWindow.length > 0 && measuredIn / inWindow.length >= DAILY_AVERAGE_COVERAGE,
       topContributors: [...byName.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
@@ -245,7 +313,15 @@ export function entryFromProduct(input: {
   barcode?: string | null;
   grams?: number | null;
   kcalPer100g?: number | null;
-  per100g?: { fatG?: number; saturatesG?: number; sugarsG?: number; saltG?: number } | null;
+  per100g?: {
+    fatG?: number;
+    saturatesG?: number;
+    sugarsG?: number;
+    saltG?: number;
+    proteinG?: number;
+    carbohydrateG?: number;
+    fibreG?: number;
+  } | null;
   at?: string;
 }): FoodLogEntry {
   const grams = typeof input.grams === 'number' && input.grams > 0 ? input.grams : null;
@@ -267,6 +343,15 @@ export function entryFromProduct(input: {
     saturatesG: scale(input.per100g?.saturatesG),
     sugarsG: scale(input.per100g?.sugarsG),
     saltG: scale(input.per100g?.saltG),
+    /*
+     * A label figure, not an estimate. This is the best protein number the
+     * platform will ever have — a manufacturer had to put it there — and
+     * `scale` already returns null when the label does not carry one, so
+     * an absent figure stays absent rather than becoming a zero.
+     */
+    proteinG: scale(input.per100g?.proteinG),
+    carbohydrateG: scale(input.per100g?.carbohydrateG),
+    fibreG: scale(input.per100g?.fibreG),
     basis: 'label',
   };
 }
