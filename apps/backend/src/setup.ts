@@ -1,6 +1,7 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AllowanceFilter } from './common/allowance.filter';
+import { InstructionFilter } from './common/instruction.filter';
 import { SignatureInterceptor } from './common/signature.interceptor';
 
 /**
@@ -35,8 +36,10 @@ export function configureApp(app: INestApplication): INestApplication {
   app.useGlobalInterceptors(new SignatureInterceptor());
 
   // An empty allowance is a 402 with an explanation, never a 500 that
-  // tells the client to retry something that will never succeed.
-  app.useGlobalFilters(new AllowanceFilter());
+  // tells the client to retry something that will never succeed. Text
+  // written as an instruction to the system is a 400 that says how to
+  // rephrase, never a stack trace and never a lesson in what got close.
+  app.useGlobalFilters(new AllowanceFilter(), new InstructionFilter());
 
   /**
    * Who may call this API from a browser.

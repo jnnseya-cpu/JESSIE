@@ -11,7 +11,7 @@ import {
 } from '@jessmove/foodlens';
 import { plateComposition } from '@jessmove/foodlens';
 import { AiGatewayError, PLATFORM_PAYERS } from '@jessmove/shared';
-import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
+import { AiGatewayService, AllowanceExhaustedError, InstructionRefusedError } from '../ai/ai-gateway.service';
 import { BarcodeService, type LabelFacts } from './barcode.service';
 import { adviseOnVisionFailure } from './vision-advice.logic';
 import { extractJsonObject, parseVisionJson } from './vision-parse.logic';
@@ -135,6 +135,7 @@ export class FoodlensService {
       return this.scan(code);
     } catch (error) {
       if (error instanceof AllowanceExhaustedError) throw error;
+      if (error instanceof InstructionRefusedError) throw error;
       this.logger.warn(`barcode read failed: ${(error as Error).message}`);
       return {
         found: false,
@@ -379,6 +380,7 @@ export class FoodlensService {
         // somebody the second when the first is true guarantees they wait
         // for a recovery that will never come.
         if (err instanceof AllowanceExhaustedError) throw err;
+        if (err instanceof InstructionRefusedError) throw err;
         visionNote =
           err instanceof Error && err.message.includes('No AI provider')
             ? 'No AI provider is configured, so the photograph was not analysed. Declared facts only.'

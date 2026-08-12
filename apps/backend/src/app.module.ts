@@ -4,6 +4,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { AcuModule } from './acu/acu.module';
 import { AuthModule } from './auth/auth.module';
 import { AiModule } from './ai/ai.module';
+import { SecurityModule } from './security/security.module';
 import { BlogModule } from './blog/blog.module';
 import { BodyModule } from './body/body.module';
 import { CommsModule } from './comms/comms.module';
@@ -31,6 +32,7 @@ import { StripeModule } from './stripe/stripe.module';
     AccountsModule,
     AcuModule,
     AiModule,
+    SecurityModule,
     AuthModule,
     BlogModule,
     BodyModule,

@@ -120,6 +120,17 @@ export function freeTierState(alreadyGranted: readonly string[], userId: string)
 export const PLATFORM_PAYERS = {
   /** The SEO agent and its autopilot — the platform's own editorial cost. */
   editorial: 'platform:editorial',
+  /**
+   * The security agent, which reads the refusal queue and writes the
+   * explanation a reviewer needs.
+   *
+   * Metered like everything else, and for a reason beyond consistency: an
+   * unmetered agent that runs on every refusal is a way to make us spend
+   * money by attacking us. Its budget is the cap on that, and when the
+   * budget runs out the queue is still there, still blocked, waiting for a
+   * person — the platform's defence does not depend on the agent.
+   */
+  security: 'platform:security',
 } as const;
 
 export type PlatformPayer = (typeof PLATFORM_PAYERS)[keyof typeof PLATFORM_PAYERS];
@@ -139,13 +150,27 @@ export function isPlatformPayer(billTo: string): billTo is PlatformPayer {
  */
 export const PLATFORM_DAILY_ACU: Readonly<Record<PlatformPayer, number>> = {
   'platform:editorial': 200,
+  /*
+   * Deliberately small. Triage is a paragraph about a queue, not an
+   * investigation, and a security agent with a large budget is a large
+   * bill waiting for the first person who works out that attacking us
+   * makes us spend. Fifty ACU is roughly a dozen triage passes a day; past
+   * that the queue waits for a human, which is where it was always going.
+   */
+  'platform:security': 50,
+};
+
+/** Which environment variable overrides which payer's budget. */
+const DAILY_ACU_ENV: Readonly<Record<PlatformPayer, string>> = {
+  'platform:editorial': 'PLATFORM_EDITORIAL_DAILY_ACU',
+  'platform:security': 'PLATFORM_SECURITY_DAILY_ACU',
 };
 
 export function platformDailyAcu(
   payer: PlatformPayer,
   env: Record<string, string | undefined> = {},
 ): number {
-  const configured = Number(env.PLATFORM_EDITORIAL_DAILY_ACU);
+  const configured = Number(env[DAILY_ACU_ENV[payer]]);
   return Number.isFinite(configured) && configured >= 0 ? configured : PLATFORM_DAILY_ACU[payer];
 }
 

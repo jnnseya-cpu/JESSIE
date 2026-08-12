@@ -39,13 +39,41 @@ export class AuthController {
    * wrap a browser page, or the parent sees the plumbing around it.
    */
   @Get('guardian/confirm')
-  async guardianConfirm(@Query('token') token: string | undefined, @Res() res: Response): Promise<void> {
+  async guardianConfirm(
+    @Query('token') token: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
     const page = (title: string, body: string) =>
       `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1">` +
       `<title>${title} — JESS MOVE</title></head>` +
       `<body style="font-family:system-ui,sans-serif;background:#0b2540;color:#f4faf9;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;text-align:center">` +
       `<div><h1 style="margin:0 0 12px">${title}</h1><p style="max-width:44ch;line-height:1.6">${body}</p>` +
       `<p><a href="https://www.jessmove.com" style="color:#2dd4bf">jessmove.com</a></p></div></body></html>`;
+
+    /*
+     * No form token: this arrives from a link in an email, so there is no
+     * form to have been served. Bounded on volume alone, which is what
+     * stops somebody grinding at guessed confirmation tokens.
+     *
+     * Caught rather than thrown, because the person on the other end of a
+     * refusal here is a parent on a phone. A JSON error object is not an
+     * answer to somebody trying to activate their child's account, even
+     * when the refusal is correct.
+     */
+    try {
+      this.auth.assertHuman(undefined, req.ip ?? 'unknown', 'guardian_confirm');
+    } catch {
+      res.status(429).setHeader('content-type', 'text/html; charset=utf-8');
+      res.send(
+        page(
+          'Please try again shortly',
+          'This link has been opened several times in a short period. Wait a few minutes and ' +
+            'open it again — nothing has gone wrong with your child’s account.',
+        ),
+      );
+      return;
+    }
 
     const result = token ? await this.auth.confirmGuardian(token) : null;
     const html = !result
@@ -122,7 +150,12 @@ export class AuthController {
   }
 
   @Post('reset')
-  async reset(@Body() body: ResetDto, @Res({ passthrough: true }) res: Response) {
+  async reset(
+    @Body() body: ResetDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'reset');
     const result = await this.auth.resetPassword(body.token, body.password);
     this.setCookie(res, result.token);
     return { reset: true, userId: result.userId };
@@ -163,6 +196,13 @@ export class AuthController {
     @Body() body: DeleteAccountDto,
     @Res({ passthrough: true }) res: Response,
   ) {
+    /*
+     * The human check is here as well as the password, because this is the
+     * only door on the platform that destroys data. A stolen session plus a
+     * leaked password is a bad day; a script working through both at speed
+     * is a worse one, and this is the cheapest place to make it slow.
+     */
+    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'delete_account');
     const result = await this.auth.deleteAccount(this.session(req), body.password);
     res.clearCookie('jm_session', { domain: process.env.COOKIE_DOMAIN, path: '/' });
     return result;

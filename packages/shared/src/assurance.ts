@@ -239,6 +239,21 @@ export const ASSURANCE_CONTROLS: readonly AssuranceControl[] = [
     status: 'gap',
   },
 
+  {
+    area: 'technical_assurance',
+    claim: 'Every door that can act without a session is bounded, and the limits are published.',
+    evidence:
+      'Registration, login, password reset, account deletion and guardian confirmation each carry a signed form token that must be old enough to have been read, a field only a script fills in, and a sliding attempt window sized to the door. The numbers and the reason for each are published rather than described. This is not proof that anybody is human, and the platform says so in those words rather than implying otherwise.',
+    status: 'enforced',
+  },
+  {
+    area: 'technical_assurance',
+    claim: 'Text arriving from outside cannot instruct the platform.',
+    evidence:
+      'Member and partner text is fenced as data before any model call, with a boundary marker generated per call that the text cannot have contained, and text shaped like a command to the system is refused before a provider is reached or an allowance is touched. Nine detectors, six of which refuse on their own; the rest need corroboration because a single ambiguous match is more often a person than an attack. A test corpus of ordinary questions asserts that none of them is refused or even logged.',
+    status: 'enforced',
+  },
+
   /* --- AI transparency --- */
   {
     area: 'ai_transparency',
@@ -253,6 +268,13 @@ export const ASSURANCE_CONTROLS: readonly AssuranceControl[] = [
     evidence:
       'Every AI surface publishes its own refusals — the coach, FoodLens, the editorial autopilot, the growth engine and the metering rule all expose a neverDoes list.',
     status: 'implemented',
+  },
+  {
+    area: 'ai_transparency',
+    claim: 'No AI decides who gets access to anything.',
+    evidence:
+      'Every block on this platform comes from a deterministic rule a person can read, and every limit is a window that expires on its own. The security agent reads the queue of things already blocked and writes an explanation for a reviewer; it has no power to block, ban or unblock, it is metered against the platform’s own allowance, and a test walks its source for any call that would change access.',
+    status: 'enforced',
   },
   {
     area: 'ai_transparency',

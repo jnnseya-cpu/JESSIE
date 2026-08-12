@@ -1,6 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   AGENT_REGISTRY,
   AI_PROVIDERS,
@@ -8,17 +8,22 @@ import {
   FREE_TIER,
   NEVER_SEND_TO_MODEL,
   NO_ACCOUNT_NO_AI,
+  fenceAsData,
+  findInjections,
   freeGrantReference,
   freeGrantsDue,
+  injectionVerdict,
   isPlatformPayer,
   platformDailyAcu,
   type AiCompletionRequest,
   type AiCompletionResponse,
   type AiProvider,
   type AiProviderHealth,
+  type InjectionFinding,
 } from '@jessmove/shared';
 import { ACU_PER_GBP, COST_PROTECTION_MULTIPLE } from '@jessmove/body-command';
 import { WalletService, type SpendResult } from '../acu/wallet.service';
+import { SecurityService } from '../security/security.service';
 import { MODEL_PROVIDERS, type ModelProvider } from './provider.interface';
 
 /** An ACU hold taken before a provider call, to be settled or released. */
@@ -50,11 +55,32 @@ export class AllowanceExhaustedError extends Error {
 }
 
 /**
+ * Thrown when text arriving from outside is shaped like an instruction to
+ * the system rather than content for it.
+ *
+ * A 400 rather than a 403, and the message says what to do rather than
+ * what was detected. Naming the pattern that fired would turn every
+ * refusal into a free lesson in which phrasings get through, and the
+ * person most likely to read it carefully is the one probing.
+ */
+export class InstructionRefusedError extends Error {
+  readonly statusCode = 400;
+  constructor(readonly findings: readonly InjectionFinding[]) {
+    super(
+      'That message is written as an instruction to the system rather than as something to ' +
+        'read, so it has not been sent anywhere. Rephrase it as what you actually want to know.',
+    );
+    this.name = 'InstructionRefusedError';
+  }
+}
+
+/**
  * The AI Gateway. §19.
  *
  * One entry point for every model call in the platform. It owns:
  *   - provider selection and the fallback chain,
  *   - the redaction pass (§22.3 — no prompt leakage),
+ *   - the instruction check on anything that came from outside,
  *   - the per-agent ACU cost ceiling (§25.2),
  *   - the request timeout,
  *   - the decision log.
@@ -69,6 +95,13 @@ export class AiGatewayService {
     @Inject(MODEL_PROVIDERS) private readonly providers: ModelProvider[],
     private readonly config: ConfigService,
     private readonly wallets: WalletService,
+    /*
+     * Optional on purpose. A gateway that cannot start because the
+     * security log is unavailable is a worse outcome than one that runs
+     * with the log missing — and the security module is global, so in a
+     * real deployment this is always present.
+     */
+    @Optional() private readonly security?: SecurityService,
   ) {}
 
   /** ACUs to pounds of provider cost, as the Cost Governor prices it. */
@@ -331,10 +364,75 @@ export class AiGatewayService {
     };
   }
 
+  /**
+   * Nothing outside this platform gets to give it an instruction.
+   *
+   * Runs before the allowance is touched and before any provider is
+   * reached, so a refusal costs the member nothing and costs us nothing.
+   * That ordering is the point: an injection attempt that burned ACU would
+   * be a way to drain somebody's allowance by writing to them.
+   *
+   * Two passes, and they are not the same defence:
+   *
+   *   **Detection** reads every message whatever its role, because member
+   *   text does not only arrive in messages somebody remembered to mark —
+   *   it arrives interpolated into a prompt the platform wrote. Scanning
+   *   the finished text catches it either way.
+   *
+   *   **Fencing** applies to messages explicitly marked as coming from
+   *   outside. It is the half that does not depend on a matcher, and it is
+   *   the half that still works against a payload nobody has thought of:
+   *   the content arrives inside a boundary the surrounding prompt has
+   *   already described as data, with a marker the text cannot contain
+   *   because it is generated per call.
+   */
+  private guardInstructions(request: AiCompletionRequest): AiCompletionRequest {
+    const found: InjectionFinding[] = [];
+    for (const message of request.messages) {
+      found.push(...findInjections(message.content));
+    }
+
+    const verdict = injectionVerdict(found);
+    if (verdict !== 'clean') {
+      this.security?.record({
+        kind: verdict === 'blocked' ? 'injection_blocked' : 'injection_noted',
+        source: request.billTo ?? 'unknown',
+        at: new Date().toISOString(),
+        surface: request.agent,
+        detail: found.map((f) => `${f.id}: ${f.matched}`).join(' | '),
+      });
+    }
+    if (verdict === 'blocked') throw new InstructionRefusedError(found);
+
+    // A marker the incoming text cannot have contained, because it did not
+    // exist when the text was written.
+    const marker = `MEMBER-CONTENT-${randomBytes(6).toString('hex')}`;
+    return {
+      ...request,
+      messages: request.messages.map((m) =>
+        m.untrusted ? { ...m, content: fenceAsData(m.content, marker) } : m,
+      ),
+    };
+  }
+
   async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
     const traceId = request.traceId ?? randomUUID();
-    const chain = this.chainFor(request.provider);
 
+    /*
+     * Instructions first — before the provider chain, before redaction and
+     * before the allowance.
+     *
+     * Two reasons, and the second is the one that was originally got
+     * wrong. A refused message must cost nothing, or anybody who can put
+     * text in front of an agent has a way to spend somebody else's ACU.
+     * And a refusal is a judgement about the input, not about our capacity
+     * to serve it: with this below the "no provider configured" check, a
+     * deployment missing an API key accepted every injection attempt
+     * without examining it, which is the wrong answer given by accident.
+     */
+    const guarded = this.guardInstructions(request);
+
+    const chain = this.chainFor(request.provider);
     if (chain.length === 0) {
       throw new AiGatewayError(
         'No AI provider is configured. Set at least one of ANTHROPIC_API_KEY, OPENAI_API_KEY or GEMINI_API_KEY.',
@@ -343,7 +441,7 @@ export class AiGatewayService {
       );
     }
 
-    const redacted = this.redact(request);
+    const redacted = this.redact(guarded);
     const ceiling = AGENT_REGISTRY[request.agent]?.acuCeiling ?? 10;
     const timeoutMs = Number(this.config.get<string>('AI_REQUEST_TIMEOUT_MS') ?? 120_000);
 

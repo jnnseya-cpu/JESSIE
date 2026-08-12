@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MOVA_REFUSES, REGISTERS, modeForAge } from '@jessmove/shared';
-import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
+import { AiGatewayService, AllowanceExhaustedError, InstructionRefusedError } from '../ai/ai-gateway.service';
 import {
   MINOR_REFUSAL,
   UNAVAILABLE_NOTE,
@@ -37,7 +37,12 @@ export class MovaService {
       maxTokens: 700,
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: question },
+        /*
+         * The member's own words, unedited. Marked so the gateway fences
+         * them as content: the coach answers questions, and a question is
+         * not a licence to redefine what the coach is.
+         */
+        { role: 'user', content: question, untrusted: true },
       ],
     });
     return response.text ?? '';
@@ -93,6 +98,7 @@ export class MovaService {
        * wallet's own explanation.
        */
       if (error instanceof AllowanceExhaustedError) throw error;
+      if (error instanceof InstructionRefusedError) throw error;
       this.logger.warn(`coach unavailable: ${(error as Error).message}`);
       return { ...base, answer: UNAVAILABLE_NOTE, live: false };
     }

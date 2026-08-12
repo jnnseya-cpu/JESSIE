@@ -37,6 +37,7 @@ export * from './growth-engine';
 export * from './assurance';
 export * from './clinical-safety';
 export * from './falls';
+export * from './humanity';
 export * from './metering';
 export * from './site-paths';
 export * from './link-graph';

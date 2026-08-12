@@ -27,6 +27,22 @@ export type AiRole = 'system' | 'user' | 'assistant';
 export interface AiMessage {
   role: AiRole;
   content: string;
+  /**
+   * This content came from outside — a member, a partner, a photograph,
+   * anything the platform did not author.
+   *
+   * The role is not enough to tell. Almost every call on this platform
+   * puts its own carefully written task prompt in a `user` message, so
+   * `role: 'user'` means "not the system preamble", not "untrusted". This
+   * flag means what the role cannot: fence it as data before it reaches a
+   * model, so that text asking to be treated as instruction arrives inside
+   * a region the prompt has already described as content.
+   *
+   * The gateway scans every message whatever this says — a missing flag
+   * loses the fence, not the detection — and a test walks the call sites
+   * that handle member text to check they set it.
+   */
+  untrusted?: boolean;
 }
 
 /**

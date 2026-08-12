@@ -8,11 +8,17 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import type { AccountKind } from '@jessmove/shared';
+import {
+  DOOR_POLICY,
+  FLAT_REFUSAL,
+  type AccountKind,
+  type HumanDoor,
+} from '@jessmove/shared';
 import { ProfilesService } from '../accounts/profiles.service';
 import { MailService } from '../mail/mail.service';
 import { PushService } from '../push/push.service';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
+import { SecurityService } from '../security/security.service';
 import { StorageService } from '../storage/storage.service';
 import { hashPassword, verifyPassword } from './password';
 import {
@@ -66,6 +72,7 @@ export class AuthService {
     private readonly mail: MailService,
     private readonly storage: StorageService,
     private readonly push: PushService,
+    private readonly security: SecurityService,
   ) {}
 
   private secret(): string {
@@ -115,39 +122,78 @@ export class AuthService {
   }
 
   /**
-   * Humans-only, without a CAPTCHA vendor: the form token must exist, be
-   * ours, and be older than a bot's instant submit; the honeypot must be
-   * empty (the DTO enforces that); and each IP gets a sliding window.
-   * Every refusal is the same flat sentence — no oracle for scripts.
+   * Humans-only, without a CAPTCHA vendor.
+   *
+   * Four signals, none of which proves anything on its own and none of
+   * which needs a third party to hold our members' behaviour: the form
+   * token must exist, be ours and be older than a script's instant submit;
+   * the honeypot must be empty (the DTO enforces that); and each source
+   * gets a sliding window sized to the door.
+   *
+   * Every door in `HUMAN_DOORS` comes through here, not only the three
+   * that started with it. The per-door numbers and the reason for each
+   * live in `DOOR_POLICY` in the shared package, so a reviewer reads one
+   * table rather than reverse-engineering a conditional — and so a door
+   * added without a policy fails to compile.
+   *
+   * What it is not: proof. See `NOT_PROOF_OF_HUMANITY`, which is published
+   * on the assurance page in those words.
    */
   private readonly attempts = new Map<string, number[]>();
 
-  assertHuman(challenge: string | undefined, ip: string, kind: 'register' | 'login' | 'forgot'): void {
+  assertHuman(challenge: string | undefined, ip: string, kind: HumanDoor): void {
     if (!this.configured()) return;
 
-    const flat = new BadRequestException(
-      'that submission did not look like a person — reload the page and try again',
-    );
-    if (!challenge) throw flat;
-    const data = verifyActionToken('human_check', challenge, this.secret());
-    if (!data?.t) throw flat;
-    const ageSeconds = Math.floor(Date.now() / 1000) - Number(data.t);
-    // A password manager plus a fast human needs ~2s; a script needs ~0.
-    if (ageSeconds < (kind === 'login' ? 2 : 3)) throw flat;
+    const policy = DOOR_POLICY[kind];
+    const flat = new BadRequestException(FLAT_REFUSAL);
 
+    /*
+     * Volume first, before the token is even examined.
+     *
+     * The order matters more than it looks. Checking the token first means
+     * a flood of garbage tokens costs a signature verification each, and
+     * the attempt is never counted because the throw happens above the
+     * counter — so the cheapest attack is also the one that never trips
+     * the limit. Counting first makes every attempt expensive to the
+     * caller and cheap to us, which is the right way round.
+     */
     const key = `${kind}:${ip}`;
     const now = Date.now();
-    const windowMs = 10 * 60 * 1000;
+    const windowMs = policy.windowMinutes * 60 * 1000;
     const recent = (this.attempts.get(key) ?? []).filter((t) => now - t < windowMs);
     recent.push(now);
     this.attempts.set(key, recent);
-    if (recent.length > (kind === 'login' ? 12 : 5)) {
-      throw new HttpException(
-        'too many attempts from this connection — wait a few minutes',
-        429,
-      );
+    if (recent.length > policy.attemptsPerWindow) {
+      this.security.record({
+        kind: 'rate_limited',
+        source: ip,
+        at: new Date().toISOString(),
+        detail: `${kind}: ${recent.length} attempts in ${policy.windowMinutes} minutes`,
+      });
+      throw new HttpException('too many attempts from this connection — wait a few minutes', 429);
+    }
+
+    const fail = (why: string) => {
+      this.security.record({
+        kind: 'human_check_failed',
+        source: ip,
+        at: new Date().toISOString(),
+        detail: `${kind}: ${why}`,
+      });
+      throw flat;
+    };
+
+    if (policy.minTokenAgeSeconds > 0) {
+      if (!challenge) fail('no form token');
+      const data = verifyActionToken('human_check', challenge!, this.secret());
+      if (!data?.t) fail('form token not ours or expired');
+      const ageSeconds = Math.floor(Date.now() / 1000) - Number(data!.t);
+      // A password manager plus a fast person needs a second or two; a
+      // script needs none, and cannot buy the time without slowing down.
+      if (ageSeconds < policy.minTokenAgeSeconds) fail(`submitted after ${ageSeconds}s`);
     }
   }
+
 
   async register(input: {
     email: string;

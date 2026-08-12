@@ -18,7 +18,7 @@ import {
   type SeoAudit,
   type TopicCluster,
 } from '@jessmove/shared';
-import { AiGatewayService, AllowanceExhaustedError } from '../ai/ai-gateway.service';
+import { AiGatewayService, AllowanceExhaustedError, InstructionRefusedError } from '../ai/ai-gateway.service';
 
 /**
  * The SEO agent.
@@ -301,6 +301,7 @@ export class SeoAgentService {
       // "today's budget is spent", and autopilot would go on commissioning
       // against a wall it cannot see.
       if (error instanceof AllowanceExhaustedError) throw error;
+      if (error instanceof InstructionRefusedError) throw error;
       this.logger.warn(
         `SEO agent falling back to a brief: ${(error as Error).message}`,
       );

@@ -162,7 +162,14 @@ test('there is no anonymous AI anywhere', () => {
   }
   // And the platform no longer has a trial payer to fund one with.
   assert.ok(!(PLATFORM_PAYERS as Record<string, string>).trial, 'the trial payer is gone');
-  assert.equal(PLATFORM_PAYER_IDS.length, 1);
+  /*
+   * The platform pays for exactly two things it does on its own behalf:
+   * the editorial agent that drafts the blog, and the security agent that
+   * reads the refusal queue. Neither is a member-facing feature, and
+   * neither is a way for a stranger to get free AI — that is what this
+   * count is guarding, not the number itself.
+   */
+  assert.deepEqual([...PLATFORM_PAYER_IDS].sort(), ['platform:editorial', 'platform:security']);
 });
 
 test('the editorial agent and the vision probe are billed too', () => {
@@ -182,13 +189,39 @@ test('the editorial agent and the vision probe are billed too', () => {
 /* ── the platform payers ───────────────────────────────────────────── */
 
 test('a platform payer is a real wallet with a real, exhaustible balance', () => {
-  assert.equal(PLATFORM_PAYER_IDS.length, 1, 'only editorial remains');
+  assert.equal(PLATFORM_PAYER_IDS.length, 2, 'editorial and security, and nothing else');
   for (const payer of PLATFORM_PAYER_IDS) {
     assert.ok(isPlatformPayer(payer));
     assert.ok(platformDailyAcu(payer) > 0, `${payer} has no budget`);
   }
   assert.equal(isPlatformPayer('u_someone'), false);
   assert.equal(isPlatformPayer('platform:anything-else'), false, 'the prefix alone is not a licence');
+});
+
+test('the security agent draws its own budget, and a small one', () => {
+  /*
+   * Separate from editorial on purpose. An attacker who works out that
+   * attacking us makes us spend hits a cap that is not shared with the
+   * thing that writes the blog, so a flood cannot silently stop editorial
+   * — and the security budget is small because triage is a paragraph
+   * about a queue, not an investigation.
+   */
+  assert.ok(platformDailyAcu(PLATFORM_PAYERS.security) > 0);
+  assert.ok(
+    platformDailyAcu(PLATFORM_PAYERS.security) < platformDailyAcu(PLATFORM_PAYERS.editorial),
+    'the security agent has more allowance than the one that writes articles',
+  );
+  assert.equal(platformDailyAcu(PLATFORM_PAYERS.security, { PLATFORM_SECURITY_DAILY_ACU: '10' }), 10);
+  assert.equal(
+    platformDailyAcu(PLATFORM_PAYERS.security, { PLATFORM_SECURITY_DAILY_ACU: '0' }),
+    0,
+    'zero stops the agent; the queue is still blocked and still waiting for a person',
+  );
+  // And the two budgets do not read each other's variable.
+  assert.equal(
+    platformDailyAcu(PLATFORM_PAYERS.editorial, { PLATFORM_SECURITY_DAILY_ACU: '7' }),
+    200,
+  );
 });
 
 test('the editorial budget is a number an operator sets', () => {
@@ -252,7 +285,7 @@ test('an empty allowance is a 402 with an explanation, not a 500', () => {
   assert.match(filter, /@Catch\(AllowanceExhaustedError\)/);
   assert.match(filter, /response\.status\(402\)/);
   assert.match(filter, /stillWorks:/, 'it must say what is unaffected');
-  assert.match(src('setup.ts'), /app\.useGlobalFilters\(new AllowanceFilter\(\)\)/);
+  assert.match(src('setup.ts'), /useGlobalFilters\([^)]*new AllowanceFilter\(\)/);
 });
 
 test('somebody with no account is told what an account gives them', () => {
