@@ -17,7 +17,7 @@ import {
   TEAM_SCORE_TERMS,
 } from '@jessmove/shared';
 import { CompareBars, DayTimeline, Spark, Stat, type DaySlot } from '../charts';
-import { Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Cross, Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'How it works — JESS MOVE',
@@ -347,20 +347,13 @@ export default function HowItWorks() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>See it against your own week.</h2>
-            <p>Five minutes of setup. No wearable required, and no app required either.</p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/get-started">
-                Get started
-              </Link>
-              <Link className="btn btn--ghost" href="/developers">
-                Read the API
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="See it against your own week."
+          says="The engine reads the shape of your calendar, not its contents, and finds the gaps that are actually movable. It needs your week to show you anything."
+          talkTo="/developers"
+          talkLabel="For developers"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

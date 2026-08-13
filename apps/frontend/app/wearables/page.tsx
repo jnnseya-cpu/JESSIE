@@ -17,7 +17,7 @@ import {
   shouldWidenForDisagreement,
 } from '@jessmove/shared';
 import { CompareBars, Stat } from '../charts';
-import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Wearables — JESS MOVE',
@@ -369,23 +369,13 @@ export default function Wearables() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Connect nothing, and start anyway.</h2>
-            <p>
-              The engine works from a calendar it does not need and a phone it does not need
-              either. Everything else is an improvement, not a requirement.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/get-started">
-                Start free
-              </Link>
-              <Link className="btn btn--ghost" href="/privacy">
-                Read the privacy policy
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Connect nothing, and start anyway."
+          says="Every wearable is optional and individually revocable. The platform finds your gaps from the shape of your day whether or not a watch is involved."
+          talkTo="/privacy"
+          talkLabel="What we store"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

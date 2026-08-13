@@ -33,7 +33,7 @@ import {
   Waterfall,
   type DaySlot,
 } from './charts';
-import { Check, Footer, Nav, SkipLink, Tick, VariantGlyph } from './ui';
+import { Check, Footer, JoinCta, Nav, SkipLink, Tick, VariantGlyph } from './ui';
 
 /* ---------------- static, deterministic sample data ---------------- */
 
@@ -228,7 +228,7 @@ export default function Home() {
                 already have.
               </p>
               <div className="hero__cta">
-                <Link className="btn btn--primary" href="/get-started">
+                <Link className="btn btn--primary" href="/account">
                   Start free
                 </Link>
                 <Link className="btn btn--ghost" href="/how-it-works">
@@ -961,28 +961,13 @@ export default function Home() {
         </section>
 
         {/* ---------------- final CTA ---------------- */}
-        <section className="section cta" id="cta">
-          <div className="wrap">
-            <p className="eyebrow eyebrow--onDark" style={{ justifyContent: 'center' }}>
-              {BRAND.coach} · {BRAND.coachExpansion}
-            </p>
-            <h2>Start with two minutes today.</h2>
-            <p>No equipment, no gym, and no rebuilding your life around a plan. {TAGLINE}</p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/get-started">
-                Start free
-              </Link>
-              <Link className="btn btn--ghost" href="/contact">
-                Talk to us
-              </Link>
-            </div>
-            <p style={{ marginTop: 28, fontSize: 14, opacity: 0.6 }}>
-              A micro-movement is {SNAP_DURATION_SECONDS.min}–{SNAP_DURATION_SECONDS.max} seconds.
-              Target prompt-to-completion {Math.round(NUDGE_CONVERSION_TARGET * 100)}%. Generic
-              reminder apps sit at 4–11%.
-            </p>
-          </div>
-        </section>
+        <JoinCta
+          heading="Start with two minutes today."
+          says="No equipment, no gym, and no rebuilding your life around a plan. Two minutes is the whole ask."
+          talkTo="/contact"
+          talkLabel="Talk to us"
+          action="Start free"
+        />
       </main>
 
       <Footer />

@@ -7,7 +7,7 @@ import {
   K_ANONYMITY_THRESHOLD,
 } from '@jessmove/shared';
 import { Donut, Stat } from '../charts';
-import { Check, Cross, Footer, Nav, PageHero, SkipLink } from '../ui';
+import { Check, Cross, Footer, Nav, PageHero, SkipLink, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Industries — JESS MOVE',
@@ -232,23 +232,13 @@ export default function Industries() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Run an eight-week pilot.</h2>
-            <p>
-              Your people get personalised micro-movement coaching. You get privacy-protected
-              participation and engagement insight. Nobody gets an individual dashboard.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Talk to us
-              </Link>
-              <Link className="btn btn--ghost" href="/get-started">
-                Get started
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Run an eight-week pilot."
+          says="Group reporting never resolves to a person, at any group size. If you would rather see it from the inside first, an individual account takes two minutes and costs nothing."
+          talkTo="/contact"
+          talkLabel="Talk about a pilot"
+          action="Create an account first"
+        />
       </main>
 
       <Footer />

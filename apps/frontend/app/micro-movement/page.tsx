@@ -21,7 +21,7 @@ import {
   type MovementEnvironment,
 } from '@jessmove/shared';
 import { CompareBars, Spark, Stat } from '../charts';
-import { Cross, Footer, Nav, PageHero, SkipLink, Tick, VariantGlyph } from '../ui';
+import { Cross, Footer, Nav, PageHero, SkipLink, Tick, VariantGlyph, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Micro-Movement — JESS MOVE',
@@ -485,20 +485,13 @@ export default function MicroMovement() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Two minutes, in the room you are actually in.</h2>
-            <p>No equipment, no changing, no getting on the floor unless you want to.</p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/get-started">
-                Start free
-              </Link>
-              <Link className="btn btn--ghost" href="/mova">
-                How it explains itself
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Two minutes, in the room you are actually in."
+          says="Five executable variants on every movement — standing, seated, chair-supported, reclined and adaptive. The one you get is matched to where you are."
+          talkTo="/mova"
+          talkLabel="Meet the coach"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

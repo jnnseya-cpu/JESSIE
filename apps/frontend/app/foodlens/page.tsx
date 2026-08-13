@@ -48,7 +48,7 @@ import {
   SwapSim,
   TrafficLights,
 } from '../charts';
-import { Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Cross, Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 import { EXAMPLE_MEAL } from './worked-example';
 
 export const metadata: Metadata = {
@@ -928,23 +928,13 @@ export default function FoodLens() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Photograph one meal.</h2>
-            <p>
-              You will get a range, a source and a confidence level — and an honest account of
-              what the picture could not tell us.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/get-started">
-                Start free
-              </Link>
-              <Link className="btn btn--ghost" href="/how-it-works">
-                How the engine works
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Photograph one meal."
+          says="A range with its evidence, every nutrient labelled by how it was arrived at, and nothing invented to fill a gap. Two minutes to an account and the camera is the next screen."
+          talkTo="/how-it-works"
+          talkLabel="How it works"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

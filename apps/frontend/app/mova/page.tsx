@@ -16,7 +16,7 @@ import {
   reasonLine,
 } from '@jessmove/shared';
 import { CompareBars, Stat } from '../charts';
-import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'MOVA — JESS MOVE',
@@ -406,20 +406,13 @@ export default function Mova() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Meet {BRAND.coach}.</h2>
-            <p>Or turn it off on day one and keep the whole engine. Both are supported.</p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/get-started">
-                Start free
-              </Link>
-              <Link className="btn btn--ghost" href="/micro-movement">
-                What it actually suggests
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Meet the coach."
+          says="One line at a time, calibrated to your age, and it says when it does not know. You can also switch it off entirely and use the platform without it."
+          talkTo="/micro-movement"
+          talkLabel="Micro-movement"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

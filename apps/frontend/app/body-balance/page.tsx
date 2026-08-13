@@ -10,7 +10,7 @@ import {
   SCORE_LABELS,
   SCORE_WEIGHTS,
 } from '@jessmove/body-command';
-import { Cross, Footer, Nav, SkipLink, Tick } from '../ui';
+import { Cross, Footer, Nav, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Body Balance — JESS MOVE',
@@ -229,23 +229,13 @@ export default function BodyBalance() {
           </div>
         </section>
 
-        <section className="section cta" id="cta">
-          <div className="wrap">
-            <h2>Measure less. Understand more.</h2>
-            <p>
-              BodyCommand serves children and adults from one engine, with the surface a child
-              sees governed by a rule the consent switch cannot override.
-            </p>
-            <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:hello@jessmove.com">
-                Request access
-              </a>
-              <a className="btn btn--ghost" href="/for-children">
-                How it works for children
-              </a>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Measure less. Understand more."
+          says="BodyCommand is off by default and opt-in for adults only. Create an account and it is one setting away, alongside everything that does not involve a number about your body."
+          talkTo="/for-children"
+          talkLabel="For under-18s"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

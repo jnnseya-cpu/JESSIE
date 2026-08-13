@@ -13,7 +13,7 @@ import {
   SNAP_DURATION_SECONDS,
 } from '@jessmove/shared';
 import { AgeColumns } from '../charts';
-import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Get started — JESS MOVE',
@@ -262,23 +262,13 @@ export default function GetStarted() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Join the list.</h2>
-            <p>
-              Tell us who you are moving for — yourself, a household, a workforce, a class or a
-              care setting — and we will bring you in with the right mode already configured.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Request access
-              </Link>
-              <Link className="btn btn--ghost" href="/how-it-works">
-                How it works
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Start now, in about two minutes."
+          says="Pick who you are moving for, answer a short readiness check, and the right mode is configured before your first prompt. Nothing to install and nothing to pay."
+          talkTo="/how-it-works"
+          talkLabel="How it works"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

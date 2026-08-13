@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SEO_RULES, TOPIC_CLUSTERS } from '@jessmove/shared';
-import { Footer, Nav, PageHero, SkipLink } from '../ui';
+import { Footer, Nav, PageHero, SkipLink, JoinCta } from '../ui';
 import { POSTS } from './posts';
 
 export const metadata: Metadata = {
@@ -287,23 +287,13 @@ export default function Blog() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Get the next one.</h2>
-            <p>
-              Occasional, long, and about the engineering. No growth-hacking newsletter, no
-              seven-day challenge.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Join the list
-              </Link>
-              <Link className="btn btn--ghost" href="/developers">
-                Developer reference
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Try the thing these are about."
+          says="Everything written here describes a product you can be using in two minutes. The writing is free either way."
+          talkTo="/how-it-works"
+          talkLabel="How it works"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

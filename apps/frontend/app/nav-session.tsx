@@ -42,7 +42,14 @@ export function NavSession() {
       <Link className="nav__signin" href="/account">
         Sign in
       </Link>
-      <Link className="btn btn--primary nav__cta" href="/get-started">
+      {/*
+        Straight to the account, not to the page that describes creating
+        one. This button used to point at /get-started, which described
+        five onboarding steps and ended in "Request access" pointing at a
+        mailto: form — so the most-clicked control on the site led away
+        from the working registration endpoint rather than to it.
+      */}
+      <Link className="btn btn--primary nav__cta" href="/account">
         Start free
       </Link>
     </>
@@ -64,7 +71,7 @@ export function MobileSession({ onNavigate }: { onNavigate: () => void }) {
       <Link href="/account" className="mnav__signin" onClick={onNavigate}>
         Sign in / Create account
       </Link>
-      <Link className="btn btn--primary" href="/get-started" onClick={onNavigate}>
+      <Link className="btn btn--primary" href="/account" onClick={onNavigate}>
         Start free
       </Link>
     </>

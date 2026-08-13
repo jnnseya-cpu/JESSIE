@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { TOPIC_CLUSTERS, backlinksTo } from '@jessmove/shared';
-import { Footer, Nav, SkipLink } from '../../ui';
+import { Footer, Nav, SkipLink, JoinCta } from '../../ui';
 import { POSTS, postBySlug } from '../posts';
 import { SITE_GRAPH } from '../graph';
 import { Linked, newLinkBudget } from '../linked';
@@ -234,6 +234,24 @@ export default function Post({ params }: { params: { slug: string } }) {
             </div>
           </div>
         </section>
+        {/*
+          The only thing on this page that was missing, and the one that
+          decides whether any of the writing is worth doing.
+
+          Somebody arriving from a search engine lands here, not on the
+          home page — that is what organic acquisition is. Until this
+          existed, a reader who finished an article could go to /blog or
+          to /privacy, and those were the complete options. Traffic that
+          cannot convert is traffic gathered for nothing, however much of
+          it there is.
+        */}
+        <JoinCta
+          heading="This is written about a product you can use today."
+          says="Everything described here is running. An account is free, takes about two minutes, and the writing stays free whether or not you make one."
+          talkTo="/how-it-works"
+          talkLabel="How it works"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

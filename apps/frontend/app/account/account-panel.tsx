@@ -27,6 +27,7 @@ import {
 } from './products';
 import { shrinkImage } from './image-shrink';
 import { useAutosave, useSavedState } from './autosave';
+import { FunnelBeacon } from '../funnel-beacon';
 
 interface Me {
   userId: string;
@@ -830,6 +831,15 @@ export function AccountPanel() {
 
   return (
     <article className="acct-auth">
+      {/*
+        The two steps that matter most, because the gap between them is
+        where the site was losing everybody: reaching this screen at all,
+        and choosing to create an account rather than sign in. Somebody
+        who opens this and never switches to register either already has
+        an account or did not understand that they could make one here.
+      */}
+      <FunnelBeacon step="opened" />
+      {mode === 'register' && <FunnelBeacon step="started" />}
       <div className="acct-auth__head">
         <h3>{mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create your account' : 'Reset your password'}</h3>
         {status?.userStore === 'memory' && <span className="acct-auth__tag">dev store</span>}

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BRAND, POINTS_NEVER } from '@jessmove/shared';
 import { CompareBars, Spark, Stat } from '../charts';
-import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Growth & Influencers — JESS MOVE',
@@ -276,23 +276,13 @@ export default function Growth() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Apply to the programme.</h2>
-            <p>
-              Tell us who your audience is and what you want to make. We will send the asset kit,
-              the claims guide and a code.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Apply
-              </Link>
-              <Link className="btn btn--ghost" href="/blog">
-                Read the blog
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Apply to the programme."
+          says="Partners are reviewed rather than approved automatically. Using the product yourself is the first thing anybody reviewing an application looks for."
+          talkTo="/contact"
+          talkLabel="Apply to the programme"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

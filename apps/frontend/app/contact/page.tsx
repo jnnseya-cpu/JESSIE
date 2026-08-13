@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ACCOUNT_TYPES, BRAND } from '@jessmove/shared';
-import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Contact — JESS MOVE',
@@ -205,6 +205,11 @@ export default function Contact() {
             </div>
           </div>
         </section>
+        <JoinCta
+          heading="Or skip the form."
+          says="Most questions are answered faster by using it. An account is free, takes about two minutes, and nothing is charged until you choose a plan."
+          action="Create your account"
+        />
       </main>
 
       <Footer />

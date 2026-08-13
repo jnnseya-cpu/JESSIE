@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { K_ANONYMITY_THRESHOLD, SNAP_DURATION_SECONDS } from '@jessmove/shared';
-import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Developers — JESS MOVE',
@@ -249,23 +249,13 @@ export default function Developers() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Integration access.</h2>
-            <p>
-              API keys, the OpenAPI document and the agent contract cards are issued per
-              organisation during pilot onboarding.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Request API access
-              </Link>
-              <Link className="btn btn--ghost" href="/status">
-                Platform status
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Integration access."
+          says="The API and its refusals are documented and public. An ordinary account is the fastest way to see what it returns."
+          talkTo="/contact"
+          talkLabel="Request integration access"
+          action="Create an account"
+        />
       </main>
 
       <Footer />

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { AGE_MODE_DEFINITIONS, BODY_COMPOSITION_MIN_AGE } from '@jessmove/shared';
-import { Cross, Footer, Nav, SkipLink, Tick } from '../ui';
+import { Cross, Footer, Nav, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'For children and families — JESS MOVE',
@@ -228,23 +228,13 @@ export default function ForChildren() {
           </div>
         </section>
 
-        <section className="section cta" id="cta">
-          <div className="wrap">
-            <h2>Every body qualifies. Including the small ones.</h2>
-            <p>
-              Body metrics unlock at {BODY_COMPOSITION_MIN_AGE}, opt-in, never competitive.
-              Below that, the product is about growing, moving and feeling capable.
-            </p>
-            <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:schools@jessmove.com">
-                Talk to us about schools
-              </a>
-              <a className="btn btn--ghost" href="mailto:hello@jessmove.com">
-                Request access
-              </a>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Every body qualifies. Including the small ones."
+          says="A parent or guardian creates the account and confirms it before anything opens. No weight, no calories, no body talk — enforced by a test, not a policy. Schools and clubs are a different route."
+          talkTo="/contact"
+          talkLabel="For schools and clubs"
+          action="Create a family account"
+        />
       </main>
 
       <Footer />

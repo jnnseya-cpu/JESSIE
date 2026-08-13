@@ -6950,3 +6950,16 @@ textarea:focus-visible {
   line-height: 1.55;
   color: var(--jm-dim);
 }
+
+/* The join block's small print. Deliberately present and deliberately
+   readable: the price, the free allowance and the fact that it ends are
+   the three things somebody wants before they hand over an email, and
+   hiding them until after signup is how a product earns a refund request
+   instead of a customer. */
+.cta__terms {
+  margin: 22px auto 0;
+  max-width: 58ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+  opacity: 0.72;
+}

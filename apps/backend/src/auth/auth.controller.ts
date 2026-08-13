@@ -10,6 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { FunnelService } from '../growth/funnel.service';
 import { AuthService } from './auth.service';
 import { DeleteAccountDto, ForgotDto, LoginDto, MediaUploadDto, RegisterDto, ResetDto, UpdateNameDto } from './auth.dto';
 import { AdminOnly } from './auth.guard';
@@ -18,7 +19,10 @@ import { tokenFrom } from './auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly funnel: FunnelService,
+  ) {}
 
   private setCookie(res: Response, token: string): void {
     const domain = process.env.COOKIE_DOMAIN; // .jessmove.com in production
@@ -121,6 +125,15 @@ export class AuthController {
     this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'register');
     const result = await this.auth.register(body);
     this.setCookie(res, result.token);
+    /*
+     * The one funnel step the browser is never allowed to claim, recorded
+     * where an account actually comes into existence. Every other step is
+     * a beacon a page fires and could be wrong about; this one is the
+     * only number that means anything, so it is the only one taken from
+     * the server. Nothing about who registered is stored — see the funnel
+     * service.
+     */
+    this.funnel.record({ step: 'registered', source: req.ip ?? 'unknown', path: '/account' });
     return {
       userId: result.userId,
       kind: result.kind,

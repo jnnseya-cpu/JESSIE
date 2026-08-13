@@ -4,6 +4,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { AcuModule } from './acu/acu.module';
 import { AuthModule } from './auth/auth.module';
 import { AiModule } from './ai/ai.module';
+import { FunnelModule } from './growth/funnel.module';
 import { SecurityModule } from './security/security.module';
 import { BlogModule } from './blog/blog.module';
 import { BodyModule } from './body/body.module';
@@ -33,6 +34,7 @@ import { StripeModule } from './stripe/stripe.module';
     AcuModule,
     AiModule,
     SecurityModule,
+    FunnelModule,
     AuthModule,
     BlogModule,
     BodyModule,

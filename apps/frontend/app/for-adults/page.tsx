@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { AGE_MODE_DEFINITIONS } from '@jessmove/shared';
-import { Footer, Nav, SkipLink, Tick } from '../ui';
+import { Footer, Nav, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'For adults — JESS MOVE',
@@ -172,23 +172,13 @@ export default function ForAdults() {
           </div>
         </section>
 
-        <section className="section cta" id="cta">
-          <div className="wrap">
-            <h2>The objective is not a number.</h2>
-            <p>
-              It is a body and a routine capable of holding the right range without permanent
-              dependence on willpower.
-            </p>
-            <div className="cta__row">
-              <a className="btn btn--primary" href="mailto:hello@jessmove.com">
-                Request access
-              </a>
-              <a className="btn btn--ghost" href="/body-balance">
-                See how Body Balance works
-              </a>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="The objective is not a number."
+          says="Six age-calibrated modes, from Momentum to Vitality. The one that fits you is configured from your age at signup, not chosen from a menu."
+          talkTo="/body-balance"
+          talkLabel="BodyCommand"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

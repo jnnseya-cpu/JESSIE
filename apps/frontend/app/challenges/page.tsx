@@ -13,7 +13,7 @@ import {
   teamScore,
 } from '@jessmove/shared';
 import { CompareBars, Donut, Stat } from '../charts';
-import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Check, Cross, Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Challenges — JESS MOVE',
@@ -315,23 +315,13 @@ export default function Challenges() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Run one across your team.</h2>
-            <p>
-              Eight weeks, privacy-protected participation reporting, and nobody gets an
-              individual dashboard about anybody.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Talk to us
-              </Link>
-              <Link className="btn btn--ghost" href="/industries">
-                See the boundaries
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Start one this week."
+          says="Create an account and a challenge takes about a minute to set up. For a whole workforce or a school, a pilot is the better route."
+          talkTo="/industries"
+          talkLabel="For organisations"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

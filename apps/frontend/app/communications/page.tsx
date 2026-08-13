@@ -17,7 +17,7 @@ import {
   type EventSeverity,
   type Recipient,
 } from '@jessmove/shared';
-import { Footer, Nav, PageHero, SkipLink } from '../ui';
+import { Footer, Nav, PageHero, SkipLink, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Communication Event Architecture — JESS MOVE',
@@ -488,25 +488,13 @@ export default function Communications() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Fire any event and read the decision.</h2>
-            <p>
-              <code>POST /comms/preview</code> resolves without sending —
-              the dry run behind “why did I not get this?”. With no provider key set, a send is
-              recorded as <code>sandbox</code>: the resolution, the rendered subject, the channel
-              set and the cost are all real, and only the network call is absent.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/console">
-                Open the API console
-              </Link>
-              <Link className="btn btn--ghost" href="/developers">
-                Developer reference
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="When this platform speaks, and when it stays quiet."
+          says="The longer list is when it says nothing. Every event above is a decision the engine makes about your day — it needs your day to make any of them."
+          talkTo="/console"
+          talkLabel="Fire an event yourself"
+          action="Create your account"
+        />
       </main>
 
       <Footer />

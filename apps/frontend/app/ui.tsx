@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { MobileMenu } from './nav-menu';
 import { NavSession } from './nav-session';
-import { BRAND, SIGNATURE_LINE } from '@jessmove/shared';
+import { FunnelBeacon } from './funnel-beacon';
+import { BRAND, FREE_TIER, PLAN_DEFINITIONS, SIGNATURE_LINE } from '@jessmove/shared';
 
 /* ---------------- marks and icons (no external assets) ---------------- */
 
@@ -329,10 +330,81 @@ export function PageHero({
   );
 }
 
+/**
+ * The one place a visitor is asked to join, and the only destination it
+ * ever has.
+ *
+ * This exists because the site did not have it. Every marketing page ended
+ * in "Request access" pointing at a contact form, which pointed at a
+ * mailto: link — so the product had a working registration endpoint that
+ * no visitor was ever shown the way to. Somebody who read the whole site
+ * and wanted to sign up could not, unless they noticed the small "Sign in"
+ * text in the corner and guessed it would also let them register.
+ *
+ * So: one component, one destination, used everywhere. A page that wants a
+ * conversation as well can pass `talkTo` — but the conversation is the
+ * second button, never the first, and never the only one.
+ *
+ * `/account` rather than `/get-started`, deliberately. A page describing
+ * onboarding is not onboarding, and putting one in front of the other is
+ * how a funnel acquires a step that only loses people.
+ */
+export function JoinCta({
+  heading,
+  says,
+  talkTo,
+  talkLabel = 'Talk to us',
+  action = 'Create your account',
+}: {
+  heading: string;
+  says: string;
+  /** For the audiences that genuinely need a conversation first. */
+  talkTo?: string;
+  talkLabel?: string;
+  action?: string;
+}) {
+  return (
+    <section className="section cta" id="join">
+      {/* Reaching the ask at all is a step: somebody who leaves above it
+          never saw the offer, which is a different problem from seeing it
+          and declining. */}
+      <FunnelBeacon step="viewed_ask" />
+      <div className="wrap">
+        <h2>{heading}</h2>
+        <p>{says}</p>
+        <div className="cta__row">
+          <Link className="btn btn--primary" href="/account">
+            {action}
+          </Link>
+          {talkTo && (
+            <Link className="btn btn--ghost" href={talkTo}>
+              {talkLabel}
+            </Link>
+          )}
+        </div>
+        <p className="cta__terms">
+          Free to create. {FREE_TIER.acusPerMonth} AI credits a month for {FREE_TIER.months}{' '}
+          months, then AI features need a plan — everything that is not AI carries on either
+          way. Premium is £{PLAN_DEFINITIONS.premium_monthly.gbp} a month and cancels in one
+          click. Under 18 a guardian confirms before the account opens.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export function SkipLink() {
   return (
-    <a className="skip" href="#main">
-      Skip to content
-    </a>
+    <>
+      {/*
+        Landing is counted from the chrome rather than from each page, so
+        a page added next year is in the funnel without anybody having to
+        remember. SkipLink is on every public page and nothing else is.
+      */}
+      <FunnelBeacon step="landed" />
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
+    </>
   );
 }

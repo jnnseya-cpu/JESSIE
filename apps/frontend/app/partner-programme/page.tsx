@@ -26,7 +26,7 @@ import {
   trustScore,
   verifiedNetRevenue,
 } from '@jessmove/shared';
-import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { Footer, Nav, PageHero, SkipLink, Tick, JoinCta } from '../ui';
 
 export const metadata: Metadata = {
   title: 'Growth Partner Programme — JESS MOVE',
@@ -535,24 +535,13 @@ export default function PartnerProgramme() {
           </div>
         </section>
 
-        <section className="section cta">
-          <div className="wrap">
-            <h2>Your influence. Jess Move growth.</h2>
-            <p>
-              Earn {COMMISSION_RATE * 100}% from verified customer revenue, with no monthly cap —
-              up to £{LIFETIME_CAP_PER_CUSTOMER_GBP.toLocaleString('en-GB')} lifetime per
-              customer.
-            </p>
-            <div className="cta__row">
-              <Link className="btn btn--primary" href="/contact">
-                Join the Growth Partner Programme
-              </Link>
-              <Link className="btn btn--ghost" href="/growth">
-                Creator &amp; community tiers
-              </Link>
-            </div>
-          </div>
-        </section>
+        <JoinCta
+          heading="Your influence. Jess Move growth."
+          says="Every partner is reviewed, and every piece of partner marketing carries a disclosure naming the publisher. Start with an account of your own."
+          talkTo="/contact"
+          talkLabel="Apply to the programme"
+          action="Create your account"
+        />
       </main>
 
       <Footer />
