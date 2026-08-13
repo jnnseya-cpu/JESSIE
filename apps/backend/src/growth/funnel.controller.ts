@@ -16,6 +16,8 @@ class FunnelStepDto {
   @IsOptional() @IsString() @MaxLength(200) path?: string;
   @IsOptional() @IsString() @MaxLength(300) referrer?: string;
   @IsOptional() @IsString() @MaxLength(20) device?: string;
+  /** The organisation whose link brought them here, if any. */
+  @IsOptional() @IsString() @MaxLength(24) referrerCode?: string;
 }
 
 /**
@@ -37,6 +39,7 @@ export class FunnelController {
       path: body.path,
       referrer: body.referrer ?? null,
       device: body.device ?? null,
+      referrerCode: body.referrerCode ?? null,
     });
     // Nothing to say back. A beacon that waits for a body is a beacon that
     // slows down the page it is measuring.

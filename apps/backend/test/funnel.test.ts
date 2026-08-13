@@ -127,3 +127,96 @@ test('the join block states the price and the end of the free tier', () => {
   assert.match(join, /PLAN_DEFINITIONS\.premium_monthly\.gbp/);
   assert.match(join, /guardian confirms/i, 'the under-18 rule is not stated where somebody signs up');
 });
+
+/* ── the referral route ────────────────────────────────────────────── */
+
+test('a referral code never reaches sign-in or password reset', () => {
+  /*
+   * The bug this pins, found by driving it rather than by reading it.
+   *
+   * The code was attached to the shared "prove you are a person" object,
+   * which sign-in and password reset also use. Their shapes do not carry
+   * it and the API rejects unknown properties outright, so somebody who
+   * followed a falls group's link and then signed in — because they
+   * already had an account, which is the common case when a link worker
+   * hands a link to a room — got a flat 400 and could not get in.
+   *
+   * A referral is a fact about a registration and about nothing else.
+   */
+  const panel = readFileSync(
+    new URL('../../frontend/app/account/account-panel.tsx', import.meta.url),
+    'utf8',
+  );
+  const shared = panel.slice(panel.indexOf('const human = {'), panel.indexOf("if (mode === 'forgot')"));
+  assert.ok(
+    !/referrerCode/.test(shared),
+    'the referral code is on the object shared with sign-in, which breaks signing in',
+  );
+  // And it is on the registration body, where it belongs. Sliced from
+  // `const body =` forwards, because `const res = await api(` also appears
+  // in the password-reset branch above it.
+  const bodyStart = panel.indexOf('const body =');
+  const body = panel.slice(bodyStart, panel.indexOf('const res = await api(', bodyStart));
+  assert.match(body, /referrerCode/, 'a registration does not carry the code that credited it');
+});
+
+test('the page behind a referral link leads with what the platform will not do', () => {
+  /*
+   * The whole organic route depends on a link worker or a pharmacist
+   * being willing to put their own credibility behind a link. They are
+   * not deciding whether the product is good — they are deciding whether
+   * it could hurt the person in front of them. So the refusals come
+   * before the offer, and "nobody is paid for this" is on the page.
+   */
+  const landing = readFileSync(
+    new URL('../../frontend/app/join/[code]/landing.tsx', import.meta.url),
+    'utf8',
+  );
+  const refusals = landing.indexOf('What it will never do');
+  const offer = landing.indexOf('Create your account');
+  assert.ok(refusals > -1 && offer > refusals, 'the offer comes before the refusals');
+  assert.match(landing, /noFee/, 'the page does not say that nobody is paid');
+  assert.match(landing, /\/assurance/, 'nothing on the page can be checked');
+});
+
+test('nobody is paid for a referral, and the code says why', () => {
+  const shared = readFileSync(
+    new URL('../../../packages/shared/src/referrers.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(shared, /no commission, no per-signup fee and no revenue share/i);
+  assert.match(shared, /conflict/i);
+  // There is no money field anywhere in the model.
+  const sql = readFileSync(
+    new URL('../../../db/migrations/0022_referrers.sql', import.meta.url),
+    'utf8',
+  );
+  const columns = sql.slice(sql.indexOf('CREATE TABLE'), sql.indexOf(');'));
+  assert.ok(
+    !/fee|commission|rate|gbp|pence|amount/i.test(columns),
+    'the referrers table has somewhere to put a payment, which is how one gets made',
+  );
+});
+
+test('a retired code still explains itself rather than 404ing', () => {
+  /*
+   * Somebody holding a leaflet printed two years ago did nothing wrong,
+   * and an error page is a poor way to tell them so.
+   */
+  const controller = readFileSync(
+    new URL('../src/growth/referrers.controller.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(controller, /found: false/);
+  assert.ok(!/NotFoundException/.test(controller), 'an unknown code throws instead of explaining');
+});
+
+test('referral pages are not indexed', () => {
+  // A link handed over in a room is not a search result, and a page per
+  // organisation in an index is a directory of who works with us.
+  const page = readFileSync(
+    new URL('../../frontend/app/join/[code]/page.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(page, /robots:\s*\{\s*index:\s*false/);
+});

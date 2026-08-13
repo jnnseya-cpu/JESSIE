@@ -133,7 +133,12 @@ export class AuthController {
      * the server. Nothing about who registered is stored — see the funnel
      * service.
      */
-    this.funnel.record({ step: 'registered', source: req.ip ?? 'unknown', path: '/account' });
+    this.funnel.record({
+      step: 'registered',
+      source: req.ip ?? 'unknown',
+      path: '/account',
+      referrerCode: body.referrerCode ?? null,
+    });
     return {
       userId: result.userId,
       kind: result.kind,

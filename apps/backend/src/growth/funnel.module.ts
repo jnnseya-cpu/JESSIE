@@ -1,6 +1,8 @@
 import { Global, Module } from '@nestjs/common';
 import { FunnelController } from './funnel.controller';
 import { FunnelService } from './funnel.service';
+import { ReferrersController } from './referrers.controller';
+import { ReferrersService } from './referrers.service';
 
 /**
  * Global, because the step that matters is recorded where an account is
@@ -11,8 +13,8 @@ import { FunnelService } from './funnel.service';
  */
 @Global()
 @Module({
-  controllers: [FunnelController],
-  providers: [FunnelService],
-  exports: [FunnelService],
+  controllers: [FunnelController, ReferrersController],
+  providers: [FunnelService, ReferrersService],
+  exports: [FunnelService, ReferrersService],
 })
 export class FunnelModule {}

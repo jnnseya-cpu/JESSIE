@@ -6963,3 +6963,121 @@ textarea:focus-visible {
   line-height: 1.6;
   opacity: 0.72;
 }
+
+/* ── The page behind a link somebody hands over ──────────────────────
+   Styled for a professional deciding whether to put their credibility
+   behind this, not for a consumer being sold to: the refusals are the
+   most prominent thing on the page, and the "nobody is paid" line is
+   given the weight it earns. */
+
+.join__promise { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; max-width: 76ch; }
+.join__promise li {
+  position: relative;
+  padding: 14px 16px 14px 44px;
+  border-radius: 12px;
+  background: var(--jm-surface);
+  border: 1px solid var(--jm-divider);
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+.join__promise li::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 21px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--jm-teal);
+}
+
+/* The single most persuasive sentence available to this page, given the
+   prominence that deserves. */
+.join__nofee {
+  margin: 22px 0 0;
+  padding: 20px 22px;
+  border-radius: 16px;
+  background: var(--jm-surface-2);
+  border-left: 4px solid var(--jm-teal);
+  font-size: 16.5px;
+  line-height: 1.65;
+  max-width: 76ch;
+}
+
+.join__retired {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--jm-action) 12%, transparent);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 72ch;
+}
+
+.join__asks {
+  margin: 16px 0 18px;
+  padding: 0 0 0 20px;
+  border-left: 3px solid var(--jm-teal);
+  font-size: 19px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  max-width: 66ch;
+}
+
+.join__checkable {
+  margin-top: 18px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--jm-text-2);
+  max-width: 74ch;
+}
+
+/* ── The funnel, on a screen ─────────────────────────────────────────
+   Bars are drawn against the top of the funnel rather than against the
+   previous step: a step-to-step rate reads as healthy right up until the
+   total is four people, which is the range this sits in early on. */
+
+.fnl__reading {
+  margin: 14px 0 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--jm-move) 12%, transparent);
+  border-left: 3px solid var(--jm-move);
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--jm-ink);
+}
+
+.fnl__steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 16px; }
+.fnl__row { display: flex; align-items: baseline; gap: 10px; }
+.fnl__name { font-size: 15px; color: var(--jm-ink); flex: 1; }
+.fnl__count { font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--jm-move); }
+.fnl__pct { font-size: 13px; font-style: normal; color: var(--jm-dim); font-variant-numeric: tabular-nums; }
+.fnl__bar { margin-top: 6px; height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.fnl__bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--jm-move), color-mix(in srgb, var(--jm-move) 55%, #0b2540)); }
+.fnl__means { display: block; margin-top: 5px; font-size: 12.5px; line-height: 1.5; color: var(--jm-dim); }
+
+.fnl__list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.fnl__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 14px;
+}
+.fnl__list strong { font-variant-numeric: tabular-nums; color: var(--jm-move); }
+
+.fnl__routes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.fnl__routes li {
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--jm-hairline);
+}
+.fnl__routes strong { display: block; font-size: 15px; color: var(--jm-ink); }
+.fnl__routes em { display: block; margin-top: 3px; font-size: 12.5px; font-style: normal; color: var(--jm-dim); }
+.fnl__routenums { display: block; margin-top: 8px; font-size: 13px; color: var(--jm-dim); font-variant-numeric: tabular-nums; }
+.fnl__routenums b { color: var(--jm-move); }
+.fnl__privacy { margin-top: 16px; }

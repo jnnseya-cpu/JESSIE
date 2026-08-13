@@ -28,6 +28,7 @@ import {
 import { shrinkImage } from './image-shrink';
 import { useAutosave, useSavedState } from './autosave';
 import { FunnelBeacon } from '../funnel-beacon';
+import { FunnelModule } from './funnel';
 
 interface Me {
   userId: string;
@@ -102,6 +103,22 @@ export function AccountPanel() {
 
   const [challenge, setChallenge] = useState('');
   const [honeypot, setHoneypot] = useState('');
+
+  /*
+   * The organisation whose link brought them, carried from /join/:code in
+   * sessionStorage — which lasts exactly as long as the tab and needs no
+   * banner. It is sent with registration so a route can be credited with
+   * an account, and it is never stored against the account: which falls
+   * group somebody came through is not a fact about them we should keep.
+   */
+  const [referrerCode, setReferrerCode] = useState('');
+  useEffect(() => {
+    try {
+      setReferrerCode(sessionStorage.getItem('jm_referrer_code') ?? '');
+    } catch {
+      /* private browsing loses the attribution, never the signup */
+    }
+  }, []);
 
   useEffect(() => {
     void fetch(`${apiBase()}/auth/challenge`)
@@ -397,7 +414,19 @@ export function AccountPanel() {
     setBusy(true);
     setError(null);
     try {
-      const human = { challenge, ...(honeypot ? { website: honeypot } : {}) };
+      /*
+       * The referral code is deliberately NOT in here. `human` is shared
+       * with sign-in and password reset, whose shapes do not carry it, and
+       * the API rejects unknown properties outright — so attaching it to
+       * all three meant somebody who followed a falls group's link and
+       * then signed in, because they already had an account, got a flat
+       * 400 and could not get in. It belongs on registration alone, which
+       * is the only place it means anything.
+       */
+      const human = {
+        challenge,
+        ...(honeypot ? { website: honeypot } : {}),
+      };
       if (mode === 'forgot') {
         const res = await api('/auth/forgot', { ...human, email });
         const json = await res.json();
@@ -414,6 +443,7 @@ export function AccountPanel() {
               displayName,
               age: Number(age),
               ...(Number(age) < 18 && guardianEmail ? { guardianEmail } : {}),
+              ...(referrerCode ? { referrerCode } : {}),
             }
           : { ...human, email, password };
       const res = await api(`/auth/${mode}`, body);
@@ -707,6 +737,8 @@ export function AccountPanel() {
               </nav>
             </section>
           )}
+
+          {section === 'you' && me.kind === 'platform_staff' && <FunnelModule />}
 
           {section === 'you' && me.kind === 'platform_staff' && (
             <section className="acct__module acct__module--admin">

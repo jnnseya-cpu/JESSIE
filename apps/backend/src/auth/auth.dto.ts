@@ -22,6 +22,15 @@ export class RegisterDto extends HumanCheck {
   @IsInt() @Min(10) @Max(120) age!: number;
 
   @IsOptional() @IsEmail() guardianEmail?: string;
+
+  /**
+   * The organisation whose link brought them here, if any.
+   *
+   * Recorded against the funnel and nowhere else — it is not stored on
+   * the account, because which falls group somebody came through is not a
+   * fact about them that we have any business keeping.
+   */
+  @IsOptional() @IsString() @MaxLength(24) referrerCode?: string;
 }
 
 export class LoginDto extends HumanCheck {

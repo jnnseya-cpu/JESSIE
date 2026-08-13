@@ -60,6 +60,8 @@ export class FunnelService implements OnModuleDestroy {
     path?: string;
     referrer?: string | null;
     device?: string | null;
+    /** The organisation whose link brought them, where there was one. */
+    referrerCode?: string | null;
   }): void {
     if (!this.pool) return;
 
@@ -72,9 +74,16 @@ export class FunnelService implements OnModuleDestroy {
 
     void this.pool
       .query(
-        `INSERT INTO funnel_events (step, source, path, referrer, device)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [input.step, this.fingerprint(input.source), path, hostOf(input.referrer), device],
+        `INSERT INTO funnel_events (step, source, path, referrer, device, referrer_code)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          input.step,
+          this.fingerprint(input.source),
+          path,
+          hostOf(input.referrer),
+          device,
+          normaliseCode(input.referrerCode),
+        ],
       )
       .then(() => this.sweep())
       .catch((error) => this.logger.debug(`funnel: ${(error as Error).message}`));
@@ -175,6 +184,13 @@ export class FunnelService implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end().catch(() => undefined);
   }
+}
+
+/** A code, or nothing. Never a half-valid string somebody typed. */
+function normaliseCode(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const key = code.trim().toLowerCase();
+  return /^[a-z0-9-]{3,24}$/.test(key) ? key : null;
 }
 
 /** The referring host, never the URL. */
