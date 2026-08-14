@@ -54,7 +54,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/micro-movement',
     label: 'Micro-movement',
     summary: 'What micro-movement is, and why the unit is a minute rather than an hour.',
-    phrases: ['micro-movement', 'micro movement', 'movement snack', 'movement snacks', 'movement break'],
+    phrases: ['micro-movement', 'micro movement', 'movement snack', 'movement snacks', 'movement break', 'two minutes', 'movement breaks', 'short bursts of movement', 'seated exercise', 'chair exercises', 'strength and balance', 'balance work', 'chair stand', 'getting up from a chair'],
     cluster: 'micro-movement',
     kind: 'pillar',
     inChrome: true
@@ -63,7 +63,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/body-balance',
     label: 'BodyCommand',
     summary: 'Weight, waist and trend, read as a direction rather than a verdict.',
-    phrases: ['body balance', 'bodycommand', 'waist measurement', 'weight trend'],
+    phrases: ['body balance', 'bodycommand', 'waist measurement', 'weight trend', 'waist', 'body composition', 'rate of change', 'trajectory', 'the scales', 'weighing yourself'],
     cluster: 'weight-control',
     kind: 'pillar',
     inChrome: true
@@ -72,7 +72,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/foodlens',
     label: 'FoodLens 360°',
     summary: 'Reading a meal from a photograph, with the uncertainty stated rather than hidden.',
-    phrases: ['foodlens', 'food lens', 'food photograph', 'photograph of a meal', 'plant points'],
+    phrases: ['foodlens', 'food lens', 'food photograph', 'photograph of a meal', 'plant points', 'photograph a meal', 'food ledger', 'calorie estimate', 'calorie estimates', 'protein', 'front-of-pack', 'reading a label'],
     cluster: 'food-intelligence',
     kind: 'pillar',
     inChrome: true
@@ -81,7 +81,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/industries',
     label: 'For organisations',
     summary: 'Workplace movement programmes that report on a group and never on a person.',
-    phrases: ['workplace programme', 'workforce reporting', 'k-anonymity', 'employer dashboard'],
+    phrases: ['workplace programme', 'workforce reporting', 'k-anonymity', 'employer dashboard', 'what an employer can see'],
     cluster: 'workplace',
     kind: 'pillar',
     inChrome: true
@@ -90,7 +90,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/for-children',
     label: 'For children',
     summary: 'Movement for ages 10 to 17, with no weight, no energy figures and no body talk.',
-    phrases: ['for children', 'children', 'a minor', 'guardian visibility', 'school day'],
+    phrases: ['for children', 'children', 'a minor', 'guardian visibility', 'school day', 'under 18', 'a child'],
     cluster: 'children',
     kind: 'pillar',
     inChrome: true
@@ -101,7 +101,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/mova',
     label: 'MOVA',
     summary: 'The coach that answers in one line and never invents a number.',
-    phrases: ['mova', 'the coach', 'coaching'],
+    phrases: ['mova', 'the coach', 'coaching', 'asking a question'],
     kind: 'product',
     inChrome: true
   },
@@ -117,7 +117,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/challenges',
     label: 'Challenges',
     summary: 'Group challenges that forgive a missed day rather than punishing it.',
-    phrases: ['challenge', 'challenges', 'streak', 'habit streak'],
+    phrases: ['challenge', 'challenges', 'streak', 'habit streak', 'a challenge', 'team score', 'moving together'],
     kind: 'product',
     inChrome: true
   },
@@ -125,7 +125,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/wearables',
     label: 'Wearables',
     summary: 'What a watch adds, and what it cannot settle on its own.',
-    phrases: ['wearable', 'wearables', 'a watch', 'step count'],
+    phrases: ['wearable', 'wearables', 'a watch', 'step count', 'fitness tracker', 'smartwatch', 'steps a day'],
     kind: 'product',
     inChrome: true
   },
@@ -159,7 +159,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
     path: '/privacy',
     label: 'Privacy',
     summary: 'What is stored, for how long, and what leaves the platform.',
-    phrases: ['privacy', 'what we store', 'data protection'],
+    phrases: ['privacy', 'what we store', 'data protection', 'who can see it'],
     kind: 'legal',
     inChrome: true
   },
@@ -199,8 +199,7 @@ export const LINK_TARGETS: readonly LinkTarget[] = [
       'hazard log',
       'dcb0129',
       'dtac',
-      'digital technology assessment criteria',
-    ],
+      'digital technology assessment criteria', 'what we refuse to do', 'health data', 'your data'],
     kind: 'company',
     inChrome: true
   },

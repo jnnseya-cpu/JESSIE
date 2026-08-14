@@ -1,6 +1,18 @@
 import type { MetadataRoute } from 'next';
 import { LINK_TARGETS, TOPIC_CLUSTERS } from '@jessmove/shared';
 import { POSTS } from './blog/posts';
+import { publishedPosts } from './blog/published';
+
+/*
+ * Rebuilt periodically rather than frozen at deploy.
+ *
+ * Without this the page is prerendered once, with whatever the API
+ * returned during the build — which for a blog is "the articles that
+ * existed when somebody last deployed", and that is the state this site
+ * was already in. Five minutes is the gap between publishing and being
+ * readable.
+ */
+export const revalidate = 300;
 
 /**
  * The sitemap, which this site did not have.
@@ -38,7 +50,7 @@ function newestPost(): Date {
   return new Date(`${newest ?? '2026-01-01'}T00:00:00Z`);
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const clusterPillars = new Set(TOPIC_CLUSTERS.map((c) => c.pillarPath));
 
   const pages = LINK_TARGETS.filter((t) => !t.noIndex).map((target) => ({
@@ -59,5 +71,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: post.clusterKey ? 0.7 : 0.6,
   }));
 
-  return [...pages, ...articles];
+  /*
+   * Everything the editorial pipeline published. Absent from here an
+   * article is discoverable only by a crawler following a link to it, and
+   * a new page with a thin inbound graph is exactly the page that gets
+   * found late or never.
+   */
+  const live = (await publishedPosts()).map((post) => ({
+    url: `${SITE}/blog/${post.slug}`,
+    lastModified: post.publishedAt ? new Date(`${post.publishedAt}T00:00:00Z`) : undefined,
+    changeFrequency: 'yearly' as const,
+    priority: post.clusterKey ? 0.7 : 0.6,
+  }));
+
+  return [...pages, ...articles, ...live];
 }

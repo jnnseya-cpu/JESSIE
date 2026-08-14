@@ -3,6 +3,18 @@ import Link from 'next/link';
 import { SEO_RULES, TOPIC_CLUSTERS } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, JoinCta } from '../ui';
 import { POSTS } from './posts';
+import { publishedPosts } from './published';
+
+/*
+ * Rebuilt periodically rather than frozen at deploy.
+ *
+ * Without this the page is prerendered once, with whatever the API
+ * returned during the build — which for a blog is "the articles that
+ * existed when somebody last deployed", and that is the state this site
+ * was already in. Five minutes is the gap between publishing and being
+ * readable.
+ */
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: 'Blog — JESS MOVE',
@@ -65,7 +77,14 @@ const TRACKING = [
   ['Nothing to sell', 'There is no identifier in the event, so there is no audience to build, no profile to enrich and no third party to share one with.'],
 ] as const;
 
-export default function Blog() {
+export default async function Blog() {
+  /*
+   * Everything the editorial pipeline published, alongside the corpus that
+   * ships with the build. The index is where a reader decides whether this
+   * blog is alive; an index frozen at the eight articles compiled into the
+   * bundle says it is not, however much has been published since.
+   */
+  const live = await publishedPosts();
   const totalWords = POSTS.reduce((n, p) => n + p.words, 0);
   const covered = TOPIC_CLUSTERS.reduce(
     (n, c) => n + POSTS.filter((p) => p.clusterKey === c.key).length,
@@ -115,6 +134,28 @@ export default function Blog() {
                 <p className="card__note">score required to publish, out of 100</p>
               </article>
             </div>
+
+            {live.length > 0 && (
+              <div className="posts" style={{ marginTop: 40 }}>
+                {live.map((p) => (
+                  <article className="post" key={p.slug}>
+                    <div className="post__meta">
+                      <span className="post__cat">{p.category}</span>
+                      <br />
+                      {p.publishedAt}
+                      <br />
+                      {Math.max(1, Math.round(p.body.split(/\s+/).length / 220))} min read
+                    </div>
+                    <div>
+                      <h3>
+                        <Link href={`/blog/${p.slug}`}>{p.title}</Link>
+                      </h3>
+                      <p>{p.description}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
 
             <div className="posts" style={{ marginTop: 40 }}>
               {POSTS.map((p) => (

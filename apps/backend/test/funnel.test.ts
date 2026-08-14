@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { LINK_TARGETS, TOPIC_CLUSTERS } from '@jessmove/shared';
+import {
+  AUTOPILOT_INTERVAL_HOURS,
+  MIN_INTERVAL_HOURS,
+  intervalHours,
+} from '../src/blog/seo-autopilot.logic.ts';
 
 /**
  * Can a stranger who wants this product actually buy it?
@@ -219,4 +225,132 @@ test('referral pages are not indexed', () => {
     'utf8',
   );
   assert.match(page, /robots:\s*\{\s*index:\s*false/);
+});
+
+/* ── the editorial pipeline ────────────────────────────────────────── */
+
+test('a published article has somewhere to live', () => {
+  /*
+   * The whole content strategy was a `new Map()`. The agent drafted, the
+   * status machine refused to publish without a named reviewer, the audit
+   * ran — and all of it happened in one process while the public blog
+   * rendered from a TypeScript file the API cannot write to. A published
+   * article did not survive a restart and never reached a reader under any
+   * circumstances, which is why content has produced nothing.
+   */
+  const service = readFileSync(new URL('../src/blog/blog.service.ts', import.meta.url), 'utf8');
+  assert.ok(
+    !/private readonly posts = new Map/.test(service),
+    'posts are back in memory, which means nothing published can be read',
+  );
+  assert.match(service, /INSERT INTO posts/);
+
+  const sql = readFileSync(
+    new URL('../../../db/migrations/0023_posts.sql', import.meta.url),
+    'utf8',
+  );
+  // The editorial control, enforced by the database as well as the service.
+  assert.match(sql, /posts_published_needs_reviewer/);
+  assert.match(sql, /status <> 'published' OR \(reviewed_by IS NOT NULL/);
+});
+
+test('the public site can render an article the pipeline published', () => {
+  const route = readFileSync(
+    new URL('../../frontend/app/blog/[slug]/page.tsx', import.meta.url),
+    'utf8',
+  );
+  /*
+   * Without `dynamicParams` an article published this morning is a 404
+   * until somebody runs a build — which is the state the blog was in for
+   * its whole life, with a pipeline that could draft and review and had
+   * nowhere to put the result.
+   */
+  assert.match(route, /export const dynamicParams = true/);
+  assert.match(route, /publishedBySlug/);
+
+  for (const [what, rel] of [
+    ['the index', '../../frontend/app/blog/page.tsx'],
+    ['the sitemap', '../../frontend/app/sitemap.ts'],
+    ['the feed', '../../frontend/app/blog/feed.xml/route.ts'],
+  ] as const) {
+    const source = readFileSync(new URL(rel, import.meta.url), 'utf8');
+    assert.match(source, /publishedPosts/, `${what} does not include published articles`);
+    assert.match(source, /export const revalidate/, `${what} is frozen at deploy time`);
+  }
+});
+
+test('auto-linked prose reaches the reader as links, not as markdown', () => {
+  /*
+   * `withAutoLinks` returns markdown. Rendered straight into the page it
+   * produced `[movement break](/micro-movement)` as visible text — and it
+   * survived a check that grepped the whole page for the href, which
+   * matched the navigation. Grepping a page for a link proves nothing
+   * about where the link is.
+   */
+  const published = readFileSync(
+    new URL('../../frontend/app/blog/published.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(published, /function anchors\(/);
+  assert.match(published, /anchors\(withAutoLinks\(/);
+  // Escape first, link second: after escaping there is no markup left,
+  // whatever the model wrote.
+  assert.ok(
+    published.indexOf('const safe = escape(') < published.indexOf('anchors(withAutoLinks('),
+    'the body is linked before it is escaped, so model output could become markup',
+  );
+});
+
+test('the audit sees the links the page will actually carry', () => {
+  /*
+   * Links are woven in at render, but the audit scores `internalLinks` on
+   * the stored draft — so an article that renders with six links scored
+   * zero and could never pass. The pipeline would have been rebuilt and
+   * still unable to publish anything.
+   */
+  const service = readFileSync(new URL('../src/blog/blog.service.ts', import.meta.url), 'utf8');
+  assert.match(service, /autoLinksFor\(draft\.body/);
+  assert.match(service, /autoLinksFor\(post\.body/);
+});
+
+test('the content plan targets what a reader searches, not what a feature is called', () => {
+  /*
+   * The published corpus targets "database constraints" and "notification
+   * timing" — what an engineer searches while building something, not what
+   * a sixty-eight-year-old searches when they are worried about their
+   * balance. Every subject in the plan is now a sentence somebody types.
+   */
+  const jargon = /\b(api|database|schema|constraint|postgres|typescript|deployment|architecture)\b/i;
+  const offenders: string[] = [];
+  for (const cluster of TOPIC_CLUSTERS) {
+    for (const subject of cluster.supporting) {
+      if (jargon.test(subject)) offenders.push(`${cluster.key}: ${subject}`);
+    }
+  }
+  assert.deepEqual(offenders, [], 'these subjects are written for an engineer');
+
+  assert.ok(TOPIC_CLUSTERS.length >= 10, `${TOPIC_CLUSTERS.length} clusters is not the platform`);
+  const subjects = TOPIC_CLUSTERS.reduce((n, c) => n + c.supporting.length, 0);
+  assert.ok(subjects >= 40, `${subjects} subjects`);
+
+  for (const cluster of TOPIC_CLUSTERS) {
+    assert.ok(
+      LINK_TARGETS.some((t) => t.path === cluster.pillarPath),
+      `${cluster.key} points at ${cluster.pillarPath}, which is not a page`,
+    );
+  }
+});
+
+test('publishing faster is possible and still has a floor', () => {
+  // 55 subjects at one a week is a year, which is not a strategy. But a
+  // new site producing a hundred pages a month is a site that gets
+  // classified as one producing a hundred pages a month.
+  assert.equal(intervalHours({}), AUTOPILOT_INTERVAL_HOURS);
+  assert.equal(intervalHours({ SEO_AUTOPILOT_INTERVAL_HOURS: '24' }), 24);
+  assert.equal(
+    intervalHours({ SEO_AUTOPILOT_INTERVAL_HOURS: '1' }),
+    MIN_INTERVAL_HOURS,
+    'the floor can be argued past',
+  );
+  assert.equal(intervalHours({ SEO_AUTOPILOT_INTERVAL_HOURS: 'soon' }), AUTOPILOT_INTERVAL_HOURS);
 });

@@ -29,6 +29,7 @@ import { shrinkImage } from './image-shrink';
 import { useAutosave, useSavedState } from './autosave';
 import { FunnelBeacon } from '../funnel-beacon';
 import { FunnelModule } from './funnel';
+import { EditorialModule } from './editorial';
 
 interface Me {
   userId: string;
@@ -739,6 +740,7 @@ export function AccountPanel() {
           )}
 
           {section === 'you' && me.kind === 'platform_staff' && <FunnelModule />}
+          {section === 'you' && me.kind === 'platform_staff' && <EditorialModule />}
 
           {section === 'you' && me.kind === 'platform_staff' && (
             <section className="acct__module acct__module--admin">

@@ -72,16 +72,39 @@ export interface TopicCluster {
 }
 
 export const TOPIC_CLUSTERS: readonly TopicCluster[] = [
+  /*
+   * ── How the supporting subjects are chosen ──
+   *
+   * Every one of these is a sentence somebody types into a search box, not
+   * a name for a feature. That distinction is the whole difference between
+   * content that acquires customers and content that does not, and this
+   * site got it wrong for its entire life: the published corpus targets
+   * "database constraints", "notification timing" and "accessible
+   * interface design", which are things an engineer searches when they are
+   * building something, not things a sixty-eight-year-old searches when
+   * they are worried about their balance.
+   *
+   * The feature is what the article is *about*. The phrase is what the
+   * reader is *asking*. "AI Growth Engine" is a product name nobody has
+   * ever searched; "how to keep exercising when your knees hurt" has
+   * people typing it every day, and it is answered by the same variant
+   * system the product name refers to.
+   *
+   * Nothing here is a keyword to be stuffed. A cluster's job is to
+   * demonstrate that this site knows a subject completely, which is why
+   * coverage beats volume in the commissioning logic below.
+   */
   {
     key: 'micro-movement',
     pillar: 'What micro-movement actually is',
     pillarPath: '/micro-movement',
     intent: 'informational',
     supporting: [
-      'sedentary work and the sitting problem',
-      'movement snacks versus exercise sessions',
+      'how to be more active with a desk job',
       'how long a movement break needs to be',
-      'movement at a desk without changing clothes',
+      'exercise without changing clothes or going to a gym',
+      'what to do when you have no time to exercise',
+      'movement snacks versus one long workout',
     ],
   },
   {
@@ -90,10 +113,11 @@ export const TOPIC_CLUSTERS: readonly TopicCluster[] = [
     pillarPath: '/body-balance',
     intent: 'commercial',
     supporting: [
-      'why weekly weigh-ins mislead',
+      'why does my weight go up and down every day',
       'waist measurement versus BMI',
-      'what a realistic rate of change looks like',
-      'keeping progress when life interrupts',
+      'what is a realistic rate of weight loss',
+      'how to keep progress when life gets in the way',
+      'what to track instead of the scales',
     ],
   },
   {
@@ -102,10 +126,39 @@ export const TOPIC_CLUSTERS: readonly TopicCluster[] = [
     pillarPath: '/foodlens',
     intent: 'informational',
     supporting: [
-      'why calorie estimates from photographs are ranges',
-      'plant points and why we count them',
-      'allergen labelling and what a photograph cannot tell you',
-      'swapping one component instead of the whole meal',
+      'how accurate are calorie counting apps',
+      'how to eat more plants without changing your diet',
+      'reading a food label without the maths',
+      'how much salt is actually in my food',
+      'swapping one thing instead of changing the whole meal',
+    ],
+  },
+  {
+    key: 'strength-and-balance',
+    pillar: 'Strength and balance, without a gym',
+    pillarPath: '/micro-movement',
+    intent: 'informational',
+    supporting: [
+      'exercises to stop falling',
+      'how many times should I be able to stand up from a chair',
+      'chair based exercises for older adults',
+      'how to improve balance at home safely',
+      'how much protein do you need after 65',
+      'what a falls assessment actually involves',
+    ],
+  },
+  {
+    key: 'living-with',
+    pillar: 'Moving with a condition, not around it',
+    pillarPath: '/body-balance',
+    intent: 'informational',
+    supporting: [
+      'exercise with arthritis when it flares up',
+      'what to eat on appetite suppressing medication',
+      'staying strong while losing weight on medication',
+      'low salt eating when you have kidney disease',
+      'exercise and type 2 diabetes for beginners',
+      'eating well with pancreatic insufficiency',
     ],
   },
   {
@@ -114,10 +167,46 @@ export const TOPIC_CLUSTERS: readonly TopicCluster[] = [
     pillarPath: '/micro-movement',
     intent: 'informational',
     supporting: [
-      'chair-supported movement for balance',
-      'falls confidence and standing clearance',
-      'movement with arthritis flare-ups',
-      'staying independent at home',
+      'staying independent at home as you get older',
+      'how to get moving again after an illness',
+      'exercise when you use a walking frame',
+      'what to do if you are afraid of falling',
+    ],
+  },
+  {
+    key: 'coaching',
+    pillar: 'A coach that knows when to say nothing',
+    pillarPath: '/mova',
+    intent: 'commercial',
+    supporting: [
+      'do fitness apps actually work',
+      'why reminder apps stop working after a week',
+      'how to build a habit that survives a bad week',
+      'what to do when you have broken your streak',
+    ],
+  },
+  {
+    key: 'wearables',
+    pillar: 'What a watch adds, and what it cannot settle',
+    pillarPath: '/wearables',
+    intent: 'commercial',
+    supporting: [
+      'do I need a fitness tracker to get fitter',
+      'why is my step count different on every device',
+      'how many steps a day actually matters',
+      'using a fitness app without a smartwatch',
+    ],
+  },
+  {
+    key: 'together',
+    pillar: 'Moving with other people',
+    pillarPath: '/challenges',
+    intent: 'commercial',
+    supporting: [
+      'step challenges that do not just reward the fittest person',
+      'how to get a family moving together',
+      'exercising with a partner who is a different fitness level',
+      'workplace wellbeing challenges that people actually finish',
     ],
   },
   {
@@ -126,10 +215,10 @@ export const TOPIC_CLUSTERS: readonly TopicCluster[] = [
     pillarPath: '/industries',
     intent: 'commercial',
     supporting: [
-      'what an employer can and cannot see',
-      'k-anonymity in workforce reporting',
-      'measuring a wellbeing programme honestly',
+      'what can my employer see in a wellbeing app',
       'sedentary risk in hybrid teams',
+      'measuring a wellbeing programme honestly',
+      'wellbeing benefits staff will actually use',
     ],
   },
   {
@@ -138,10 +227,22 @@ export const TOPIC_CLUSTERS: readonly TopicCluster[] = [
     pillarPath: '/for-children',
     intent: 'informational',
     supporting: [
-      'why we never show a child a weight',
-      'screen breaks that children will actually take',
-      'guardian visibility and what it includes',
-      'school-day movement that fits a timetable',
+      'fitness apps that are safe for children',
+      'getting children moving without talking about weight',
+      'screen breaks children will actually take',
+      'what a parent can see in a child’s health app',
+    ],
+  },
+  {
+    key: 'trust',
+    pillar: 'What this platform refuses to do',
+    pillarPath: '/assurance',
+    intent: 'commercial',
+    supporting: [
+      'are health apps safe with your data',
+      'what happens to health data in a fitness app',
+      'how to tell if a health app is trustworthy',
+      'health apps that do not sell your data',
     ],
   },
 ] as const;

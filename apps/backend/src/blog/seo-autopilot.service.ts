@@ -4,6 +4,7 @@ import { BlogService } from './blog.service';
 import { SeoAgentService } from './seo-agent.service';
 import {
   AUTOPILOT_INTERVAL_HOURS,
+  intervalHours,
   MAX_QUEUE_DEPTH,
   RUN_ACU_CEILING,
   decide,
@@ -49,8 +50,8 @@ export class SeoAutopilotService {
   ) {}
 
   /** The site's link graph, from whatever is published right now. */
-  graph(): LinkGraph {
-    const published = this.blog.list('published');
+  async graph(): Promise<LinkGraph> {
+    const published = await this.blog.list('published');
     return buildLinkGraph(
       published.map((post) => ({
         slug: post.slug,
@@ -66,15 +67,15 @@ export class SeoAutopilotService {
    * The link audit. No model, no spend, and the findings are the kind that
    * quietly cost ranking on pages nobody is thinking about any more.
    */
-  linkAudit(): {
+  async linkAudit(): Promise<{
     orphans: readonly string[];
     dead: readonly { from: string; to: string }[];
     weakPillars: readonly { path: string; inbound: number; expected: number }[];
     mostLinked: readonly { path: string; inbound: number }[];
     totalEdges: number;
     says: string;
-  } {
-    const graph = this.graph();
+  }> {
+    const graph = await this.graph();
     const mostLinked = graph.nodes
       .slice(0, 8)
       .map((n) => ({ path: n.path, inbound: n.inbound.length }));
@@ -107,34 +108,40 @@ export class SeoAutopilotService {
     };
   }
 
-  private decision(): Decision {
-    const queueDepth = this.blog.list('draft').length + this.blog.list('in_review').length;
-    const commission = this.commission();
+  private async decision(): Promise<Decision> {
+    const queueDepth =
+      (await this.blog.list('draft')).length + (await this.blog.list('in_review')).length;
+    const commission = await this.commission();
     return decide(
       { enabled: this.enabled, lastRunAt: this.lastRunAt, queueDepth },
       new Date(),
       commission ? 1 : 0,
+      intervalHours(process.env),
     );
   }
 
-  private commission(): Commission | null {
-    const published = this.blog.list('published');
+  private async commission(): Promise<Commission | null> {
+    const published = await this.blog.list('published');
     return nextCommission(
       published.map((p) => p.clusterKey ?? null),
       // A subject already written about, whatever its status, is not a gap.
-      [...this.blog.list('draft'), ...this.blog.list('in_review'), ...published].map(
+      [
+        ...(await this.blog.list('draft')),
+        ...(await this.blog.list('in_review')),
+        ...published,
+      ].map(
         (p) => p.keyword,
       ),
     );
   }
 
   /** What autopilot would do, without doing it. Safe to call from anywhere. */
-  status() {
-    const decision = this.decision();
-    const commission = this.commission();
+  async status() {
+    const decision = await this.decision();
+    const commission = await this.commission();
     return {
       enabled: this.enabled,
-      intervalHours: AUTOPILOT_INTERVAL_HOURS,
+      intervalHours: intervalHours(process.env),
       maxQueueDepth: MAX_QUEUE_DEPTH,
       runAcuCeiling: RUN_ACU_CEILING,
       lastRunAt: this.lastRunAt,
@@ -143,7 +150,7 @@ export class SeoAutopilotService {
       says: decision.says,
       nextUp: commission,
       recentRuns: this.history.slice(-10).reverse(),
-      links: this.linkAudit(),
+      links: await this.linkAudit(),
       neverDoes: [
         'publish anything — the status machine has no draft-to-published edge and publishing takes a named reviewer',
         'buy, exchange or generate external backlinks',
@@ -159,7 +166,7 @@ export class SeoAutopilotService {
    * check and the audit.
    */
   async run(force = false): Promise<RunRecord> {
-    const decision = this.decision();
+    const decision = await this.decision();
     const at = new Date().toISOString();
 
     if (!decision.run && !(force && decision.reason === 'too_soon')) {
@@ -177,7 +184,7 @@ export class SeoAutopilotService {
       return record;
     }
 
-    const commission = this.commission();
+    const commission = await this.commission();
     if (!commission) {
       const record: RunRecord = {
         at,
@@ -225,9 +232,9 @@ export class SeoAutopilotService {
           acuSpent: result.acuCeiling,
         };
       } else {
-        const stored = this.blog.saveDraft(result.draft, true);
+        const stored = await this.blog.saveDraft(result.draft, true);
         // Straight to review. This is the furthest an agent goes.
-        this.blog.transition(stored.slug, 'in_review');
+        await this.blog.transition(stored.slug, 'in_review');
         record = {
           at,
           outcome: 'queued',

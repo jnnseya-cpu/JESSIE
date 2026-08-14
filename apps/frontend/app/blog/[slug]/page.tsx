@@ -7,16 +7,53 @@ import { POSTS, postBySlug } from '../posts';
 import { SITE_GRAPH } from '../graph';
 import { Linked, newLinkBudget } from '../linked';
 import { ViewBeacon } from '../view-beacon';
+import { AgentPost } from './agent-post';
+import { publishedBySlug } from '../published';
 
 const SITE = 'https://jessmove.com';
+
+/**
+ * The hand-written corpus is prerendered; everything the editorial
+ * pipeline publishes is rendered on demand.
+ *
+ * `dynamicParams` is what makes the second half possible at all. Without
+ * it an article published this morning is a 404 until somebody runs a
+ * build, which is the state this blog was in for its entire life: the
+ * pipeline could draft and review and had nowhere to put the result.
+ */
+export const dynamicParams = true;
+export const revalidate = 300;
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
   const post = postBySlug(params.slug);
-  if (!post) return { title: 'Not found — JESS MOVE' };
+  if (!post) {
+    const live = await publishedBySlug(params.slug);
+    if (!live) return { title: 'Not found — JESS MOVE' };
+    const url = `${SITE}/blog/${live.slug}`;
+    return {
+      title: `${live.title} — JESS MOVE`,
+      description: live.description,
+      keywords: live.keyword ? [live.keyword] : undefined,
+      alternates: { canonical: url },
+      openGraph: {
+        type: 'article',
+        title: live.title,
+        description: live.description,
+        url,
+        publishedTime: live.publishedAt,
+        section: live.category,
+      },
+      twitter: { card: 'summary_large_image', title: live.title, description: live.description },
+    };
+  }
 
   const url = `${SITE}/blog/${post.slug}`;
   return {
@@ -40,9 +77,13 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   };
 }
 
-export default function Post({ params }: { params: { slug: string } }) {
+export default async function Post({ params }: { params: { slug: string } }) {
   const post = postBySlug(params.slug);
-  if (!post) notFound();
+  if (!post) {
+    const live = await publishedBySlug(params.slug);
+    if (!live) notFound();
+    return <AgentPost post={live} />;
+  }
 
   const cluster = TOPIC_CLUSTERS.find((c) => c.key === post.clusterKey) ?? null;
   const others = POSTS.filter((p) => p.slug !== post.slug);

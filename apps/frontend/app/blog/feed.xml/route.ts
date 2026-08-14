@@ -1,4 +1,16 @@
 import { POSTS } from '../posts';
+import { publishedPosts } from '../published';
+
+/*
+ * Rebuilt periodically rather than frozen at deploy.
+ *
+ * Without this the page is prerendered once, with whatever the API
+ * returned during the build — which for a blog is "the articles that
+ * existed when somebody last deployed", and that is the state this site
+ * was already in. Five minutes is the gap between publishing and being
+ * readable.
+ */
+export const revalidate = 300;
 
 /**
  * The feed.
@@ -22,8 +34,17 @@ const escape = (text: string): string =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-export function GET(): Response {
-  const sorted = [...POSTS].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+export async function GET(): Promise<Response> {
+  // Both corpora, newest first. A feed that omits the newer half is a
+  // feed that trains its subscribers to stop opening it.
+  const live = (await publishedPosts()).map((p) => ({
+    slug: p.slug,
+    title: p.title,
+    description: p.description,
+    category: p.category,
+    publishedAt: p.publishedAt,
+  }));
+  const sorted = [...POSTS, ...live].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   const updated = sorted[0]?.publishedAt ?? '2026-01-01';
 
   const items = sorted

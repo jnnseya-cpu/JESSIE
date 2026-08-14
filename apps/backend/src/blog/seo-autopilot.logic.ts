@@ -38,6 +38,29 @@ import { SEO_RULES, TOPIC_CLUSTERS, type SeoAudit } from '@jessmove/shared';
  */
 export const AUTOPILOT_INTERVAL_HOURS = 168;
 
+/**
+ * The floor, and why there is one.
+ *
+ * A launch has a genuine reason to go faster than weekly: there are 55
+ * subjects in the plan and at one a week the last one lands in a year,
+ * which is not a strategy, it is a way of never finishing. So the cadence
+ * is settable by an operator — `SEO_AUTOPILOT_INTERVAL_HOURS` — and the
+ * floor stops it becoming a content farm by accident.
+ *
+ * Twelve hours is two a day. Beyond that the constraint stops being the
+ * software anyway: every one of these has to be read by a person before it
+ * can be published, and a queue nobody can keep up with is worse than a
+ * slower one, because it turns review into rubber-stamping. The reviewer
+ * is the bottleneck by design and no setting here removes them.
+ */
+export const MIN_INTERVAL_HOURS = 12;
+
+export function intervalHours(env: Record<string, string | undefined> = {}): number {
+  const asked = Number(env.SEO_AUTOPILOT_INTERVAL_HOURS);
+  if (!Number.isFinite(asked) || asked <= 0) return AUTOPILOT_INTERVAL_HOURS;
+  return Math.max(MIN_INTERVAL_HOURS, Math.round(asked));
+}
+
 /** Never more than this many drafts sitting unreviewed. */
 export const MAX_QUEUE_DEPTH = 5;
 
@@ -76,9 +99,14 @@ export interface Decision {
  * Whether to run, decided from state rather than from a clock inside a
  * service. Pure, so the schedule is testable without waiting a week.
  */
-export function decide(state: AutopilotState, now: Date, gapCount: number): Decision {
+export function decide(
+  state: AutopilotState,
+  now: Date,
+  gapCount: number,
+  hours = AUTOPILOT_INTERVAL_HOURS,
+): Decision {
   const nextDue = state.lastRunAt
-    ? new Date(new Date(state.lastRunAt).getTime() + AUTOPILOT_INTERVAL_HOURS * 3_600_000)
+    ? new Date(new Date(state.lastRunAt).getTime() + hours * 3_600_000)
     : null;
   const nextDueAt = nextDue ? nextDue.toISOString() : null;
 
@@ -148,13 +176,27 @@ const CATEGORY_FOR: Record<string, string> = {
   'micro-movement': 'Behaviour',
   'weight-control': 'Product decisions',
   'food-intelligence': 'Nutrition',
+  'strength-and-balance': 'Later life',
+  'living-with': 'Nutrition',
   'later-life': 'Later life',
+  coaching: 'Behaviour',
+  wearables: 'Platform',
+  together: 'Behaviour',
   workplace: 'Workplace',
   children: 'Accessibility',
+  trust: 'Platform',
 };
 
-/** Clusters where a reader may be a minor or in a later-life mode. */
-const STRICT_CLUSTERS = new Set(['children', 'later-life']);
+/**
+ * Clusters where a reader may be a minor, in a later-life mode, or living
+ * with something the wrong sentence could make worse.
+ *
+ * `living-with` is here for the last reason. An article about eating on
+ * appetite-suppressing medication is read by somebody who has been losing
+ * weight fast and is frightened, and the strict lexicon is what keeps the
+ * writing away from the framings that do damage to that reader.
+ */
+const STRICT_CLUSTERS = new Set(['children', 'later-life', 'strength-and-balance', 'living-with']);
 
 /**
  * The thinnest cluster wins, and within it the first unwritten subject.

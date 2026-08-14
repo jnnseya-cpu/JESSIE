@@ -34,9 +34,12 @@ export class BlogController {
    * check rather than take on trust.
    */
   @Get('links')
-  links() {
+  async links() {
     return {
-      ...this.autopilot.linkAudit(),
+      // Awaited rather than spread directly: spreading a Promise is legal
+      // TypeScript and produces an empty object, so this endpoint would
+      // have quietly returned nothing but the two prose fields.
+      ...(await this.autopilot.linkAudit()),
       internal:
         'These are internal links: pages here pointing at other pages here. That is the part ' +
         'of link authority a site controls, and it is the part this platform works on.',
@@ -50,7 +53,7 @@ export class BlogController {
   /** What autopilot is doing, and the list of what it will never do. */
   @AdminOnly()
   @Get('agent/autopilot')
-  autopilotStatus() {
+  async autopilotStatus() {
     return this.autopilot.status();
   }
 
@@ -89,8 +92,8 @@ export class BlogController {
   }
 
   @Get('posts')
-  list(@Query('status') status?: PostStatus) {
-    return this.posts.list(status).map((p) => ({
+  async list(@Query('status') status?: PostStatus) {
+    return (await this.posts.list(status)).map((p) => ({
       slug: p.slug,
       title: p.title,
       category: p.category,
@@ -100,13 +103,19 @@ export class BlogController {
       reviewedBy: p.reviewedBy,
       score: p.audit?.score ?? null,
       auditNote: p.auditNote,
+      // The site needs these to render an index card and a page; without
+      // them the list is only useful to the console.
+      description: p.description,
+      keyword: p.keyword,
+      clusterKey: p.clusterKey ?? null,
+      words: p.body ? p.body.split(/\s+/).filter(Boolean).length : 0,
       metrics: this.analytics.metrics(p.slug),
     }));
   }
 
   @Get('posts/:slug')
-  one(@Param('slug') slug: string) {
-    const post = this.posts.get(slug);
+  async one(@Param('slug') slug: string) {
+    const post = await this.posts.get(slug);
     return { ...post, metrics: this.analytics.metrics(slug) };
   }
 
@@ -115,7 +124,7 @@ export class BlogController {
   @Post('agent/draft')
   async draft(@Body() body: DraftPostDto) {
     const result = await this.agent.draft(body);
-    const stored = this.posts.saveDraft(result.draft, true);
+    const stored = await this.posts.saveDraft(result.draft, true);
     return {
       post: stored,
       audit: result.audit,
@@ -133,14 +142,14 @@ export class BlogController {
   /** Where the next article should come from. */
   @AdminOnly()
   @Get('agent/gaps')
-  gaps() {
-    return this.agent.gaps(this.posts.publishedClusterKeys());
+  async gaps() {
+    return this.agent.gaps(await this.posts.publishedClusterKeys());
   }
 
   /** Audit an existing post without changing it. */
   @Get('posts/:slug/audit')
-  audit(@Param('slug') slug: string) {
-    const post = this.posts.get(slug);
+  async audit(@Param('slug') slug: string) {
+    const post = await this.posts.get(slug);
     return post.audit ?? { audited: false, reason: post.auditNote };
   }
 

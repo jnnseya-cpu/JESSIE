@@ -7081,3 +7081,50 @@ textarea:focus-visible {
 .fnl__routenums { display: block; margin-top: 8px; font-size: 13px; color: var(--jm-dim); font-variant-numeric: tabular-nums; }
 .fnl__routenums b { color: var(--jm-move); }
 .fnl__privacy { margin-top: 16px; }
+
+/* ── The editorial queue ─────────────────────────────────────────────
+   Built so that reading the whole article is the easy path and skimming
+   to the publish button is not: the body is full width and the actions
+   are below it, because a reviewer who is shown a summary is being asked
+   to approve something they have not read. */
+
+.edq__list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.edq__list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 15px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--jm-hairline);
+}
+.edq__list strong { display: block; font-size: 15px; color: var(--jm-ink); }
+.edq__list em { display: block; margin-top: 3px; font-size: 12.5px; font-style: normal; color: var(--jm-dim); }
+
+.edq__reading { margin-top: 12px; }
+.edq__title { margin: 14px 0 0; font-size: 21px; letter-spacing: -0.01em; color: var(--jm-ink); }
+
+.edq__audit {
+  margin: 14px 0; padding: 13px 15px; border-radius: 12px;
+  background: color-mix(in srgb, var(--jm-information) 12%, transparent);
+  border-left: 3px solid var(--jm-information);
+  font-size: 14px; line-height: 1.6;
+}
+.edq__audit--fails {
+  background: color-mix(in srgb, var(--jm-critical) 12%, transparent);
+  border-left-color: var(--jm-critical);
+}
+.edq__audit strong { display: block; margin-bottom: 4px; }
+.edq__audit p { margin: 6px 0 0; color: var(--jm-dim); }
+
+.edq__body {
+  margin: 16px 0;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--jm-hairline);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.edq__body p { margin: 0 0 14px; font-size: 15px; line-height: 1.7; color: var(--jm-ink); }
+.edq__body p:last-child { margin-bottom: 0; }
+
+.edq__actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.edq__name { flex: 1 1 260px; }
+.edq__said { margin-top: 12px; }
