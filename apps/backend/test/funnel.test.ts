@@ -354,3 +354,65 @@ test('publishing faster is possible and still has a floor', () => {
   );
   assert.equal(intervalHours({ SEO_AUTOPILOT_INTERVAL_HOURS: 'soon' }), AUTOPILOT_INTERVAL_HOURS);
 });
+
+test('something actually starts the autopilot', () => {
+  /*
+   * The gap this closes, and it is the shape of every other gap in this
+   * file: a complete mechanism with nothing to trigger it.
+   *
+   * The autopilot's only door was an admin pressing a button, on a
+   * serverless deployment with no scheduler. Setting the API keys and
+   * switching autopilot on would have produced exactly nothing, silently,
+   * and the obvious conclusion would have been that the agent does not
+   * work rather than that nothing ever called it.
+   */
+  const vercel = JSON.parse(
+    readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'),
+  ) as { crons?: { path: string; schedule: string }[] };
+
+  const crons = vercel.crons ?? [];
+  assert.ok(crons.length > 0, 'nothing is scheduled, so the autopilot never runs');
+  const autopilot = crons.find((c) => c.path.includes('autopilot'));
+  assert.ok(autopilot, 'the autopilot has no schedule');
+  assert.match(autopilot!.schedule, /^\S+ \S+ \S+ \S+ \S+$/, 'the schedule is not a cron expression');
+
+  const controller = readFileSync(
+    new URL('../src/blog/blog.controller.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(controller, /@Get\('agent\/autopilot\/cron'\)/, 'the scheduled path does not exist');
+});
+
+test('the scheduler’s door refuses everything without a secret', () => {
+  /*
+   * A scheduled job has no session, so this endpoint cannot sit behind the
+   * admin guard — which leaves a route that starts paid model work
+   * reachable by anybody who guesses the path.
+   *
+   * The dangerous default is to skip the check when nothing is
+   * configured, so it "works out of the box". On an endpoint that spends
+   * money that means a deployment which forgot the variable is an open
+   * door, and it fails silently, because the job still runs.
+   */
+  const guard = readFileSync(new URL('../src/blog/cron.guard.ts', import.meta.url), 'utf8');
+  assert.match(guard, /if \(expected\.length < 16\) throw flat/);
+  assert.match(guard, /timingSafeEqual/, 'the secret is compared with ===, which leaks it');
+
+  // One flat refusal, never a reason.
+  const messages = [...guard.matchAll(/UnauthorizedException\('([^']*)'\)/g)].map((m) => m[1]);
+  assert.deepEqual([...new Set(messages)], ['not available']);
+});
+
+test('a scheduled run cannot publish', () => {
+  const controller = readFileSync(
+    new URL('../src/blog/blog.controller.ts', import.meta.url),
+    'utf8',
+  );
+  const handler = controller.slice(
+    controller.indexOf("@Get('agent/autopilot/cron')"),
+    controller.indexOf("@Get('policy')"),
+  );
+  // No force, so the cadence still applies to anything automated.
+  assert.ok(!/force/.test(handler), 'the scheduled run can skip the cadence check');
+  assert.match(handler, /reachedThePublic: false/);
+});

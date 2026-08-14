@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @jessmove/shared build && pnpm --filter @jessmove/body-command build && pnpm --filter @jessmove/foodlens build && pnpm --filter @jessmove/backend build"
+  "buildCommand": "pnpm --filter @jessmove/shared build && pnpm --filter @jessmove/body-command build && pnpm --filter @jessmove/foodlens build && pnpm --filter @jessmove/backend build",
+  "crons": [
+    {
+      "path": "/api/blog/agent/autopilot/cron",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }
