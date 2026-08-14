@@ -116,6 +116,37 @@ export function freeTierState(alreadyGranted: readonly string[], userId: string)
   };
 }
 
+/**
+ * Where a grant came from, in words a member can read.
+ *
+ * A balance that moves with no history is exactly the "surprise bill" the
+ * account page promises it is not. Every grant carries a `sourceRef` and
+ * every one of them was written by a specific mechanism — this turns
+ * `free:u_604f3102:m0` into "your first free month" and `topup_5gbp` into
+ * "you topped up £5", so somebody watching a number change can see what
+ * changed it rather than having to ask.
+ */
+export function grantSourceLabel(sourceRef: string | undefined | null): string {
+  const ref = (sourceRef ?? '').trim();
+  if (!ref) return 'Unrecorded — this grant predates sources being kept';
+
+  const free = /^free:.*:m(\d+)$/.exec(ref);
+  if (free) {
+    const month = Number(free[1]) + 1;
+    return `Free tier, month ${month} of ${FREE_TIER.months} — ${FREE_TIER.acusPerMonth} ACU, does not renew`;
+  }
+
+  const topup = /^topup_([\d.]+)gbp$/.exec(ref);
+  if (topup) return `Top-up of £${topup[1]}`;
+
+  if (ref === 'monthly_subscription') return 'Your plan’s monthly allowance';
+  if (ref === 'admin_grant') return 'Granted by platform staff';
+  if (ref.startsWith('platform:')) return `Platform budget (${ref.split(':')[1] ?? 'platform'})`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ref.split(':').pop() ?? '')) return `Daily platform budget`;
+
+  return `Granted as “${ref}”`;
+}
+
 /** Reserved payers. Anything starting `platform:` is billed to the platform. */
 export const PLATFORM_PAYERS = {
   /** The SEO agent and its autopilot — the platform's own editorial cost. */

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
  * read is a token an injected script can read.
  */
 
+import { grantSourceLabel } from '@jessmove/shared';
 import { apiBase, mediaUrl } from '../api-base';
 import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
@@ -231,7 +232,11 @@ export function AccountPanel() {
     if (fresh) refreshDash();
   };
 
-  const [wallet, setWallet] = useState<{ balance: number } | null>(null);
+  const [wallet, setWallet] = useState<{
+    balance: number;
+    grants?: { id: string; amount: number; remaining: number; sourceRef?: string; expiresAt: string }[];
+  } | null>(null);
+  const [showGrants, setShowGrants] = useState(false);
   const [grantTarget, setGrantTarget] = useState('');
   const [grantAmount, setGrantAmount] = useState('500');
   const [adminResult, setAdminResult] = useState<string | null>(null);
@@ -264,7 +269,14 @@ export function AccountPanel() {
     async (userId: string) => {
       try {
         const res = await api(`/acu/balance/${userId}`);
-        if (res.ok) setWallet(((await res.json()).data as { balance: number }) ?? null);
+        if (res.ok) {
+          setWallet(
+            ((await res.json()).data as {
+              balance: number;
+              grants?: { id: string; amount: number; remaining: number; sourceRef?: string; expiresAt: string }[];
+            }) ?? null,
+          );
+        }
       } catch {
         setWallet(null);
       }
@@ -596,6 +608,47 @@ export function AccountPanel() {
               <small> ACU</small>
             </span>
             <span className="acct__stats2">Priced before it runs. Never a surprise bill.</span>
+            {/*
+              Where the number came from.
+              
+              A balance that moves with no visible history is exactly the
+              surprise the line above promises it is not — somebody
+              watching it change has no way to tell a free-tier month from
+              a top-up from a staff grant, and "it is going up" is an
+              alarming thing to notice about your own account with no way
+              to check why.
+            */}
+            {wallet && (wallet.grants?.length ?? 0) > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="acct__whybtn"
+                  onClick={() => setShowGrants((v) => !v)}
+                >
+                  {showGrants ? 'Hide where this came from' : 'Where did this come from?'}
+                </button>
+                {showGrants && (
+                  <ul className="acct__grants">
+                    {(wallet.grants ?? []).map((g) => (
+                      <li key={g.id}>
+                        <strong>
+                          {g.remaining.toLocaleString('en-GB')}
+                          <small> of {g.amount.toLocaleString('en-GB')} left</small>
+                        </strong>
+                        <em>{grantSourceLabel(g.sourceRef)}</em>
+                        <span>
+                          Expires {new Date(g.expiresAt).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </div>
 
           <div className="acct__stat">

@@ -7186,3 +7186,31 @@ textarea:focus-visible {
 .edq__ok strong { color: var(--jm-move); }
 .edq__bad { border-color: color-mix(in srgb, var(--jm-critical) 45%, transparent); }
 .edq__bad strong { color: var(--jm-critical); }
+
+/* Where an allowance came from. A balance that moves with no visible
+   history is exactly the surprise the card promises it is not. */
+.acct__whybtn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--jm-move);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.acct__grants { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.acct__grants li {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--jm-hairline);
+  text-align: left;
+}
+.acct__grants strong { display: block; font-size: 15px; color: var(--jm-ink); font-variant-numeric: tabular-nums; }
+.acct__grants strong small { font-size: 11.5px; font-weight: 400; color: var(--jm-dim); }
+.acct__grants em { display: block; margin-top: 2px; font-size: 12.5px; font-style: normal; line-height: 1.5; color: var(--jm-ink); }
+.acct__grants span { display: block; margin-top: 2px; font-size: 11.5px; color: var(--jm-dim); }

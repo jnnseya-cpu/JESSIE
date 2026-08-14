@@ -394,3 +394,71 @@ test('the grant is issued on use rather than at signup', () => {
     'the free tier is topped up before the hold is taken',
   );
 });
+
+/* ── where an allowance came from ──────────────────────────────────── */
+
+test('nothing in the wallet can create allowance out of a refund', () => {
+  /*
+   * Reported as "the ACUs are increasing instead of reducing", which would
+   * be a serious bug if the ledger could mint. It cannot: `refund` caps
+   * what it returns at `grant.amount - grant.remaining`, so even a double
+   * refund is absorbed rather than adding allowance that was never
+   * granted. Asserted here because the reasoning is the reassurance.
+   */
+  const wallet = readFileSync(
+    new URL('../src/acu/wallet.service.ts', import.meta.url),
+    'utf8',
+  );
+  const refund = wallet.slice(wallet.indexOf('async refund('), wallet.indexOf('async spendControls') > -1
+    ? wallet.indexOf('async spendControls')
+    : wallet.length);
+  assert.match(refund, /const room = grant\.amount - grant\.remaining/);
+  assert.match(refund, /Math\.min\(room, line\.amount\)/);
+  // And a grant is only ever created by a named deposit, never by settling.
+  const gateway = readFileSync(
+    new URL('../src/ai/ai-gateway.service.ts', import.meta.url),
+    'utf8',
+  );
+  const settle = gateway.slice(gateway.indexOf('private async settle('), gateway.indexOf('async complete('));
+  assert.ok(
+    !/depositAllowance|promotionalGrant|depositTopup/.test(settle),
+    'settling a call creates a grant, which would mint allowance on every call',
+  );
+});
+
+test('a balance says where it came from', async () => {
+  /*
+   * The complaint underneath the bug report was that a number moved and
+   * there was no way to see why. A free month, a top-up, a staff grant and
+   * a platform budget all land in the same total and read identically —
+   * which makes an ordinary increase indistinguishable from a fault.
+   */
+  const { grantSourceLabel, FREE_TIER } = await import('@jessmove/shared');
+
+  assert.match(grantSourceLabel('free:u_abc:m0'), /month 1 of 2/);
+  assert.match(grantSourceLabel('free:u_abc:m0'), new RegExp(`${FREE_TIER.acusPerMonth} ACU`));
+  assert.match(grantSourceLabel('free:u_abc:m0'), /does not renew/);
+  assert.match(grantSourceLabel('topup_5gbp'), /Top-up of £5/);
+  assert.match(grantSourceLabel('monthly_subscription'), /plan’s monthly allowance/);
+  assert.match(grantSourceLabel('admin_grant'), /platform staff/);
+  assert.match(grantSourceLabel('platform:editorial:2026-08-14'), /Platform budget/);
+
+  // An unknown reference is shown rather than hidden, and an absent one is
+  // admitted — a blank line in a money list is where trust goes.
+  assert.match(grantSourceLabel('something_new'), /something_new/);
+  assert.match(grantSourceLabel(''), /Unrecorded/);
+  assert.match(grantSourceLabel(undefined), /Unrecorded/);
+});
+
+test('the account page can show the breakdown', () => {
+  const panel = readFileSync(
+    new URL('../../frontend/app/account/account-panel.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(panel, /grantSourceLabel/);
+  assert.match(panel, /Where did this come from/);
+  // The remaining figure as well as the original, because a grant half
+  // spent is the thing somebody is actually asking about.
+  assert.match(panel, /g\.remaining\.toLocaleString/);
+  assert.match(panel, /g\.amount\.toLocaleString/);
+});
