@@ -26,6 +26,39 @@ import { WalletService, type SpendResult } from '../acu/wallet.service';
 import { SecurityService } from '../security/security.service';
 import { MODEL_PROVIDERS, type ModelProvider } from './provider.interface';
 
+/**
+ * What went wrong with a provider, said in a way that is safe to show.
+ *
+ * Provider errors quote request bodies, and some of them include the
+ * first characters of the key. This output is read in a browser and
+ * pasted into messages, so it is classified rather than echoed — and the
+ * classes are chosen to map onto what somebody would actually do next.
+ */
+function classifyProviderError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const status = /\b(4\d\d|5\d\d)\b/.exec(raw)?.[1];
+
+  if (/abort|timeout/i.test(raw)) {
+    return 'Timed out after fifteen seconds. The key may be fine and the provider slow.';
+  }
+  if (status === '401' || status === '403' || /unauthor|invalid.?api.?key|permission/i.test(raw)) {
+    return 'The provider rejected the key. It is wrong, revoked, or for a different project.';
+  }
+  if (status === '429' || /rate.?limit|quota/i.test(raw)) {
+    return 'Rate limited or out of quota. The key is valid; the account has nothing left to spend.';
+  }
+  if (status === '402' || /billing|credit|payment/i.test(raw)) {
+    return 'The key is valid and the account has no credit on it.';
+  }
+  if (status === '404' || /model.*not.*found|unknown model/i.test(raw)) {
+    return 'The key works but the configured model name is not available to this account.';
+  }
+  if (status?.startsWith('5')) {
+    return 'The provider returned a server error. Nothing to fix at this end — try again later.';
+  }
+  return `The call did not succeed${status ? ` (HTTP ${status})` : ''}. Check the deployment logs for the detail.`;
+}
+
 /** An ACU hold taken before a provider call, to be settled or released. */
 interface Hold {
   readonly held: boolean;
@@ -518,6 +551,94 @@ export class AiGatewayService {
   }
 
   /** Health of each provider, for the Admin Super Control Centre. §24.5. */
+  /**
+   * Does each key actually work?
+   *
+   * `health()` below reports whether a key is *present*, which is not the
+   * question anybody is asking when they check. A revoked key, a key with
+   * the wrong prefix, a key for an account with no credit and a key for
+   * the wrong project all read as `configured: true` and then fail on the
+   * first real call — at 07:00, inside a scheduled job, where the only
+   * symptom is that nothing appeared.
+   *
+   * So this makes the smallest real call each provider will accept and
+   * reports what came back. Three things make it safe to have:
+   *
+   *  * **Each provider is called directly, not through the chain.** The
+   *    fallback chain exists so a member's request survives one provider
+   *    being down; here it would mask exactly what is being asked, by
+   *    reporting success from the second provider when the first is the
+   *    broken one.
+   *  * **It is metered like everything else.** A handful of tokens each,
+   *    billed to the administrator who asked, because an unmetered path
+   *    is an unmetered path however small.
+   *  * **The error is classified, never echoed.** Provider errors quote
+   *    request bodies and sometimes the key prefix, and this output is
+   *    read in a browser and pasted into messages.
+   */
+  async probe(billTo: string): Promise<
+    { provider: AiProvider; configured: boolean; model: string; ok: boolean; says: string }[]
+  > {
+    const results: {
+      provider: AiProvider;
+      configured: boolean;
+      model: string;
+      ok: boolean;
+      says: string;
+    }[] = [];
+
+    for (const name of AI_PROVIDERS) {
+      const provider = this.providers.find((p) => p.name === name);
+      if (!provider?.isConfigured()) {
+        results.push({
+          provider: name,
+          configured: false,
+          model: 'not configured',
+          ok: false,
+          says: 'No key set for this provider. That is not a fault unless you expected one.',
+        });
+        continue;
+      }
+
+      const request: AiCompletionRequest = {
+        agent: 'JESS',
+        billTo,
+        maxTokens: 8,
+        messages: [{ role: 'user', content: 'Reply with the single word: ready' }],
+      };
+      const model = provider.resolveModel(request);
+
+      // Metered, like every other call on this platform.
+      const hold = await this.hold(request, 1);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15_000);
+      try {
+        const result = await provider.complete(request, controller.signal);
+        await this.settle(hold, result.usage.acu, 'JESS', result.model);
+        results.push({
+          provider: name,
+          configured: true,
+          model: result.model,
+          ok: true,
+          says: `Answered in ${result.usage.acu} ACU. The key works.`,
+        });
+      } catch (error) {
+        await this.release(hold, 'JESS');
+        results.push({
+          provider: name,
+          configured: true,
+          model,
+          ok: false,
+          says: classifyProviderError(error),
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    return results;
+  }
+
   health(): AiProviderHealth[] {
     return AI_PROVIDERS.map((name) => {
       const provider = this.providers.find((p) => p.name === name);

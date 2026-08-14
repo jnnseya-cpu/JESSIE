@@ -82,6 +82,24 @@ export class AiController {
     return this.gateway.health();
   }
 
+  /**
+   * Whether each key actually works, rather than whether one is set.
+   *
+   * A POST because it spends: a handful of tokens per provider, billed to
+   * the administrator who asked. That is a deliberate trade — the
+   * alternative is an endpoint that reports a revoked key as healthy and
+   * a scheduled job that fails at seven in the morning with no symptom
+   * except that nothing appeared.
+   */
+  @AdminOnly()
+  @Post('providers/probe')
+  probe(@Req() req: Request) {
+    const token = tokenFrom(req);
+    const uid = token ? this.auth.verify(token)?.uid : undefined;
+    if (!uid) throw new UnauthorizedException('this endpoint needs a signed-in administrator');
+    return this.gateway.probe(uid);
+  }
+
   @AdminOnly()
   @Post('complete')
   complete(@Req() req: Request, @Body() body: CompletionDto) {

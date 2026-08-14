@@ -41,6 +41,14 @@ interface Autopilot {
   recentRuns?: Run[];
 }
 
+interface Probe {
+  provider: string;
+  configured: boolean;
+  model: string;
+  ok: boolean;
+  says: string;
+}
+
 interface QueuePost {
   slug: string;
   title: string;
@@ -61,6 +69,8 @@ export function EditorialModule() {
   const [said, setSaid] = useState('');
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [auto, setAuto] = useState<Autopilot | null>(null);
+  const [probe, setProbe] = useState<Probe[] | null>(null);
+  const [probing, setProbing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +101,36 @@ export function EditorialModule() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /*
+   * Whether the keys work, not whether they are set.
+   *
+   * The existing providers endpoint reports a key being present, which is
+   * a different question: a revoked key, a key for the wrong project and
+   * a key on an account with no credit all read as configured and then
+   * fail inside a scheduled job at seven in the morning, where the only
+   * symptom is that nothing appeared. This makes the smallest real call
+   * each provider accepts. It costs a handful of tokens, billed here.
+   */
+  const runProbe = async () => {
+    setProbing(true);
+    setSaid('');
+    try {
+      const res = await fetch(`${apiBase()}/ai/providers/probe`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        setSaid('The providers could not be checked.');
+        return;
+      }
+      setProbe((await res.json()).data as Probe[]);
+    } catch {
+      setSaid('The providers could not be checked.');
+    } finally {
+      setProbing(false);
+    }
+  };
 
   const read = async (slug: string) => {
     setSaid('');
@@ -175,6 +215,28 @@ export function EditorialModule() {
           )}
         </div>
       )}
+
+      <div className="edq__probe">
+        <button type="button" className="btn btn--ghost" disabled={probing} onClick={() => void runProbe()}>
+          {probing ? 'Asking each provider…' : 'Check the AI keys actually work'}
+        </button>
+        {probe && (
+          <ul className="edq__providers">
+            {probe.map((r) => (
+              <li key={r.provider} className={r.ok ? 'edq__ok' : r.configured ? 'edq__bad' : ''}>
+                <span>{r.provider}</span>
+                <div>
+                  <strong>{r.ok ? 'working' : r.configured ? 'not working' : 'no key set'}</strong>
+                  <em>
+                    {r.says}
+                    {r.ok ? ` · ${r.model}` : ''}
+                  </em>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {posts.length === 0 && (
         <p className="acct__note">

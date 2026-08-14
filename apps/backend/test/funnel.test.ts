@@ -461,3 +461,49 @@ test('an empty review queue says which kind of empty it is', () => {
   assert.match(screen, /Autopilot is off/, 'a disabled autopilot looks the same as a quiet one');
   assert.match(screen, /not the same as nothing happening/i);
 });
+
+test('the providers check answers whether a key works, not whether one is set', () => {
+  /*
+   * `health()` reports `configured` — a key being present. A revoked key,
+   * a key for the wrong project, and a key on an account with no credit
+   * all read as configured and then fail on the first real call, inside a
+   * scheduled job, where the only symptom is that nothing appeared.
+   */
+  const gateway = readFileSync(
+    new URL('../src/ai/ai-gateway.service.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(gateway, /async probe\(billTo: string\)/);
+
+  const probe = gateway.slice(gateway.indexOf('async probe('), gateway.indexOf('health(): AiProviderHealth'));
+  // Each provider called directly. Through the chain, a working second
+  // provider would report success for a broken first one — masking the
+  // exact thing being asked.
+  assert.match(probe, /provider\.complete\(request, controller\.signal\)/);
+  assert.ok(!/this\.complete\(/.test(probe), 'the probe goes through the fallback chain');
+  // Metered like everything else.
+  assert.match(probe, /await this\.hold\(request, 1\)/);
+  assert.match(probe, /await this\.settle\(/);
+  assert.match(probe, /await this\.release\(/, 'a failed probe keeps the hold');
+});
+
+test('a provider error is classified rather than echoed', () => {
+  /*
+   * Provider errors quote request bodies and sometimes the first
+   * characters of the key. This output is read in a browser and pasted
+   * into messages.
+   */
+  const gateway = readFileSync(
+    new URL('../src/ai/ai-gateway.service.ts', import.meta.url),
+    'utf8',
+  );
+  const fn = gateway.slice(
+    gateway.indexOf('function classifyProviderError'),
+    gateway.indexOf('/** An ACU hold taken'),
+  );
+  assert.ok(!/\$\{raw\}/.test(fn), 'the raw provider error is returned to the browser');
+  // The classes map onto what somebody would do next, which is the point.
+  for (const expected of [/rejected the key/i, /rate limited/i, /no credit/i, /model name/i]) {
+    assert.match(fn, expected);
+  }
+});

@@ -7166,3 +7166,23 @@ textarea:focus-visible {
   .edq__run { grid-template-columns: 1fr; gap: 6px; }
   .edq__outcome { justify-self: start; padding: 3px 10px; }
 }
+
+/* Whether the AI keys work — the question asked every time nothing
+   appears, answered where somebody is already standing. */
+.edq__probe { margin: 14px 0; }
+.edq__providers { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.edq__providers li {
+  display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: start;
+  padding: 11px 13px; border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--jm-hairline);
+}
+.edq__providers > li > span {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--jm-dim);
+  text-transform: capitalize;
+}
+.edq__providers strong { display: block; font-size: 14px; color: var(--jm-dim); }
+.edq__providers em { display: block; margin-top: 3px; font-size: 12.5px; font-style: normal; line-height: 1.55; color: var(--jm-dim); }
+.edq__ok { border-color: color-mix(in srgb, var(--jm-move) 40%, transparent); }
+.edq__ok strong { color: var(--jm-move); }
+.edq__bad { border-color: color-mix(in srgb, var(--jm-critical) 45%, transparent); }
+.edq__bad strong { color: var(--jm-critical); }
