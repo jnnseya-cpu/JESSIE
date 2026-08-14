@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { makePool, type PgPoolLike } from '../db/pg';
 import { buildLinkGraph, type LinkGraph } from '@jessmove/shared';
 import { BlogService } from './blog.service';
 import { SeoAgentService } from './seo-agent.service';
@@ -31,8 +32,9 @@ import {
  * already exist, and those faults appear silently as a site grows.
  */
 @Injectable()
-export class SeoAutopilotService {
+export class SeoAutopilotService implements OnModuleDestroy {
   private readonly logger = new Logger(SeoAutopilotService.name);
+  private readonly pool: PgPoolLike | null = makePool(process.env.DATABASE_URL, 1);
 
   /**
    * Enabled by an environment variable rather than a database flag, so
@@ -41,8 +43,78 @@ export class SeoAutopilotService {
    */
   private readonly enabled = process.env.SEO_AUTOPILOT === 'on';
 
+  /*
+   * Both of these used to be fields on this instance, which on serverless
+   * meant every cold start began with no history and `lastRunAt = null`.
+   * The console could never show a run, so a week of rejected drafts
+   * looked identical to a week of nothing happening — and the cadence
+   * check, which reads `lastRunAt`, treated every cold start as "never
+   * run". The interval was decorative for as long as that was true.
+   *
+   * They live in the database now. The in-memory copies remain only as a
+   * fallback for a deployment with no database, where nothing survives a
+   * restart anyway and saying so is more honest than pretending.
+   */
   private lastRunAt: string | null = null;
   private readonly history: RunRecord[] = [];
+
+  private async remember(record: RunRecord): Promise<void> {
+    // The in-memory copy first, so a deployment with no database still
+    // shows something in the console within one warm instance.
+    this.history.push(record);
+    if (this.history.length > 50) this.history.shift();
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        `INSERT INTO autopilot_runs (at, outcome, says, keyword, cluster_key, slug, score, blockers, acu_spent)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
+        [
+          record.at,
+          record.outcome,
+          record.says,
+          record.commission?.keyword ?? null,
+          record.commission?.clusterKey ?? null,
+          record.slug,
+          record.score,
+          JSON.stringify(record.blockers ?? []),
+          record.acuSpent ?? 0,
+        ],
+      );
+    } catch (error) {
+      // A run that happened and was not recorded is a visibility problem,
+      // never a reason to fail the run itself.
+      this.logger.warn(`autopilot run not recorded: ${(error as Error).message}`);
+    }
+  }
+
+  /** When it last ran, from the database rather than from this instance. */
+  private async lastRun(): Promise<string | null> {
+    if (!this.pool) return this.lastRunAt;
+    try {
+      const { rows } = await this.pool.query(
+        `SELECT at FROM autopilot_runs WHERE outcome <> 'skipped' ORDER BY at DESC LIMIT 1`,
+      );
+      const at = rows[0]?.at;
+      return at instanceof Date ? at.toISOString() : at ? String(at) : null;
+    } catch {
+      return this.lastRunAt;
+    }
+  }
+
+  /** The last few runs, for the console. */
+  async recentRuns(limit = 10): Promise<Record<string, unknown>[]> {
+    if (!this.pool) return this.history.slice(-limit).reverse() as unknown as Record<string, unknown>[];
+    try {
+      const { rows } = await this.pool.query(
+        `SELECT at, outcome, says, keyword, cluster_key, slug, score, blockers, acu_spent
+           FROM autopilot_runs ORDER BY at DESC LIMIT $1`,
+        [limit],
+      );
+      return rows;
+    } catch {
+      return [];
+    }
+  }
 
   constructor(
     private readonly blog: BlogService,
@@ -113,7 +185,7 @@ export class SeoAutopilotService {
       (await this.blog.list('draft')).length + (await this.blog.list('in_review')).length;
     const commission = await this.commission();
     return decide(
-      { enabled: this.enabled, lastRunAt: this.lastRunAt, queueDepth },
+      { enabled: this.enabled, lastRunAt: await this.lastRun(), queueDepth },
       new Date(),
       commission ? 1 : 0,
       intervalHours(process.env),
@@ -144,12 +216,12 @@ export class SeoAutopilotService {
       intervalHours: intervalHours(process.env),
       maxQueueDepth: MAX_QUEUE_DEPTH,
       runAcuCeiling: RUN_ACU_CEILING,
-      lastRunAt: this.lastRunAt,
+      lastRunAt: await this.lastRun(),
       nextDueAt: decision.nextDueAt,
       wouldRun: decision.run,
       says: decision.says,
       nextUp: commission,
-      recentRuns: this.history.slice(-10).reverse(),
+      recentRuns: await this.recentRuns(10),
       links: await this.linkAudit(),
       neverDoes: [
         'publish anything — the status machine has no draft-to-published edge and publishing takes a named reviewer',
@@ -180,7 +252,7 @@ export class SeoAutopilotService {
         blockers: [],
         acuSpent: 0,
       };
-      this.history.push(record);
+      await this.remember(record);
       return record;
     }
 
@@ -196,7 +268,7 @@ export class SeoAutopilotService {
         blockers: [],
         acuSpent: 0,
       };
-      this.history.push(record);
+      await this.remember(record);
       return record;
     }
 
@@ -263,8 +335,12 @@ export class SeoAutopilotService {
       };
     }
 
-    this.history.push(record);
+    await this.remember(record);
     if (this.history.length > 50) this.history.splice(0, this.history.length - 50);
     return record;
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.pool?.end().catch(() => undefined);
   }
 }

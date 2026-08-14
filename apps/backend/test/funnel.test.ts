@@ -416,3 +416,48 @@ test('a scheduled run cannot publish', () => {
   assert.ok(!/force/.test(handler), 'the scheduled run can skip the cadence check');
   assert.match(handler, /reachedThePublic: false/);
 });
+
+test('the autopilot remembers across a cold start', () => {
+  /*
+   * `lastRunAt` and the run history were fields on a service instance. On
+   * serverless every cold start begins with an empty history and a null
+   * last-run — which meant the console could never show a run, and the
+   * cadence check read "never run" and ran again. The weekly interval was
+   * enforced only for as long as one instance stayed warm.
+   *
+   * Verified by restarting the process between two calls: the second
+   * skipped, having read the first from the database.
+   */
+  const service = readFileSync(
+    new URL('../src/blog/seo-autopilot.service.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(service, /INSERT INTO autopilot_runs/);
+  assert.match(service, /private async lastRun\(\)/);
+  assert.match(service, /lastRunAt: await this\.lastRun\(\)/, 'the cadence still reads an in-memory field');
+
+  // And `remember` does not call itself, which it did for one build.
+  const remember = service.slice(
+    service.indexOf('private async remember('),
+    service.indexOf('private async lastRun('),
+  );
+  assert.ok(!/await this\.remember\(/.test(remember), 'remember() recurses');
+});
+
+test('an empty review queue says which kind of empty it is', () => {
+  /*
+   * An empty queue means two entirely different things: the agent has not
+   * run, or it ran and every draft failed its own audit. Showing only the
+   * queue makes those identical, which is how a working pipeline gets
+   * written off as broken — and is the exact shape of every other failure
+   * in this file.
+   */
+  const screen = readFileSync(
+    new URL('../../frontend/app/account/editorial.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(screen, /agent\/autopilot/, 'the screen never asks what the autopilot did');
+  assert.match(screen, /recentRuns/);
+  assert.match(screen, /Autopilot is off/, 'a disabled autopilot looks the same as a quiet one');
+  assert.match(screen, /not the same as nothing happening/i);
+});

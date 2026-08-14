@@ -23,6 +23,24 @@ import { apiBase } from '../api-base';
  * responsibility transfers, and a pre-filled box turns it into a click.
  */
 
+interface Run {
+  at: string;
+  outcome: 'queued' | 'rejected' | 'skipped' | 'failed';
+  says: string;
+  keyword?: string | null;
+  score?: number | null;
+}
+
+interface Autopilot {
+  enabled: boolean;
+  intervalHours: number;
+  lastRunAt: string | null;
+  nextDueAt: string | null;
+  says: string;
+  nextUp?: { keyword: string; because: string } | null;
+  recentRuns?: Run[];
+}
+
 interface QueuePost {
   slug: string;
   title: string;
@@ -42,13 +60,28 @@ export function EditorialModule() {
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState('');
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [auto, setAuto] = useState<Autopilot | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`${apiBase()}/blog/posts`, { credentials: 'include' });
       if (!res.ok) throw new Error(String(res.status));
-      const all = ((await res.json()).data.posts ?? []) as QueuePost[];
+      const all = ((await res.json()).data ?? []) as QueuePost[];
       setPosts(all.filter((p) => p.status === 'draft' || p.status === 'in_review'));
+
+      /*
+       * The runs, not only the queue. An empty queue has two completely
+       * different meanings — the agent has not run, or it ran and every
+       * draft was rejected — and showing only the queue makes them
+       * identical. That is how a content pipeline gets written off as
+       * broken when it is working and failing its own audit.
+       */
+      try {
+        const a = await fetch(`${apiBase()}/blog/agent/autopilot`, { credentials: 'include' });
+        if (a.ok) setAuto((await a.json()).data as Autopilot);
+      } catch {
+        /* the queue is still worth showing without it */
+      }
       setState('ready');
     } catch {
       setState('error');
@@ -127,11 +160,49 @@ export function EditorialModule() {
         </div>
       </header>
 
+      {auto && (
+        <div className={`edq__auto${auto.enabled ? '' : ' edq__auto--off'}`}>
+          <strong>
+            {auto.enabled
+              ? `Autopilot on, every ${auto.intervalHours} hours`
+              : 'Autopilot is off — nothing will be commissioned'}
+          </strong>
+          <p>{auto.says}</p>
+          {auto.nextUp && (
+            <p className="edq__next">
+              Next subject: “{auto.nextUp.keyword}” — {auto.nextUp.because}
+            </p>
+          )}
+        </div>
+      )}
+
       {posts.length === 0 && (
         <p className="acct__note">
-          Nothing waiting. The autopilot commissions one article a week when it is switched on and
-          there is a gap worth filling.
+          Nothing waiting for review.
+          {auto?.enabled
+            ? ' That is not the same as nothing happening — the runs below say what it tried.'
+            : ' Autopilot is off, so nothing is being commissioned.'}
         </p>
+      )}
+
+      {(auto?.recentRuns ?? []).length > 0 && !open && (
+        <>
+          <h4 className="fl__h">What it tried</h4>
+          <ul className="edq__runs">
+            {(auto?.recentRuns ?? []).map((r, i) => (
+              <li key={`${r.at}-${i}`} className={`edq__run edq__run--${r.outcome}`}>
+                <span className="edq__outcome">{r.outcome}</span>
+                <div>
+                  <strong>{r.keyword ? `“${r.keyword}”` : 'No subject'}</strong>
+                  <em>
+                    {r.says}
+                    {typeof r.score === 'number' ? ` (${r.score}/100)` : ''}
+                  </em>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {posts.length > 0 && !open && (

@@ -161,6 +161,24 @@ export interface RenderedBlock {
  * function passed through a model, and a rule that only lets through
  * `/something` costs nothing to keep.
  */
+/**
+ * The destinations this text already points at.
+ *
+ * The agent applies the auto-linker when it drafts, so a stored body
+ * arrives with markdown links already in it. Linking again without this
+ * produced two links to the same page in one sentence — not nested, and
+ * not broken, but repetitive to read and a weaker signal than one link
+ * would have been.
+ *
+ * Excluding what is already linked keeps both halves of the design: the
+ * links the agent chose survive, and the render pass still adds links to
+ * pages that did not exist when the article was written, which is the
+ * whole reason linking happens at render at all.
+ */
+function alreadyLinked(text: string): string[] {
+  return [...text.matchAll(/\]\((\/[^)]*)\)/g)].map((m) => m[1] ?? '');
+}
+
 function anchors(text: string): string {
   return text.replace(
     /\[([^\]]+)\]\((\/[a-z0-9\-/#]*)\)/gi,
@@ -189,7 +207,9 @@ export function renderBody(body: string, selfPath: string): RenderedBlock[] {
         // Headings are left unlinked: a link inside a heading competes
         // with the heading's own job, and search engines read the two
         // differently.
-        html: heading ? safe : anchors(withAutoLinks(safe, { selfPath, max: 6 })),
+        html: heading
+          ? safe
+          : anchors(withAutoLinks(safe, { selfPath, max: 6, exclude: alreadyLinked(safe) })),
       };
     });
 }

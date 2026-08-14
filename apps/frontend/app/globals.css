@@ -7128,3 +7128,41 @@ textarea:focus-visible {
 .edq__actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .edq__name { flex: 1 1 260px; }
 .edq__said { margin-top: 12px; }
+
+/* Autopilot state and its recent runs, in the editorial queue. An empty
+   queue means two different things — it never ran, or every draft was
+   rejected — and only one of them is a problem with the agent. */
+.edq__auto {
+  margin: 12px 0; padding: 14px 16px; border-radius: 12px;
+  background: color-mix(in srgb, var(--jm-move) 12%, transparent);
+  border-left: 3px solid var(--jm-move);
+}
+.edq__auto--off {
+  background: color-mix(in srgb, var(--jm-action) 12%, transparent);
+  border-left-color: var(--jm-action);
+}
+.edq__auto strong { display: block; font-size: 15px; color: var(--jm-ink); }
+.edq__auto p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--jm-dim); }
+.edq__next { font-style: italic; }
+
+.edq__runs { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.edq__run {
+  display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: start;
+  padding: 11px 13px; border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--jm-hairline);
+}
+.edq__outcome {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 3px 0; text-align: center; border-radius: 999px;
+  background: var(--jm-surface-2); color: var(--jm-dim);
+}
+.edq__run--queued .edq__outcome { color: var(--jm-move); background: color-mix(in srgb, var(--jm-move) 16%, transparent); }
+.edq__run--rejected .edq__outcome { color: var(--jm-action); background: color-mix(in srgb, var(--jm-action) 16%, transparent); }
+.edq__run--failed .edq__outcome { color: var(--jm-critical); background: color-mix(in srgb, var(--jm-critical) 16%, transparent); }
+.edq__run strong { display: block; font-size: 14px; color: var(--jm-ink); }
+.edq__run em { display: block; margin-top: 3px; font-size: 12.5px; font-style: normal; line-height: 1.55; color: var(--jm-dim); }
+
+@media (max-width: 460px) {
+  .edq__run { grid-template-columns: 1fr; gap: 6px; }
+  .edq__outcome { justify-self: start; padding: 3px 10px; }
+}
