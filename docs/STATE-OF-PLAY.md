@@ -3,6 +3,11 @@
 One file, kept current, so that nobody — human or agent — has to
 reconstruct the state of this platform from memory or from scrollback.
 
+The companion to this file is `CLAUDE.md` at the repository root, which
+holds the engineering directive and the repository's verified facts.
+That file says *how* to work here; this one says *where the work has got
+to*. Both are loaded before planning anything.
+
 It exists because the alternative was observed and is expensive: work
 gets re-explained, the same question gets asked three times, and a
 platform that is actually progressing reads as unstable because there
