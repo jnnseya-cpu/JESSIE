@@ -7316,3 +7316,103 @@ textarea:focus-visible {
   .nlc__row .btn { width: 100%; }
   .nlm__actions .btn { width: 100%; }
 }
+
+/* ------------------------------------------------------------------ *
+ * The launch screen, inside the document.
+ *
+ * Hidden by default and only ever shown to an installed app. A
+ * full-screen cover on an ordinary web visit would sit in front of the
+ * marketing pages and the blog — the pages whose whole job is that a
+ * stranger arrives and reads — and would do it to a crawler too.
+ * `display-mode: standalone` is what separates "somebody opened the app
+ * they installed" from "somebody clicked a search result".
+ * ------------------------------------------------------------------ */
+
+.splash { display: none; }
+
+@media (display-mode: standalone) {
+  .splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* The colour the manifest already declares, so the OS splash and this
+       one are the same surface and the handover is invisible. */
+    background: #102a43;
+    opacity: 1;
+
+    /* Belt and braces, and the braces are the important half: the fade
+       runs on a timer whether or not JavaScript ever arrives. A splash
+       that needs the app to load in order to reveal the app would turn
+       every bundle failure into a permanent blank screen. */
+    animation: splash-give-up 420ms ease 2600ms forwards;
+  }
+
+  /* The ready flag wins whenever it lands, which is normally long before
+     the timer. `visibility` as well as `opacity` so the cleared panel
+     cannot swallow a tap on whatever is beneath it. */
+  /* Fast, because on a warm reopen the app is ready almost immediately
+     and a leisurely fade leaves a translucent brand panel sitting over
+     live content — which reads as a rendering fault rather than a launch
+     screen. Long enough not to be a jump cut, short enough that the ghost
+     is never something anybody looks at. */
+  :root[data-app-ready] .splash {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 200ms ease, visibility 0s linear 200ms;
+  }
+
+  .splash__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Under the notch and above the home indicator. The layout already
+       sets viewport-fit: cover, which means these are real values here. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .splash__mark {
+    width: clamp(72px, 22vmin, 148px);
+    height: auto;
+    animation: splash-rise 300ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  .splash__name {
+    margin: clamp(14px, 4vmin, 26px) 0 0;
+    font-size: clamp(19px, 6vmin, 34px);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #f4faf9;
+    animation: splash-rise 300ms cubic-bezier(0.2, 0.7, 0.3, 1) 40ms both;
+  }
+
+  .splash__line {
+    margin: clamp(5px, 1.6vmin, 10px) 0 0;
+    font-size: clamp(12px, 3.2vmin, 17px);
+    color: rgba(244, 250, 249, 0.58);
+    animation: splash-rise 300ms cubic-bezier(0.2, 0.7, 0.3, 1) 80ms both;
+  }
+}
+
+@keyframes splash-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes splash-give-up {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+/* Movement is the product, not the loading screen. Somebody who has asked
+   the system for less motion still gets the brand and the handover — they
+   simply get it without anything sliding. */
+@media (prefers-reduced-motion: reduce) {
+  .splash__mark,
+  .splash__name,
+  .splash__line { animation: none; }
+  :root[data-app-ready] .splash { transition: none; }
+}

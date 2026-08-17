@@ -48,8 +48,11 @@ is the point of the file.
 | A newsletter reaches nobody twice | `UNIQUE (issue_id, user_id)`; second send attempted 0 with 4 rows for 4 people |
 | No marketing email without consent, and none to minors | Consent defaults false with a dated CHECK; an opted-in 12-year-old is still refused |
 | One-click unsubscribe with no session | Token `NOT NULL DEFAULT`, so no INSERT can create a member who cannot opt out |
+| A launch screen on every installed platform | 36 iOS launch images generated at build from one list; in-document splash verified in Chromium app mode |
+| The splash never reaches the open web | `display: none` outside `display-mode: standalone`, confirmed in a browser tab and mutation-tested |
+| A failed bundle cannot leave a blank screen | With JavaScript disabled the splash still clears itself and the site is usable |
 
-Test suite: **763 passing, 0 failing** — 716 backend, 25 body-command, 22 foodlens.
+Test suite: **773 passing, 0 failing** — 726 backend, 25 body-command, 22 foodlens.
 
 ---
 
