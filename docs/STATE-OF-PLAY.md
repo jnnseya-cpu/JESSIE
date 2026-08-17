@@ -44,8 +44,12 @@ is the point of the file.
 | Posts persist and publish | Migration 0023, status machine has no draft-to-published edge |
 | Autopilot runs survive a restart | Migration 0024, shown as "What it tried" |
 | Every ACU says where it came from | `grantSourceLabel`, disclosure on the account page |
+| Weekly newsletter, composed from the site's own pages | Migration 0025, 6–7 links an issue, 11-week rotation, sent and re-sent against real Postgres |
+| A newsletter reaches nobody twice | `UNIQUE (issue_id, user_id)`; second send attempted 0 with 4 rows for 4 people |
+| No marketing email without consent, and none to minors | Consent defaults false with a dated CHECK; an opted-in 12-year-old is still refused |
+| One-click unsubscribe with no session | Token `NOT NULL DEFAULT`, so no INSERT can create a member who cannot opt out |
 
-Test suite: **699 passing, 0 failing.**
+Test suite: **763 passing, 0 failing** — 716 backend, 25 body-command, 22 foodlens.
 
 ---
 
@@ -59,6 +63,9 @@ none of them can be closed from inside a sandbox.
 | Do the AI provider keys actually work in production? | Justin | Account page → editorial queue → "Check the AI keys actually work" |
 | Has the deploy picked up the branch head? | Justin | Vercel build log |
 | Four CSO registration fields for DCB0129 | Justin | See `docs/GO-LIVE.md` |
+| Does the newsletter actually deliver? | Justin | Needs `SMTP_USER` / `SMTP_PASS` in Vercel. Without them every issue renders in full and is recorded as `sandbox` — the flow is proven, the delivery is not |
+| Weekly cron for the newsletter | Justin | `POST /api/newsletter/cron` with `Authorization: Bearer $CRON_SECRET` |
+| Automatic sending, or approve each issue by hand? | Justin | Unset, the scheduler composes and queues for review. Set `NEWSLETTER_AUTO_APPROVE_BY` to a real name to have it approve and send too — that name is recorded on every issue |
 
 **Why an agent cannot close these.** Outbound HTTPS from the build
 sandbox to `jessmove.com` and `api.jessmove.com` is refused by the

@@ -402,6 +402,29 @@ const CATALOGUE_BY_CATEGORY: Readonly<
   ],
 
   'Growth & Partners': [
+    /*
+     * The weekly newsletter.
+     *
+     * Email and in-app, and no further. Not push and not SMS: a person who
+     * opted into a weekly email has not opted into being interrupted, and
+     * paid channels carrying marketing is how a messaging bill stops
+     * tracking anything useful.
+     *
+     * In-app is not a second copy of the advert — it is this catalogue's
+     * standing rule that every event lands in-app because in-app is the
+     * record of what happened. A member should be able to see that a
+     * newsletter was sent to them without going to look in their inbox,
+     * and an event that leaves no trace anywhere in the product is exactly
+     * the thing that rule exists to prevent.
+     *
+     * `adultOnly` and the absence of `mandatory` are both load-bearing.
+     * Without adultOnly this reaches a ten-year-old's inbox; with mandatory
+     * it would bypass the opt-out, which is the one flag a marketing
+     * message must never carry. The subject is composed per issue and
+     * overridden at send, so the template here is only the fallback for a
+     * preview with no issue attached.
+     */
+    E('growth.newsletter.weekly', 'Weekly newsletter', 'What your JESS MOVE account already includes', 'info', EI, { adultOnly: true }),
     E('partner.application_received', 'Partner application received', 'We received your Growth Partner application', 'info', EI, { adultOnly: true }),
     E('partner.approved', 'Partner approved', 'You’re in — your referral link is ready', 'success', EI, { adultOnly: true }),
     E('partner.rejected', 'Partner application declined', 'An update on your application', 'info', EI, { adultOnly: true }),

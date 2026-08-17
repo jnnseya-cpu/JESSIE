@@ -22,6 +22,7 @@ import { GrowthModule } from './growth/growth.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 import { MovementsModule } from './movements/movements.module';
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { PushModule } from './push/push.module';
@@ -51,6 +52,7 @@ import { StripeModule } from './stripe/stripe.module';
     GrowthModule,
     WearablesModule,
     MailModule,
+    NewsletterModule,
     MovementsModule,
     PrescriptionsModule,
     PushModule,

@@ -4,12 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import {
   BRAND,
   CHANNEL_DEFINITIONS,
-  SIGNATURE_LINE,
-  TAGLINE,
   eventByKey,
   renderSubject,
   type TemplateToken,
 } from '@jessmove/shared';
+import { wrapMessage } from './mail-render.logic';
 import {
   deliver,
   isConnectFailure,
@@ -200,45 +199,42 @@ export class MailService implements OnModuleDestroy {
     };
   }
 
-  /** The branded wrapper. Same shell on every outbound message. */
-  private wrap(title: string, bodyText: string): { text: string; html: string } {
-    const text = [bodyText, '', '—', SIGNATURE_LINE, 'https://jessmove.com'].join('\n');
-
-    const html = `<div style="margin:0;padding:24px;background:#f4faf9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #dbe7e5">
-<tr><td style="background:#102a43;padding:22px 28px">
-<span style="display:inline-block;width:30px;height:30px;border-radius:9px;background:#00a99d;color:#fff;text-align:center;line-height:30px;font-weight:700;font-size:13px">JM</span>
-<span style="color:#f4faf9;font-weight:700;letter-spacing:.02em;margin-left:10px;font-size:16px;vertical-align:middle">${BRAND.platform}</span>
-</td></tr>
-<tr><td style="padding:30px 28px 8px">
-<h1 style="margin:0 0 14px;font-size:21px;line-height:1.3;color:#102a43">${escapeHtml(title)}</h1>
-<div style="font-size:15.5px;line-height:1.65;color:#33475b">${bodyText
-      .split('\n\n')
-      .map((p) => `<p style="margin:0 0 14px">${escapeHtml(p)}</p>`)
-      .join('')}</div>
-</td></tr>
-<tr><td style="padding:8px 28px 26px">
-<p style="margin:22px 0 0;padding-top:16px;border-top:1px solid #e6efee;font-size:12.5px;line-height:1.6;color:#7a8896">
-${escapeHtml(SIGNATURE_LINE)}<br>
-${BRAND.platform} is a general wellness product. It does not diagnose or treat any condition and never contacts emergency services.<br>
-<a href="https://jessmove.com/privacy" style="color:#00a99d">Privacy</a> ·
-<a href="https://jessmove.com/policies" style="color:#00a99d">All policies</a>
-</p>
-</td></tr>
-</table>
-<p style="max-width:560px;margin:14px auto 0;font-size:11.5px;color:#9aa8b4;text-align:center">${escapeHtml(TAGLINE)}</p>
-</div>`;
-
-    return { text, html };
+  /** The branded wrapper, rendered by the pure module so tests can reach it. */
+  private wrap(
+    title: string,
+    bodyText: string,
+    unsubscribeUrl?: string,
+  ): { text: string; html: string } {
+    return wrapMessage(title, bodyText, unsubscribeUrl);
   }
 
-  /** Render without sending. The preview behind the template QA panel. */
-  render(eventKey: string, values: Partial<Record<TemplateToken, string>>, body?: string) {
+  /**
+   * Overrides for a message that is not a plain catalogue notification.
+   *
+   * `subject` exists because a newsletter's subject line is composed per
+   * issue and names the feature it leads on, which no static template can
+   * do. `unsubscribeUrl` exists because a marketing message must carry an
+   * opt-out and a password reset must not — so it is passed in by the
+   * caller that knows which kind of message it is sending, rather than
+   * inferred here from the event key.
+   */
+  render(
+    eventKey: string,
+    values: Partial<Record<TemplateToken, string>>,
+    body?: string,
+    overrides: { subject?: string; unsubscribeUrl?: string } = {},
+  ) {
     const event = eventByKey(eventKey);
     if (!event) throw new Error(`no catalogue event "${eventKey}"`);
 
-    const subject = renderSubject(event.subject, values);
-    const content = this.wrap(subject, body ?? defaultBody(eventKey, values));
+    const subject = overrides.subject?.trim()
+      ? overrides.subject.trim()
+      : renderSubject(event.subject, values);
+    const content = this.wrap(
+      subject,
+      body ?? defaultBody(eventKey, values),
+      overrides.unsubscribeUrl,
+    );
     return { event: event.key, subject, ...content };
   }
 
@@ -247,8 +243,9 @@ ${BRAND.platform} is a general wellness product. It does not diagnose or treat a
     to: string,
     values: Partial<Record<TemplateToken, string>> = {},
     body?: string,
+    overrides: { subject?: string; unsubscribeUrl?: string } = {},
   ): Promise<SentRecord> {
-    const rendered = this.render(eventKey, values, body);
+    const rendered = this.render(eventKey, values, body, overrides);
     const smtp = this.smtp();
     const at = new Date().toISOString();
     this.counter += 1;
@@ -395,13 +392,8 @@ function rowToRecord(row: Record<string, unknown>): SentRecord {
   };
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+
+
 
 /** A readable default so every catalogue event previews without bespoke copy. */
 function defaultBody(eventKey: string, values: Partial<Record<TemplateToken, string>>): string {

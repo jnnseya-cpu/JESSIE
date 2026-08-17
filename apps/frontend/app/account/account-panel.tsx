@@ -31,6 +31,7 @@ import { useAutosave, useSavedState } from './autosave';
 import { FunnelBeacon } from '../funnel-beacon';
 import { FunnelModule } from './funnel';
 import { EditorialModule } from './editorial';
+import { NewsletterConsent, NewsletterModule } from './newsletter';
 
 interface Me {
   userId: string;
@@ -792,7 +793,16 @@ export function AccountPanel() {
             </section>
           )}
 
+          {/*
+            Consent belongs to the member, so it sits in their own section
+            rather than behind an admin screen. Staff see it too — they are
+            members as well, and a control an administrator cannot find on
+            their own account is one they will not trust on anybody else's.
+          */}
+          {section === 'you' && <NewsletterConsent userId={me.userId} />}
+
           {section === 'you' && me.kind === 'platform_staff' && <FunnelModule />}
+          {section === 'you' && me.kind === 'platform_staff' && <NewsletterModule />}
           {section === 'you' && me.kind === 'platform_staff' && <EditorialModule />}
 
           {section === 'you' && me.kind === 'platform_staff' && (

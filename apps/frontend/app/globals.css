@@ -7214,3 +7214,105 @@ textarea:focus-visible {
 .acct__grants strong small { font-size: 11.5px; font-weight: 400; color: var(--jm-dim); }
 .acct__grants em { display: block; margin-top: 2px; font-size: 12.5px; font-style: normal; line-height: 1.5; color: var(--jm-ink); }
 .acct__grants span { display: block; margin-top: 2px; font-size: 11.5px; color: var(--jm-dim); }
+
+/* ------------------------------------------------------------------ *
+ * Newsletter: a member's consent, and the staff review panel.
+ *
+ * Reuses the tokens and the shapes the editorial queue already
+ * established — same callout treatment, same list rows, same field. The
+ * platform has one design system and a second opinion about what a card
+ * looks like is how it stops looking like one product.
+ * ------------------------------------------------------------------ */
+
+.nlc__row {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  justify-content: space-between;
+  margin-top: 12px; padding: 14px 16px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--jm-hairline);
+}
+.nlc__row strong { display: block; font-size: 15px; color: var(--jm-ink); }
+.nlc__row em {
+  display: block; margin-top: 4px; font-style: normal;
+  font-size: 13px; line-height: 1.55; color: var(--jm-dim);
+}
+.nlc__row .btn { flex: 0 0 auto; }
+.nlc__said { margin-top: 10px; }
+
+.nlm__auto {
+  margin: 12px 0; padding: 14px 16px; border-radius: 12px;
+  background: color-mix(in srgb, var(--jm-move) 12%, transparent);
+  border-left: 3px solid var(--jm-move);
+}
+.nlm__auto--off {
+  background: color-mix(in srgb, var(--jm-action) 12%, transparent);
+  border-left-color: var(--jm-action);
+}
+.nlm__auto strong { display: block; font-size: 15px; color: var(--jm-ink); }
+.nlm__auto p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--jm-dim); }
+
+/* The four numbers a reviewer needs before they read a word of the copy. */
+.nlm__audience {
+  list-style: none; margin: 14px 0 0; padding: 0;
+  display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+.nlm__audience li {
+  padding: 12px 14px; border-radius: 11px; text-align: center;
+  /* Translucent white, not --jm-surface-2. That token is a light surface
+     from the marketing pages, and inside the account shell --jm-ink and
+     --jm-dim are redefined as light colours — the combination renders
+     light text on a light box, which is invisible rather than merely ugly. */
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--jm-hairline);
+}
+.nlm__audience strong { display: block; font-size: 22px; font-weight: 800; color: var(--jm-ink); }
+.nlm__audience em {
+  display: block; margin-top: 3px; font-style: normal;
+  font-size: 12px; line-height: 1.45; color: var(--jm-dim);
+}
+
+.nlm__warn {
+  margin-top: 12px; padding: 12px 14px; border-radius: 11px;
+  background: color-mix(in srgb, var(--jm-action) 12%, transparent);
+  border-left: 3px solid var(--jm-action);
+}
+
+.nlm__subject { margin: 10px 0 0; }
+.nlm__subject strong { display: block; font-size: 16px; line-height: 1.4; color: var(--jm-ink); }
+.nlm__subject em {
+  display: block; margin-top: 4px; font-style: normal;
+  font-size: 13px; line-height: 1.55; color: var(--jm-dim);
+}
+
+.nlm__body {
+  margin: 12px 0 0; padding: 16px 18px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--jm-hairline);
+}
+.nlm__body p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.7; color: var(--jm-dim); }
+.nlm__body p:last-child { margin-bottom: 0; }
+.nlm__body strong { color: var(--jm-ink); }
+.nlm__body a { color: var(--jm-move); font-weight: 600; }
+
+.nlm__actions {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  margin-top: 14px;
+}
+.nlm__name { flex: 1 1 260px; }
+
+.nlm__list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.nlm__list li {
+  padding: 11px 13px; border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--jm-hairline);
+}
+.nlm__list strong { font-size: 14px; color: var(--jm-ink); }
+.nlm__list em {
+  margin-left: 8px; font-style: normal; font-size: 12px; color: var(--jm-dim);
+}
+.nlm__list span {
+  display: block; margin-top: 4px; font-size: 13px; line-height: 1.5; color: var(--jm-dim);
+}
+.nlm__said { margin-top: 12px; }
+
+@media (max-width: 560px) {
+  .nlc__row { flex-direction: column; align-items: stretch; }
+  .nlc__row .btn { width: 100%; }
+  .nlm__actions .btn { width: 100%; }
+}

@@ -42,3 +42,4 @@ export * from './referrers';
 export * from './metering';
 export * from './site-paths';
 export * from './link-graph';
+export * from './newsletter';
