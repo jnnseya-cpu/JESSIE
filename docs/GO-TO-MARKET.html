@@ -1,0 +1,1069 @@
+<title>Jess Move Launch Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root {
+  --ground:      #F4F7F7;
+  --surface:     #FFFFFF;
+  --surface-2:   #ECF1F1;
+  --ink:         #0B1F33;
+  --ink-soft:    #40545F;
+  --ink-faint:   #6C7F88;
+  --rule:        #D3DEDE;
+  --rule-strong: #B4C4C4;
+  --accent:      #00695E;
+  --accent-soft: #E0EFEC;
+  --proven:      #4A6E12;
+  --proven-soft: #EAF1DA;
+  --risk:        #9E4413;
+  --risk-soft:   #F7E9E0;
+  --shadow:      0 1px 2px rgba(11,31,51,.05), 0 8px 24px -12px rgba(11,31,51,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #08192A;
+    --surface:     #0F2739;
+    --surface-2:   #163044;
+    --ink:         #E9F2F1;
+    --ink-soft:    #A9BEC3;
+    --ink-faint:   #7C949B;
+    --rule:        #224154;
+    --rule-strong: #325C71;
+    --accent:      #57D2C0;
+    --accent-soft: #10362F;
+    --proven:      #A6CB5B;
+    --proven-soft: #1D2C12;
+    --risk:        #E39163;
+    --risk-soft:   #33200F;
+    --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:      #08192A;
+  --surface:     #0F2739;
+  --surface-2:   #163044;
+  --ink:         #E9F2F1;
+  --ink-soft:    #A9BEC3;
+  --ink-faint:   #7C949B;
+  --rule:        #224154;
+  --rule-strong: #325C71;
+  --accent:      #57D2C0;
+  --accent-soft: #10362F;
+  --proven:      #A6CB5B;
+  --proven-soft: #1D2C12;
+  --risk:        #E39163;
+  --risk-soft:   #33200F;
+  --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+.col  { max-width: 680px; }
+
+h1, h2, h3, h4, .eyebrow, .chip, .num, th, .btn {
+  font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+}
+
+.eyebrow {
+  font-size: 11.5px; font-weight: 600; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+}
+
+h1 {
+  font-size: clamp(38px, 6vw, 62px); font-weight: 700; line-height: 1.02;
+  letter-spacing: -.025em; margin: 0 0 18px; text-wrap: balance;
+}
+h2 {
+  font-size: clamp(25px, 3.4vw, 33px); font-weight: 700; line-height: 1.14;
+  letter-spacing: -.018em; margin: 0 0 4px; text-wrap: balance;
+}
+h3 {
+  font-size: 19px; font-weight: 600; line-height: 1.3;
+  letter-spacing: -.008em; margin: 0 0 8px; text-wrap: balance;
+}
+h4 {
+  font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0 10px;
+}
+p { margin: 0 0 16px; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+strong { font-weight: 600; }
+em.lede { font-style: normal; color: var(--ink-soft); }
+
+/* ---------- masthead ---------- */
+header.top {
+  border-bottom: 2px solid var(--ink);
+  padding: 56px 0 30px; margin-bottom: 44px;
+}
+.top .col { max-width: 760px; }
+.standfirst {
+  font-size: 20.5px; line-height: 1.5; color: var(--ink-soft); margin: 0 0 24px;
+}
+.meta-row {
+  display: flex; flex-wrap: wrap; gap: 10px 28px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px; color: var(--ink-faint);
+  border-top: 1px solid var(--rule); padding-top: 16px;
+}
+.meta-row b { color: var(--ink); font-weight: 600; }
+
+/* ---------- sections ---------- */
+section { margin: 0 0 72px; scroll-margin-top: 24px; }
+.sec-head {
+  display: flex; align-items: baseline; gap: 16px;
+  border-bottom: 1px solid var(--rule-strong); padding-bottom: 12px; margin-bottom: 26px;
+}
+.sec-head .num {
+  font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600;
+  color: var(--accent); flex: 0 0 auto; padding-top: 6px;
+}
+.sec-head p { margin: 6px 0 0; color: var(--ink-soft); font-size: 15.5px; }
+
+/* ---------- chips ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 3px; white-space: nowrap;
+}
+.chip--built  { background: var(--surface-2);   color: var(--ink-soft); }
+.chip--proven { background: var(--proven-soft);  color: var(--proven); }
+.chip--live   { background: var(--accent-soft);  color: var(--accent); }
+.chip--risk   { background: var(--risk-soft);    color: var(--risk); }
+
+/* ---------- tables ---------- */
+.tablewrap { overflow-x: auto; margin: 0 0 22px; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14.5px; }
+th {
+  text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-faint);
+  padding: 12px 14px; border-bottom: 1px solid var(--rule-strong); background: var(--surface-2);
+  vertical-align: bottom;
+}
+td { padding: 12px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.45; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.who { font-family: Archivo, sans-serif; font-size: 13px; font-weight: 600; }
+
+/* ---------- phase board ---------- */
+.phases { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.phase {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-top: 3px solid var(--accent); padding: 22px; box-shadow: var(--shadow);
+}
+.phase--2 { border-top-color: var(--proven); }
+.phase--3 { border-top-color: var(--ink); }
+.phase .day {
+  font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600;
+  color: var(--ink-faint); letter-spacing: .06em;
+}
+.phase h3 { margin: 6px 0 12px; }
+.phase ul { margin: 0 0 16px; padding-left: 18px; font-size: 15px; }
+.phase li { margin-bottom: 8px; }
+.gate {
+  border-top: 1px solid var(--rule); padding-top: 12px; margin-top: 4px;
+  font-size: 13.5px; color: var(--ink-soft);
+}
+.gate b { font-family: Archivo, sans-serif; font-size: 11px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink); display: block; margin-bottom: 4px; }
+
+/* ---------- callouts ---------- */
+.note {
+  border-left: 3px solid var(--accent); background: var(--surface);
+  padding: 18px 20px; margin: 0 0 22px;
+}
+.note--risk { border-left-color: var(--risk); }
+.note--proven { border-left-color: var(--proven); }
+.note h4 { color: var(--ink); }
+.note p:last-child { margin-bottom: 0; }
+
+/* ---------- numbers strip ---------- */
+.stats { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  background: var(--rule); border: 1px solid var(--rule); margin: 0 0 24px; }
+.stat { background: var(--surface); padding: 16px 18px; }
+.stat .v {
+  font-family: "IBM Plex Mono", monospace; font-size: 25px; font-weight: 600;
+  color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.stat .k { font-family: Archivo, sans-serif; font-size: 11px; font-weight: 500;
+  letter-spacing: .05em; color: var(--ink-faint); margin-top: 3px; line-height: 1.35; }
+
+/* ---------- script block ---------- */
+.script {
+  background: var(--surface); border: 1px solid var(--rule); padding: 20px 22px; margin: 0 0 20px;
+}
+.script .said { font-size: 16px; line-height: 1.6; }
+.script .said + .said { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--rule); }
+.script .cue {
+  font-family: Archivo, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 5px;
+}
+
+.two { display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--rule); padding: 20px; }
+.card h3 { margin-bottom: 6px; }
+.card p:last-child { margin-bottom: 0; }
+.card .tag { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-faint); }
+
+ul.tight { padding-left: 20px; margin: 0 0 18px; }
+ul.tight li { margin-bottom: 7px; }
+
+footer.end {
+  border-top: 2px solid var(--ink); padding-top: 22px; margin-top: 30px;
+  font-size: 13.5px; color: var(--ink-faint);
+}
+@media (prefers-reduced-motion: no-preference) {
+  a, .phase { transition: none; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="col">
+    <p class="eyebrow">Jess Move · Go-to-market · 90-day operating plan</p>
+    <h1>Sell the room in somebody&rsquo;s day.</h1>
+    <p class="standfirst">
+      The platform is built and largely proven. It has no customers. This is the plan to get the
+      first hundred &mdash; not through a launch, but through the eight kinds of people who already
+      gather the customers you want, and who cannot be paid to recommend you.
+    </p>
+    <div class="meta-row">
+      <span><b>Market</b> United Kingdom</span>
+      <span><b>Motion</b> Referral-led, community-first</span>
+      <span><b>Target</b> 100 paying accounts, 90 days</span>
+      <span><b>Branch</b> claude/jessie-os-spec-doc-7audof</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ 1 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">01</span>
+    <div>
+      <h2>The honest starting position</h2>
+      <p>What is true today, separated from what merely exists.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      A go-to-market plan built on an inflated view of readiness fails in week three, when the
+      demo breaks in front of the buyer who said yes. So this begins with the ledger.
+    </p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">0</div><div class="k">Customers acquired to date</div></div>
+    <div class="stat"><div class="v">773</div><div class="k">Automated tests passing</div></div>
+    <div class="stat"><div class="v">£5.99</div><div class="k">Premium, per month, on the web</div></div>
+    <div class="stat"><div class="v">£2</div><div class="k">Organisation floor, per seat</div></div>
+    <div class="stat"><div class="v">10&ndash;100</div><div class="k">Age range served</div></div>
+  </div>
+
+  <div class="note note--risk">
+    <h4>The cause of zero, found and fixed</h4>
+    <p>
+      Registration worked perfectly and returned 201 every time it was tested. It was simply
+      <strong>unreachable</strong>: eleven marketing pages, and not one had a primary call to action
+      that arrived at an account. The nav pointed at an onboarding explainer that ended in
+      &ldquo;Request access&rdquo; pointing at a <code>mailto:</code> form.
+    </p>
+    <p>
+      This matters to the plan more than any channel choice. It means <strong>the absence of
+      customers has never been evidence about demand</strong> &mdash; the experiment was never run.
+      Every number below is a first measurement, not a recovery.
+    </p>
+  </div>
+
+  <h4>Readiness ledger</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Capability</th><th>State</th><th>What that means for selling</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Registration reachable from every page</td><td><span class="chip chip--proven">Proven</span></td><td>Build-time check fails if it regresses. Safe to drive traffic.</td></tr>
+        <tr><td>Falls / strength &amp; balance module</td><td><span class="chip chip--proven">Proven</span></td><td>The wedge for the highest-intent channel.</td></tr>
+        <tr><td>Assurance page &amp; clinical hazard log</td><td><span class="chip chip--proven">Proven</span></td><td>An NHS or school buyer can diligence you without a meeting.</td></tr>
+        <tr><td>Referral routes for care settings</td><td><span class="chip chip--proven">Proven</span></td><td>Nine channel codes, no commission attached.</td></tr>
+        <tr><td>Funnel instrumentation</td><td><span class="chip chip--proven">Proven</span></td><td>Five steps, visible drop-off. You will know which screen kills it.</td></tr>
+        <tr><td>Weekly newsletter, consent-gated</td><td><span class="chip chip--proven">Proven</span></td><td>Retention engine. Currently 5 eligible recipients.</td></tr>
+        <tr><td>Blog engine + editorial review gate</td><td><span class="chip chip--proven">Proven</span></td><td>Organic surface. Needs a human reviewer weekly.</td></tr>
+        <tr><td>PWA install + launch screens</td><td><span class="chip chip--proven">Proven</span></td><td>No app-store commission, no review queue, £5.99 not £8.99.</td></tr>
+        <tr><td>Email delivery (SMTP credentials)</td><td><span class="chip chip--risk">Blocked</span></td><td><strong>Nothing sends.</strong> Renders and logs as sandbox. Fix before day 1.</td></tr>
+        <tr><td>AI provider keys verified working</td><td><span class="chip chip--built">Unverified</span></td><td>Probe button exists, never run against production.</td></tr>
+        <tr><td>DCB0129 clinical safety sign-off</td><td><span class="chip chip--risk">Blocked</span></td><td>Needs a named Clinical Safety Officer. Gates all NHS revenue.</td></tr>
+        <tr><td>Stripe live keys &amp; price IDs</td><td><span class="chip chip--built">Unverified</span></td><td>No confirmed end-to-end payment. Gates every pound.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note note--risk">
+    <h4>Four things gate revenue, and none is a marketing problem</h4>
+    <p>
+      SMTP credentials, a live Stripe path, working AI keys, and a Clinical Safety Officer.
+      Until those four are closed, spending on acquisition converts interest into refunds and
+      apologies. <strong>Days 1&ndash;14 exist to close them.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 2 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">02</span>
+    <div>
+      <h2>Positioning, and the one sentence</h2>
+      <p>What you are, to whom, against what alternative.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      Every fitness app sells transformation. That is a crowded, expensive, low-trust category
+      where the incumbent is Strava&rsquo;s brand budget and the customer&rsquo;s own failed
+      January. Jess Move should not enter it.
+    </p>
+    <p>
+      The defensible position is the opposite claim: <strong>this is not a fitness product, it is a
+      product about the day you already have.</strong> Two minutes. Between things. Ages ten to a
+      hundred. That framing wins in exactly the places a fitness app is refused &mdash; a falls
+      group, a care home, a school, a link worker&rsquo;s caseload.
+    </p>
+  </div>
+
+  <div class="script">
+    <div class="said">
+      <span class="cue">The sentence</span>
+      Jess Move finds the movement your day already has room for &mdash; two minutes at a time,
+      for anyone from ten to a hundred &mdash; and it never tells you you&rsquo;re fine when
+      you&rsquo;re not.
+    </div>
+    <div class="said">
+      <span class="cue">To a care professional</span>
+      It gives someone a starting level, not a risk score. It says out loud that a good result
+      isn&rsquo;t evidence of low risk. And nobody is paid to recommend it.
+    </div>
+    <div class="said">
+      <span class="cue">To an employer</span>
+      Group reporting with a floor of eight people. You see whether a programme is working. You
+      never see a person.
+    </div>
+  </div>
+
+  <h4>The three claims that do the work</h4>
+  <div class="two">
+    <div class="card">
+      <p class="tag">Claim 01 &mdash; refusals</p>
+      <h3>It says what it will not do</h3>
+      <p>
+        A published hazard log, enforced refusals, and a strength module that states a good score
+        is not evidence of low risk. In health, the product that under-claims is the one a
+        professional can pass on.
+      </p>
+    </div>
+    <div class="card">
+      <p class="tag">Claim 02 &mdash; no conflict</p>
+      <h3>Nobody is paid to refer</h3>
+      <p>
+        No commission, no per-signup fee, no revenue share. This is the single most valuable
+        asset you own for clinical and public-sector channels, where a fee would be a
+        disqualifying conflict of interest.
+      </p>
+    </div>
+    <div class="card">
+      <p class="tag">Claim 03 &mdash; the whole household</p>
+      <h3>Ten to a hundred, one account</h3>
+      <p>
+        Family at £12.99 covers four people across child and later-life modes with guardian
+        controls. No competitor in falls prevention also serves a ten-year-old.
+      </p>
+    </div>
+    <div class="card">
+      <p class="tag">What not to say</p>
+      <h3>Never the AI</h3>
+      <p>
+        No vendor or model names on public pages &mdash; a standing rule, and correct. Buyers in
+        this market hear &ldquo;AI&rdquo; as risk. Lead with the refusals; the intelligence is
+        how, not what.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 3 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">03</span>
+    <div>
+      <h2>Customer segments, ranked by reachability</h2>
+      <p>Not by size. Size without a route is a daydream.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      Segments are ranked by <strong>cost to reach the first paying account</strong>, because with
+      zero customers your scarcest resource is proof, not addressable market.
+    </p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Rank</th><th>Segment</th><th>Buys</th><th class="n">Price</th><th>Route in</th><th>Cycle</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="n">1</td>
+          <td class="who">Falls-prevention group graduates</td>
+          <td>Premium / Family</td><td class="n">£5.99&ndash;12.99</td>
+          <td>Group leader hands it over at the last session</td><td class="n">Days</td>
+        </tr>
+        <tr>
+          <td class="n">2</td>
+          <td class="who">Social prescribing caseloads</td>
+          <td>Premium</td><td class="n">£5.99</td>
+          <td>Link worker, at the end of a six-week block</td><td class="n">1&ndash;3 wks</td>
+        </tr>
+        <tr>
+          <td class="n">3</td>
+          <td class="who">Retirement &amp; sheltered housing</td>
+          <td>Organisation</td><td class="n">£2&ndash;5/seat</td>
+          <td>Scheme manager, activities coordinator</td><td class="n">4&ndash;8 wks</td>
+        </tr>
+        <tr>
+          <td class="n">4</td>
+          <td class="who">Community pharmacy</td>
+          <td>Premium / Family</td><td class="n">£5.99&ndash;12.99</td>
+          <td>Counter conversation, medication review</td><td class="n">1&ndash;2 wks</td>
+        </tr>
+        <tr>
+          <td class="n">5</td>
+          <td class="who">Adult children buying for a parent</td>
+          <td>Family</td><td class="n">£12.99</td>
+          <td>Organic search, the falls content cluster</td><td class="n">Days</td>
+        </tr>
+        <tr>
+          <td class="n">6</td>
+          <td class="who">Care providers (domiciliary, residential)</td>
+          <td>Organisation</td><td class="n">£2&ndash;5/seat</td>
+          <td>Registered manager; CQC evidence angle</td><td class="n">6&ndash;12 wks</td>
+        </tr>
+        <tr>
+          <td class="n">7</td>
+          <td class="who">SME employers, 50&ndash;500 staff</td>
+          <td>Organisation</td><td class="n">£2&ndash;5/seat</td>
+          <td>HR / wellbeing lead, sedentary-desk angle</td><td class="n">8&ndash;16 wks</td>
+        </tr>
+        <tr>
+          <td class="n">8</td>
+          <td class="who">Schools</td>
+          <td>Organisation</td><td class="n">£2&ndash;5/seat</td>
+          <td>PE or wellbeing lead; safeguarding-first</td><td class="n">A term</td>
+        </tr>
+        <tr>
+          <td class="n">9</td>
+          <td class="who">GP practices &amp; PCNs</td>
+          <td>Organisation</td><td class="n">£2&ndash;5/seat</td>
+          <td>Blocked until DCB0129 is signed</td><td class="n">3&ndash;9 mo</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4>The strategic read</h4>
+    <p>
+      Ranks 1, 2 and 4 are <strong>consumer revenue reached through an institutional door</strong>.
+      That is the whole trick: you get the trust and the concentration of a B2B channel while
+      selling a £5.99 consumer subscription that needs no procurement, no contract, no
+      information-governance review, and no Clinical Safety Officer.
+    </p>
+    <p>
+      Ranks 3, 6, 7 and 8 are real contracts worth ten to a hundred times more each &mdash; and
+      they take a quarter to close. <strong>Start them in month one, expect them in month four.</strong>
+      Do not let their slowness stop you counting the fast ones.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 4 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">04</span>
+    <div>
+      <h2>The first 100 customers</h2>
+      <p>Named, counted, and sourced from eight rooms.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      One hundred customers is not a marketing campaign. At this stage it is roughly
+      <strong>twelve conversations that go well</strong>, because each of the rooms below contains
+      between eight and forty people who all have the same problem at the same moment.
+    </p>
+    <p>
+      The unit of sale is not a person. <strong>It is a room.</strong>
+    </p>
+  </div>
+
+  <h4>The arithmetic</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Source</th><th class="n">Rooms</th><th class="n">Per room</th><th class="n">Take-up</th><th class="n">Accounts</th><th>Why they convert</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="who">Falls-prevention course endings</td><td class="n">6</td><td class="n">12</td><td class="n">35%</td><td class="n">25</td><td>Course ends, fear of losing progress is live</td></tr>
+        <tr><td class="who">Social prescribing block endings</td><td class="n">4</td><td class="n">10</td><td class="n">30%</td><td class="n">12</td><td>Same moment, professional handover</td></tr>
+        <tr><td class="who">Sheltered housing activity groups</td><td class="n">3</td><td class="n">25</td><td class="n">25%</td><td class="n">19</td><td>Social proof in the room, shared challenges</td></tr>
+        <tr><td class="who">Community pharmacy counters</td><td class="n">4</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">14</td><td>Medication review, appetite &amp; weight questions</td></tr>
+        <tr><td class="who">Organic search &mdash; falls cluster</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">1.5%</td><td class="n">18</td><td>Adult child searching at 11pm</td></tr>
+        <tr><td class="who">Word of mouth from the above</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">12</td><td>Household and crew invitations</td></tr>
+        <tr><td class="who"><strong>Total</strong></td><td class="n"><strong>17</strong></td><td class="n"></td><td class="n"></td><td class="n"><strong>100</strong></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note note--proven">
+    <h4>Why the take-up rates are plausible, and how to falsify them fast</h4>
+    <p>
+      These are <em>modelled</em>, not measured &mdash; you have no conversion history. They assume
+      a warm, in-person handover from a trusted professional at a moment of live need, which is the
+      highest-converting acquisition context that exists outside of search intent.
+    </p>
+    <p>
+      <strong>Falsify by room three.</strong> If the first three rooms convert below 15%, the
+      problem is the handover moment or the price, not the volume &mdash; and no amount of extra
+      rooms fixes it. Stop and change the offer before booking room four.
+    </p>
+  </div>
+
+  <h4>How to source the rooms &mdash; concretely</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Room type</th><th>Where the list is</th><th>The approach that works</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="who">Falls prevention groups</td>
+          <td>Local authority public health teams publish commissioned strength-and-balance
+              providers. Age UK local branches. Later Life Training alumni network.</td>
+          <td>Email the instructor, not the commissioner. Ask to attend a final session as an
+              observer. Offer the strength module free to the group first.</td>
+        </tr>
+        <tr>
+          <td class="who">Social prescribing link workers</td>
+          <td>Every PCN has them. National Association of Link Workers. Local voluntary sector
+              infrastructure organisations (CVS).</td>
+          <td>Lead with the privacy answer: conditions stored as catalogue identifiers, no free
+              text, never leaves the account, deleted in one action.</td>
+        </tr>
+        <tr>
+          <td class="who">Sheltered &amp; retirement housing</td>
+          <td>Housing 21, Anchor, Abbeyfield, ExtraCare, and independent schemes via the local
+              authority housing register.</td>
+          <td>Activities coordinator first, scheme manager second. Run one live session in the
+              communal lounge. Bring nothing to sign.</td>
+        </tr>
+        <tr>
+          <td class="who">Community pharmacy</td>
+          <td>NHS England pharmacy directory by postcode. Independents convert; multiples need
+              head office and will take a year.</td>
+          <td>Target the New Medicine Service and medication review conversations, where appetite,
+              weight and mobility already come up.</td>
+        </tr>
+        <tr>
+          <td class="who">Care providers</td>
+          <td>CQC publishes every registered provider with rating and contact. Filter by
+              &ldquo;Requires improvement&rdquo; on responsive or effective.</td>
+          <td>Lead with evidence for inspection: group reporting, k-anonymity floor of eight,
+              an audit trail. Never lead with wellbeing.</td>
+        </tr>
+        <tr>
+          <td class="who">Employers</td>
+          <td>Local chambers of commerce, Federation of Small Businesses, and any employer already
+              running a step challenge (they have budget and a failed incumbent).</td>
+          <td>Sell the report, not the app: what a manager can see, and the promise that they can
+              never see a person.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="script">
+    <div class="said">
+      <span class="cue">The ask &mdash; to a falls group instructor, verbatim</span>
+      &ldquo;Your course ends and people lose what they built &mdash; that&rsquo;s the bit
+      nobody funds. I&rsquo;ve built something for exactly that week. I&rsquo;m not asking you to
+      recommend it. I&rsquo;m asking to sit in on your last session, and if it&rsquo;s any good
+      you can decide afterwards. Nobody gets paid for this, including you &mdash; there&rsquo;s no
+      commission behind it, deliberately.&rdquo;
+    </div>
+    <div class="said">
+      <span class="cue">The close</span>
+      &ldquo;Two months free, no card. If it hasn&rsquo;t helped by then it costs them nothing and
+      they&rsquo;ve lost a fortnight of nothing.&rdquo;
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 5 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">05</span>
+    <div>
+      <h2>The 30 / 60 / 90</h2>
+      <p>Each phase has one job and one gate. Do not start the next until the gate passes.</p>
+    </div>
+  </div>
+
+  <div class="phases">
+    <div class="phase">
+      <div class="day">DAY 1 &ndash; 30</div>
+      <h3>Make it possible to pay you</h3>
+      <ul>
+        <li><strong>Days 1&ndash;7 · Unblock.</strong> SMTP credentials in Vercel. Stripe live keys and price IDs. Run the AI provider probe. Confirm the deploy is past the branch head.</li>
+        <li><strong>Days 3&ndash;10 · Buy your own product.</strong> From a phone, as a stranger, on mobile data. Pay real money. Cancel. Refund yourself.</li>
+        <li><strong>Days 5&ndash;14 · Appoint a Clinical Safety Officer.</strong> Longest lead time of anything here.</li>
+        <li><strong>Days 7&ndash;21 · Book six rooms.</strong> Falls groups and link workers only.</li>
+        <li><strong>Days 10&ndash;30 · Run three.</strong> Observe, do not pitch. Record the take-up.</li>
+        <li><strong>Ongoing · Approve one newsletter and two articles weekly.</strong> Ninety minutes total.</li>
+      </ul>
+      <div class="gate">
+        <b>Gate to phase 2</b>
+        Ten paying accounts, acquired from at most three rooms, with money actually settled in the
+        bank &mdash; and the funnel showing where the other people stopped.
+      </div>
+    </div>
+
+    <div class="phase phase--2">
+      <div class="day">DAY 31 &ndash; 60</div>
+      <h3>Prove the room repeats</h3>
+      <ul>
+        <li><strong>Repeat the winning room type.</strong> Whichever of the three converted best, book six more of exactly that.</li>
+        <li><strong>Fix the worst funnel step.</strong> You will have real drop-off data. One screen will be responsible for most of the loss.</li>
+        <li><strong>Open two organisation conversations.</strong> Sheltered housing and one care provider. Expect nothing before day 90.</li>
+        <li><strong>Publish the falls content cluster.</strong> Twelve articles targeting what an adult child types at 11pm.</li>
+        <li><strong>Ask your first twenty customers one question:</strong> &ldquo;What nearly stopped you?&rdquo;</li>
+        <li><strong>Turn on the weekly newsletter properly.</strong> Consent grows from the account page.</li>
+      </ul>
+      <div class="gate">
+        <b>Gate to phase 3</b>
+        Forty paying accounts. Month-one retention above 60%. At least one organisation with a
+        written proposal on the table.
+      </div>
+    </div>
+
+    <div class="phase phase--3">
+      <div class="day">DAY 61 &ndash; 90</div>
+      <h3>Turn one room into a channel</h3>
+      <ul>
+        <li><strong>Recruit five standing referrers.</strong> People who hand it on every cohort, not once.</li>
+        <li><strong>Close one organisation contract.</strong> Ten seats minimum, annual. Any logo beats a bigger pipeline.</li>
+        <li><strong>Build the referrer pack.</strong> One page a professional can hand over without explaining anything.</li>
+        <li><strong>Instrument every code.</strong> Nine referrer kinds already exist &mdash; make each room use its own.</li>
+        <li><strong>Decide on app stores.</strong> £8.99 versus £5.99 is a 33% margin question, not a distribution one.</li>
+        <li><strong>Write the case study.</strong> One named group, real numbers, reviewed by them.</li>
+      </ul>
+      <div class="gate">
+        <b>Gate to scaling spend</b>
+        One hundred accounts. Payback under 60 days. A repeatable room type with a named contact
+        who will do it again unprompted.
+      </div>
+    </div>
+  </div>
+
+  <div class="note note--risk">
+    <h4>What is deliberately absent from all ninety days</h4>
+    <p>
+      No paid advertising. No app-store launch. No press. No conference stand. No influencer.
+      Every one of those spends money to find people you cannot yet keep, before you know which
+      screen loses them. <strong>Paid acquisition begins on day 91 at the earliest, and only if
+      payback under 60 days has been measured rather than assumed.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 6 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">06</span>
+    <div>
+      <h2>Suppliers, and how to source them</h2>
+      <p>A software business still has a supply chain. Yours has one urgent gap.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      Your standing rule is <strong>no vendor beyond Vercel and Firebase</strong>. That is a good
+      rule &mdash; every additional vendor is a data processor, a contract, a security review and a
+      question in every enterprise sale. Keep it. It means the supplier list below is mostly
+      <em>people</em>, not platforms.
+    </p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Supplier</th><th>Why needed</th><th>How to source</th><th class="n">Cost</th><th class="n">Lead time</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="who">Clinical Safety Officer<br><span class="chip chip--risk">Critical path</span></td>
+          <td>DCB0129 requires a named, registered clinician to sign the hazard log. Without one you
+              cannot sell to NHS, PCNs, or most care providers.</td>
+          <td>A registered clinician (doctor, nurse, pharmacist, AHP) with DCB0129 training.
+              Source via clinical safety consultancies, or a part-time CSO on a retainer &mdash;
+              this is a recognised freelance role.</td>
+          <td class="n">£4&ndash;12k<br>setup</td><td class="n">4&ndash;10 wks</td>
+        </tr>
+        <tr>
+          <td class="who">Transactional email</td>
+          <td>Nothing sends today. Gates registration confirmation, password reset, guardian
+              consent and the newsletter.</td>
+          <td>Already architected for SMTP with a Hostinger default. Credentials into Vercel.
+              No new vendor needed.</td>
+          <td class="n">&lt;£20/mo</td><td class="n">1 day</td>
+        </tr>
+        <tr>
+          <td class="who">Payments</td>
+          <td>Stripe. Live keys, price IDs, and a confirmed end-to-end payment.</td>
+          <td>Already integrated. Needs live-mode verification and a real refund tested.</td>
+          <td class="n">1.5% + 20p</td><td class="n">2&ndash;5 days</td>
+        </tr>
+        <tr>
+          <td class="who">Named editorial reviewer</td>
+          <td>No agent-written health copy may reach the public unreviewed. This is a hard control,
+              and currently it has no person attached.</td>
+          <td>Can be you. Must be a named human, weekly, ~90 minutes. If it is not diarised it
+              will not happen and the content engine stalls.</td>
+          <td class="n">Time</td><td class="n">Immediate</td>
+        </tr>
+        <tr>
+          <td class="who">Data protection / DPIA</td>
+          <td>Health data, minors, employers. Any organisation buyer will ask for a DPIA and a
+              processing agreement before signing.</td>
+          <td>Fractional DPO or a one-off DPIA from a health-tech-literate privacy consultant.
+              ICO registration is a legal minimum and costs £52.</td>
+          <td class="n">£1.5&ndash;4k</td><td class="n">2&ndash;4 wks</td>
+        </tr>
+        <tr>
+          <td class="who">Penetration test</td>
+          <td>Enterprise and public sector buyers ask for a recent report. Cyber Essentials Plus is
+              often the actual requirement.</td>
+          <td>CREST-accredited tester. Cyber Essentials via IASME. Do this before the first
+              organisation contract, not during it.</td>
+          <td class="n">£3&ndash;8k</td><td class="n">3&ndash;6 wks</td>
+        </tr>
+        <tr>
+          <td class="who">Accessibility audit</td>
+          <td>Public sector procurement requires WCAG 2.2 AA. Your users include ninety-year-olds;
+              this is product quality, not paperwork.</td>
+          <td>AbilityNet or a specialist auditor. Prioritise the registration flow and the
+              strength module.</td>
+          <td class="n">£2&ndash;5k</td><td class="n">2&ndash;4 wks</td>
+        </tr>
+        <tr>
+          <td class="who">Insurance</td>
+          <td>Professional indemnity and cyber liability. Organisation contracts will specify
+              minimum cover, typically £1&ndash;5m.</td>
+          <td>A broker who understands digital health &mdash; not a generic comparison site.</td>
+          <td class="n">£1&ndash;3k/yr</td><td class="n">1&ndash;2 wks</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4>Sourcing principle</h4>
+    <p>
+      For every supplier above, ask one question before signing: <strong>&ldquo;Does this become a
+      question I have to answer in every future sale?&rdquo;</strong> A processor holding health
+      data does. A pen-test report does not &mdash; it answers questions. Buy the second kind
+      freely and the first kind almost never.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 7 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">07</span>
+    <div>
+      <h2>Acquisition economics</h2>
+      <p>What you can afford to spend, derived from what you actually charge.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>
+      Your target gross margin is 50%. At £5.99 a month that is roughly <strong>£3 of gross profit
+      per subscriber per month</strong>. Everything below follows from that one number, and it is
+      unforgiving of expensive channels.
+    </p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Channel</th><th class="n">Modelled CAC</th><th class="n">Payback</th><th>Verdict at this stage</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="who">Referral from a care setting</td><td class="n">£0&ndash;8</td><td class="n">0&ndash;3 mo</td><td><span class="chip chip--live">Do this</span> Time cost only. Highest trust.</td></tr>
+        <tr><td class="who">Organic search, falls cluster</td><td class="n">£2&ndash;10</td><td class="n">1&ndash;4 mo</td><td><span class="chip chip--live">Do this</span> Compounds. Slow to start.</td></tr>
+        <tr><td class="who">Word of mouth / household</td><td class="n">≈£0</td><td class="n">Immediate</td><td><span class="chip chip--live">Do this</span> Family plan is the mechanism.</td></tr>
+        <tr><td class="who">Newsletter to existing members</td><td class="n">≈£0</td><td class="n">&mdash;</td><td><span class="chip chip--live">Retention</span> Not acquisition. Judge on churn.</td></tr>
+        <tr><td class="who">Organisation contract</td><td class="n">£300&ndash;1,500</td><td class="n">4&ndash;9 mo</td><td><span class="chip chip--built">Later</span> 10 seats × £2 = £20/mo. Needs 50+ seats to justify.</td></tr>
+        <tr><td class="who">Paid social</td><td class="n">£25&ndash;60</td><td class="n">8&ndash;20 mo</td><td><span class="chip chip--risk">Not yet</span> Longer than your retention data exists.</td></tr>
+        <tr><td class="who">App store launch</td><td class="n">Commission</td><td class="n">&mdash;</td><td><span class="chip chip--risk">Not yet</span> £8.99 vs £5.99 &mdash; 33% of price to a middleman.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note note--risk">
+    <h4>The organisation-pricing trap</h4>
+    <p>
+      Ten seats at the £2 floor is <strong>£20 a month</strong> &mdash; less than four consumer
+      subscribers, for a sale that takes three months and a DPIA. The minimum viable organisation
+      deal is closer to <strong>fifty seats, or £5 per seat</strong>. Price the floor for schools
+      and charities where the logo is worth more than the revenue; quote everyone else at £4&ndash;5
+      and let the contract close the gap.
+    </p>
+  </div>
+
+  <h4>The free tier, read as an acquisition instrument</h4>
+  <div class="col">
+    <p>
+      Fifty ACU a month for two months, then never again &mdash; and no card. This is unusually
+      well judged for this market. The people you are selling to are frequently burned by
+      subscriptions they could not cancel, and &ldquo;no card, nothing charged&rdquo; removes the
+      single biggest objection a link worker will raise on a customer&rsquo;s behalf.
+    </p>
+    <p>
+      <strong>The risk is the cliff.</strong> Month three arrives and the allowance stops. Instrument
+      that moment specifically: if conversion at the cliff is under 20%, the fix is a smaller
+      permanently-free tier, not a longer trial.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 8 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">08</span>
+    <div>
+      <h2>Marketing engine</h2>
+      <p>Three surfaces, already built. None of them is advertising.</p>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <p class="tag">Surface 01 &mdash; owned</p>
+      <h3>The falls content cluster</h3>
+      <p>
+        Write for the adult child at 11pm, not the clinician. &ldquo;Exercises to stop falling&rdquo;,
+        &ldquo;my mum is scared of falling&rdquo;, &ldquo;what to eat on appetite-suppressing
+        medication&rdquo;. Twelve articles beats a hundred thin ones. Every article must reach
+        registration in one click.
+      </p>
+    </div>
+    <div class="card">
+      <p class="tag">Surface 02 &mdash; earned</p>
+      <h3>The assurance page</h3>
+      <p>
+        A published hazard log and a list of enforced refusals lets a buyer diligence you at
+        midnight without booking a meeting. This shortens institutional sales more than any
+        brochure. Link it from every organisation conversation in the first email.
+      </p>
+    </div>
+    <div class="card">
+      <p class="tag">Surface 03 &mdash; retained</p>
+      <h3>The weekly newsletter</h3>
+      <p>
+        Composed from your own feature pages, so it cannot promise something that does not exist.
+        Consent-gated and currently reaching five people. Its job is not acquisition &mdash; it is
+        stopping the month-two drop-off by showing people the product they already paid for.
+      </p>
+    </div>
+    <div class="card">
+      <p class="tag">Surface 04 &mdash; the multiplier</p>
+      <h3>The referrer pack</h3>
+      <p>
+        One page. What it does, what it refuses to do, the privacy answer, and a code. A
+        professional will not deliver your pitch &mdash; they will hand over a piece of paper. Make
+        that paper excellent and the channel scales without you in the room.
+      </p>
+    </div>
+  </div>
+
+  <div class="note note--risk">
+    <h4>On the agency recommendation &mdash; marketwaros.com</h4>
+    <p>
+      <strong>I could not evaluate this.</strong> The site is unreachable from this environment: the
+      network policy refused the request outright, and a web search returns no such domain (the
+      near matches are MarketWatch, marketwars.com and MarketWurks, none of which appear to be what
+      you mean).
+    </p>
+    <p>
+      Rather than invent a recommendation, here is what to check before engaging any agency at this
+      stage. <strong>The honest answer is that you should probably not hire one yet</strong> &mdash;
+      you have no conversion data, so an agency would be optimising a funnel nobody has measured,
+      and you would pay to learn what your first three rooms will tell you for free. If you engage
+      one anyway, require: named UK health or public-sector clients you can phone; a refusal to
+      promise leads; payment tied to a defined deliverable rather than a monthly retainer; and no
+      access to member data of any kind. Send me the correct URL and I will assess them properly.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 9 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">09</span>
+    <div>
+      <h2>Metrics, and the numbers that would end the plan</h2>
+      <p>Targets are worthless without a threshold that means stop.</p>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Metric</th><th class="n">Day 30</th><th class="n">Day 60</th><th class="n">Day 90</th><th>Kill / pivot threshold</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="who">Paying accounts</td><td class="n">10</td><td class="n">40</td><td class="n">100</td><td>Under 10 by day 45 &rarr; the offer is wrong, not the channel</td></tr>
+        <tr><td class="who">Rooms run</td><td class="n">3</td><td class="n">9</td><td class="n">17</td><td>Cannot book 3 rooms in 21 days &rarr; the pitch is wrong</td></tr>
+        <tr><td class="who">Room take-up</td><td class="n">25%</td><td class="n">30%</td><td class="n">35%</td><td>Under 15% across 3 rooms &rarr; stop booking, change the offer</td></tr>
+        <tr><td class="who">Registration completion</td><td class="n">40%</td><td class="n">55%</td><td class="n">65%</td><td>Under 30% &rarr; a screen problem, fix before more traffic</td></tr>
+        <tr><td class="who">Month-1 retention</td><td class="n">&mdash;</td><td class="n">60%</td><td class="n">70%</td><td>Under 40% &rarr; do not spend a pound on acquisition</td></tr>
+        <tr><td class="who">Free-to-paid at the cliff</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">20%</td><td>Under 10% &rarr; restructure the free tier</td></tr>
+        <tr><td class="who">Standing referrers</td><td class="n">1</td><td class="n">3</td><td class="n">5</td><td>Zero repeat referrers by day 90 &rarr; it is a favour, not a channel</td></tr>
+        <tr><td class="who">Organisation proposals out</td><td class="n">0</td><td class="n">2</td><td class="n">4</td><td>&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4>The one number that matters most</h4>
+    <p>
+      <strong>Room take-up.</strong> Everything else is downstream. If a trusted professional hands
+      your product to twelve people at the exact moment they need it and fewer than two sign up,
+      no channel, no article and no advertisement will save the plan &mdash; and you will have
+      learned it in three weeks for the cost of travel.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 10 ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">10</span>
+    <div>
+      <h2>Risks, ranked by what they cost you</h2>
+      <p>&nbsp;</p>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Risk</th><th>Consequence</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="who">A safety incident attributed to the product</td>
+          <td>Existential. Ends the referral channel nationally, not locally.</td>
+          <td>The refusals are already built and enforced. Never weaken them for conversion.
+              Appoint the CSO. Never let an agent-written health claim publish unreviewed.</td>
+        </tr>
+        <tr>
+          <td class="who">Payment path broken at launch</td>
+          <td>Every acquired customer is lost at the last step, and you blame the channel.</td>
+          <td>Buy your own product with real money in week one. Refund yourself.</td>
+        </tr>
+        <tr>
+          <td class="who">Email silently not sending</td>
+          <td>No confirmations, no resets, no newsletter. Looks like churn; is actually plumbing.</td>
+          <td>SMTP credentials before any room is booked. Check the mail log after room one.</td>
+        </tr>
+        <tr>
+          <td class="who">Referral channel treated as a favour</td>
+          <td>Fifteen customers, then it stops, and it never repeats.</td>
+          <td>The measure is <em>standing</em> referrers who hand it on every cohort. Build the
+              pack so it survives without you.</td>
+        </tr>
+        <tr>
+          <td class="who">Free-tier cliff churns everyone at month three</td>
+          <td>You acquire 100 and keep 20, and mistake it for a marketing problem.</td>
+          <td>Instrument the cliff now. Decide the permanent free floor before it arrives.</td>
+        </tr>
+        <tr>
+          <td class="who">Organisation deals consume the quarter</td>
+          <td>Zero revenue and a full calendar. The classic early B2B trap.</td>
+          <td>Cap organisation effort at one day a week until a consumer channel repeats.</td>
+        </tr>
+        <tr>
+          <td class="who">Building instead of selling</td>
+          <td>The most likely failure by a distance. 773 tests pass and nobody has paid you.</td>
+          <td>Feature work is frozen for 30 days except the four revenue blockers. Everything else
+              waits for a customer to ask.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ close ============================ -->
+<section>
+  <div class="sec-head">
+    <span class="num">&mdash;</span>
+    <div>
+      <h2>This week</h2>
+      <p>If nothing else on this page happens, these seven things should.</p>
+    </div>
+  </div>
+
+  <div class="col">
+    <ul class="tight">
+      <li><strong>Put SMTP credentials in Vercel</strong> and send yourself a real email.</li>
+      <li><strong>Confirm Stripe is live</strong> and buy your own subscription from a phone.</li>
+      <li><strong>Press the provider probe</strong> in the editorial queue and read the result.</li>
+      <li><strong>Email six falls-prevention instructors.</strong> Not commissioners. Instructors.</li>
+      <li><strong>Start the Clinical Safety Officer search.</strong> It has the longest lead time of anything you will do.</li>
+      <li><strong>Diarise ninety minutes on Friday</strong> to approve the newsletter and two articles.</li>
+      <li><strong>Write down today&rsquo;s funnel numbers</strong> so that in four weeks you can tell whether any of this worked.</li>
+    </ul>
+    <p>
+      The product problem is largely solved. The distribution problem has not been attempted once.
+      One good room is worth more than another month of engineering, and you will know inside
+      three weeks whether the rooms convert &mdash; which is a far better position than the one
+      you were in yesterday, when the number was zero and the reason was unknown.
+    </p>
+  </div>
+
+  <footer class="end">
+    Prices, plan structures, free-tier terms, referrer channel types and the 50% gross-margin target
+    are read from the platform&rsquo;s own configuration. Conversion rates, take-up rates, CAC and
+    supplier costs are modelled estimates, not measurements &mdash; the platform has no conversion
+    history yet, and every one of them is written to be falsified inside ninety days.
+  </footer>
+</section>
+
+</div>
