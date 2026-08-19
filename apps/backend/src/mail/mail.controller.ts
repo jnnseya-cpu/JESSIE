@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { AdminOnly, SelfOnly } from '../auth/auth.guard';
+import { AdminOnly } from '../auth/auth.guard';
 import { MailService } from './mail.service';
 import { PreviewMailDto, SendMailDto } from './mail.dto';
 

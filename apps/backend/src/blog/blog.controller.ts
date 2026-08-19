@@ -15,7 +15,7 @@ import { BlogService } from './blog.service';
 import { DraftPostDto, TransitionDto, ViewDto } from './blog.dto';
 import { SeoAgentService } from './seo-agent.service';
 import { SeoAutopilotService } from './seo-autopilot.service';
-import { AdminOnly, SelfOnly } from '../auth/auth.guard';
+import { AdminOnly } from '../auth/auth.guard';
 
 @Controller('blog')
 export class BlogController {

@@ -7,7 +7,7 @@ import {
   type Movement,
 } from '@jessmove/shared';
 import { MovementsService } from './movements.service';
-import { AdminOnly, SelfOnly } from '../auth/auth.guard';
+import { AdminOnly } from '../auth/auth.guard';
 
 @Controller('movements')
 export class MovementsController {

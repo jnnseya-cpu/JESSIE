@@ -170,22 +170,37 @@ export class AccountsController {
     };
   }
 
+  /*
+   * One person's profile, and the four routes below it, are theirs alone.
+   *
+   * `SelfOnly` was imported into this file and applied to nothing, which is
+   * the shape of a guard that was intended and then forgotten: reading a
+   * profile, autosaving into it, committing a change and attaching media
+   * were all reachable by anybody who knew a user id. The store behind them
+   * is in-memory rather than the identity table, which bounds the damage —
+   * but an unauthenticated write that decides what a member sees is still a
+   * write, and "it resets on deploy" is not an access control.
+   */
+  @SelfOnly('userId')
   @Get('profiles/:userId')
   one(@Param('userId') userId: string) {
     return this.profiles.profile(userId);
   }
 
   /** What a given viewer would actually see. */
+  @SelfOnly('userId')
   @Get('profiles/:userId/as/:viewer')
   as(@Param('userId') userId: string, @Param('viewer') viewer: ViewerRelationship) {
     return this.profiles.asSeenBy(userId, viewer);
   }
 
+  @SelfOnly('userId')
   @Post('profiles/:userId/autosave')
   autosave(@Param('userId') userId: string, @Body() body: SaveDto) {
     return this.profiles.autosave(userId, body.age, body.patch, body.basedOnVersion);
   }
 
+  @SelfOnly('userId')
   @Post('profiles/:userId/commit')
   commit(@Param('userId') userId: string, @Body() body: SaveDto) {
     return this.profiles.commit(userId, body.age, body.patch, body.basedOnVersion);
@@ -206,6 +221,7 @@ export class AccountsController {
    * The real upload. Dimensions come from the bytes, not the request;
    * metadata is stripped before storage; the result is pending moderation.
    */
+  @SelfOnly('userId')
   @Post('profiles/:userId/media')
   async attach(@Param('userId') userId: string, @Body() body: UploadMediaDto) {
     let bytes: Buffer;

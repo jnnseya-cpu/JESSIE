@@ -6,6 +6,7 @@
  * visual identity spec.
  */
 const fs = require('fs');
+const path = require('path');
 const {
   AlignmentType,
   BorderStyle,
@@ -1146,7 +1147,16 @@ const doc = new Document({
   ],
 });
 
+/*
+ * Write beside the tracked copy, not into whatever directory the script was
+ * launched from. It wrote a bare filename, so running it from the repo root —
+ * the only place `pnpm docs:sales` runs from — left a stray file at the top
+ * level and never touched the copy in `docs/` that everybody actually sends.
+ * The generated document and the committed one had been diverging silently.
+ */
+const OUT = path.join(__dirname, '..', 'docs', 'JESS-MOVE-Feature-List-for-Sales.docx');
+
 Packer.toBuffer(doc).then((buf) => {
-  fs.writeFileSync('JESS-MOVE-Feature-List-for-Sales.docx', buf);
-  console.log('written', buf.length, 'bytes');
+  fs.writeFileSync(OUT, buf);
+  console.log('written', buf.length, 'bytes ->', path.relative(process.cwd(), OUT));
 });

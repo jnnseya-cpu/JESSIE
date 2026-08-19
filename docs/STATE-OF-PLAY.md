@@ -51,8 +51,13 @@ is the point of the file.
 | A launch screen on every installed platform | 36 iOS launch images generated at build from one list; in-document splash verified in Chromium app mode |
 | The splash never reaches the open web | `display: none` outside `display-mode: standalone`, confirmed in a browser tab and mutation-tested |
 | A failed bundle cannot leave a blank screen | With JavaScript disabled the splash still clears itself and the site is usable |
+| No route names a user without guarding them | Structural test walks every controller; the three that did not are fixed |
+| A guard is never imported and left unapplied | Six controllers carried a dead guard import; the test now fails on any |
+| The smoke suite matches the security posture | 83/83 signed out and signed in, and idempotent across runs |
+| Every committed script runs | `docs:sales` and `economics` had never executed |
 
-Test suite: **773 passing, 0 failing** — 726 backend, 25 body-command, 22 foodlens.
+Test suite: **775 passing, 0 failing** — 728 backend, 25 body-command, 22 foodlens.
+Smoke suite: **83/83**, both signed out and signed in.
 
 ---
 
@@ -76,6 +81,22 @@ environment's network policy — `CONNECT tunnel failed, 403`. That is a
 policy denial, not an outage, and it is not to be worked around. Any
 claim about production behaviour made from inside this sandbox is a
 guess, and should be written as one or not written.
+
+---
+
+## Known and deliberately not done
+
+**This repository has no linter.** Not in the root, not in any of the four
+packages. That is why a security decorator sat imported and unapplied in six
+controllers for weeks with a green build, a green typecheck and a green test
+suite — nothing in the toolchain reports an unused import.
+
+It is not fixed here because adding ESLint across four packages is an
+architectural change that would touch far more than the audit it came from,
+and it is the owner's call rather than a cleanup. Two structural tests in
+`admin-guard.test.ts` now cover the specific class of bug that actually bit —
+a route naming a user without a guard, and a guard imported without being
+applied. A linter would still be worth having.
 
 ---
 

@@ -28,7 +28,7 @@ import {
   trustScore,
 } from '@jessmove/shared';
 import { PayoutDto, RevenueDto, TrustDto } from './growth.dto';
-import { AdminOnly, SelfOnly } from '../auth/auth.guard';
+import { AdminOnly } from '../auth/auth.guard';
 
 @Controller('growth')
 export class GrowthController {

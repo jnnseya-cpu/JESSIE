@@ -12,7 +12,7 @@ import {
 } from '@jessmove/shared';
 import { CommsService } from './comms.service';
 import { SendEventDto } from './comms.dto';
-import { AdminOnly, SelfOnly } from '../auth/auth.guard';
+import { AdminOnly } from '../auth/auth.guard';
 
 @Controller('comms')
 export class CommsController {
