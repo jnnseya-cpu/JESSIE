@@ -119,7 +119,13 @@ and name who can verify it.
 
 - Develop on `claude/jessie-os-spec-doc-7audof`. Push nowhere else. Open a
   pull request only when explicitly asked.
-- No vendor beyond Vercel and Firebase.
+- No vendor beyond Vercel and Firebase, with two measurement exceptions
+  added deliberately: Meta Pixel and Google Tag. Both are consent-gated,
+  run on public marketing pages only, never behind the login, never on a
+  health surface and never for under-18s, and are never sent an identity.
+  See `packages/shared/src/tracking.ts` — the rules are enforced there, not
+  at the call sites. Adding a third vendor is a new decision, not a
+  precedent set by these two.
 - `MIN_TRANSACTION_GBP=5`.
 - No AI vendor or model names on public-facing pages.
 - API keys live in the Vercel dashboard only. Never in the repository,
