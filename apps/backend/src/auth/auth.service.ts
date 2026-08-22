@@ -18,6 +18,7 @@ import { ProfilesService } from '../accounts/profiles.service';
 import { MailService } from '../mail/mail.service';
 import { PushService } from '../push/push.service';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
+import { ConversionsService } from '../tracking/conversions.service';
 import { SecurityService } from '../security/security.service';
 import { StorageService } from '../storage/storage.service';
 import { hashPassword, verifyPassword } from './password';
@@ -73,6 +74,7 @@ export class AuthService {
     private readonly storage: StorageService,
     private readonly push: PushService,
     private readonly security: SecurityService,
+    private readonly conversions: ConversionsService,
   ) {}
 
   private secret(): string {
@@ -268,6 +270,21 @@ export class AuthService {
           `Small Moves. Powerful Change.`,
         )
         .catch(() => {});
+    }
+
+    /*
+     * The signup conversion, sent server to server.
+     *
+     * Recorded here rather than from the browser because registration
+     * happens on the account, where no advertising script is permitted —
+     * and only for adults, because this platform does not profile children
+     * for advertising and a minor's account is pending a guardian anyway.
+     *
+     * Not awaited: an advertising network must never sit on the path
+     * between somebody pressing the button and having an account.
+     */
+    if (!isMinor) {
+      this.conversions.record({ event: 'signed_up' });
     }
 
     const token = issueToken({ uid: userId, kind, age: input.age }, this.secret());

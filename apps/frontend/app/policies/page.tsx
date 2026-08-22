@@ -31,7 +31,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
       },
       {
         name: 'Cookie Policy',
-        what: 'Strictly necessary cookies only on the marketing site. No advertising or cross-site tracking.',
+        what: 'Strictly necessary cookies by default. Meta and Google measurement tags run on public pages only, only after you agree, never on your account or any health screen, and never for under-18s.',
         when: 'v1.0 · 27 Jul 2026',
       },
       {

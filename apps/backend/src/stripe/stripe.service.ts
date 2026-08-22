@@ -11,6 +11,7 @@ import {
   type BillingPlan,
   type SubscriptionState,
 } from '@jessmove/shared';
+import { ConversionsService } from '../tracking/conversions.service';
 import { WalletService } from '../acu/wallet.service';
 import { PRICE_CACHE_MS, matchPricesByPlan, type StripePriceLike } from './prices.logic';
 
@@ -79,6 +80,7 @@ export class StripeService {
   constructor(
     private readonly config: ConfigService,
     private readonly wallets: WalletService,
+    private readonly conversions: ConversionsService,
   ) {
     const url = process.env.DATABASE_URL;
     if (url) {
@@ -451,6 +453,18 @@ export class StripeService {
           const wallet = await this.wallets.forSubject('user', userId);
           await this.wallets.depositAllowance(wallet.id, allowance, `invoice_${plan}_${id}`);
           detail = `Granted ${allowance} ACU to ${userId} for ${plan} (£${paidGbp.toFixed(2)} paid).`;
+
+          /*
+           * The purchase conversion, at the only moment money is certainly
+           * real. Sent server to server, carrying the plan and the amount
+           * and nothing about who paid — an advertising network does not
+           * need to know which of this platform's members subscribed.
+           *
+           * This branch is already idempotent for the wallet, and the
+           * conversion inherits that: a webhook Stripe redelivers grants no
+           * second allowance and reports no second sale.
+           */
+          this.conversions.record({ event: 'subscribed', valueGbp: paidGbp, plan });
         } else {
           detail = `Invoice paid, £${paidGbp.toFixed(2)}. No plan metadata, so no allowance granted — check the price's metadata.`;
         }

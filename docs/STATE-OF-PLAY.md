@@ -55,8 +55,10 @@ is the point of the file.
 | A guard is never imported and left unapplied | Six controllers carried a dead guard import; the test now fails on any |
 | The smoke suite matches the security posture | 83/83 signed out and signed in, and idempotent across runs |
 | Every committed script runs | `docs:sales` and `economics` had never executed |
+| Meta Pixel and Google Tag, consent-gated | Browser-verified: no vendor contacted before an opt-in, none at all on the account, the children's page, or with GPC set |
+| Conversions counted without a tag on health screens | Signup and payment go server to server, carrying an event and a value and no identity |
 
-Test suite: **775 passing, 0 failing** — 728 backend, 25 body-command, 22 foodlens.
+Test suite: **791 passing, 0 failing** — 744 backend, 25 body-command, 22 foodlens.
 Smoke suite: **83/83**, both signed out and signed in.
 
 ---
@@ -71,6 +73,8 @@ none of them can be closed from inside a sandbox.
 | Do the AI provider keys actually work in production? | Justin | Account page → editorial queue → "Check the AI keys actually work" |
 | Has the deploy picked up the branch head? | Justin | Vercel build log |
 | Four CSO registration fields for DCB0129 | Justin | See `docs/GO-LIVE.md` |
+| Are the pixel IDs set? | Justin | `NEXT_PUBLIC_META_PIXEL_ID` and `NEXT_PUBLIC_GOOGLE_TAG_ID` in Vercel. Without them the banner never appears and nothing tracks |
+| Server-side conversions | Justin | `META_PIXEL_ID` + `META_CAPI_TOKEN`, and `GOOGLE_TAG_ID` + `GOOGLE_MP_API_SECRET`. Signup and payment stay uncounted until these exist |
 | Does the newsletter actually deliver? | Justin | Needs `SMTP_USER` / `SMTP_PASS` in Vercel. Without them every issue renders in full and is recorded as `sandbox` — the flow is proven, the delivery is not |
 | Weekly cron for the newsletter | Justin | `POST /api/newsletter/cron` with `Authorization: Bearer $CRON_SECRET` |
 | Automatic sending, or approve each issue by hand? | Justin | Unset, the scheduler composes and queues for review. Set `NEWSLETTER_AUTO_APPROVE_BY` to a real name to have it approve and send too — that name is recorded on every issue |

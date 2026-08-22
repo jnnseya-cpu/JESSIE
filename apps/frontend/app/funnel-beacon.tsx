@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { apiBase } from './api-base';
+import { trackEvent } from './tracking';
 
 /**
  * Four points on the way to an account, and nothing else.
@@ -33,7 +34,26 @@ function deviceClass(): string {
   return 'desktop';
 }
 
+/**
+ * The same four steps, told to the advertising networks.
+ *
+ * Only the two that mean something commercially: arriving, and opening the
+ * form. `trackEvent` re-checks consent, surface and browser opt-out on every
+ * call, so a beacon on a page that may not carry a tag sends nothing — which
+ * is why this mapping can live next to the first-party beacon without
+ * widening what either of them reaches.
+ */
+const PIXEL_STEP: Partial<Record<BeaconStep, 'page_view' | 'begin_signup'>> = {
+  landed: 'page_view',
+  started: 'begin_signup',
+};
+
 export function FunnelBeacon({ step }: { step: BeaconStep }) {
+  useEffect(() => {
+    const pixel = PIXEL_STEP[step];
+    if (pixel) trackEvent(pixel, { source: 'funnel' });
+  }, [step]);
+
   useEffect(() => {
     // Referring *host* only. The full URL is somebody's browsing history.
     let referrer: string | undefined;

@@ -215,9 +215,26 @@ export default function Privacy() {
                 instructions, and is listed in the sub-processor register available on request.
               </p>
               <p>
-                <strong>We never sell identifiable health data.</strong> We do not share your data
-                with advertisers or data brokers. Research partnerships operate only on
-                aggregated, k-anonymised data and require a separate, specific consent.
+                <strong>We never sell identifiable health data.</strong> We do not share your
+                health data with advertisers or data brokers. Research partnerships operate only
+                on aggregated, k-anonymised data and require a separate, specific consent.
+              </p>
+              <p>
+                <strong>Measurement on our public pages.</strong> If you agree, we use Meta and
+                Google measurement tags on our marketing pages so we can see which routes bring
+                people here. What they are told is that a page was viewed, that somebody began or
+                completed a sign-up, and what a subscription was worth. What they are never told,
+                and what we have no code to send them: your name, your email, your account
+                identifier, or anything at all about your health — no conditions, no medication,
+                no weight, no food, no movement, no falls or balance result.
+              </p>
+              <p>
+                These tags never load on your account or on any screen showing health information,
+                and they never load for anyone under 18. If you decline, nothing is loaded and
+                neither company is contacted. If your browser sends Do Not Track or Global Privacy
+                Control we treat that as a refusal regardless of what any banner says. Sign-up and
+                payment are counted by our own servers, so that no advertising script is ever
+                present on a page where your data is.
               </p>
 
               <h2>8. Where your data lives</h2>

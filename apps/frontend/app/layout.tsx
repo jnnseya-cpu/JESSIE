@@ -3,6 +3,7 @@ import { BRAND, SIGNATURE_LINE, TAGLINE } from '@jessmove/shared';
 import './globals.css';
 import { PwaRuntime } from './pwa';
 import { AppReady, LaunchSplash } from './splash';
+import { Measurement } from './tracking';
 import { splashEntries } from './splash-targets';
 
 export const metadata: Metadata = {
@@ -81,6 +82,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <AppReady />
         <PwaRuntime />
+        {/*
+          Mounted once, here, rather than per page. It decides for itself
+          whether the current path may carry a tag, so the account and every
+          health surface get no banner and no script — not a hidden one, none.
+        */}
+        <Measurement />
       </body>
     </html>
   );
