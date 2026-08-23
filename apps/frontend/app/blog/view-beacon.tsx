@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { apiBase } from '../api-base';
 
 /**
  * View tracking.
@@ -18,9 +19,17 @@ import { useEffect, useRef } from 'react';
  * Dwell is counted only while the tab is visible. A page left open in a
  * background tab over lunch is not a two-hour read, and counting it as one
  * makes the metric useless in exactly the direction that flatters us.
+ *
+ * **Why the address comes from `apiBase()`.** This component used to read
+ * `NEXT_PUBLIC_API_BASE_URL` itself and return early when it was unset — so
+ * on any deployment without that build-time variable it disabled itself in
+ * silence while every other part of the site carried on working, because
+ * everything else resolves the API at runtime and falls back to
+ * api.jessmove.com. The result was a blog that served articles and recorded
+ * no views, with nothing in a log to say so. `api-base.ts` exists precisely
+ * because three components once defaulted to localhost in production; this
+ * was the fourth, and it had never been migrated.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 function deviceClass(): 'mobile' | 'tablet' | 'desktop' | 'unknown' {
   if (typeof window === 'undefined') return 'unknown';
@@ -49,8 +58,6 @@ export function ViewBeacon({ slug }: { slug: string }) {
   const sent = useRef(false);
 
   useEffect(() => {
-    if (!API_BASE) return; // No API configured — the page still works.
-
     since.current = document.visibilityState === 'visible' ? performance.now() : null;
 
     const accrue = (): void => {
@@ -91,21 +98,36 @@ export function ViewBeacon({ slug }: { slug: string }) {
         device: deviceClass(),
       });
 
-      const url = `${API_BASE.replace(/\/$/, '')}/blog/views`;
+      const url = `${apiBase()}/blog/views`;
 
-      // sendBeacon survives the page being closed; fetch does not.
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-      } else {
-        void fetch(url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body,
-          keepalive: true,
-        }).catch(() => {
-          /* analytics must never break the page */
-        });
-      }
+      /*
+       * `fetch` with `keepalive`, not `sendBeacon`.
+       *
+       * sendBeacon looked like the right tool and silently was not. Sending
+       * a Blob typed `application/json` cross-origin makes the request
+       * preflighted, and sendBeacon cannot perform a preflight — so the
+       * browser drops it. The call still returns `true`, because that only
+       * means the payload was queued locally, so there was nothing to see:
+       * no console error, no failed request, no log line. The site and the
+       * API are on different hosts in every environment — localhost:3000 to
+       * localhost:4000 here, www to api in production — so this never
+       * worked anywhere, and the view count that "wasn't working" was
+       * really a beacon that never arrived.
+       *
+       * `keepalive` gives the same survives-the-page-closing property and
+       * goes through CORS properly.
+       */
+      void fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+        keepalive: true,
+        // No cookies: this is a count, not a session, and the server
+        // identifies nobody.
+        credentials: 'omit',
+      }).catch(() => {
+        /* analytics must never break the page */
+      });
       sent.current = true;
       // Reset so a later send reports only the additional time.
       visibleMs.current = 0;

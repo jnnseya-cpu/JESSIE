@@ -202,13 +202,16 @@ export class BlogController {
    * that reads them and are not held in any variable that outlives it.
    */
   @Post('views')
-  view(@Body() body: ViewDto, @Req() req: Request) {
-    const digest = this.analytics.digest(
+  async view(@Body() body: ViewDto, @Req() req: Request) {
+    // The digest now comes from the shared daily salt rather than one this
+    // container invented, so two instances hash the same reader the same
+    // way and the unique count means something.
+    const digest = await this.analytics.digestFor(
       req.ip ?? req.socket.remoteAddress ?? 'unknown',
       req.get('user-agent') ?? 'unknown',
     );
 
-    const result = this.analytics.record({
+    const result = await this.analytics.record({
       slug: body.slug,
       visitorDigest: digest,
       at: body.at ?? new Date().toISOString(),
@@ -222,10 +225,11 @@ export class BlogController {
   }
 
   @Get('analytics')
-  summary() {
-    return {
-      summary: this.analytics.summary(),
-      posts: this.analytics.leaderboard(),
-    };
+  async summary() {
+    const [summary, posts] = await Promise.all([
+      this.analytics.summary(),
+      this.analytics.leaderboard(),
+    ]);
+    return { summary, posts };
   }
 }

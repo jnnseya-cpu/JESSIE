@@ -57,8 +57,10 @@ is the point of the file.
 | Every committed script runs | `docs:sales` and `economics` had never executed |
 | Meta Pixel and Google Tag, consent-gated | Browser-verified: no vendor contacted before an opt-in, none at all on the account, the children's page, or with GPC set |
 | Conversions counted without a tag on health screens | Signup and payment go server to server, carrying an event and a value and no identity |
+| Blog views actually arrive and actually persist | Migration 0026; a real browser session writes a row, and it survives a restart |
+| Every published article has an SEO score | The prose moved to shared, so the audit has a body — scores now 15–40, and the findings are real |
 
-Test suite: **791 passing, 0 failing** — 744 backend, 25 body-command, 22 foodlens.
+Test suite: **801 passing, 0 failing** — 754 backend, 25 body-command, 22 foodlens.
 Smoke suite: **83/83**, both signed out and signed in.
 
 ---

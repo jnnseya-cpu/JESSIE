@@ -8,9 +8,11 @@ import {
 import { randomUUID } from 'node:crypto';
 import { makePool, type PgPoolLike } from '../db/pg';
 import {
+  ARTICLES,
   SEED_POSTS,
   SEO_RULES,
   autoLinksFor,
+  bodyForSlug,
   canTransition,
   seoAudit,
   type PostDraft,
@@ -87,14 +89,31 @@ export class BlogService implements OnModuleDestroy {
       this.logger.warn('blog: no database — drafts will not survive a restart');
     }
     for (const seed of SEED_POSTS) {
+      /*
+       * The real prose, so these can actually be scored.
+       *
+       * This used to seed `body: ''` because the articles were written in
+       * the frontend and the API had no reason to hold them. The reason
+       * arrived with the SEO audit: it scores a draft's body, an empty body
+       * scores nothing, and every published article on this site is one of
+       * these. So no article had a score, and the audit dutifully reported
+       * that it had not audited anything — which read as the scores being
+       * broken rather than as there being nothing to score.
+       */
+      const body = bodyForSlug(seed.slug);
+      // The real description, not the title with a full stop after it. The
+      // placeholder was invisible until the audit started scoring these and
+      // reported every article's description as 26 characters — which was
+      // true, and was measuring the placeholder rather than the article.
+      const article = ARTICLES.find((a) => a.slug === seed.slug);
       const draft: PostDraft = {
         title: seed.title,
         slug: seed.slug,
-        description: `${seed.title}.`,
+        description: article?.description ?? `${seed.title}.`,
         category: seed.category,
         keyword: seed.keyword,
         secondaryKeywords: [],
-        body: '',
+        body,
         clusterKey: seed.clusterKey ?? undefined,
         internalLinks: [],
       };
@@ -102,8 +121,18 @@ export class BlogService implements OnModuleDestroy {
         ...draft,
         id: randomUUID(),
         status: 'published',
-        audit: null,
-        auditNote: 'body is rendered by the site; not audited in this process',
+        audit: body
+          ? seoAudit({
+              ...draft,
+              // Scored on the links the site actually renders, not on the
+              // stored draft — the same correction the agent-written posts
+              // needed, for the same reason: linking happens at render.
+              internalLinks: autoLinksFor(body, { selfPath: `/blog/${seed.slug}` }).map(
+                (l) => l.path,
+              ),
+            })
+          : null,
+        auditNote: body ? '' : 'no prose found for this slug',
         createdAt: `${seed.publishedAt}T00:00:00.000Z`,
         updatedAt: `${seed.publishedAt}T00:00:00.000Z`,
         publishedAt: `${seed.publishedAt}T00:00:00.000Z`,
