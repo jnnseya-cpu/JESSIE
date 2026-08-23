@@ -28,7 +28,8 @@
     "start:backend": "node apps/backend/dist/main.js",
     "start:frontend": "pnpm --filter @jessmove/frontend start",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "docs:ads": "node scripts/build-ads-docx.js"
   },
   "devDependencies": {
     "@jessmove/shared": "workspace:*",
