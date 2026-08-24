@@ -382,7 +382,7 @@ body.push(
   P(
     'Jess Move’s standing rule is that nothing written about health reaches the public without a ' +
       'named person reading it first. That is a clinical safety control and it applies to an advert ' +
-      'exactly as it applies to an article. Read every line in section 5 and put your name to it ' +
+      'exactly as it applies to an article. Read every line in section 6 and put your name to it ' +
       'before it runs.',
   ),
   P(
@@ -472,9 +472,48 @@ const DESC_LIMIT = 30;
 const PRIM_LIMIT = 125;
 
 body.push(
-  H1('5. The copy'),
+  H1('5. The features worth advertising'),
   P(
-    'Four concepts. Each gives you two primary texts, headlines and descriptions — build one ad per ' +
+    'Every concept in the next section sells one of these. If you write more copy yourself, write ' +
+      'it from this list — each line describes something that exists in the product, and the ' +
+      'specificity is what makes an advert persuasive rather than generic.',
+  ),
+  table(
+    ['Feature', 'The punchy version', 'Why it persuades'],
+    [
+      ['Movement Opportunity Engine', 'Nine questions before it says a word. Seventeen recognised contexts.', 'No reminder app can answer any of them. This is the invention.'],
+      ['The Opportunity Score', 'Seven factors multiplied, three penalties subtracted. Safety can zero the whole thing.', 'Turns "smart" from a claim into arithmetic anybody can picture.'],
+      ['Measured silence', 'A prompt fired when you cannot move is logged as a defect, not a delivery.', 'Every competitor optimises for more notifications. This one brags about fewer.'],
+      ['The sedentary timeline', 'Your working day as a map, with the gaps already found.', 'The screen that makes somebody say "oh, I do have time".'],
+      ['MOVA reason trace', 'Every suggestion explains what triggered it and why this one.', 'If the trace cannot be built, nothing is shown. Trust as a precondition.'],
+      ['MOVA shows rejections', 'It tells you what it ruled out \u2014 and why.', 'A recommendation only means something next to the options it beat.'],
+      ['Four presence levels', 'Turn the coach off and lose zero features.', 'In a category built on nagging, an off switch that costs nothing is rare.'],
+      ['FoodLens 360\u00b0', 'Photograph a meal, get a range with its evidence \u2014 not an invented number.', 'Everyone else fakes precision. This is the honest one.'],
+      ['Six capture checks', 'Plate, lighting, borders, barcode, second angle, something for scale.', 'It asks rather than guessing. Visible competence.'],
+      ['BodyCommand', 'Weight and waist read as a direction, never as a verdict.', 'Sells to people an app has made feel bad before.'],
+      ['Six age modes', 'One engine, six sets of rules about what it may say.', 'Ten to a hundred on one account. Nobody else can claim it.'],
+      ['Challenges and crews', 'Group challenges that forgive a missed day instead of punishing it.', 'Removes the reason most streak features get abandoned.'],
+      ['Wearables', 'Connect a watch \u2014 and it says plainly what a watch cannot settle.', 'Honesty about limits reads as competence, not weakness.'],
+      ['Seven hard refusals', 'It will not diagnose, invent a movement, or override a safety block because you insisted.', 'Refusals, not thresholds. A better model does not unlock them.'],
+      ['Privacy by construction', 'Nothing about your health is ever sold or shared with advertisers.', 'The one promise this category almost never makes.'],
+      ['Free tier', 'Free to start. No card. Nothing charged.', 'Removes the biggest objection at the point of signup.'],
+    ],
+    [2300, 3600, 3460],
+  ),
+  ...PANEL(
+    'The fifteen-second version, if you only get one line',
+    [
+      'Fitness apps compete for the hour you don\u2019t have.',
+      'Jess Move owns the two-minute gaps you didn\u2019t know you had.',
+    ],
+    TEAL,
+  ),
+);
+
+body.push(
+  H1('6. The copy'),
+  P(
+    'Six concepts. Each gives you two primary texts, headlines and descriptions — build one ad per ' +
       'concept, per ad set. Character counts below are measured, not estimated.',
   ),
   ...PANEL(
@@ -491,78 +530,146 @@ body.push(
 const CONCEPTS = [
   {
     id: 'Concept A',
-    name: 'Two minutes',
-    tag: 'Lead with this one',
+    name: 'The engine that knows when to shut up',
+    tag: 'Lead with this — it is the product',
     why:
-      'The product’s actual position: not a fitness app, a product about the day you already have. ' +
-      'It makes no health claim, so it is the safest with Meta’s reviewers and the most distinct ' +
-      'against every other wellbeing advert in the feed.',
+      'The Movement Opportunity Engine is the actual invention, and nobody else has it. Nine ' +
+      'questions before a single prompt, seventeen recognised contexts, seven scored factors ' +
+      'against three penalties — and silence counted as a success rather than a miss. It sells ' +
+      'the mechanism, makes no health claim, and cannot be copied by a reminder app.',
     primaries: [
-      'Most days have more room in them than they look. Jess Move finds the two-minute gaps you already have — between meetings, waiting for the kettle, before the school run — and turns them into movement that actually fits. Free to start, no card.',
-      'Not a fitness app. A product about the day you already have. Two minutes at a time, for anyone from 10 to 100. Free to start, no card.',
+      "Most reminders fire while you're driving, teaching or holding a baby. This one settles nine questions first — where you are, what you're doing, whether moving is even possible — and says nothing if the answer is no.",
+      'It scores every moment on seven factors and three penalties before it speaks. Below the threshold it stays quiet, and counts the silence as a win.',
+    ],
+    headlines: [
+      'It asks nine questions before it speaks',
+      "Seventeen places it knows you can't move",
+      "The reminder that knows you're driving",
+      'Silence is a feature here',
+    ],
+    descriptions: ['Free to start. No card.', 'See how it decides', 'Nine questions first'],
+    picture:
+      'A split frame: the same person, same phone, two moments. One in a meeting — screen dark, ' +
+      'nothing fired. One in the kitchen with the kettle on — a single prompt. The contrast is ' +
+      'the whole product.',
+  },
+  {
+    id: 'Concept B',
+    name: 'MOVA shows its working',
+    tag: 'The trust feature',
+    why:
+      'Every suggestion carries a reason trace, and the card shows what it ruled out as well as ' +
+      'what it chose. Four presence levels including completely off — and off removes zero ' +
+      'capability. In a category built on nagging, a coach you can switch off without losing ' +
+      'anything is a genuine differentiator.',
+    primaries: [
+      'Most coaches tell you what to do. This one shows what it rejected and why — \u201cstanding balance: no stable support detected\u201d. A suggestion only means something next to the options it beat.',
+      'Four presence levels, including completely off. Switching the coach off removes zero features — the full library, every chart and all the team challenges stay exactly where they were.',
+    ],
+    headlines: [
+      'It tells you what it ruled out',
+      'Every suggestion explains itself',
+      'Turn the coach off. Lose nothing.',
+      'A coach that shows its working',
+    ],
+    descriptions: ['Free to start. No card.', 'See the reasoning', 'Off means off'],
+    picture:
+      'A phone screen, close and legible, showing a suggestion card with the rejected options ' +
+      'listed underneath it. This is one where the interface is the hero — no lifestyle shot needed.',
+  },
+  {
+    id: 'Concept C',
+    name: 'FoodLens 360\u00b0',
+    tag: 'Most demonstrable feature',
+    why:
+      'Photograph a plate, get a range with its evidence and a confidence level rather than an ' +
+      'invented tidy number, after six live capture checks. It is the most visual feature in the ' +
+      'product and the easiest to prove in a single image.',
+    primaries: [
+      'A photograph cannot resolve portion size or hidden oil. So FoodLens gives you a range, its evidence and a confidence level — instead of inventing a tidy number and hoping nobody asks.',
+      'Six live checks before you press the shutter: plate detected, lighting, item borders, barcode, second angle, something in frame for scale. It asks rather than guessing.',
+    ],
+    headlines: [
+      'Photograph a meal. Get an honest answer.',
+      'It tells you what the picture missed',
+      'Six checks before the shutter',
+      'A range, not an invented number',
+    ],
+    descriptions: ['Free to start. No card.', 'See how it reads a plate', 'Six live checks'],
+    picture:
+      'A phone held over a real, ordinary plate — not styled food — with the capture guides ' +
+      'visible on screen. Home kitchen, honest lighting. Never a diet plate, never a scale.',
+  },
+  {
+    id: 'Concept D',
+    name: 'Six age modes, one product',
+    tag: 'Nobody else can run this',
+    why:
+      'Six registers derived from age mode, each carrying different prohibitions rather than a ' +
+      'tone slider. Explorer Mode never says anything evaluative about a body; Vitality Mode ' +
+      'never uses timers or scores. One account, ten to a hundred — no competitor in this ' +
+      'category can make the same claim.',
+    primaries: [
+      'Six age modes, one product. Explorer Mode never says anything evaluative about a body. Vitality Mode never uses timers or scores. Same engine, six different sets of rules about what it may say.',
+      "One account covers the whole household — a ten-year-old and a ninety-year-old, each getting something built for them rather than a watered-down version of somebody else's.",
+    ],
+    headlines: [
+      'Six modes. Ages 10 to 100.',
+      'One account. Every age in the house.',
+      'Built for ten and for ninety',
+      'Six voices, one engine',
+    ],
+    descriptions: ['Ages 10 to 100.', 'Up to 6 people', 'Free to start. No card.'],
+    picture:
+      'Two generations in one frame doing the same small thing — a grandparent and a grandchild ' +
+      'both standing up from a chair. Warm, domestic, unstaged.',
+  },
+  {
+    id: 'Concept E',
+    name: 'Two minutes, and the timeline that proves it',
+    tag: 'The clearest benefit',
+    why:
+      'The sedentary timeline is the screen that converts. It shows somebody their own working ' +
+      'day with the movement already dropped into it — committed time, gaps found, prompts held ' +
+      'back. This is the concept that makes the promise concrete rather than aspirational.',
+    primaries: [
+      "Fitness apps compete for the hour you don't have. Jess Move owns the two-minute gaps you didn't know you had — and shows you your own day with the movement already in it.",
+      'A visual map of your day: committed time, gaps found, movements delivered, and the prompts it deliberately held back. It is the screen that makes people say \u201coh, I do have time\u201d.',
     ],
     headlines: [
       "Two minutes. That's the whole idea.",
       'Your day already has room in it',
-      'Movement that fits the day you have',
-      'Start with two minutes',
+      'It shows you your own day',
+      "Owns the gaps you didn't know you had",
     ],
-    descriptions: ['Free to start. No card.', 'Two minutes at a time.', 'See how it works'],
+    descriptions: ['Two minutes at a time.', 'Free to start. No card.', 'See your own day'],
     picture:
-      'An ordinary moment with a gap in it — a kettle boiling, a kitchen chair, a hallway. Somebody ' +
-      'mid-movement, unposed, in normal clothes. Not a gym, not lycra, not a yoga mat.',
+      'The sedentary timeline itself, rendered large and clean — a working day as a bar, with the ' +
+      'gaps marked. Typographic and diagrammatic rather than photographic.',
   },
   {
-    id: 'Concept B',
-    name: 'Ten to a hundred',
-    tag: 'Most differentiated',
+    id: 'Concept F',
+    name: 'Seven things it refuses',
+    tag: 'Trust play — run last, retarget with it',
     why:
-      'No competitor serves a ten-year-old and a ninety-year-old on one account. This is the line ' +
-      'nobody else can run, and it sells the Family plan without mentioning a price.',
+      'Everyone in this category over-promises, so the product that publishes its refusals stands ' +
+      'out by contrast. These are hard refusals rather than confidence thresholds — a better ' +
+      'model does not unlock them — and the hazard log and assurance page are live, which is what ' +
+      'permits saying it in an advert at all.',
     primaries: [
-      'One account covers the whole household — a ten-year-old and a ninety-year-old, each getting something built for them, on the same plan.',
-      'Six modes, one product. What a fifteen-year-old sees and what a seventy-five-year-old sees are not the same thing, and neither is a watered-down version of the other.',
+      "It won't diagnose, won't invent a movement outside the reviewed library, won't override a safety block because you insisted, and won't discuss a child's weight. Refusals, not settings.",
+      'Most wellbeing apps are confident about your body. This one publishes the list of things it refuses to guess at — and a better model does not unlock them.',
     ],
-    headlines: ['Built for ages 10 to 100', 'One account. The whole household.', 'Six modes, one product'],
-    descriptions: ['Ages 10 to 100.', 'Free to start. No card.', 'Up to 6 people'],
-    picture:
-      'Two generations in one frame doing the same small thing — a grandparent and a grandchild both ' +
-      'standing up from a chair. Warm, domestic, unstaged. The image nobody else in the category can use.',
-  },
-  {
-    id: 'Concept C',
-    name: 'What it refuses to do',
-    tag: 'Trust play',
-    why:
-      'Everybody in this category over-promises, so the product that publishes its refusals stands ' +
-      'out by contrast. It is also true — the hazard log and the assurance page are live — which is ' +
-      'what allows it to be said in an advert at all.',
-    primaries: [
-      'It tells you what it will not do. No targets you can fail. No score pretending to be a diagnosis. Nothing sold to advertisers, ever.',
-      'Most wellbeing apps are confident about your body. This one publishes the list of things it refuses to guess at, and keeps to it.',
+    headlines: [
+      'Seven things it refuses, at any price',
+      "It tells you what it won't do",
+      'Refusals, not settings',
+      'No score pretending to be a diagnosis',
     ],
-    headlines: ["It tells you what it won't do", 'No targets you can fail', 'Read what it refuses to do'],
-    descriptions: ['Published, not promised.', 'Free to start. No card.', 'See the full list'],
+    descriptions: ['Published, not promised.', 'See the full list', 'Free to start. No card.'],
     picture:
-      'Typographic, no photograph at all. Deep navy ground, the refusals set as plain text. It will ' +
-      'look unlike everything around it in the feed, which is the entire point.',
-  },
-  {
-    id: 'Concept D',
-    name: 'For whoever you look after',
-    tag: 'Ad set 3 only',
-    why:
-      'Speaks to the buyer rather than the user — the adult child, the person who took a parent to ' +
-      'the class. Written so it never says anything about the reader’s health, or anybody else’s.',
-    primaries: [
-      'If you look after someone, you already know the hard part is the week after the class ends. This is built for that week.',
-      'Two minutes of movement, on a phone that is already in the room. Built for ages 10 to 100, so it works for both of you.',
-    ],
-    headlines: ['For whoever you look after', 'The week after the class ends', 'Something for both of you'],
-    descriptions: ['Free to start. No card.', 'Ages 10 to 100.', 'No card needed'],
-    picture:
-      'Two people, one phone, side by side — the caring gesture, not the care task. Faces relaxed. ' +
-      'Nothing that reads as medical: no clinic, no walking frame, no uniform.',
+      'Typographic, no photograph at all. Deep navy ground, the seven refusals set as plain text. ' +
+      'It will look unlike everything around it in the feed, which is the entire point.',
   },
 ];
 
@@ -577,7 +684,7 @@ for (const c of CONCEPTS) {
 
 /* ---- 6. creative rules ---- */
 body.push(
-  H1('6. What gets a wellbeing advert rejected'),
+  H1('7. What gets a wellbeing advert rejected'),
   P(
     'Meta reviews health and wellbeing advertising harder than almost any other category. These are ' +
       'the five things that get an advert refused, and the reason every line of copy above talks ' +
@@ -610,7 +717,7 @@ body.push(
 
 /* ---- 7. naming and links ---- */
 body.push(
-  H1('7. Naming and links'),
+  H1('8. Naming and links'),
   P('Paste these as you build, so the reporting is readable in a fortnight when it matters.'),
   ...COPY_BLOCK(
     'Naming convention',
@@ -638,7 +745,7 @@ Ad:        A1-TWOMINUTES | 1x1
 
 /* ---- 8. measurement ---- */
 body.push(
-  H1('8. What to look at, and when'),
+  H1('9. What to look at, and when'),
   P('The temptation is to check hourly. This is the schedule that actually tells you something.'),
   table(
     ['When', 'Look at', 'Do'],
@@ -676,7 +783,7 @@ body.push(
 
 /* ---- 9. audiences ---- */
 body.push(
-  H1('9. Build these audiences on day one'),
+  H1('10. Build these audiences on day one'),
   P('They cost nothing, they need the pixel live, and they are what the next campaign runs on.'),
   ...COPY_BLOCK(
     'Custom audiences to create now',
@@ -697,10 +804,10 @@ body.push(
 
 /* ---- close ---- */
 body.push(
-  H1('10. The first hour'),
+  H1('11. The first hour'),
   P('If nothing else in this document happens, these six things should.'),
   BULLET('Set NEXT_PUBLIC_META_PIXEL_ID in Vercel and confirm the pixel fires after accepting the banner.'),
-  BULLET('Read section 5 end to end and put your name to it.'),
+  BULLET('Read section 6 end to end and put your name to it.'),
   BULLET('Create the five custom audiences, so they start filling from the first click.'),
   BULLET('Build the four square images. Concept A first — it is the one to lead with.'),
   BULLET('Set the campaign to Traffic, landing page views, £15 a day, fourteen days.'),
