@@ -64,13 +64,36 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
     acuAllowance: 15_600,
     priceEnvVar: 'STRIPE_PRICE_PREMIUM_ANNUAL',
   },
+  /*
+   * The two family allowances were halved, and the reason is arithmetic
+   * rather than pricing strategy.
+   *
+   * `requiredAcus` prices every action at `direct cost × 4 × 100 ACU`,
+   * where the 100 is `ACU_PER_GBP` — it defines one ACU as a penny of
+   * customer revenue, and the 4× margin is only real if a penny was
+   * actually paid for it. At 52,000 ACU for £129.99 a family_annual
+   * member paid a quarter of a penny each, so the governor believed it
+   * was clearing 4× while the plan cleared exactly 1.0×: £130 of provider
+   * cost against £129.99 of revenue, before Stripe's £3.06 and before any
+   * of the £1.49 per paying user per month of overhead. A household that
+   * used what it bought was a guaranteed loss.
+   *
+   * Halving brings both to 2.00×, level with premium_monthly, and leaves
+   * the published prices alone. 26,000 ACU across five seats is still
+   * about 430 a seat a month against a 50 ACU free tier — the plan is
+   * not being made thin, it is being made solvent.
+   *
+   * `realisedProtectionMultiple()` computes this and
+   * `money-integrity.test.ts` pins every plan's figure, so the next change
+   * to a price or an allowance has to be deliberate.
+   */
   family_monthly: {
     plan: 'family_monthly',
     label: 'Family, monthly',
     gbp: 12.99,
     interval: 'month',
     seats: 5,
-    acuAllowance: 4_000,
+    acuAllowance: 2_000,
     priceEnvVar: 'STRIPE_PRICE_FAMILY_MONTHLY',
   },
   family_annual: {
@@ -79,7 +102,7 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
     gbp: 129.99,
     interval: 'year',
     seats: 5,
-    acuAllowance: 52_000,
+    acuAllowance: 26_000,
     priceEnvVar: 'STRIPE_PRICE_FAMILY_ANNUAL',
   },
   organisation_seat: {

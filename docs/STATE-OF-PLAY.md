@@ -70,7 +70,7 @@ is the point of the file.
 | A self-only check cannot be skipped by sending an array | The guard refuses anything that is not a string equal to the caller's id |
 | The past-due grace period ends | `state_since` only moves on a real transition, so a second failed payment cannot extend it |
 | A top-up credits what the pricing advertises | £10 buys the published 1,040 ACU, not 1,000 |
-| No plan sells allowance below what it costs to serve | `realisedProtectionMultiple` is computed and pinned per plan; below 1.0 fails the build |
+| No plan sells allowance below what it costs to serve | `realisedProtectionMultiple` is computed and pinned per plan; below 1.0 fails the build. family_annual moved from 1.00× to 2.00× |
 
 Test suite: **820 passing, 0 failing** — 773 backend, 25 body-command, 22 foodlens.
 Smoke suite: **83/83**, both signed out and signed in.
@@ -94,7 +94,7 @@ none of them can be closed from inside a sandbox.
 | Weekly cron for the newsletter | Justin | `POST /api/newsletter/cron` with `Authorization: Bearer $CRON_SECRET` |
 | Automatic sending, or approve each issue by hand? | Justin | Unset, the scheduler composes and queues for review. Set `NEWSLETTER_AUTO_APPROVE_BY` to a real name to have it approve and send too — that name is recorded on every issue |
 | Migration 0027 applied in production | Justin | Applies on the next boot via `DbService.onModuleInit`. Until it does, the wallet write is unconditional and the reversal tables do not exist |
-| Which way to fix the plan margin | Justin | See "Every plan sells ACU below face value" below. Repricing is a decision, not a defect fix |
+| Stripe Price IDs still match the plans | Justin | The family *allowances* changed; the family *prices* did not, so no Stripe Price needs recreating. Worth confirming the metadata still says `family_monthly` / `family_annual` |
 
 **Why an agent cannot close these.** Outbound HTTPS from the build
 sandbox to `jessmove.com` and `api.jessmove.com` is refused by the
@@ -119,34 +119,37 @@ and it is the owner's call rather than a cleanup. Two structural tests in
 a route naming a user without a guard, and a guard imported without being
 applied. A linter would still be worth having.
 
-**Every plan sells ACU below face value, so the 4× Cost Governor is not
-4×.** `requiredAcus` prices every action at `direct cost × 4 × 100 ACU`,
-where the 100 defines one ACU as a penny of customer revenue. A top-up pays
-exactly that penny, so top-ups clear 4×. Subscriptions do not:
+**No plan clears the 4× the Cost Governor assumes, and one of them used
+to lose money.** `requiredAcus` prices every action at
+`direct cost × 4 × 100 ACU`, where the 100 defines one ACU as a penny of
+customer revenue. A top-up pays exactly that penny, so top-ups clear 4×.
+Subscriptions sell below it:
 
-| Plan | £ per ACU | Multiple actually cleared |
-|---|---|---|
-| premium_monthly | 0.00499 | 2.00× |
-| organisation_seat | 0.00500 | 2.00× |
-| premium_annual | 0.00385 | 1.54× |
-| family_monthly | 0.00325 | 1.30× |
-| **family_annual** | **0.00250** | **1.00×** |
+| Plan | £ per ACU | Was | Now |
+|---|---|---|---|
+| family_monthly | 0.00650 | 1.30× | **2.60×** |
+| premium_monthly | 0.00499 | 2.00× | 2.00× |
+| family_annual | 0.00500 | **1.00×** | **2.00×** |
+| organisation_seat | 0.00500 | 2.00× | 2.00× |
+| premium_annual | 0.00385 | 1.54× | 1.54× |
 
-At 1.00× a family_annual member who uses their whole allowance costs
-exactly what they paid — £130 of provider cost against £129.99 — before
-Stripe's £3.06 fee and before any of the £1.49 per paying user per month in
-`OVERHEAD_PER_PAID_USER_MONTH`. It is not fraud and not a bug in the
-metering; it is what the published allowances mean when read against the
-governor's own assumption.
+**Fixed:** both family allowances were halved — `family_monthly` 4,000 →
+2,000 and `family_annual` 52,000 → 26,000, prices unchanged. At the old
+figures a family_annual household that used what it bought cost £130 of
+provider spend against £129.99 of revenue, before Stripe's £3.06 and
+before any of the £1.49 per paying user per month in
+`OVERHEAD_PER_PAID_USER_MONTH`. That was a guaranteed loss, and it is now
+2.00×, level with premium.
 
-This is not changed here because changing it is repricing, which is the
-owner's decision and not a defect fix. What is built is the measurement:
-`realisedProtectionMultiple()` computes it, `money-integrity.test.ts` pins
-every plan's figure so a price cannot move quietly, and any plan dropping
-below 1.0 — an outright loss — fails the build. **Open question for Justin:
-restore the allowances to the 20% model the cost work assumed
-(`monthlyAcuAllocation`, which would make premium_monthly 120 ACU rather
-than 1,200), raise the prices, or accept the thinner margin deliberately.**
+`realisedProtectionMultiple()` computes the figure, `money-integrity.test.ts`
+pins every plan's, and any plan falling below 1.0 fails the build.
+
+**Two things left for the owner, neither of them a loss.** `premium_annual`
+is now the thinnest at 1.54×. And a family seat now carries 400 ACU a month
+against premium's 1,200 for one seat, so five individual premium
+subscriptions buy three times the allowance of one family plan for roughly
+two and a half times the money — defensible as a budget tier, but the
+ladder is worth a look before the pricing page is written.
 
 **Auto top-up is declared and not wired.** `autoTopUpDue` exists, nothing
 calls it and nothing sets `autoTopUp`, so it charges nobody today. If it is

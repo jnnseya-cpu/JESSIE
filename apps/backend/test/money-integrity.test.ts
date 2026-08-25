@@ -234,8 +234,11 @@ test('the realised margin is pinned, so a price change cannot move it quietly', 
   const expected: Record<string, number> = {
     premium_monthly: 1.997,
     premium_annual: 1.538,
-    family_monthly: 1.299,
-    family_annual: 1,
+    // Both family allowances were halved — 4,000 to 2,000 and 52,000 to
+    // 26,000 — because family_annual cleared exactly 1.0x and a household
+    // that used what it bought was a guaranteed loss. Prices unchanged.
+    family_monthly: 2.598,
+    family_annual: 2,
     organisation_seat: 2,
   };
 
@@ -247,8 +250,11 @@ test('the realised margin is pinned, so a price change cannot move it quietly', 
     );
   }
 
+  // No plan is at the loss line any more. premium_annual is now the
+  // thinnest at 1.54x, which is thin but not a loss.
   const weakest = weakestPlanMargin();
-  assert.equal(weakest.plan, 'family_annual');
+  assert.equal(weakest.plan, 'premium_annual');
+  assert.ok(weakest.multiple > 1.5, `the weakest plan fell to ${weakest.multiple}x`);
   assert.ok(
     weakest.multiple < COST_PROTECTION_MULTIPLE,
     'if every plan now clears 4x, this test has done its job and should be tightened',
