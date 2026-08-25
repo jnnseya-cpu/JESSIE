@@ -5,6 +5,7 @@ import {
   ACU_PER_GBP,
   PAST_DUE_GRACE_DAYS,
   PLAN_DEFINITIONS,
+  WEBHOOK_PATH,
   assertStripeChargeable,
   fromMinorUnits,
   isEntitled,
@@ -176,6 +177,18 @@ export class StripeService {
     return this.config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
   }
 
+  /**
+   * The absolute URL Stripe must post to.
+   *
+   * Built from the same origin the platform already uses for its own
+   * outbound links, plus the one path this controller serves, so the two
+   * cannot disagree.
+   */
+  webhookUrl(): string {
+    const origin = (process.env.API_PUBLIC_URL ?? 'https://api.jessmove.com/api').replace(/\/$/, '');
+    return `${origin}${WEBHOOK_PATH}`;
+  }
+
   configured(): boolean {
     return this.secretKey().startsWith('sk_');
   }
@@ -196,6 +209,22 @@ export class StripeService {
       secretKeyConfigured: this.configured(),
       webhookSecretConfigured: this.webhookSecret().startsWith('whsec_'),
       mode: this.secretKey().startsWith('sk_live') ? 'live' : this.configured() ? 'test' : 'none',
+      /*
+       * The exact URL to paste into the Stripe dashboard, absolute.
+       *
+       * This endpoint reported `webhookPath` — a path with no host — and
+       * the endpoint registered in Stripe pointed at the *site* rather
+       * than the API, on a path this application has never served. Every
+       * event 404'd against the Next.js app for as long as it was
+       * configured that way, and nothing on this side could report a
+       * problem, because nothing on this side was ever contacted.
+       *
+       * A path is not enough to get right. An absolute URL is.
+       */
+      webhookUrl: this.webhookUrl(),
+      webhookNote:
+        'This is the only URL that serves the webhook. It is on the API host, not the site — ' +
+        'www.jessmove.com is the Next.js frontend and has no such route.',
       prices,
       missingPriceIds: prices.filter((p) => !p.priceId).map((p) => p.plan),
       pricesManagedIn:

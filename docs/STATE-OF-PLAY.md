@@ -102,6 +102,7 @@ none of them can be closed from inside a sandbox.
 | Weekly cron for the newsletter | Justin | `POST /api/newsletter/cron` with `Authorization: Bearer $CRON_SECRET` |
 | Automatic sending, or approve each issue by hand? | Justin | Unset, the scheduler composes and queues for review. Set `NEWSLETTER_AUTO_APPROVE_BY` to a real name to have it approve and send too — that name is recorded on every issue |
 | Migration 0027 applied in production | Justin | Applies on the next boot via `DbService.onModuleInit`. Until it does, the wallet write is unconditional and the reversal tables do not exist |
+| **The Stripe webhook URL is wrong in the dashboard** | Justin | Registered as `https://www.jessmove.com/v1/payments/stripe-webhook`. That host is the Next.js site and that path exists nowhere in this repo, so every event 404s. Change it to **`https://api.jessmove.com/api/stripe/webhook`**, confirm the signing secret still matches `STRIPE_WEBHOOK_SECRET`, then replay the failed events. `GET /api/stripe/status` now prints the correct URL |
 | **The AI token rates are right** | Justin | `MODEL_TOKEN_RATES` in `packages/shared/src/ai-costs.ts` — list prices rounded up at $1 = £0.80. Check against real invoices; an under-estimate is a loss on every call. `AI_TOKEN_RATES_JSON` overrides without a deploy |
 | Migration 0028 applied in production | Justin | Applies on the next boot. Until it does, an annual plan still grants the whole year at once |
 | Stripe Price IDs still match the plans | Justin | Allowances changed; prices did not, so no Stripe Price needs recreating. Worth confirming the metadata still says the plan name |
@@ -112,6 +113,47 @@ environment's network policy — `CONNECT tunnel failed, 403`. That is a
 policy denial, not an outage, and it is not to be worked around. Any
 claim about production behaviour made from inside this sandbox is a
 guess, and should be written as one or not written.
+
+---
+
+## Why no payment has ever granted anything
+
+The Stripe endpoint for Jess Move is registered as
+`https://www.jessmove.com/v1/payments/stripe-webhook`. Both halves are
+wrong:
+
+- `www.jessmove.com` is the Next.js site on Vercel. The NestJS API is a
+  separate deployment at `api.jessmove.com` — see `apiBase()`.
+- `/v1/payments/stripe-webhook` exists nowhere in this repository. There is
+  no such route and no rewrite in `apps/frontend/vercel.json`. The
+  controller is `@Controller('stripe')` + `@Post('webhook')` under
+  `setGlobalPrefix('api')`, which is `/api/stripe/webhook`.
+
+So every event has hit the frontend and 404'd. What follows from that:
+
+- **`invoice.paid` is the only event that grants ACU, and it has never
+  arrived.** No subscription has ever granted allowance.
+- **`payment_intent.succeeded` credits top-ups, and it has never arrived.**
+  No top-up has ever credited.
+- **`checkout.session.completed` links a Stripe customer to an account.**
+  It has never arrived, so `stripe_customers` is empty — which means a
+  refund for an existing customer still cannot be matched to a wallet even
+  after the URL is fixed, until that member transacts again.
+- Signup and payment conversions were never counted, independently of
+  whether the pixel IDs are set.
+
+It also corroborates the ACU finding from earlier: the observed balance
+reconstructed exactly as free tier plus staff grants, with no subscription
+component. There was none to have.
+
+The fix is a dashboard change and cannot be made from here. `GET
+/api/stripe/status` now returns `webhookUrl` — the absolute URL, built from
+`API_PUBLIC_URL` and `WEBHOOK_PATH` so the two cannot disagree. It used to
+report only a path, and a path is not enough to get right.
+
+Stripe retries a failed event for about three days, so anything older than
+that is gone; the recent ones can be resent from the Events tab once the
+URL is corrected.
 
 ---
 
