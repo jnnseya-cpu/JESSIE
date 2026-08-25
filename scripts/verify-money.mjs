@@ -296,6 +296,93 @@ async function main() {
   );
 
   /* ---------------------------------------------------------------- *
+   * 7. A year's allowance is not handed over on day one
+   * ---------------------------------------------------------------- */
+  console.log('\n7. An annual plan, delivered monthly');
+
+  const invoiceId = `in_test_${suffix}`;
+  await pool.query('DELETE FROM annual_deposits WHERE invoice_id = $1', [invoiceId]);
+
+  for (let month = 1; month <= 11; month += 1) {
+    await pool.query(
+      `INSERT INTO annual_deposits (user_id, plan, invoice_id, month_index, acus, due_at)
+       VALUES ($1, 'premium_annual', $2, $3, 499, now() + make_interval(months => $3))
+       ON CONFLICT (invoice_id, month_index) DO NOTHING`,
+      [userId, invoiceId, month],
+    );
+  }
+
+  const { rows: pending } = await pool.query(
+    'SELECT count(*)::int AS n FROM annual_deposits WHERE invoice_id = $1 AND granted_at IS NULL',
+    [invoiceId],
+  );
+  check('eleven further deposits are owed, not granted', pending[0].n === 11, `${pending[0].n} pending`);
+
+  const { rows: dueNow } = await pool.query(
+    'SELECT count(*)::int AS n FROM annual_deposits WHERE invoice_id = $1 AND granted_at IS NULL AND due_at <= now()',
+    [invoiceId],
+  );
+  check('none of them is due yet', dueNow[0].n === 0, `${dueNow[0].n} due`);
+
+  // Bring one forward and claim it the way the release path does.
+  await pool.query(
+    `UPDATE annual_deposits SET due_at = now() - interval '1 day'
+      WHERE invoice_id = $1 AND month_index = 1`,
+    [invoiceId],
+  );
+
+  const claimOne = () =>
+    pool
+      .query(
+        `UPDATE annual_deposits SET granted_at = now()
+          WHERE id IN (
+            SELECT id FROM annual_deposits
+             WHERE user_id = $1 AND granted_at IS NULL AND due_at <= now()
+             ORDER BY due_at
+             FOR UPDATE SKIP LOCKED
+          )
+        RETURNING month_index`,
+        [userId],
+      )
+      .then((r) => r.rows.length);
+
+  // Four instances hitting the same member on the morning it falls due.
+  const claimed = await Promise.all([claimOne(), claimOne(), claimOne(), claimOne()]);
+  const total = claimed.reduce((sum, n) => sum + n, 0);
+  check('a due deposit is released exactly once under concurrency', total === 1, `${total} released`);
+
+  const { rows: stillOwed } = await pool.query(
+    'SELECT count(*)::int AS n FROM annual_deposits WHERE invoice_id = $1 AND granted_at IS NULL',
+    [invoiceId],
+  );
+  check('the other ten are still owed', stillOwed[0].n === 10, `${stillOwed[0].n} owed`);
+
+  /* ---------------------------------------------------------------- *
+   * 8. Compute delivered and not paid for is counted
+   * ---------------------------------------------------------------- */
+  console.log('\n8. An overage the balance could not cover');
+
+  const overageRef = `overage_test_${suffix}`;
+  await pool.query('DELETE FROM wallet_adjustments WHERE reference = $1', [overageRef]);
+  for (let i = 0; i < 3; i += 1) {
+    await pool.query(
+      `INSERT INTO wallet_adjustments (wallet_id, kind, reference, gbp, clawed_acus, shortfall_acus, note)
+       VALUES ($1, 'correction', $2, 0, 0, 12, 'over ceiling')
+       ON CONFLICT (kind, reference) DO NOTHING`,
+      [walletId, overageRef],
+    );
+  }
+  const { rows: unbilled } = await pool.query(
+    `SELECT count(*)::int AS n, coalesce(sum(shortfall_acus), 0)::int AS acus
+       FROM wallet_adjustments WHERE reference = $1`,
+    [overageRef],
+  );
+  check('unbilled compute is recorded once and counted', unbilled[0].n === 1 && unbilled[0].acus === 12);
+
+  await pool.query('DELETE FROM annual_deposits WHERE invoice_id = $1', [invoiceId]);
+  await pool.query('DELETE FROM wallet_adjustments WHERE reference = $1', [overageRef]);
+
+  /* ---------------------------------------------------------------- *
    * Clean up after ourselves.
    * ---------------------------------------------------------------- */
   await pool.query('DELETE FROM app_wallets WHERE id = $1', [walletId]);

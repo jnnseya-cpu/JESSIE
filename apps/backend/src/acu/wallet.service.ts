@@ -848,6 +848,64 @@ export class WalletService implements OnModuleDestroy {
   }
 
   /**
+   * Releases any annual deposits that have fallen due for this account.
+   *
+   * An annual plan is paid once and delivered in twelve monthly deposits,
+   * so eleven of them are owed later. There is no scheduler here, and the
+   * platform already solves that shape twice — the free tier and the
+   * editorial budget both top up on read, idempotent by reference. This is
+   * the third instance of the same pattern rather than a fourth mechanism.
+   *
+   * The row is claimed before the grant is made, so two concurrent
+   * requests on the morning a deposit falls due produce one deposit.
+   */
+  async releaseDueAnnualDeposits(userId: string, walletId: string, now = new Date()): Promise<number> {
+    if (!this.pool) return 0;
+
+    let released = 0;
+    try {
+      const due = await this.pool.query(
+        `UPDATE annual_deposits
+            SET granted_at = now()
+          WHERE id IN (
+            SELECT id FROM annual_deposits
+             WHERE user_id = $1 AND granted_at IS NULL AND due_at <= $2
+             ORDER BY due_at
+             FOR UPDATE SKIP LOCKED
+          )
+        RETURNING invoice_id, month_index, acus`,
+        [userId, now],
+      );
+
+      for (const row of due.rows) {
+        const acus = Number(row.acus);
+        const reference = `invoice_${String(row.invoice_id)}:m${String(row.month_index)}`;
+        const grant = await this.grantOn(walletId, 'subscription', acus, now, reference);
+        if (grant) {
+          released += acus;
+        } else {
+          /*
+           * The claim is given back. A deposit marked granted that was
+           * never granted is a member quietly short of what they paid
+           * for, and nothing downstream would ever notice.
+           */
+          await this.pool.query(
+            `UPDATE annual_deposits SET granted_at = NULL
+              WHERE invoice_id = $1 AND month_index = $2`,
+            [row.invoice_id, row.month_index],
+          );
+          this.logger.error(`annual deposit ${reference} could not be granted; claim released`);
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `annual deposit release failed for ${userId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    return released;
+  }
+
+  /**
    * The grant a Stripe object paid for, if this wallet holds one.
    *
    * A reversal has to know how much allowance the money it is returning
@@ -859,6 +917,34 @@ export class WalletService implements OnModuleDestroy {
     const wallet = await this.get(walletId);
     if (!wallet || !reference) return null;
     return wallet.grants.find((g) => g.sourceRef?.includes(reference)) ?? null;
+  }
+
+  /**
+   * Records compute that was delivered and could not be charged.
+   *
+   * The counterpart to a refund shortfall, and the same kind of number:
+   * money the platform spent and did not recover. It creates no debt and
+   * the member is never chased for it — it exists so the total is
+   * countable, because a loss nobody adds up is a loss nobody fixes.
+   */
+  async recordUnbilled(
+    walletId: string,
+    input: { reference: string; acus: number; note?: string },
+  ): Promise<void> {
+    const acus = Math.max(0, Math.round(input.acus));
+    if (acus === 0 || !this.pool) return;
+    try {
+      await this.pool.query(
+        `INSERT INTO wallet_adjustments (wallet_id, kind, reference, gbp, clawed_acus, shortfall_acus, note)
+         VALUES ($1, 'correction', $2, 0, 0, $3, $4)
+         ON CONFLICT (kind, reference) DO NOTHING`,
+        [walletId, input.reference, acus, input.note ?? null],
+      );
+    } catch (err) {
+      this.logger.error(
+        `unbilled record failed for ${input.reference}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   /** Every reversal against a wallet, newest first. For the account page. */

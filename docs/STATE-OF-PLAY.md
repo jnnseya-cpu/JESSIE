@@ -70,11 +70,19 @@ is the point of the file.
 | A self-only check cannot be skipped by sending an array | The guard refuses anything that is not a string equal to the caller's id |
 | The past-due grace period ends | `state_since` only moves on a real transition, so a second failed payment cannot extend it |
 | A top-up credits what the pricing advertises | £10 buys the published 1,040 ACU, not 1,000 |
-| No plan sells allowance below what it costs to serve | `realisedProtectionMultiple` is computed and pinned per plan; below 1.0 fails the build. family_annual moved from 1.00× to 2.00× |
+| **Every AI call clears 4× its provider cost** | Token counts priced at real per-model rates, then `× 4 × 100` once. Every model on the chain measured at 4.08×–6.79× on three call shapes |
+| Every plan clears 4× | Allowance is `price × 100` on all five. Pinned per plan; anything below 4× fails the build |
+| An unpriced call is refused, not served free | A zero, negative or unknown provider cost now breaches the guard instead of passing it |
+| No caller can discount an action | Every cost component floored at zero, contingency clamped to 0–0.2 |
+| An unrecognised model is charged at the dearest rate known | So a changed environment variable cannot switch the margin off |
+| An annual plan is delivered monthly | Migration 0028. Eleven deposits owed, released on read, exactly once under four concurrent claims |
+| Compute delivered and not paid for is counted | Recorded against `wallet_adjustments`, not silently absorbed |
+| A non-GBP invoice grants nothing | Every plan is priced in GBP; an unexpected currency is refused, not converted at an invented rate |
 
-Test suite: **820 passing, 0 failing** — 773 backend, 25 body-command, 22 foodlens.
-Smoke suite: **83/83**, both signed out and signed in.
-Money integrity: **11/11** against real Postgres (`pnpm verify:money`).
+Test suite: **829 passing, 0 failing** — 780 backend, 27 body-command, 22 foodlens.
+Smoke suite: **85/85**, signed out.
+Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
+Migrations 0027 and 0028 verified applying on a real boot.
 
 ---
 
@@ -94,7 +102,9 @@ none of them can be closed from inside a sandbox.
 | Weekly cron for the newsletter | Justin | `POST /api/newsletter/cron` with `Authorization: Bearer $CRON_SECRET` |
 | Automatic sending, or approve each issue by hand? | Justin | Unset, the scheduler composes and queues for review. Set `NEWSLETTER_AUTO_APPROVE_BY` to a real name to have it approve and send too — that name is recorded on every issue |
 | Migration 0027 applied in production | Justin | Applies on the next boot via `DbService.onModuleInit`. Until it does, the wallet write is unconditional and the reversal tables do not exist |
-| Stripe Price IDs still match the plans | Justin | The family *allowances* changed; the family *prices* did not, so no Stripe Price needs recreating. Worth confirming the metadata still says `family_monthly` / `family_annual` |
+| **The AI token rates are right** | Justin | `MODEL_TOKEN_RATES` in `packages/shared/src/ai-costs.ts` — list prices rounded up at $1 = £0.80. Check against real invoices; an under-estimate is a loss on every call. `AI_TOKEN_RATES_JSON` overrides without a deploy |
+| Migration 0028 applied in production | Justin | Applies on the next boot. Until it does, an annual plan still grants the whole year at once |
+| Stripe Price IDs still match the plans | Justin | Allowances changed; prices did not, so no Stripe Price needs recreating. Worth confirming the metadata still says the plan name |
 
 **Why an agent cannot close these.** Outbound HTTPS from the build
 sandbox to `jessmove.com` and `api.jessmove.com` is refused by the
@@ -119,37 +129,67 @@ and it is the owner's call rather than a cleanup. Two structural tests in
 a route naming a user without a guard, and a guard imported without being
 applied. A linter would still be worth having.
 
-**No plan clears the 4× the Cost Governor assumes, and one of them used
-to lose money.** `requiredAcus` prices every action at
-`direct cost × 4 × 100 ACU`, where the 100 defines one ACU as a penny of
-customer revenue. A top-up pays exactly that penny, so top-ups clear 4×.
-Subscriptions sell below it:
+**The 4× rule is now true, and it was not true anywhere before.** The two
+halves both failed, independently, and each hid the other.
 
-| Plan | £ per ACU | Was | Now |
+**The token price — the larger half.** `requiredAcus` was correct: it takes
+a provider cost and returns `cost × 4 × 100 ACU`. It was never given a
+provider cost. The adapters computed ACU from a formula of their own —
+`((input + output × 3) / 10_000) × (frontier ? 1 : 0.35)` — which knows
+nothing about what any model charges, and the gateway then *divided that
+back down by 400* to produce the "provider cost" it handed to the
+profitability guard. The guard was checking a number reconstructed from the
+number it was checking. It could not fail and it never did.
+
+Measured against list prices, on a 2,600-in / 500-out call:
+
+| Model | Billed | Real cost | Cleared |
 |---|---|---|---|
-| family_monthly | 0.00650 | 1.30× | **2.60×** |
-| premium_monthly | 0.00499 | 2.00× | 2.00× |
-| family_annual | 0.00500 | **1.00×** | **2.00×** |
-| organisation_seat | 0.00500 | 2.00× | 2.00× |
-| premium_annual | 0.00385 | 1.54× | 1.54× |
+| claude-opus-5 | £0.0041 | £0.0602 | **0.068×** |
+| claude-sonnet-5 | £0.0014 | £0.0121 | 0.119× |
+| gpt-4.1 | £0.0041 | £0.0072 | 0.566× |
+| gemini-2.5-pro | £0.0041 | £0.0065 | 0.631× |
+| gemini-2.5-flash | £0.0014 | £0.0016 | 0.898× |
+| gpt-4.1-mini | £0.0014 | £0.0015 | 0.990× |
 
-**Fixed:** both family allowances were halved — `family_monthly` 4,000 →
-2,000 and `family_annual` 52,000 → 26,000, prices unchanged. At the old
-figures a family_annual household that used what it bought cost £130 of
-provider spend against £129.99 of revenue, before Stripe's £3.06 and
-before any of the £1.49 per paying user per month in
-`OVERHEAD_PER_PAID_USER_MONTH`. That was a guaranteed loss, and it is now
-2.00×, level with premium.
+Not one AI call this platform ever served cleared 4×. Every one lost money,
+and the better the model the worse the loss. `packages/shared/src/ai-costs.ts`
+now holds real per-model rates and there is one pricing path; every model
+measures 4.08×–6.79× on three call shapes.
 
-`realisedProtectionMultiple()` computes the figure, `money-integrity.test.ts`
-pins every plan's, and any plan falling below 1.0 fails the build.
+**The plan price — the smaller half.** Every allowance sold an ACU below the
+penny of revenue the governor assumes, so no plan cleared 4× either.
+Allowances are now `price × 100` exactly:
 
-**Two things left for the owner, neither of them a loss.** `premium_annual`
-is now the thinnest at 1.54×. And a family seat now carries 400 ACU a month
-against premium's 1,200 for one seat, so five individual premium
-subscriptions buy three times the allowance of one family plan for roughly
-two and a half times the money — defensible as a budget tier, but the
-ladder is worth a look before the pricing page is written.
+| Plan | Allowance was | Now | Was | Now |
+|---|---|---|---|---|
+| premium_monthly | 1,200 | 599 | 2.00× | **4.00×** |
+| premium_annual | 15,600 | 5,999 | 1.54× | **4.00×** |
+| family_monthly | 4,000 | 1,299 | 1.30× | **4.00×** |
+| family_annual | 52,000 | 12,999 | **1.00×** | **4.00×** |
+| organisation_seat | 400 | 200 | 2.00× | **4.00×** |
+
+Top-up volume bonuses are removed for the same reason — £10 for 1,040 ACU
+is 3.85×, and a bonus below face value is the platform paying part of the
+member's provider bill. They had never been granted anyway; the tier table
+was read by nothing.
+
+**What this costs.** A premium month falls from 1,200 ACU to 599 — roughly
+120 mid-model analyses or 24 frontier ones. That is the honest number. The
+old one was selling AI at a discount nobody had decided to give.
+
+**One input still needs the owner.** The rates in `ai-costs.ts` are list
+prices, rounded up, converted at a deliberately conservative $1 = £0.80.
+They are the one number in this model that cannot be derived from the code,
+they change without notice, and an under-estimate is a direct loss on every
+call. **Justin: check them against real invoices.** `AI_TOKEN_RATES_JSON`
+overrides them without a deploy; a zero or negative override is rejected.
+
+**Also worth a look before the pricing page is written.** A family seat
+carries 260 ACU a month against premium's 599 for one seat, so five
+individual premium subscriptions buy well over twice the allowance of one
+family plan. Defensible as a budget tier, but it is a deliberate choice now
+rather than an accident.
 
 **Auto top-up is declared and not wired.** `autoTopUpDue` exists, nothing
 calls it and nothing sets `autoTopUp`, so it charges nobody today. If it is

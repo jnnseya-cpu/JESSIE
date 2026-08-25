@@ -108,11 +108,10 @@ export class AnthropicProvider implements ModelProvider {
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
-        acu: toAcu(
-          response.usage.input_tokens,
-          response.usage.output_tokens,
-          this.isFrontier(request),
-        ),
+        // Priced against the model the provider says it actually served,
+        // not the one we asked for — a silent substitution must not be
+        // billed at the rate of the model it replaced.
+        acu: toAcu(response.model, response.usage.input_tokens, response.usage.output_tokens),
       },
     };
   }

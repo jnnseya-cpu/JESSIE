@@ -3,11 +3,17 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   ACU_TOPUP_TIERS,
+  AGENT_REGISTRY,
   BILLING_PLANS,
+  MODEL_TOKEN_RATES,
   PAST_DUE_GRACE_DAYS,
   PLAN_DEFINITIONS,
+  UNKNOWN_MODEL_RATE,
+  acusForTokens,
   realisedAcuPriceGbp,
+  realisedCallMargin,
   realisedProtectionMultiple,
+  tokenRateFor,
   topUpAcus,
   topUpTierFor,
   weakestPlanMargin,
@@ -30,6 +36,8 @@ import { ACU_PER_GBP, COST_PROTECTION_MULTIPLE } from '@jessmove/body-command';
 
 const src = (path: string): string =>
   readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+
+const readBack = src;
 
 /** Comments describe the intent; the assertions are about the code. */
 const code = (path: string): string =>
@@ -162,15 +170,25 @@ test('a self-only check cannot be skipped by sending the wrong type', () => {
  * 4 — Pricing that existed only in a constants file
  * ------------------------------------------------------------------ */
 
-test('a top-up credits the published tier, bonus included', () => {
+test('a top-up credits the published tier', () => {
   for (const tier of ACU_TOPUP_TIERS) {
     const { acus, tier: matched } = topUpAcus(tier.gbp);
     assert.equal(matched?.gbp, tier.gbp, `£${tier.gbp} matched no tier`);
     assert.equal(acus, tier.acus + tier.bonusAcus, `£${tier.gbp} credited ${acus}`);
   }
 
-  // £10 advertised 1,040 and the webhook granted 1,000, every time.
-  assert.equal(topUpAcus(10).acus, 1_040);
+  /*
+   * The volume bonuses are gone. They were never granted — the tier table
+   * was read by nothing — so no member ever received one, but they were
+   * also arithmetically incompatible with the rule: £10 for 1,040 ACU is
+   * £0.0096 an ACU against a £0.01 face value, which is 3.85× and not 4×.
+   * A bonus is a discount, and a discount below face value is the platform
+   * paying part of the member's provider bill.
+   */
+  assert.equal(topUpAcus(10).acus, 1_000);
+  for (const tier of ACU_TOPUP_TIERS) {
+    assert.equal(tier.bonusAcus, 0, `£${tier.gbp} still carries a bonus`);
+  }
 });
 
 test('an off-tier payment still credits, at face value and reported', () => {
@@ -201,64 +219,170 @@ test('every top-up sells an ACU at or above face value', () => {
  * 5 — The margin the Cost Governor believes it is enforcing
  * ------------------------------------------------------------------ */
 
-test('no plan sells allowance below what it costs to serve', () => {
+test('every plan clears the full 4x, with no exceptions', () => {
   /*
    * The governor prices every action at `direct cost x 4 x 100 ACU`,
    * where the 100 defines one ACU as a penny of revenue. The 4x is only
-   * real if a penny was actually paid. A top-up pays it; a subscription
-   * does not, and the two halves live in different packages so neither
-   * had to agree with the other.
+   * real if a penny was actually paid.
    *
-   * 1.0 is the line where a member who uses their whole allowance costs
-   * exactly what they paid — before Stripe's fee and before any of the
-   * overhead in OVERHEAD_PER_PAID_USER_MONTH. Below it the plan is a
-   * guaranteed loss, and that is a build failure rather than a report.
+   * No plan used to pay it. premium_monthly sold 1,200 ACU for £5.99 and
+   * cleared 2x; family_annual sold 52,000 for £129.99 and cleared exactly
+   * 1.0x, so a household that used its allowance cost £130 of provider
+   * spend against £129.99 of revenue. Every allowance is now `price x 100`
+   * — the arithmetic that makes 4x true rather than assumed.
+   *
+   * This is the hard floor. It is not a report and there is no plan it
+   * does not apply to.
    */
   for (const plan of BILLING_PLANS) {
     const multiple = realisedProtectionMultiple(plan);
     assert.ok(
-      multiple >= 1,
-      `${plan} clears only ${multiple}x its provider cost — £${PLAN_DEFINITIONS[plan].gbp} ` +
-        `for ${PLAN_DEFINITIONS[plan].acuAllowance} ACU is £${realisedAcuPriceGbp(plan).toFixed(5)} each`,
+      multiple >= COST_PROTECTION_MULTIPLE,
+      `${plan} clears only ${multiple}x — £${PLAN_DEFINITIONS[plan].gbp} for ` +
+        `${PLAN_DEFINITIONS[plan].acuAllowance} ACU is £${realisedAcuPriceGbp(plan).toFixed(5)} each, ` +
+        `against a £0.01 face value. The allowance must not exceed price x 100.`,
+    );
+  }
+
+  const weakest = weakestPlanMargin();
+  assert.ok(
+    weakest.multiple >= COST_PROTECTION_MULTIPLE,
+    `${weakest.plan} is the weakest at ${weakest.multiple}x`,
+  );
+});
+
+test('the realised margin is pinned, so a price change cannot move it quietly', () => {
+  for (const plan of BILLING_PLANS) {
+    assert.equal(
+      realisedProtectionMultiple(plan),
+      4,
+      `${plan} moved off 4x — an allowance may never exceed its price x 100`,
     );
   }
 });
 
-test('the realised margin is pinned, so a price change cannot move it quietly', () => {
-  /*
-   * These are the figures as they stand, not the figures they should be.
-   * The governor assumes 4x and no plan reaches 2x. Changing an allowance
-   * or a price fails this test, which is the point — the number moving is
-   * a decision, and a decision should not be able to happen by accident.
-   */
-  const expected: Record<string, number> = {
-    premium_monthly: 1.997,
-    premium_annual: 1.538,
-    // Both family allowances were halved — 4,000 to 2,000 and 52,000 to
-    // 26,000 — because family_annual cleared exactly 1.0x and a household
-    // that used what it bought was a guaranteed loss. Prices unchanged.
-    family_monthly: 2.598,
-    family_annual: 2,
-    organisation_seat: 2,
-  };
+/* ------------------------------------------------------------------ *
+ * 5b — Where the 4x is actually decided: the token price
+ * ------------------------------------------------------------------ */
 
-  for (const plan of BILLING_PLANS) {
+test('a call is priced from real token rates, not from a shape', () => {
+  /*
+   * The adapters used to compute ACU themselves:
+   *
+   *     ((input + output x 3) / 10_000) x (frontier ? 1 : 0.35)
+   *
+   * That formula knows nothing about what any model charges. Worse, the
+   * gateway then divided the result back down by 400 to produce the
+   * "provider cost" it handed to breachesProtectionRule — so the guard was
+   * checking a number reconstructed from the number it was checking. It
+   * could not fail, and for the life of the platform it never did.
+   *
+   * Measured against list prices it billed between 0.068x and 0.99x of
+   * direct cost. Not one AI call this platform ever served cleared 4x.
+   */
+  const provider = readBack('ai/provider.interface.ts');
+  assert.match(provider, /acusForTokens\(/, 'the adapters price calls themselves again');
+  assert.doesNotMatch(
+    code('ai/provider.interface.ts'),
+    /10_000/,
+    'the invented token formula is back',
+  );
+
+  // The model id is required. "Frontier" is a tier, and a tier is not a
+  // rate — two frontier models on this chain differ more than sevenfold.
+  assert.match(provider, /export function toAcu\(model: string/);
+});
+
+test('every model on the chain clears 4x on a representative call', () => {
+  const models = Object.keys(MODEL_TOKEN_RATES);
+  assert.ok(models.length >= 6, `only ${models.length} models are priced`);
+
+  for (const model of models) {
+    for (const [input, output] of [
+      [500, 100],
+      [2_600, 500],
+      [8_000, 4_000],
+    ]) {
+      const margin = realisedCallMargin(model, input, output);
+      assert.ok(
+        margin >= COST_PROTECTION_MULTIPLE,
+        `${model} clears only ${margin}x on ${input} in / ${output} out`,
+      );
+    }
+  }
+});
+
+test('an unrecognised model is charged at the most expensive rate known', () => {
+  /*
+   * Otherwise changing ANTHROPIC_MODEL to something this table has never
+   * heard of silently switches off the margin. The safe assumption about
+   * an unknown cost is the highest one we know of, not an average.
+   */
+  const { known, rate } = tokenRateFor('some-model-nobody-priced');
+  assert.equal(known, false);
+  assert.equal(rate, UNKNOWN_MODEL_RATE);
+
+  const dearest = Object.values(MODEL_TOKEN_RATES).reduce((a, b) =>
+    a.gbpPerMillionOutput > b.gbpPerMillionOutput ? a : b,
+  );
+  assert.equal(UNKNOWN_MODEL_RATE.gbpPerMillionInput, dearest.gbpPerMillionInput);
+  assert.equal(UNKNOWN_MODEL_RATE.gbpPerMillionOutput, dearest.gbpPerMillionOutput);
+
+  assert.ok(realisedCallMargin('some-model-nobody-priced', 2_600, 500) >= COST_PROTECTION_MULTIPLE);
+});
+
+test('a call that reaches a provider is never free', () => {
+  // Math.ceil of a tiny cost is 1, and a provider reporting no usage at
+  // all still consumed a request. Zero is not an available answer.
+  assert.ok(acusForTokens('gemini-2.5-flash', 1, 0) >= 1);
+  assert.ok(acusForTokens('gemini-2.5-flash', 0, 0) >= 1);
+
+  // Nonsense from a provider cannot reduce a bill.
+  assert.equal(acusForTokens('gpt-4.1', -50_000, -50_000), 1);
+});
+
+test('configuration cannot switch the margin off', () => {
+  // A zero or negative override would be free AI by environment variable.
+  const env = {
+    AI_TOKEN_RATES_JSON: JSON.stringify({
+      'gpt-4.1': { gbpPerMillionInput: 0, gbpPerMillionOutput: 0 },
+      'claude-opus-5': { gbpPerMillionInput: -5, gbpPerMillionOutput: -5 },
+    }),
+  };
+  assert.equal(tokenRateFor('gpt-4.1', env).rate, MODEL_TOKEN_RATES['gpt-4.1']);
+  assert.equal(tokenRateFor('claude-opus-5', env).rate, MODEL_TOKEN_RATES['claude-opus-5']);
+
+  // Malformed JSON falls back to the table rather than throwing.
+  assert.equal(tokenRateFor('gpt-4.1', { AI_TOKEN_RATES_JSON: '{oh dear' }).known, true);
+});
+
+test('every agent ceiling matches its token budget at the worst-case rate', () => {
+  /*
+   * The ceilings were calibrated against the invented formula, so they
+   * were ACU figures with no relationship to any price. The token budget
+   * is the source of truth now and the ceiling is derived from it at the
+   * most expensive rate, because the hold is taken before the provider
+   * chain has picked a model.
+   */
+  for (const agent of Object.values(AGENT_REGISTRY)) {
+    const { input, output } = agent.tokenBudget;
+    const expected = input === 0 && output === 0 ? 0 : acusForTokens('__no_such_model__', input, output);
     assert.equal(
-      realisedProtectionMultiple(plan),
-      expected[plan],
-      `${plan} moved — reprice deliberately or restore the allowance`,
+      agent.acuCeiling,
+      expected,
+      `${agent.code} holds ${agent.acuCeiling} ACU for a ${input}/${output} token budget`,
     );
   }
+});
 
-  // No plan is at the loss line any more. premium_annual is now the
-  // thinnest at 1.54x, which is thin but not a loss.
-  const weakest = weakestPlanMargin();
-  assert.equal(weakest.plan, 'premium_annual');
-  assert.ok(weakest.multiple > 1.5, `the weakest plan fell to ${weakest.multiple}x`);
-  assert.ok(
-    weakest.multiple < COST_PROTECTION_MULTIPLE,
-    'if every plan now clears 4x, this test has done its job and should be tightened',
-  );
+test('an agent that reaches a model always holds something', () => {
+  for (const agent of Object.values(AGENT_REGISTRY)) {
+    const callsAModel = agent.modelClass === 'mid_tier_llm' || agent.modelClass === 'frontier_llm';
+    if (callsAModel) {
+      assert.ok(agent.acuCeiling > 0, `${agent.code} calls a model and holds nothing`);
+      assert.ok(agent.tokenBudget.output > 0, `${agent.code} has no output budget`);
+    }
+  }
 });
 
 /* ------------------------------------------------------------------ *

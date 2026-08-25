@@ -375,6 +375,52 @@ export class StripeService {
     }
   }
 
+  /**
+   * Writes the eleven deposits still owed on an annual plan.
+   *
+   * Recorded rather than granted, because they are not owed yet. The
+   * gateway releases each one when it falls due, on the same read path
+   * that already releases the free tier and the platform's daily budget —
+   * this deployment has no scheduler, and inventing one for eleven rows a
+   * year would be a worse answer than the pattern already in use.
+   */
+  private async scheduleAnnualDeposits(
+    userId: string,
+    plan: BillingPlan,
+    invoiceId: string,
+    acusPerMonth: number,
+  ): Promise<void> {
+    if (!this.pool || acusPerMonth <= 0) return;
+    try {
+      for (let month = 1; month <= 11; month += 1) {
+        await this.pool.query(
+          /*
+           * `make_interval` rather than `($4 || ' months')::interval`.
+           * The string form uses the same parameter as both an integer
+           * and text, and Postgres refuses to deduce a type for it —
+           * "inconsistent types deduced for parameter $4". It parses
+           * fine and fails at execution, so it would have thrown on the
+           * first real annual subscription and nowhere earlier.
+           */
+          `INSERT INTO annual_deposits (user_id, plan, invoice_id, month_index, acus, due_at)
+           VALUES ($1, $2, $3, $4, $5, now() + make_interval(months => $4))
+           ON CONFLICT (invoice_id, month_index) DO NOTHING`,
+          [userId, plan, invoiceId, month, acusPerMonth],
+        );
+      }
+    } catch (err) {
+      /*
+       * The member has paid for a year and this is what says so. Losing it
+       * silently would mean they receive one twelfth of what they bought,
+       * which is the opposite failure to the one being fixed and just as
+       * unacceptable — so it is logged at error, loudly enough to find.
+       */
+      this.logger.error(
+        `annual deposit schedule failed for ${userId} on ${invoiceId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   /** The Stripe customer for an account. Resolved here, never from a request. */
   async customerIdFor(userId: string): Promise<string | null> {
     for (const [customerId, uid] of this.customerToUser) {
@@ -717,6 +763,21 @@ export class StripeService {
         const allowance = plan ? PLAN_DEFINITIONS[plan]?.acuAllowance : undefined;
         const paidGbp = fromMinorUnits(Number(object.amount_paid ?? 0));
 
+        /*
+         * Stripe reports the amount in the price's own currency. Crediting
+         * a non-GBP invoice as though it were pounds would hand out the
+         * allowance for a plan that was never bought at that price — so an
+         * unexpected currency grants nothing and says so, rather than
+         * guessing at an exchange rate the platform has no business
+         * inventing.
+         */
+        const currency = String(object.currency ?? 'gbp').toLowerCase();
+        if (currency !== 'gbp') {
+          detail = `Invoice paid in ${currency.toUpperCase()}, not GBP. Nothing granted — every plan is priced in GBP.`;
+          this.logger.error(`invoice ${String(object.id ?? id)} paid in ${currency}; no allowance granted`);
+          break;
+        }
+
         if (userId && plan && allowance) {
           const wallet = await this.wallets.forSubject('user', userId);
           /*
@@ -727,8 +788,43 @@ export class StripeService {
            * unmatchable.
            */
           const invoiceId = String(object.id ?? id);
-          await this.wallets.depositAllowance(wallet.id, allowance, `invoice_${plan}_${invoiceId}`);
-          detail = `Granted ${allowance} ACU to ${userId} for ${plan} (£${paidGbp.toFixed(2)} paid).`;
+
+          /*
+           * An annual plan deposits a twelfth, not the year.
+           *
+           * `depositAnnualMonth` existed for exactly this and was called by
+           * nothing, so a year's allowance landed on day one. That is a
+           * cash-flow assumption broken in the platform's favour right up
+           * until somebody notices the obvious sequence: buy the annual
+           * plan, spend the whole year's ACU inside a week, then charge
+           * back. The reversal recovers whatever is left, which by then is
+           * nothing, and the shortfall is the entire year of compute.
+           *
+           * It also fixes a quieter absurdity: a subscription grant lives
+           * 90 days, so eleven twelfths of an annual allowance expired
+           * unused before the member could reach it.
+           *
+           * The remaining eleven deposits are due monthly. `entitledNow`
+           * is what decides whether they are still owed, so a cancelled or
+           * charged-back annual plan stops depositing.
+           */
+          const definition = PLAN_DEFINITIONS[plan];
+          const isAnnual = definition.interval === 'year';
+          const granted = isAnnual ? Math.floor(allowance / 12) : allowance;
+
+          await this.wallets.depositAllowance(
+            wallet.id,
+            granted,
+            `invoice_${plan}_${invoiceId}${isAnnual ? ':m0' : ''}`,
+          );
+
+          if (isAnnual) {
+            await this.scheduleAnnualDeposits(userId, plan, invoiceId, granted);
+          }
+
+          detail =
+            `Granted ${granted} ACU to ${userId} for ${plan} (£${paidGbp.toFixed(2)} paid)` +
+            `${isAnnual ? `, first of twelve monthly deposits from a ${allowance} ACU year` : ''}.`;
 
           /*
            * The purchase conversion, at the only moment money is certainly

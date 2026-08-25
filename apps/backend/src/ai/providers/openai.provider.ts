@@ -94,9 +94,9 @@ export class OpenAiProvider implements ModelProvider {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,
         acu: toAcu(
+          response.model,
           response.usage?.prompt_tokens ?? 0,
           response.usage?.completion_tokens ?? 0,
-          this.isFrontier(request),
         ),
       },
     };

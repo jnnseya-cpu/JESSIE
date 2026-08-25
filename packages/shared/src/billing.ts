@@ -52,7 +52,7 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
     gbp: 5.99,
     interval: 'month',
     seats: 1,
-    acuAllowance: 1_200,
+    acuAllowance: 599,
     priceEnvVar: 'STRIPE_PRICE_PREMIUM_MONTHLY',
   },
   premium_annual: {
@@ -61,39 +61,16 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
     gbp: 59.99,
     interval: 'year',
     seats: 1,
-    acuAllowance: 15_600,
+    acuAllowance: 5_999,
     priceEnvVar: 'STRIPE_PRICE_PREMIUM_ANNUAL',
   },
-  /*
-   * The two family allowances were halved, and the reason is arithmetic
-   * rather than pricing strategy.
-   *
-   * `requiredAcus` prices every action at `direct cost × 4 × 100 ACU`,
-   * where the 100 is `ACU_PER_GBP` — it defines one ACU as a penny of
-   * customer revenue, and the 4× margin is only real if a penny was
-   * actually paid for it. At 52,000 ACU for £129.99 a family_annual
-   * member paid a quarter of a penny each, so the governor believed it
-   * was clearing 4× while the plan cleared exactly 1.0×: £130 of provider
-   * cost against £129.99 of revenue, before Stripe's £3.06 and before any
-   * of the £1.49 per paying user per month of overhead. A household that
-   * used what it bought was a guaranteed loss.
-   *
-   * Halving brings both to 2.00×, level with premium_monthly, and leaves
-   * the published prices alone. 26,000 ACU across five seats is still
-   * about 430 a seat a month against a 50 ACU free tier — the plan is
-   * not being made thin, it is being made solvent.
-   *
-   * `realisedProtectionMultiple()` computes this and
-   * `money-integrity.test.ts` pins every plan's figure, so the next change
-   * to a price or an allowance has to be deliberate.
-   */
   family_monthly: {
     plan: 'family_monthly',
     label: 'Family, monthly',
     gbp: 12.99,
     interval: 'month',
     seats: 5,
-    acuAllowance: 2_000,
+    acuAllowance: 1_299,
     priceEnvVar: 'STRIPE_PRICE_FAMILY_MONTHLY',
   },
   family_annual: {
@@ -102,7 +79,7 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
     gbp: 129.99,
     interval: 'year',
     seats: 5,
-    acuAllowance: 26_000,
+    acuAllowance: 12_999,
     priceEnvVar: 'STRIPE_PRICE_FAMILY_ANNUAL',
   },
   organisation_seat: {
@@ -111,7 +88,7 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
     gbp: 2.0,
     interval: 'month',
     seats: 1,
-    acuAllowance: 400,
+    acuAllowance: 200,
     priceEnvVar: 'STRIPE_PRICE_ORG_SEAT',
   },
 };
@@ -123,14 +100,19 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
  * The Cost Governor prices every action at `direct cost × 4 × 100 ACU`.
  * The 100 is `ACU_PER_GBP` — it means one ACU is defined as a penny of
  * customer revenue, and the 4× margin only exists if the customer really
- * paid a penny for it. A top-up does: £5 buys 500 ACU, exactly face value.
+ * paid a penny for it.
  *
- * A subscription does not. `premium_monthly` sells 1,200 ACU for £5.99,
- * which is half a penny each — so an action the governor believes is
- * clearing 4× is clearing 2×. `family_annual` sells them at a quarter of
- * face value, and clears 1.0×: at full utilisation that plan recovers the
- * provider cost and nothing else, before Stripe's fee and before a penny
- * of the overhead in `OVERHEAD_PER_PAID_USER_MONTH`.
+ * Every plan used to sell below that penny, so no plan ever cleared 4×.
+ * `premium_monthly` sold 1,200 ACU for £5.99 — half a penny each, so 2×.
+ * `family_annual` sold 52,000 for £129.99 — a quarter of a penny, so 1.0×:
+ * a household that used its allowance cost £130 of provider spend against
+ * £129.99 of revenue, before Stripe's £3.06 and before any of the £1.49
+ * per paying user per month in `OVERHEAD_PER_PAID_USER_MONTH`.
+ *
+ * Every allowance is now `price × 100`, which is the arithmetic that makes
+ * 4× true rather than assumed. It costs allowance — premium_monthly falls
+ * from 1,200 ACU to 599 — and that is the honest number: the old one was
+ * selling AI at a discount nobody had decided to give.
  *
  * This was invisible because the two halves live in different packages and
  * neither had to agree with the other. It is computed here so that it has

@@ -137,7 +137,22 @@ export class AiGatewayService {
     @Optional() private readonly security?: SecurityService,
   ) {}
 
-  /** ACUs to pounds of provider cost, as the Cost Governor prices it. */
+  /**
+   * ACUs back to the pounds of provider cost they represent.
+   *
+   * This is a conversion, not a measurement, and that distinction was
+   * where the margin went. It used to be handed a figure the adapters had
+   * invented from token counts with no reference to any real price, and
+   * `spend()` then checked that figure against itself in
+   * `breachesProtectionRule` — a guard comparing a number to a number
+   * derived from it cannot fail, and for the life of the platform it
+   * never did.
+   *
+   * The ACU figure now comes from `acusForTokens`, which prices real
+   * tokens at real published rates and applies the 4× once. Dividing it
+   * back down here recovers the cost that produced it, so the guard is
+   * checking an independent quantity again.
+   */
   private costOf(acu: number): { providerCostGbp: number } {
     return { providerCostGbp: acu / ACU_PER_GBP / COST_PROTECTION_MULTIPLE };
   }
@@ -163,6 +178,9 @@ export class AiGatewayService {
     if (!isPlatformPayer(billTo)) {
       const wallet = await this.wallets.forSubject('user', billTo);
       await this.grantFreeTier(wallet.id, billTo);
+      // An annual plan is paid once and delivered monthly; this is where
+      // the months after the first are handed over.
+      await this.wallets.releaseDueAnnualDeposits(billTo, wallet.id);
       return wallet;
     }
 
@@ -328,12 +346,39 @@ export class AiGatewayService {
         });
         await this.wallets.refund(hold.walletId, lines);
       } else if (actual > hold.acus) {
-        await this.wallets.spend({
+        const overage = actual - hold.acus;
+        const charged = await this.wallets.spend({
           walletId: hold.walletId,
           agentCode: agent,
           reason: `${agent} via ${model} — over ceiling`,
-          cost: this.costOf(actual - hold.acus),
+          cost: this.costOf(overage),
         });
+
+        /*
+         * An overage the wallet cannot cover is compute already delivered
+         * and not paid for. It used to be discarded — the refusal came
+         * back, nothing read it, and the call was simply free above the
+         * ceiling.
+         *
+         * It is not turned into a debt, because a wallet does not go
+         * negative on this platform. It is written down as the loss it is,
+         * next to the refund shortfalls, so the total is countable and an
+         * agent that does it repeatedly is visible rather than merely
+         * expensive. It should now be rare: the hold is priced at the
+         * dearest rate the platform knows and almost every call is served
+         * by something cheaper.
+         */
+        if (!charged.allowed) {
+          this.logger.error(
+            `[${agent}] ${overage} ACU over ceiling on ${model} could not be charged ` +
+              `(${charged.reason}) — recorded as an unrecovered cost`,
+          );
+          await this.wallets.recordUnbilled(hold.walletId, {
+            reference: `overage:${agent}:${hold.grants[0]?.grantId ?? model}:${actual}`,
+            acus: overage,
+            note: `${agent} via ${model} exceeded its ceiling and the balance could not cover it`,
+          });
+        }
       }
     } catch (error) {
       // The work is done and the hold already covers it. A settlement that

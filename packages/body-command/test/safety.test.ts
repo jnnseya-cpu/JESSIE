@@ -244,7 +244,45 @@ test('the profitability alert fires below 4x and not at or above it', () => {
   assert.equal(breachesProtectionRule(0.59, 0.15), true);
   assert.equal(breachesProtectionRule(10, 1), false);
   assert.equal(breachesProtectionRule(3.99, 1), true);
-  assert.equal(breachesProtectionRule(1, 0), false, 'zero provider cost cannot breach');
+});
+
+test('an unpriced action breaches, because unpriced is not free', () => {
+  /*
+   * This assertion used to read the other way — `breachesProtectionRule(1,
+   * 0)` was false, on the reasoning that a zero cost cannot fail a ratio.
+   * Arithmetically that is true, and commercially it was a hole: it made
+   * "I could not work out what this costs" the cheapest possible answer.
+   * Any caller that failed to compute a provider cost, or got zero from a
+   * provider that reported no usage, received an unmetered model call that
+   * nothing anywhere recorded.
+   *
+   * An action that genuinely costs nothing reaches no provider, and those
+   * never arrive here — the gateway returns on a zero ceiling before a
+   * wallet is even loaded. Everything that does arrive has a real cost, so
+   * a zero is a measurement failure and is refused as one.
+   */
+  assert.equal(breachesProtectionRule(1, 0), true, 'a zero cost is unpriced, not free');
+  assert.equal(breachesProtectionRule(1, -5), true, 'a negative cost cannot buy margin');
+  assert.equal(breachesProtectionRule(1, Number.NaN), true, 'an unknown cost is not a pass');
+  assert.equal(breachesProtectionRule(0, 1), true, 'zero revenue never clears 4x');
+});
+
+test('no caller can discount an action through the cost inputs', () => {
+  const base = requiredAcus({ providerCostGbp: 0.1 });
+  assert.equal(base, 40);
+
+  // Negative components used to subtract from the provider cost.
+  assert.equal(requiredAcus({ providerCostGbp: 0.1, infrastructureCostGbp: -0.09 }), base);
+  assert.equal(requiredAcus({ providerCostGbp: 0.1, dataCostGbp: -1 }), base);
+
+  // A negative contingency used to discount the whole bill.
+  assert.equal(requiredAcus({ providerCostGbp: 0.1, contingency: -0.9 }), base);
+
+  // And it cannot be inflated past the documented ceiling either.
+  assert.equal(
+    requiredAcus({ providerCostGbp: 0.1, contingency: 5 }),
+    requiredAcus({ providerCostGbp: 0.1, contingency: 0.2 }),
+  );
 });
 
 test('a zero balance stops paid AI work rather than creating debt', () => {

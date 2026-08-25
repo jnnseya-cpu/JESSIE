@@ -109,7 +109,15 @@ t POST /accounts/media/check 201 '{"slot":"avatar","age":15,"mimeType":"image/jp
 python3 -c "import json;d=json.load(open('/tmp/r.json'))['data'];print('    -> ok',d['ok'],'|',d['reasons'][0] if d['reasons'] else '')" 2>/dev/null
 t POST /accounts/media/check 400 '{"slot":"avatar","age":9,"mimeType":"image/jpeg","bytes":400000,"widthPx":800,"heightPx":800}' "age below 10 rejected"
 t POST /stripe/webhook 400 '{"id":"evt_x","type":"invoice.paid"}' "unsigned webhook refused"
-t POST /stripe/checkout 400 '{"userId":"u","plan":"premium_monthly","successUrl":"http://x.test/a","cancelUrl":"http://x.test/b"}' "checkout without a key explains itself"
+# Checkout, top-up and the billing portal all name an account, and all three
+# were open. The portal was the serious one: it took a Stripe customer id
+# from the request body and returned a session that can cancel the
+# subscription, read every invoice and change the card. These now refuse
+# without a session, which is what the assertion checks — the suite used to
+# expect 400 here, which was a statement that the route was reachable.
+ta POST /stripe/checkout 403 '{"userId":"u","plan":"premium_monthly","successUrl":"http://x.test/a","cancelUrl":"http://x.test/b"}' "checkout needs a session"
+ta POST /stripe/topup 403 '{"userId":"u","amountGbp":5,"successUrl":"http://x.test/a","cancelUrl":"http://x.test/b"}' "top-up needs a session"
+ta POST /stripe/portal 403 '{"userId":"u","returnUrl":"http://x.test/a"}' "the billing portal needs a session"
 ta POST /mail/preview 201 '{"event":"account.registration.requested","values":{"name":"Sam"}}' "render an email"
 ta POST /mail/preview 400 '{"event":"not.a.real.event"}' "unknown event refused"
 t GET /mail/probe 200 '' "smtp probe explains itself without credentials"

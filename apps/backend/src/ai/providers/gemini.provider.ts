@@ -89,7 +89,7 @@ export class GeminiProvider implements ModelProvider {
       usage: {
         inputTokens,
         outputTokens,
-        acu: toAcu(inputTokens, outputTokens, this.isFrontier(request)),
+        acu: toAcu(model, inputTokens, outputTokens),
       },
     };
   }

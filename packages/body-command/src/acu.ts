@@ -60,13 +60,29 @@ export interface CostInput {
  * Always rounds up — never price an action below the protection floor.
  */
 export function requiredAcus(input: CostInput): number {
-  const direct =
-    input.providerCostGbp +
-    (input.infrastructureCostGbp ?? 0) +
-    (input.dataCostGbp ?? 0) +
-    (input.storageCostGbp ?? 0);
+  /*
+   * Every component is floored at zero, and the reason is that each of
+   * them is a number this function is handed rather than one it derives.
+   * A negative infrastructure cost would subtract from the provider cost
+   * and reduce the bill; a negative contingency would discount it
+   * outright. Neither is a legitimate input and neither should be
+   * expressible — the whole purpose of this function is that a call
+   * cannot end up cheaper than four times what it costs to serve.
+   */
+  const part = (value: number | undefined): number =>
+    Number.isFinite(value) && (value as number) > 0 ? (value as number) : 0;
 
-  const withContingency = direct * (1 + (input.contingency ?? 0));
+  const direct =
+    part(input.providerCostGbp) +
+    part(input.infrastructureCostGbp) +
+    part(input.dataCostGbp) +
+    part(input.storageCostGbp);
+
+  // Contingency adds margin for unpredictable calls. It never removes it,
+  // and it is capped so a caller cannot inflate a bill either.
+  const contingency = Math.min(0.2, part(input.contingency));
+
+  const withContingency = direct * (1 + contingency);
   return Math.ceil(withContingency * COST_PROTECTION_MULTIPLE * ACU_PER_GBP);
 }
 
@@ -95,7 +111,21 @@ export function breachesProtectionRule(
   customerRevenueGbp: number,
   directProviderCostGbp: number,
 ): boolean {
-  if (directProviderCostGbp <= 0) return false;
+  /*
+   * A zero or missing cost is not a free call, it is an unpriced one.
+   *
+   * This used to return false — no cost, no breach, carry on — which made
+   * "I could not work out what this costs" the cheapest possible answer.
+   * Any caller that failed to compute a provider cost, or computed zero
+   * from a provider that reported no usage, got an unmetered model call
+   * and nothing anywhere recorded that it had happened.
+   *
+   * A genuinely costless action is one that reaches no provider, and
+   * those never get here: the gateway returns early on a zero ceiling
+   * before a wallet is even loaded.
+   */
+  if (!Number.isFinite(directProviderCostGbp) || directProviderCostGbp <= 0) return true;
+  if (!Number.isFinite(customerRevenueGbp) || customerRevenueGbp <= 0) return true;
   return customerRevenueGbp / directProviderCostGbp < COST_PROTECTION_MULTIPLE;
 }
 

@@ -47,12 +47,26 @@ export const TARGET_GROSS_MARGIN = 1 - 1 / PROFIT_MULTIPLE;
    2 — AI provider cost
    ============================================================ */
 
-/** £ per 1,000 tokens. Blended across the configured provider chain. */
+/**
+ * £ per 1,000 tokens, for the modelling in this file.
+ *
+ * These are the same rates the live gateway bills at — `ai-costs.ts` holds
+ * them per model, and the two tiers here are its most and least expensive.
+ * They were not the same before: this table said a frontier input token
+ * cost £2.40 per million while the most expensive model on the chain
+ * charges £12, so the business model and the billing path disagreed by
+ * fivefold and neither had to notice.
+ *
+ * The rates themselves belong in `ai-costs.ts`, because that is the file
+ * the money actually flows through. This is a view of them.
+ */
 export const AI_UNIT_COST = {
-  frontierInput: 0.0024,
-  frontierOutput: 0.012,
+  /** The most expensive model on the chain, per 1,000 tokens. */
+  frontierInput: 0.012,
+  frontierOutput: 0.06,
+  /** The cheapest, per 1,000 tokens. */
   midInput: 0.00024,
-  midOutput: 0.00096,
+  midOutput: 0.002,
   /** Per image sent to a vision model. FoodLens is the heavy user. */
   visionImage: 0.0032,
   /** Per 1,000 tokens embedded, for retrieval over the movement library. */
@@ -230,9 +244,9 @@ export function fixedFeeBurden(grossGbp: number): number {
  */
 export const ACU_TOPUP_TIERS = [
   { gbp: 5, acus: 500, bonusAcus: 0 },
-  { gbp: 10, acus: 1000, bonusAcus: 40 },
-  { gbp: 20, acus: 2000, bonusAcus: 120 },
-  { gbp: 50, acus: 5000, bonusAcus: 400 },
+  { gbp: 10, acus: 1000, bonusAcus: 0 },
+  { gbp: 20, acus: 2000, bonusAcus: 0 },
+  { gbp: 50, acus: 5000, bonusAcus: 0 },
 ] as const;
 
 export type AcuTopUpTier = (typeof ACU_TOPUP_TIERS)[number];
