@@ -59,9 +59,22 @@ is the point of the file.
 | Conversions counted without a tag on health screens | Signup and payment go server to server, carrying an event and a value and no identity |
 | Blog views actually arrive and actually persist | Migration 0026; a real browser session writes a row, and it survives a restart |
 | Every published article has an SEO score | The prose moved to shared, so the audit has a body — scores now 15–40, and the findings are real |
+| One balance cannot be spent twice | Migration 0027. Measured against real Postgres: eight concurrent full-balance writes, **eight accepted before, one after** |
+| A stale instance cannot resurrect spent allowance | The same run, mutation-tested — removing the version guard restores 500 spent ACU |
+| A spend that cannot be written is refused, not allowed | `persist` throws instead of logging; the caller refuses and the provider is never called |
+| Money that goes back takes the allowance with it | `charge.refunded` and `charge.dispute.created` reverse proportionally against the grant the payment created |
+| A reversal happens once | `UNIQUE (kind, reference)` on `wallet_adjustments` — five deliveries of one refund claimed it once |
+| What could not be recovered is counted, not hidden | `shortfall_acus`, with a partial index so the losses can be found |
+| A dispute freezes the subscription | State moves to `paused` at the same moment the allowance is reversed |
+| The billing portal opens only your own account | `customerId` no longer comes from the request; it is resolved server-side from the session |
+| A self-only check cannot be skipped by sending an array | The guard refuses anything that is not a string equal to the caller's id |
+| The past-due grace period ends | `state_since` only moves on a real transition, so a second failed payment cannot extend it |
+| A top-up credits what the pricing advertises | £10 buys the published 1,040 ACU, not 1,000 |
+| No plan sells allowance below what it costs to serve | `realisedProtectionMultiple` is computed and pinned per plan; below 1.0 fails the build |
 
-Test suite: **801 passing, 0 failing** — 754 backend, 25 body-command, 22 foodlens.
+Test suite: **820 passing, 0 failing** — 773 backend, 25 body-command, 22 foodlens.
 Smoke suite: **83/83**, both signed out and signed in.
+Money integrity: **11/11** against real Postgres (`pnpm verify:money`).
 
 ---
 
@@ -80,6 +93,8 @@ none of them can be closed from inside a sandbox.
 | Does the newsletter actually deliver? | Justin | Needs `SMTP_USER` / `SMTP_PASS` in Vercel. Without them every issue renders in full and is recorded as `sandbox` — the flow is proven, the delivery is not |
 | Weekly cron for the newsletter | Justin | `POST /api/newsletter/cron` with `Authorization: Bearer $CRON_SECRET` |
 | Automatic sending, or approve each issue by hand? | Justin | Unset, the scheduler composes and queues for review. Set `NEWSLETTER_AUTO_APPROVE_BY` to a real name to have it approve and send too — that name is recorded on every issue |
+| Migration 0027 applied in production | Justin | Applies on the next boot via `DbService.onModuleInit`. Until it does, the wallet write is unconditional and the reversal tables do not exist |
+| Which way to fix the plan margin | Justin | See "Every plan sells ACU below face value" below. Repricing is a decision, not a defect fix |
 
 **Why an agent cannot close these.** Outbound HTTPS from the build
 sandbox to `jessmove.com` and `api.jessmove.com` is refused by the
@@ -104,6 +119,46 @@ and it is the owner's call rather than a cleanup. Two structural tests in
 a route naming a user without a guard, and a guard imported without being
 applied. A linter would still be worth having.
 
+**Every plan sells ACU below face value, so the 4× Cost Governor is not
+4×.** `requiredAcus` prices every action at `direct cost × 4 × 100 ACU`,
+where the 100 defines one ACU as a penny of customer revenue. A top-up pays
+exactly that penny, so top-ups clear 4×. Subscriptions do not:
+
+| Plan | £ per ACU | Multiple actually cleared |
+|---|---|---|
+| premium_monthly | 0.00499 | 2.00× |
+| organisation_seat | 0.00500 | 2.00× |
+| premium_annual | 0.00385 | 1.54× |
+| family_monthly | 0.00325 | 1.30× |
+| **family_annual** | **0.00250** | **1.00×** |
+
+At 1.00× a family_annual member who uses their whole allowance costs
+exactly what they paid — £130 of provider cost against £129.99 — before
+Stripe's £3.06 fee and before any of the £1.49 per paying user per month in
+`OVERHEAD_PER_PAID_USER_MONTH`. It is not fraud and not a bug in the
+metering; it is what the published allowances mean when read against the
+governor's own assumption.
+
+This is not changed here because changing it is repricing, which is the
+owner's decision and not a defect fix. What is built is the measurement:
+`realisedProtectionMultiple()` computes it, `money-integrity.test.ts` pins
+every plan's figure so a price cannot move quietly, and any plan dropping
+below 1.0 — an outright loss — fails the build. **Open question for Justin:
+restore the allowances to the 20% model the cost work assumed
+(`monthlyAcuAllocation`, which would make premium_monthly 120 ACU rather
+than 1,200), raise the prices, or accept the thinner margin deliberately.**
+
+**Auto top-up is declared and not wired.** `autoTopUpDue` exists, nothing
+calls it and nothing sets `autoTopUp`, so it charges nobody today. If it is
+ever connected it needs a daily cap first — a wallet pinned at zero would
+otherwise trigger a charge on every refused action.
+
+**The free tier is per account, and accounts are per email.** Two free
+months of 50 ACU can be had again with a second address. At 50 ACU the
+provider cost is about £0.125 an account, so the effort exceeds the prize
+and no fingerprinting is being added to a health platform to stop it. Worth
+watching if signups ever spike without matching activity.
+
 ---
 
 ## Settled — do not reopen
@@ -123,6 +178,19 @@ issued by the account owner deliberately. Closed.
 **"Not a single customer."** Cause found and fixed: registration was
 not reachable from any public page. A build-time check now fails if
 that regresses.
+
+**"Could somebody cancel their subscription and only top up instead?"**
+Investigated in full. Not a loophole on price — the cheapest top-up sells
+an ACU at 1.86× the premium monthly rate and 2.85× the family monthly
+rate, so a top-up-only member pays roughly double per unit of AI. The real
+exposure is the other way round: `OVERHEAD_PER_PAID_USER_MONTH` is £1.49 a
+month whether or not the member buys anything, so a top-up-only account
+must spend about £20 a year to cover its own overhead. Nothing on the
+platform is gated on holding a subscription — every AI gate is a balance
+check — so cancelling forfeits the monthly allowance and nothing else. That
+is coherent as a design; it is recorded here so it is a decision rather
+than an accident. The audit that question triggered found the reversal,
+concurrency and billing-portal defects listed above. Closed.
 
 ---
 

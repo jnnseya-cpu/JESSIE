@@ -93,6 +93,55 @@ export const PLAN_DEFINITIONS: Readonly<Record<BillingPlan, PlanDefinition>> = {
   },
 };
 
+/**
+ * What a plan actually charges for one ACU, and what that does to the
+ * protection multiple.
+ *
+ * The Cost Governor prices every action at `direct cost × 4 × 100 ACU`.
+ * The 100 is `ACU_PER_GBP` — it means one ACU is defined as a penny of
+ * customer revenue, and the 4× margin only exists if the customer really
+ * paid a penny for it. A top-up does: £5 buys 500 ACU, exactly face value.
+ *
+ * A subscription does not. `premium_monthly` sells 1,200 ACU for £5.99,
+ * which is half a penny each — so an action the governor believes is
+ * clearing 4× is clearing 2×. `family_annual` sells them at a quarter of
+ * face value, and clears 1.0×: at full utilisation that plan recovers the
+ * provider cost and nothing else, before Stripe's fee and before a penny
+ * of the overhead in `OVERHEAD_PER_PAID_USER_MONTH`.
+ *
+ * This was invisible because the two halves live in different packages and
+ * neither had to agree with the other. It is computed here so that it has
+ * to.
+ */
+export function realisedAcuPriceGbp(plan: BillingPlan): number {
+  const def = PLAN_DEFINITIONS[plan];
+  return def.gbp / def.acuAllowance;
+}
+
+/**
+ * The margin a plan actually achieves, against the 4× the governor assumes.
+ *
+ * 1.0 means the plan recovers its provider cost exactly. Below 1.0 means
+ * a member who uses their allowance costs more than they paid.
+ */
+export function realisedProtectionMultiple(plan: BillingPlan, acuPerGbp = 100, target = 4): number {
+  const faceValueGbp = 1 / acuPerGbp;
+  return Number(((realisedAcuPriceGbp(plan) / faceValueGbp) * target).toFixed(3));
+}
+
+/**
+ * The lowest multiple any plan achieves. Anything at or below 1.0 is a
+ * plan that loses money on a member who uses what they bought.
+ */
+export function weakestPlanMargin(): { plan: BillingPlan; multiple: number } {
+  let weakest: { plan: BillingPlan; multiple: number } | null = null;
+  for (const plan of BILLING_PLANS) {
+    const multiple = realisedProtectionMultiple(plan);
+    if (!weakest || multiple < weakest.multiple) weakest = { plan, multiple };
+  }
+  return weakest!;
+}
+
 /** Amounts reach Stripe as integer minor units. Floats never touch money. */
 export function toMinorUnits(gbp: number): number {
   if (!Number.isFinite(gbp)) throw new RangeError('an amount must be a finite number');

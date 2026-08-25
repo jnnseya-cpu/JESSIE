@@ -17,7 +17,15 @@ export class TopUpCheckoutDto {
   @IsUrl({ require_tld: false }) cancelUrl!: string;
 }
 
+/**
+ * The portal is opened for the caller's own account.
+ *
+ * `customerId` used to be the only field, taken straight from the body and
+ * passed to Stripe — so the request decided whose billing to open. It is
+ * now resolved server-side from `userId`, which `@SelfOnly` has already
+ * proved belongs to the session.
+ */
 export class PortalDto {
-  @IsString() @MaxLength(120) customerId!: string;
+  @IsString() @MaxLength(120) userId!: string;
   @IsUrl({ require_tld: false }) returnUrl!: string;
 }

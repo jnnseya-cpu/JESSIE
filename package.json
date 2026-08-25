@@ -18,6 +18,7 @@
     "clean": "rm -rf packages/*/dist apps/backend/dist apps/frontend/.next node_modules/.cache",
     "db:migrate": "node scripts/db-apply.mjs migrate",
     "db:test": "node scripts/db-apply.mjs test",
+    "verify:money": "node scripts/verify-money.mjs",
     "dev": "pnpm --parallel --filter @jessmove/backend --filter @jessmove/frontend dev",
     "dev:backend": "pnpm --filter @jessmove/backend dev",
     "dev:frontend": "pnpm --filter @jessmove/frontend dev",

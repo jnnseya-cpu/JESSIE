@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Get, Headers, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import {
   HANDLED_WEBHOOK_EVENTS,
+  PAST_DUE_GRACE_DAYS,
   PLAN_DEFINITIONS,
   SIGNATURE_TOLERANCE_SECONDS,
   SUBSCRIPTION_STATES,
@@ -10,6 +11,7 @@ import {
   WebhookVerificationError,
 } from '@jessmove/shared';
 import { CheckoutDto, PortalDto, TopUpCheckoutDto } from './stripe.dto';
+import { SelfOnly } from '../auth/auth.guard';
 import { StripeService } from './stripe.service';
 import { verifyWebhook } from './signature';
 
@@ -36,19 +38,68 @@ export class StripeController {
     };
   }
 
+  /*
+   * All three of these name an account or a Stripe customer, and all three
+   * were open. `@SelfOnly` is what the rest of the platform uses for that
+   * shape and it belongs here more than anywhere else, because these are
+   * the routes that touch money.
+   */
+
+  /**
+   * A member's own billing state, and whether it entitles them right now.
+   *
+   * `entitledNow` is the only thing that answers that question honestly,
+   * because `state` alone does not: `past_due` reads as unpaid and still
+   * entitles for the grace period, and it stops entitling once the grace
+   * period runs out. Reporting the raw state would put the frontend in
+   * charge of that arithmetic, and a boundary the frontend computes is a
+   * boundary that is not enforced.
+   */
+  @SelfOnly('userId')
+  @Get('subscription/:userId')
+  async subscription(@Param('userId') userId: string) {
+    const record = await this.stripe.subscriptionFor(userId);
+    return {
+      subscription: record,
+      entitled: await this.stripe.entitledNow(userId),
+      graceDays: PAST_DUE_GRACE_DAYS,
+    };
+  }
+
+  @SelfOnly('userId')
   @Post('checkout')
   checkout(@Body() body: CheckoutDto) {
     return this.stripe.createCheckoutSession(body);
   }
 
+  @SelfOnly('userId')
   @Post('topup')
   topup(@Body() body: TopUpCheckoutDto) {
     return this.stripe.createTopUpSession(body);
   }
 
+  /**
+   * The Billing Portal, for the signed-in member's own customer record.
+   *
+   * This took a `customerId` from the request body with no session at all.
+   * A Stripe customer id is not a secret — it travels in checkout
+   * redirects, receipts and support threads — and the portal it opens can
+   * cancel the subscription, read every past invoice and change the card
+   * on file. Anybody holding one could do all of that to somebody else's
+   * account, from an unauthenticated POST.
+   *
+   * The customer is now resolved from the session on the server. The
+   * request no longer says whose billing to open, because that was never
+   * the caller's to decide.
+   */
+  @SelfOnly('userId')
   @Post('portal')
-  portal(@Body() body: PortalDto) {
-    return this.stripe.createPortalSession(body.customerId, body.returnUrl);
+  async portal(@Body() body: PortalDto) {
+    const customerId = await this.stripe.customerIdFor(body.userId);
+    if (!customerId) {
+      throw new BadRequestException('this account has no billing record yet');
+    }
+    return this.stripe.createPortalSession(customerId, body.returnUrl);
   }
 
   /**

@@ -2,12 +2,15 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { makePool } from '../db/pg';
 import { ConfigService } from '@nestjs/config';
 import {
+  ACU_PER_GBP,
+  PAST_DUE_GRACE_DAYS,
   PLAN_DEFINITIONS,
   assertStripeChargeable,
   fromMinorUnits,
   isEntitled,
   isHandled,
   toMinorUnits,
+  topUpAcus,
   type BillingPlan,
   type SubscriptionState,
 } from '@jessmove/shared';
@@ -74,6 +77,14 @@ export class StripeService {
    */
   private readonly seenEvents = new Set<string>();
   private pool: DedupePool | null = null;
+  /**
+   * Read caches, not the record.
+   *
+   * Both of these were the record, which is why a refund arriving at a
+   * recycled instance could not tell which member it belonged to. The
+   * tables in migration 0027 hold the truth; these hold whatever this
+   * instance has already looked up.
+   */
   private readonly subscriptions = new Map<string, SubscriptionRecord>();
   private readonly customerToUser = new Map<string, string>();
 
@@ -329,20 +340,273 @@ export class StripeService {
 
   /* ---------------- webhook ---------------- */
 
-  subscriptionFor(userId: string): SubscriptionRecord | null {
-    return [...this.subscriptions.values()].find((s) => s.userId === userId) ?? null;
+  async subscriptionFor(userId: string): Promise<SubscriptionRecord | null> {
+    const cached = [...this.subscriptions.values()].find((s) => s.userId === userId);
+    if (cached) return cached;
+    if (!this.pool) return null;
+
+    try {
+      const result = await this.pool.query(
+        `SELECT subscription_id, customer_id, user_id, plan, state, current_period_end,
+                cancel_at_period_end, state_since
+           FROM stripe_subscriptions WHERE user_id = $1
+          ORDER BY updated_at DESC LIMIT 1`,
+        [userId],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      const record: SubscriptionRecord = {
+        subscriptionId: String(row.subscription_id),
+        customerId: String(row.customer_id),
+        userId: String(row.user_id),
+        plan: (row.plan as BillingPlan | null) ?? null,
+        state: String(row.state) as SubscriptionState,
+        currentPeriodEnd: row.current_period_end ? new Date(row.current_period_end as string).toISOString() : null,
+        cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+        updatedAt: new Date(row.state_since as string).toISOString(),
+      };
+      this.subscriptions.set(record.subscriptionId, record);
+      return record;
+    } catch (err) {
+      this.logger.error(
+        `subscription lookup failed for ${userId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
   }
 
-  entitled(userId: string): boolean {
-    const record = this.subscriptionFor(userId);
-    return record ? isEntitled(record.state) : false;
+  /** The Stripe customer for an account. Resolved here, never from a request. */
+  async customerIdFor(userId: string): Promise<string | null> {
+    for (const [customerId, uid] of this.customerToUser) {
+      if (uid === userId) return customerId;
+    }
+    if (!this.pool) return null;
+    try {
+      const result = await this.pool.query(
+        'SELECT customer_id FROM stripe_customers WHERE user_id = $1 ORDER BY linked_at DESC LIMIT 1',
+        [userId],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      const customerId = String(row.customer_id);
+      this.customerToUser.set(customerId, userId);
+      return customerId;
+    } catch (err) {
+      this.logger.error(
+        `customer lookup failed for ${userId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
   }
 
-  private userFor(event: Record<string, unknown>, object: Record<string, unknown>): string | null {
+  /** The account a Stripe customer belongs to. */
+  private async userForCustomer(customerId: string): Promise<string | null> {
+    const cached = this.customerToUser.get(customerId);
+    if (cached) return cached;
+    if (!this.pool) return null;
+    try {
+      const result = await this.pool.query(
+        'SELECT user_id FROM stripe_customers WHERE customer_id = $1',
+        [customerId],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      const userId = String(row.user_id);
+      this.customerToUser.set(customerId, userId);
+      return userId;
+    } catch (err) {
+      this.logger.error(
+        `customer reverse lookup failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  }
+
+  private async linkCustomer(customerId: string, userId: string): Promise<void> {
+    this.customerToUser.set(customerId, userId);
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        `INSERT INTO stripe_customers (customer_id, user_id) VALUES ($1, $2)
+         ON CONFLICT (customer_id) DO UPDATE SET user_id = $2`,
+        [customerId, userId],
+      );
+    } catch (err) {
+      this.logger.error(
+        `customer link failed for ${customerId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  private async saveSubscription(record: SubscriptionRecord, stateChanged: boolean): Promise<void> {
+    this.subscriptions.set(record.subscriptionId, record);
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        `INSERT INTO stripe_subscriptions
+           (subscription_id, customer_id, user_id, plan, state, current_period_end,
+            cancel_at_period_end, state_since, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+         ON CONFLICT (subscription_id) DO UPDATE SET
+           customer_id = $2, user_id = $3, plan = $4, state = $5,
+           current_period_end = $6, cancel_at_period_end = $7,
+           -- Only a real state transition restarts the grace clock. A
+           -- routine update that leaves past_due as past_due must not
+           -- extend it, or the grace period never ends.
+           state_since = CASE WHEN stripe_subscriptions.state IS DISTINCT FROM $5
+                              THEN now() ELSE stripe_subscriptions.state_since END,
+           updated_at = now()`,
+        [
+          record.subscriptionId,
+          record.customerId,
+          record.userId,
+          record.plan,
+          record.state,
+          record.currentPeriodEnd,
+          record.cancelAtPeriodEnd,
+        ],
+      );
+      void stateChanged;
+    } catch (err) {
+      this.logger.error(
+        `subscription save failed for ${record.subscriptionId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /**
+   * Money went back, so the allowance it bought goes back with it.
+   *
+   * Both of the events that call this used to write a log line and stop,
+   * while `WEBHOOK_EFFECTS` had described them for months as reversing the
+   * allowance. The sequence that exploited the gap needed no skill: top
+   * up, spend the ACU, ask for the money back. It returned the money and
+   * left this platform holding the provider bill, and it could be done
+   * again the next day.
+   *
+   * The reversal is proportional to what was returned, and it is measured
+   * against the grant the payment actually created rather than recomputed
+   * from the amount — a second copy of the pricing rules would drift from
+   * the first.
+   */
+  private async reverse(
+    kind: 'refund' | 'dispute',
+    reference: string,
+    gbp: number,
+    charge: Record<string, unknown>,
+    userId: string | null,
+  ): Promise<string> {
+    if (!userId) {
+      return `${kind} of £${gbp.toFixed(2)} could not be matched to an account. Recorded for review; no allowance reversed.`;
+    }
+    if (gbp <= 0) return `${kind} of £0.00 — nothing to reverse.`;
+
+    const wallet = await this.wallets.forSubject('user', userId);
+
+    // A charge names the payment intent that made it and the invoice it
+    // settled. Either can be the reference on the grant.
+    const candidates = [
+      typeof charge.payment_intent === 'string' ? charge.payment_intent : null,
+      typeof charge.invoice === 'string' ? charge.invoice : null,
+      typeof charge.id === 'string' ? charge.id : null,
+    ].filter((v): v is string => Boolean(v));
+
+    let matched: { reference: string; acus: number; originalGbp: number } | null = null;
+    for (const candidate of candidates) {
+      const grant = await this.wallets.referencedGrant(wallet.id, candidate);
+      if (grant) {
+        matched = { reference: candidate, acus: grant.amount, originalGbp: 0 };
+        break;
+      }
+    }
+
+    const chargeGbp = fromMinorUnits(Number(charge.amount ?? 0));
+    // Proportional, so a partial refund takes back a proportional share.
+    const proportion = chargeGbp > 0 ? Math.min(1, gbp / chargeGbp) : 1;
+
+    /*
+     * With no matching grant the fallback is the face rate — the same rate
+     * an off-tier top-up is credited at. It is the conservative direction:
+     * it can under-recover on a subscription whose allowance was sold
+     * below face value, and under-recovering is the error to prefer when
+     * the alternative is taking allowance a member paid for elsewhere.
+     */
+    const acus = matched
+      ? Math.round(matched.acus * proportion)
+      : Math.round(gbp * ACU_PER_GBP);
+
+    const result = await this.wallets.clawback(wallet.id, {
+      kind,
+      reference,
+      gbp,
+      acus,
+      matching: matched?.reference,
+      note: `${kind} on ${reference}${matched ? ` matched grant via ${matched.reference}` : ' unmatched, face rate'}`,
+    });
+
+    if (!result.applied) {
+      return `${kind} of £${gbp.toFixed(2)} already reversed, or could not be applied. Nothing repeated.`;
+    }
+
+    const shortfall =
+      result.shortfall > 0
+        ? ` ${result.shortfall} ACU had already been spent and cannot be recovered — that is the loss on this ${kind}.`
+        : '';
+    return `${kind} of £${gbp.toFixed(2)}: reversed ${result.clawedBack} ACU.${shortfall}`;
+  }
+
+  /**
+   * Stops entitlement while a dispute is open.
+   *
+   * Not a punishment and not permanent — `paused` is a Stripe state that
+   * ends when the dispute does. Leaving a subscription active through a
+   * chargeback is how the same account disputes a second month.
+   */
+  private async freezeFor(userId: string | null): Promise<string> {
+    if (!userId) return 'No account matched, so nothing was frozen.';
+    const record = await this.subscriptionFor(userId);
+    if (!record) return 'No subscription to freeze.';
+    record.state = 'paused';
+    record.updatedAt = new Date().toISOString();
+    await this.saveSubscription(record, true);
+    return `Subscription ${record.subscriptionId} frozen pending the dispute.`;
+  }
+
+  /**
+   * Whether a past-due subscription has run out its grace period.
+   *
+   * `PAST_DUE_GRACE_DAYS` was declared with a paragraph explaining why
+   * losing your coach to an expired card is the wrong behaviour, and then
+   * never read by anything — so `past_due` was not a grace period at all,
+   * it was permanent entitlement on a card that had stopped paying. The
+   * grace is real in both directions or it is not a grace period.
+   */
+  async entitledNow(userId: string, now = new Date()): Promise<boolean> {
+    const record = await this.subscriptionFor(userId);
+    if (!record) return false;
+    if (isEntitled(record.state)) return true;
+    if (record.state !== 'past_due') return false;
+
+    const since = Date.parse(record.updatedAt);
+    if (!Number.isFinite(since)) return false;
+    const days = (now.getTime() - since) / 86_400_000;
+    return days <= PAST_DUE_GRACE_DAYS;
+  }
+
+  private async userFor(
+    event: Record<string, unknown>,
+    object: Record<string, unknown>,
+  ): Promise<string | null> {
     const metadata = (object.metadata ?? {}) as Record<string, string>;
     if (metadata.userId) return metadata.userId;
     const customer = typeof object.customer === 'string' ? object.customer : null;
-    if (customer && this.customerToUser.has(customer)) return this.customerToUser.get(customer)!;
+    // The stored link, not just this instance's memory. A refund is
+    // routinely the first Stripe event a freshly-started instance sees,
+    // and it carries a customer id and nothing else.
+    if (customer) {
+      const linked = await this.userForCustomer(customer);
+      if (linked) return linked;
+    }
     const reference = object.client_reference_id;
     return typeof reference === 'string' ? reference : null;
   }
@@ -398,9 +662,9 @@ export class StripeService {
   }> {
     const data = (event.data ?? {}) as Record<string, unknown>;
     const object = (data.object ?? {}) as Record<string, unknown>;
-    const userId = this.userFor(event, object);
+    const userId = await this.userFor(event, object);
     const customerId = typeof object.customer === 'string' ? object.customer : null;
-    if (customerId && userId) this.customerToUser.set(customerId, userId);
+    if (customerId && userId) await this.linkCustomer(customerId, userId);
 
     let detail = '';
 
@@ -423,18 +687,22 @@ export class StripeService {
             : null;
         const metadata = (object.metadata ?? {}) as Record<string, string>;
 
-        this.subscriptions.set(subscriptionId, {
-          subscriptionId,
-          customerId: customerId ?? '',
-          userId: userId ?? '',
-          plan: (metadata.plan as BillingPlan) ?? null,
-          state: type === 'customer.subscription.deleted' ? 'canceled' : state,
-          currentPeriodEnd: endsAt,
-          cancelAtPeriodEnd: Boolean(object.cancel_at_period_end),
-          updatedAt: new Date().toISOString(),
-        });
+        const settled = type === 'customer.subscription.deleted' ? 'canceled' : state;
+        await this.saveSubscription(
+          {
+            subscriptionId,
+            customerId: customerId ?? '',
+            userId: userId ?? '',
+            plan: (metadata.plan as BillingPlan) ?? null,
+            state: settled,
+            currentPeriodEnd: endsAt,
+            cancelAtPeriodEnd: Boolean(object.cancel_at_period_end),
+            updatedAt: new Date().toISOString(),
+          },
+          true,
+        );
 
-        detail = `Subscription ${subscriptionId} is ${type === 'customer.subscription.deleted' ? 'canceled' : state}. Entitled: ${isEntitled(state)}.`;
+        detail = `Subscription ${subscriptionId} is ${settled}. Entitled: ${isEntitled(settled)}.`;
         break;
       }
 
@@ -451,7 +719,15 @@ export class StripeService {
 
         if (userId && plan && allowance) {
           const wallet = await this.wallets.forSubject('user', userId);
-          await this.wallets.depositAllowance(wallet.id, allowance, `invoice_${plan}_${id}`);
+          /*
+           * The invoice id, not the event id, so a later refund of this
+           * charge can find the allowance it bought. A refund arrives as a
+           * charge carrying `invoice`; it has never seen the event that
+           * granted, so keying the grant to the event made the two
+           * unmatchable.
+           */
+          const invoiceId = String(object.id ?? id);
+          await this.wallets.depositAllowance(wallet.id, allowance, `invoice_${plan}_${invoiceId}`);
           detail = `Granted ${allowance} ACU to ${userId} for ${plan} (£${paidGbp.toFixed(2)} paid).`;
 
           /*
@@ -477,19 +753,37 @@ export class StripeService {
         if (record) {
           record.state = 'past_due';
           record.updatedAt = new Date().toISOString();
+          // `state_since` is what the grace period is measured from, so
+          // the move to past_due has to be written, not just remembered.
+          await this.saveSubscription(record, true);
         }
-        detail = `Payment failed${userId ? ` for ${userId}` : ''}. Moved to past_due; entitlement continues through the grace period.`;
+        detail =
+          `Payment failed${userId ? ` for ${userId}` : ''}. Moved to past_due; entitlement ` +
+          `continues for ${PAST_DUE_GRACE_DAYS} days and then stops.`;
         break;
       }
 
       case 'charge.refunded': {
         const refunded = fromMinorUnits(Number(object.amount_refunded ?? 0));
-        detail = `Refund of £${refunded.toFixed(2)} recorded for review.`;
+        detail = await this.reverse('refund', String(object.id ?? id), refunded, object, userId);
         break;
       }
 
       case 'charge.dispute.created': {
-        detail = 'Dispute opened and recorded for review.';
+        /*
+         * A dispute is not a refund with a different name. The money is
+         * already gone from our side, the outcome is weeks away, and the
+         * cases that reach this event are disproportionately the ones
+         * where the allowance was consumed on purpose — so the allowance
+         * comes back at the same moment, and entitlement is frozen rather
+         * than left running while it is argued about.
+         */
+        const charge = typeof object.charge === 'string' ? object.charge : String(object.id ?? id);
+        const disputed = fromMinorUnits(Number(object.amount ?? 0));
+        const reversal = await this.reverse('dispute', String(object.id ?? id), disputed, { ...object, id: charge }, userId);
+
+        const frozen = await this.freezeFor(userId);
+        detail = `${reversal} ${frozen}`;
         break;
       }
 
@@ -498,8 +792,29 @@ export class StripeService {
         const amount = fromMinorUnits(Number(object.amount_received ?? object.amount ?? 0));
         if (metadata.kind === 'acu_topup' && userId) {
           const wallet = await this.wallets.forSubject('user', userId);
-          await this.wallets.purchase(wallet.id, amount);
-          detail = `Top-up of £${amount.toFixed(2)} credited to ${userId}.`;
+          /*
+           * Credited from the published tier table rather than from a bare
+           * multiplication, so the advertised bonus is actually granted —
+           * £10 buys the 1,040 ACU the pricing says it does, not 1,000.
+           * An off-tier amount still credits at face value: the money has
+           * already been taken, so granting nothing would be theft. It is
+           * logged because it means either the tiers moved without this
+           * path moving with them, or somebody is paying an amount we do
+           * not offer.
+           */
+          const { acus, tier } = topUpAcus(amount);
+          const bonus = tier ? tier.bonusAcus : 0;
+          const paymentIntent = String(object.id ?? id);
+          await this.wallets.purchase(wallet.id, amount, bonus, new Date(), paymentIntent);
+
+          if (!tier) {
+            this.logger.warn(
+              `top-up of £${amount.toFixed(2)} matches no published tier — credited ${acus} ACU at face value`,
+            );
+          }
+          detail =
+            `Top-up of £${amount.toFixed(2)} credited ${acus} ACU to ${userId}` +
+            `${tier ? ` (tier £${tier.gbp}, ${tier.bonusAcus} bonus)` : ' (off-tier, no bonus)'}.`;
         } else {
           detail = `Payment of £${amount.toFixed(2)} succeeded. Not a top-up, so nothing credited.`;
         }

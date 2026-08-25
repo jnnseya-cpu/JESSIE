@@ -235,6 +235,42 @@ export const ACU_TOPUP_TIERS = [
   { gbp: 50, acus: 5000, bonusAcus: 400 },
 ] as const;
 
+export type AcuTopUpTier = (typeof ACU_TOPUP_TIERS)[number];
+
+/**
+ * The tier a payment corresponds to, or null for an amount we do not sell.
+ *
+ * This table was exported and never read: the webhook credited
+ * `amount_received × 100` for anything whose metadata said `acu_topup`,
+ * which meant the published bonus was never granted — £10 bought 1,000
+ * ACU rather than the 1,040 advertised — and any amount at all was
+ * accepted as a top-up. Pricing that exists only in a constants file is
+ * not pricing.
+ */
+export function topUpTierFor(gbp: number): AcuTopUpTier | null {
+  if (!Number.isFinite(gbp)) return null;
+  // Money arrives from Stripe in integer pence, so this compares pence
+  // rather than trusting two floats to be equal.
+  const pence = Math.round(gbp * 100);
+  return ACU_TOPUP_TIERS.find((t) => Math.round(t.gbp * 100) === pence) ?? null;
+}
+
+/**
+ * What a top-up is worth in ACU, bonus included.
+ *
+ * An amount that matches no tier still credits at face value rather than
+ * being swallowed — the member's money has already been taken by the time
+ * this runs, and keeping it while granting nothing would be theft. It
+ * gets no bonus and it is reported, because an off-tier payment means
+ * either a price changed without this table changing with it or somebody
+ * is paying an amount we never offered.
+ */
+export function topUpAcus(gbp: number): { acus: number; tier: AcuTopUpTier | null } {
+  const tier = topUpTierFor(gbp);
+  if (tier) return { acus: tier.acus + tier.bonusAcus, tier };
+  return { acus: Math.round(gbp * ACU_PER_GBP), tier: null };
+}
+
 export function stripeFee(grossGbp: number, mix: CardMix = 'uk'): number {
   const pct =
     mix === 'uk'

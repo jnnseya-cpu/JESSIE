@@ -79,7 +79,22 @@ export class SessionGuard implements CanActivate {
       if (session.kind !== 'platform_staff') {
         const params = req.params as Record<string, string | undefined>;
         const asked = params?.[selfParam] ?? (req.body as Record<string, unknown> | undefined)?.[selfParam];
-        if (typeof asked === 'string' && asked !== session.uid) {
+
+        /*
+         * Anything that is not a string equal to the caller's own id is
+         * refused, including absent and including a non-string.
+         *
+         * The previous form was `typeof asked === 'string' && asked !==
+         * session.uid`, which let two shapes through. A body that omitted
+         * the field entirely reached the handler unchecked; so did
+         * `{"userId": ["someone-else"]}`, because Express parses a
+         * repeated or bracketed key into an array and an array is not a
+         * string. Both then hit a handler that read the value and answered
+         * with that account. A guard whose check is skipped when the input
+         * is the wrong type is not a guard — it is a guard against
+         * well-formed requests.
+         */
+        if (typeof asked !== 'string' || asked !== session.uid) {
           throw new ForbiddenException('that is somebody else’s account');
         }
       }
