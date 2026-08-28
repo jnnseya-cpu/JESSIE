@@ -66,7 +66,7 @@ export class AuthController {
      * when the refusal is correct.
      */
     try {
-      this.auth.assertHuman(undefined, req.ip ?? 'unknown', 'guardian_confirm');
+      await this.auth.assertHuman(undefined, req.ip ?? 'unknown', 'guardian_confirm');
     } catch {
       res.status(429).setHeader('content-type', 'text/html; charset=utf-8');
       res.send(
@@ -122,7 +122,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'register');
+    await this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'register');
     const result = await this.auth.register(body);
     this.setCookie(res, result.token);
     /*
@@ -155,7 +155,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'login');
+    await this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'login');
     const result = await this.auth.login(body.email, body.password);
     this.setCookie(res, result.token);
     return { userId: result.userId, kind: result.kind };
@@ -163,7 +163,7 @@ export class AuthController {
 
   @Post('forgot')
   async forgot(@Body() body: ForgotDto, @Req() req: Request) {
-    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'forgot');
+    await this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'forgot');
     return this.auth.forgotPassword(body.email);
   }
 
@@ -173,7 +173,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'reset');
+    await this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'reset');
     const result = await this.auth.resetPassword(body.token, body.password);
     this.setCookie(res, result.token);
     return { reset: true, userId: result.userId };
@@ -220,7 +220,7 @@ export class AuthController {
      * leaked password is a bad day; a script working through both at speed
      * is a worse one, and this is the cheapest place to make it slow.
      */
-    this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'delete_account');
+    await this.auth.assertHuman(body.challenge, req.ip ?? 'unknown', 'delete_account');
     const result = await this.auth.deleteAccount(this.session(req), body.password);
     res.clearCookie('jm_session', { domain: process.env.COOKIE_DOMAIN, path: '/' });
     return result;

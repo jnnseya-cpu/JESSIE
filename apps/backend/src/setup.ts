@@ -4,6 +4,12 @@ import { AllowanceFilter } from './common/allowance.filter';
 import { InstructionFilter } from './common/instruction.filter';
 import { SignatureInterceptor } from './common/signature.interceptor';
 
+/** The slice of the response the header middleware writes to. */
+interface ResponseLike {
+  setHeader: (name: string, value: string) => void;
+  removeHeader?: (name: string) => void;
+}
+
 /**
  * Everything that makes the app the JESS MOVE API, independent of how it
  * is served.
@@ -22,6 +28,46 @@ export function configureApp(app: INestApplication): INestApplication {
     express.useBodyParser('json', { limit: '15mb' });
     express.useBodyParser('urlencoded', { extended: true, limit: '15mb' });
   }
+
+  /**
+   * Security headers, and the removal of one that should never have been
+   * sent.
+   *
+   * The site sets these in `apps/frontend/vercel.json`. The API set none
+   * of them, and answered every request with `X-Powered-By: Express` —
+   * so the one host that returns members' data, moves money and takes the
+   * Stripe webhook was also the one host announcing its framework and
+   * omitting every hardening header the site had.
+   *
+   * Written by hand rather than by adding Helmet. This is nine header
+   * assignments; a dependency for nine header assignments is a dependency
+   * to audit, patch and explain forever.
+   *
+   * `frame-ancestors 'none'` and a `default-src 'none'` CSP are safe here
+   * in a way they would not be on the site: this host serves JSON. There
+   * is nothing to frame and nothing to load.
+   */
+  const server = app as unknown as {
+    use: (fn: (req: unknown, res: ResponseLike, next: () => void) => void) => void;
+    getHttpAdapter?: () => { getInstance?: () => { disable?: (s: string) => void } };
+  };
+
+  server.getHttpAdapter?.()?.getInstance?.()?.disable?.('x-powered-by');
+
+  server.use((_req: unknown, res: ResponseLike, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    // Two years, matching the site. An API reached over plain HTTP once is
+    // an API whose session cookie has been read once.
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    res.removeHeader?.('X-Powered-By');
+    next();
+  });
 
   app.setGlobalPrefix(process.env.API_PREFIX ?? 'api');
 

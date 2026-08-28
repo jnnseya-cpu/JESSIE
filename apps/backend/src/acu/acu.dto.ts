@@ -18,9 +18,19 @@ import { MIN_TRANSACTION_GBP } from '@jessmove/shared';
  */
 
 export class CostQuoteDto {
-  /** Direct provider cost. Negative or absurd values must not price an action. */
+  /**
+   * Direct provider cost. Negative or absurd values must not price an
+   * action, and neither must zero.
+   *
+   * `@Min(0)` accepted zero, and `requiredAcus(0)` is `ceil(0 × 4 × 100)`
+   * — zero. So this endpoint would answer "that action costs nothing",
+   * which is the one answer it must never give: an action with a real
+   * provider behind it always has a cost, and a caller trusting a zero
+   * quote is a caller about to serve AI for free. The spend path refuses
+   * a zero cost as unpriced; the quote has to say the same thing.
+   */
   @IsNumber()
-  @Min(0)
+  @Min(0.000001)
   @Max(100)
   providerCostGbp!: number;
 

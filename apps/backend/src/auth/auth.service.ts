@@ -14,7 +14,13 @@ import {
   type AccountKind,
   type HumanDoor,
 } from '@jessmove/shared';
+import { makePool } from '../db/pg';
 import { ProfilesService } from '../accounts/profiles.service';
+
+/** The slice of a pool the door counter uses. */
+interface DoorPool {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+}
 import { MailService } from '../mail/mail.service';
 import { PushService } from '../push/push.service';
 import { sniffImage, stripImageMetadata } from '../storage/image-bytes';
@@ -75,7 +81,60 @@ export class AuthService {
     private readonly push: PushService,
     private readonly security: SecurityService,
     private readonly conversions: ConversionsService,
-  ) {}
+  ) {
+    this.pool = makePool(process.env.DATABASE_URL, 2);
+  }
+
+  /**
+   * Used only by the door counter. Null without a database, in which case
+   * the in-memory window is all there is — which is correct for local
+   * development and is the pre-existing behaviour, not a new weakening.
+   */
+  private readonly pool: DoorPool | null;
+
+  /**
+   * Records this attempt and returns how many there have been in the
+   * window, across every instance.
+   *
+   * A failure to count returns zero rather than throwing. The alternative
+   * is that a database blip locks every member out of logging in, and a
+   * rate limiter that becomes an outage is worse than the attack it
+   * prevents — the in-memory window is still running underneath, so a
+   * refusal is never lost entirely.
+   */
+  private async countAttempt(door: string, source: string, windowMinutes: number): Promise<number> {
+    if (!this.pool) return 0;
+    try {
+      /*
+       * `+ 1` for the attempt being inserted right now.
+       *
+       * A data-modifying CTE and the SELECT beside it both read the
+       * snapshot taken at the start of the statement, so the row this
+       * statement inserts is not visible to its own count. Without the
+       * adjustment the limit is one attempt looser than the policy says —
+       * small, but a rate limit that does not enforce its own published
+       * number is a rate limit nobody can reason about.
+       */
+      const { rows } = await this.pool.query(
+        `WITH inserted AS (
+           INSERT INTO door_attempts (door, source) VALUES ($1, $2) RETURNING at
+         )
+         SELECT (count(*) + 1)::int AS n
+           FROM door_attempts
+          WHERE door = $1 AND source = $2
+            AND at > now() - make_interval(mins => $3)`,
+        [door, source, windowMinutes],
+      );
+      // Swept opportunistically, so the table stays about one window big
+      // without a scheduled job this deployment has no way to run.
+      if (Math.random() < 0.01) {
+        await this.pool.query(`DELETE FROM door_attempts WHERE at < now() - interval '24 hours'`);
+      }
+      return Number(rows[0]?.n ?? 0);
+    } catch {
+      return 0;
+    }
+  }
 
   private secret(): string {
     return this.config.get<string>('AUTH_SECRET') ?? '';
@@ -141,9 +200,22 @@ export class AuthService {
    * What it is not: proof. See `NOT_PROOF_OF_HUMANITY`, which is published
    * on the assurance page in those words.
    */
+  /**
+   * The in-memory window, kept as a fast path only.
+   *
+   * It used to be the whole limiter, and on serverless that made the
+   * published policy untrue. "Twelve logins in ten minutes" was enforced
+   * per warm instance and reset on every recycle, so an attacker got
+   * twelve per instance for free and a clean slate whenever the platform
+   * scaled — no cleverness required, ordinary load balancing does it.
+   *
+   * `door_attempts` is the real count now. This map still runs first
+   * because it costs nothing and stops a burst against one instance
+   * before it reaches the database.
+   */
   private readonly attempts = new Map<string, number[]>();
 
-  assertHuman(challenge: string | undefined, ip: string, kind: HumanDoor): void {
+  async assertHuman(challenge: string | undefined, ip: string, kind: HumanDoor): Promise<void> {
     if (!this.configured()) return;
 
     const policy = DOOR_POLICY[kind];
@@ -165,6 +237,19 @@ export class AuthService {
     const recent = (this.attempts.get(key) ?? []).filter((t) => now - t < windowMs);
     recent.push(now);
     this.attempts.set(key, recent);
+
+    // The durable count. Whichever of the two trips first refuses.
+    const across = await this.countAttempt(kind, ip, policy.windowMinutes);
+    if (across > policy.attemptsPerWindow) {
+      this.security.record({
+        kind: 'rate_limited',
+        source: ip,
+        at: new Date().toISOString(),
+        detail: `${kind}: ${across} attempts in ${policy.windowMinutes} minutes (all instances)`,
+      });
+      throw new HttpException('too many attempts from this connection — wait a few minutes', 429);
+    }
+
     if (recent.length > policy.attemptsPerWindow) {
       this.security.record({
         kind: 'rate_limited',

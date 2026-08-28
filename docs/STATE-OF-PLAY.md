@@ -79,10 +79,17 @@ is the point of the file.
 | Compute delivered and not paid for is counted | Recorded against `wallet_adjustments`, not silently absorbed |
 | A non-GBP invoice grants nothing | Every plan is priced in GBP; an unexpected currency is refused, not converted at an invented rate |
 
-Test suite: **829 passing, 0 failing** — 780 backend, 27 body-command, 22 foodlens.
+| **Losing the database no longer kills the API** | Postgres stopped under a running API: before, `[exited with code 1]` and every route dead including `/health`; after, five read routes still 200 and the pool reconnects with no restart |
+| The login rate limit survives an instance restart | 8 attempts, restart, limit engages at 14 total — a fresh instance used to allow 12 more |
+| The API sends security headers | Eight headers on every response, and `X-Powered-By: Express` removed |
+| A quote can never say an action is free | `providerCostGbp: 0` is a 400, not "0 ACU" |
+| The build is reproducible from a clean clone | `pnpm build`, `typecheck` and `test` all pass with every `dist/` deleted |
+
+Test suite: **833 passing, 0 failing** — 784 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
+Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
-Migrations 0027 and 0028 verified applying on a real boot.
+Migrations **0001–0029 verified applying to an empty database** on a real boot.
 
 ---
 
@@ -154,6 +161,31 @@ report only a path, and a path is not enough to get right.
 Stripe retries a failed event for about three days, so anything older than
 that is gone; the recent ones can be resent from the Events tab once the
 URL is corrected.
+
+---
+
+## What a launch audit could not test from here
+
+The audit that produced the fixes above ran against the release candidate
+on a local instance with a real Postgres. These are the areas it could not
+reach, and none of them should be read as passing:
+
+| Area | Why | Who can close it |
+|---|---|---|
+| Anything on production | `CONNECT tunnel failed, 403` — the environment refuses jessmove.com and api.jessmove.com by policy | Justin |
+| Load, stress, soak, p95/p99 | No production-like environment to load; local figures would be meaningless | Justin |
+| Backup restoration | No production backup is reachable. **A backup that has never been restored is not a verified backup** | Justin |
+| Rollback | Never exercised against a real deployment | Justin |
+| Monitoring and alerting | None found in the repository. There is no error tracker, no uptime check, no alert routing, and no assigned responder | Justin |
+| Cross-browser and device | Only Chromium is available here; Safari, Firefox and real mobile untested | Justin |
+| Email, SMS and WhatsApp delivery | No SMTP credentials; every issue renders and is recorded as `sandbox` | Justin |
+| Accessibility | No screen-reader or keyboard-only pass was run | Justin |
+| The 31 dependency advisories | 16 high, mostly Next.js (SSRF in rewrites, middleware bypass, DoS). Patched versions require a major upgrade from Next 14 | Justin |
+
+**No rate limit on `/blog/views`.** Forty unauthenticated writes in a row
+were all accepted. It costs no AI, so it is not a denial-of-wallet — it is
+analytics pollution and a spam surface. The humanity doors are limited;
+this route is not behind one.
 
 ---
 

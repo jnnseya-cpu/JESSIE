@@ -9,7 +9,8 @@
     "node": ">=20.11.0"
   },
   "scripts": {
-    "build": "pnpm --filter @jessmove/shared build && pnpm --filter @jessmove/backend build && pnpm --filter @jessmove/frontend build",
+    "build:packages": "pnpm --filter @jessmove/shared build && pnpm --filter @jessmove/body-command build && pnpm --filter @jessmove/foodlens build",
+    "build": "pnpm build:packages && pnpm --filter @jessmove/backend build && pnpm --filter @jessmove/frontend build",
     "build:backend": "pnpm --filter @jessmove/backend build",
     "build:body-command": "pnpm --filter @jessmove/body-command build",
     "build:foodlens": "pnpm --filter @jessmove/foodlens build",
@@ -19,6 +20,7 @@
     "db:migrate": "node scripts/db-apply.mjs migrate",
     "db:test": "node scripts/db-apply.mjs test",
     "verify:money": "node scripts/verify-money.mjs",
+    "verify:adversarial": "bash scripts/adversarial-probe.sh",
     "dev": "pnpm --parallel --filter @jessmove/backend --filter @jessmove/frontend dev",
     "dev:backend": "pnpm --filter @jessmove/backend dev",
     "dev:frontend": "pnpm --filter @jessmove/frontend dev",
@@ -28,8 +30,8 @@
     "smoke": "bash scripts/smoke.sh",
     "start:backend": "node apps/backend/dist/main.js",
     "start:frontend": "pnpm --filter @jessmove/frontend start",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm build:packages && pnpm -r test",
+    "typecheck": "pnpm build:packages && pnpm -r typecheck",
     "docs:ads": "node scripts/build-ads-docx.js"
   },
   "devDependencies": {
