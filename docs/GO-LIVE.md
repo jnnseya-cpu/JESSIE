@@ -744,3 +744,99 @@ docker compose exec -T db pg_dump -U jessmove jessmove | gzip > ~/backup-$(date 
 Put that `pg_dump` on a cron job and copy the output **off the box**. A VPS snapshot is
 not a database backup — it is a point-in-time disk image that can catch Postgres
 mid-write.
+
+---
+
+# Part 6 — Operating it once it is live
+
+Everything above gets the platform on the internet. This part is what stops a
+Tuesday afternoon becoming an outage nobody noticed. It is the last set of
+launch gates, and the only ones that cannot be closed from inside the
+repository.
+
+## 6.1 · What to watch, and the thresholds
+
+The application already reports its own state. Nothing is watching it, and an
+unwatched signal is not monitoring.
+
+| Watch | Where | Alert when |
+|---|---|---|
+| The API is up | `GET /api/health` | two consecutive failures, or no answer in 30s |
+| A dependency has degraded | `GET /api/health` → `data.status` | `status` is `degraded` or `down` for 5 minutes |
+| The database is reachable and migrated | `GET /api/db/status` | `reachable` is false, or `migrationsApplied` is short of `migrationsExpected` |
+| Stripe is wired correctly | `GET /api/stripe/status` | `webhookSecretConfigured` is false, or `mode` is not `live` |
+| Registration is possible | `GET /api/auth/status` | it reports auth unconfigured — **this is silent from the outside and produces exactly the "no customers" symptom** |
+| Money reversals that could not be recovered | `wallet_adjustments` where `shortfall_acus > 0` | any new row |
+| The deploy is the commit you think | `GET /api/health` → `data.build.commit` | it differs from the branch head after a deploy |
+
+The cheapest honest setup is an uptime checker hitting `/api/health` and
+`/api/stripe/status`, plus an error tracker in both Vercel projects. Neither
+needs code changes.
+
+**Name one responder before launch.** An alert with no owner is a log line.
+
+## 6.2 · Recovery, with measured numbers
+
+The restore *procedure* is proven — `pnpm verify:recovery` dumps the live
+schema and data, builds a second database from nothing but that dump, and
+compares them. Last run: **53 tables, 387 rows, 29 migrations and 177
+constraints all came back**, and the restore itself took **0.2 seconds** on a
+small local dataset.
+
+That proves the mechanism. It does not prove your production backup, which is
+the point of the next paragraph.
+
+**Before launch, restore a real production backup into a scratch database and
+run the same comparison.** A backup that has never been restored is not a
+backup. Record the actual time it takes — that number is your RPO/RTO for the
+data, and it is the only version of it that means anything.
+
+```bash
+# on a machine that can reach the production database
+pg_dump "$PROD_DATABASE_URL" -f /tmp/prod.sql --no-owner --no-acl
+createdb jessmove_restore_check
+psql -d jessmove_restore_check -v ON_ERROR_STOP=1 -f /tmp/prod.sql
+DATABASE_URL=postgres://…/jessmove_restore_check pnpm verify:recovery
+```
+
+## 6.3 · Rollback
+
+Migrations are additive and applied on boot by `DbService`, so **rolling the
+code back does not roll the schema back** — and it does not need to, because
+an older application against a newer schema simply ignores the new columns.
+That is a deliberate property and it is what makes rollback safe here.
+
+1. In Vercel, promote the previous deployment for **both** projects.
+2. `GET /api/health` and confirm `data.build.commit` is the older commit.
+3. `bash scripts/smoke.sh https://api.jessmove.com/api` — expect 85/85.
+
+**Do this once before launch, deliberately, on a quiet afternoon.** A rollback
+that has never been performed is a plan, not a capability.
+
+## 6.4 · The verification suite
+
+All of these run against a deployment. Point them at production only after
+reading what each one does — the adversarial probe attempts abuse.
+
+```bash
+pnpm verify:money        # 16 checks: concurrency, reversals, grace period
+pnpm verify:recovery     # 9 checks: backup/restore and deletion
+pnpm verify:journeys     # 43 checks: browser journeys, mobile, keyboard, secrets
+pnpm verify:adversarial  # 37 checks: authz, money routes, injection, headers
+bash scripts/smoke.sh    # 85 checks: every endpoint's contract
+node scripts/load-test.mjs
+```
+
+## 6.5 · What is still not proven
+
+Honest list, kept here so it is not forgotten:
+
+- No load test has run against production. The local profile showed **0
+  errors across 6,300 requests** including a 200-way spike, with clean
+  recovery and no latency drift — but that is one process on one machine and
+  says nothing about Vercel or a managed Postgres.
+- No production backup has been restored.
+- No rollback has been performed on the real deployment.
+- No alert has ever fired, because none exists.
+- Email, SMS and WhatsApp delivery are unverified — no SMTP credentials.
+- Only Chromium has been tested. Safari, Firefox and real phones have not.

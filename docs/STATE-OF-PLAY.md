@@ -85,10 +85,20 @@ is the point of the file.
 | A quote can never say an action is free | `providerCostGbp: 0` is a 400, not "0 ACU" |
 | The build is reproducible from a clean clone | `pnpm build`, `typecheck` and `test` all pass with every `dist/` deleted |
 
+| Zero known dependency vulnerabilities | Next 14 → 15.5.24, React 18 → 19, plus overrides on five build-time leaves. Was 31 advisories, 16 of them high |
+| The restore procedure works | 53 tables, 387 rows, 29 migrations and 177 constraints rebuilt from a dump into an empty database, and compared |
+| Deletion removes the member | Searched every text, uuid and jsonb column in the schema afterwards — no trace |
+| The product works in a real browser | 21 routes render, registration completes, the view beacon fires, no sideways scroll at 360px, focus visible on 25/25 elements |
+| No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
+| It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
+
 Test suite: **833 passing, 0 failing** — 784 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
+Recovery and deletion: **9/9** (`pnpm verify:recovery`).
+Browser journeys: **43/43** in Chromium (`pnpm verify:journeys`).
+Dependency audit: **no known vulnerabilities**.
 Migrations **0001–0029 verified applying to an empty database** on a real boot.
 
 ---

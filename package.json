@@ -33,7 +33,9 @@
     "test": "pnpm build:packages && pnpm -r test",
     "typecheck": "pnpm build:packages && pnpm -r typecheck",
     "docs:ads": "node scripts/build-ads-docx.js",
-    "verify:journeys": "node scripts/journeys.mjs"
+    "verify:journeys": "node scripts/journeys.mjs",
+    "verify:recovery": "node scripts/verify-recovery.mjs",
+    "verify:load": "node scripts/load-test.mjs"
   },
   "devDependencies": {
     "@jessmove/shared": "workspace:*",
