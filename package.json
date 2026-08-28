@@ -32,11 +32,13 @@
     "start:frontend": "pnpm --filter @jessmove/frontend start",
     "test": "pnpm build:packages && pnpm -r test",
     "typecheck": "pnpm build:packages && pnpm -r typecheck",
-    "docs:ads": "node scripts/build-ads-docx.js"
+    "docs:ads": "node scripts/build-ads-docx.js",
+    "verify:journeys": "node scripts/journeys.mjs"
   },
   "devDependencies": {
     "@jessmove/shared": "workspace:*",
-    "docx": "^9.7.1"
+    "docx": "^9.7.1",
+    "playwright": "1.49.1"
   },
   "pnpm": {
     "overrides": {
