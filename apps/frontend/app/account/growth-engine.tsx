@@ -309,7 +309,8 @@ function Rendered({ output }: { output: Record<string, unknown> }) {
   );
 }
 
-function renderValue(value: unknown): JSX.Element {
+// React 19 removed the global JSX namespace; it lives on React now.
+function renderValue(value: unknown): React.JSX.Element {
   if (typeof value === 'string') return <p>{value}</p>;
   if (Array.isArray(value)) {
     return (

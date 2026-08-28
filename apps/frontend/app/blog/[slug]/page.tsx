@@ -28,14 +28,18 @@ export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
 }
 
+// Next 15 hands route params as a Promise so a page can start rendering
+// before the segment is resolved. Awaited once at the top of each entry
+// point; nothing below this line changes.
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const post = postBySlug(params.slug);
+  const { slug } = await params;
+  const post = postBySlug(slug);
   if (!post) {
-    const live = await publishedBySlug(params.slug);
+    const live = await publishedBySlug(slug);
     if (!live) return { title: 'Not found — JESS MOVE' };
     const url = `${SITE}/blog/${live.slug}`;
     return {
@@ -77,10 +81,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function Post({ params }: { params: { slug: string } }) {
-  const post = postBySlug(params.slug);
+export default async function Post({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = postBySlug(slug);
   if (!post) {
-    const live = await publishedBySlug(params.slug);
+    const live = await publishedBySlug(slug);
     if (!live) notFound();
     return <AgentPost post={live} />;
   }

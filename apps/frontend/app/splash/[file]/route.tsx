@@ -44,9 +44,10 @@ const GROUND = '#102A43';
 
 export async function GET(
   _request: Request,
-  { params }: { params: { file: string } },
+  { params }: { params: Promise<{ file: string }> },
 ): Promise<Response> {
-  const size = parseSplashFile(params.file);
+  const { file } = await params;
+  const size = parseSplashFile(file);
   if (!size) return new Response('not found', { status: 404 });
 
   const { width, height } = size;
