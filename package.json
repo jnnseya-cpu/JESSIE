@@ -2,7 +2,7 @@
   "name": "jessmove",
   "version": "1.0.0",
   "private": true,
-  "description": "JESS MOVE\u2122 \u2014 Just Enough Somatic Stimulus Intelligence Engine",
+  "description": "JESS MOVE™ — Just Enough Somatic Stimulus Intelligence Engine",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0",
   "engines": {
@@ -40,7 +40,7 @@
   "devDependencies": {
     "@jessmove/shared": "workspace:*",
     "docx": "^9.7.1",
-    "playwright": "1.49.1"
+    "playwright": "1.55.1"
   },
   "pnpm": {
     "overrides": {
