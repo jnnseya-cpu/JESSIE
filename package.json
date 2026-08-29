@@ -2,7 +2,7 @@
   "name": "jessmove",
   "version": "1.0.0",
   "private": true,
-  "description": "JESS MOVE™ — Just Enough Somatic Stimulus Intelligence Engine",
+  "description": "JESS MOVE\u2122 \u2014 Just Enough Somatic Stimulus Intelligence Engine",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0",
   "engines": {
@@ -35,7 +35,8 @@
     "docs:ads": "node scripts/build-ads-docx.js",
     "verify:journeys": "node scripts/journeys.mjs",
     "verify:recovery": "node scripts/verify-recovery.mjs",
-    "verify:load": "node scripts/load-test.mjs"
+    "verify:load": "node scripts/load-test.mjs",
+    "check:webhook": "bash scripts/check-webhook.sh"
   },
   "devDependencies": {
     "@jessmove/shared": "workspace:*",
