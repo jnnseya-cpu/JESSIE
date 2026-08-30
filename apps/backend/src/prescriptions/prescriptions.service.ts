@@ -5,6 +5,7 @@ import {
   EVALUATED_SAFETY_RULES,
   MAX_WEEKLY_ESCALATION,
   SNAP_DURATION_SECONDS,
+  defaultsToChairSupport,
   sparksFor,
   type AgeMode,
   type ContextDecision,
@@ -146,10 +147,20 @@ export class PrescriptionsService {
    * Variant change is user-initiated or clinician-initiated only.
    */
   private selectVariant(request: PrescriptionRequest): MovementVariant | null {
-    const order: MovementVariant[] =
-      request.mode === 'independence' || request.mode === 'vitality'
-        ? ['chair_supported', 'seated', 'bed_recliner', 'adaptive_single_limb', 'standing']
-        : ['seated', 'standing', 'chair_supported', 'adaptive_single_limb', 'bed_recliner'];
+    /*
+     * `defaultsToChairSupport` rather than `mode === 'independence' ||
+     * mode === 'vitality'`, which is what this line used to say.
+     *
+     * Those are the same condition today, and that is the problem: the
+     * rule lived in two places, and only one of them was the one anybody
+     * would edit. `age-modes.ts` is where a later-life mode gets defined,
+     * so adding one there would have left this service still ordering
+     * standing work ahead of chair support for it — a physical safety
+     * rule quietly not applying to the newest group it was written for.
+     */
+    const order: MovementVariant[] = defaultsToChairSupport(request.mode)
+      ? ['chair_supported', 'seated', 'bed_recliner', 'adaptive_single_limb', 'standing']
+      : ['seated', 'standing', 'chair_supported', 'adaptive_single_limb', 'bed_recliner'];
 
     return order.find((v) => request.permittedVariants.includes(v)) ?? null;
   }

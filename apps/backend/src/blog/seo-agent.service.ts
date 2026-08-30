@@ -7,6 +7,7 @@ import {
   SEED_POSTS,
   SEO_RULES,
   TOPIC_CLUSTERS,
+  assertEditorialSafe,
   countWords,
   isKnownPath,
   normalisePath,
@@ -368,6 +369,27 @@ export class SeoAgentService {
         this.logger.warn(`SEO repair pass failed: ${(error as Error).message}`);
       }
     }
+
+    /*
+     * The banned lexicon, checked against what the model actually wrote.
+     *
+     * It was in the system prompt and nowhere else, which made it a
+     * request rather than a control — the agent was *asked* not to use
+     * those terms and nothing ever verified that it hadn't.
+     * `assertEditorialSafe` was written to do exactly this check and was
+     * called by nothing, so on health copy the platform had an
+     * instruction where it believed it had a guard.
+     *
+     * A hit is not a repairable finding, which is why it throws instead
+     * of joining `audit.findings`. Every term on that list is one this
+     * platform does not say about health at any age, so the right outcome
+     * is that the draft does not exist — not that it exists with a
+     * warning attached and waits for a reviewer to catch it.
+     *
+     * The human review gate still stands behind this; a draft has never
+     * been able to publish itself. This closes the gap in front of it.
+     */
+    assertEditorialSafe(`${draft.title}\n${draft.description}\n${draft.body}`, strict);
 
     return {
       draft,
