@@ -6,6 +6,7 @@ import {
   MAX_WEEKLY_ESCALATION,
   SNAP_DURATION_SECONDS,
   defaultsToChairSupport,
+  isDecisionFresh,
   sparksFor,
   type AgeMode,
   type ContextDecision,
@@ -80,6 +81,28 @@ export class PrescriptionsService {
 
   next(request: PrescriptionRequest): Prescription | PrescriptionHold {
     const decision: ContextDecision = this.context.evaluate(request.signals);
+
+    /*
+     * A decision older than its own TTL must not deliver.
+     *
+     * `isDecisionFresh` said so in a comment and was called by nothing.
+     * It has not bitten yet only because the decision is evaluated on the
+     * line above — but the type is a record with an `evaluatedAt` and a
+     * `ttlSeconds` precisely so it can be stored, queued or replayed, and
+     * the first caller to do any of those would have delivered a nudge
+     * based on where somebody was twenty minutes ago. That is Law 2
+     * failing in the one way it cannot detect: the context looked movable,
+     * and it was, earlier.
+     */
+    if (!isDecisionFresh(decision)) {
+      return {
+        held: true,
+        reason: 'The context read is older than it is allowed to be.',
+        blocks: decision.blocks,
+        retryAfterSeconds: 0,
+        contextDecisionId: decision.id,
+      };
+    }
 
     // Law 2 — no empty nudges. If the user cannot move, stay silent.
     if (decision.verdict !== 'movable') {

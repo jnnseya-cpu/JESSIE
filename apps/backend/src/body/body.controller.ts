@@ -4,14 +4,22 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   BC_AGENTS,
   BODY_PATHWAYS,
+  CALIBRATION_DAYS,
+  MAX_DAILY_ACTIONS,
   NON_SCALE_VICTORIES,
   PATHWAY_DEFINITIONS,
   PROHIBITED_MECHANICS,
+  REWARDED_BEHAVIOURS,
   SCORE_DIMENSIONS,
   SCORE_LABELS,
   SCORE_WEIGHTS,
+  TRAJECTORY_REVIEW_DAYS,
+  TWIN_STATE_MEANING,
 } from '@jessmove/body-command';
-import { BODY_COMPOSITION_MIN_AGE } from '@jessmove/shared';
+import {
+  BODY_COMPOSITION_MIN_AGE,
+  REPROFILE_CADENCE_DAYS,
+} from '@jessmove/shared';
 import { BodyService, type BodyAssessmentRequest } from './body.service';
 
 @Controller('body')
@@ -67,6 +75,18 @@ export class BodyController {
       nonScaleVictories: NON_SCALE_VICTORIES,
       prohibitedMechanics: PROHIBITED_MECHANICS,
       bodyMetricsMinimumAge: BODY_COMPOSITION_MIN_AGE,
+      /*
+       * What the platform rewards, what a twin state means, and the two
+       * cadences that govern when a plan is allowed to change. All of it
+       * was specified and none of it was readable by the thing that has
+       * to honour it.
+       */
+      rewardedBehaviours: REWARDED_BEHAVIOURS,
+      twinStateMeaning: TWIN_STATE_MEANING,
+      maxDailyActions: MAX_DAILY_ACTIONS,
+      calibrationDays: CALIBRATION_DAYS,
+      trajectoryReviewDays: TRAJECTORY_REVIEW_DAYS,
+      reprofileCadenceDays: REPROFILE_CADENCE_DAYS,
     };
   }
 

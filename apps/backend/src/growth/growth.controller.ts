@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
+  BEREAVEMENT_HOLD_MAX_DAYS,
   COMMISSION_RATE,
   COMMISSION_UNLOCK_REFERRALS,
   EXECUTIVE_APPROVAL_ABOVE_GBP,
@@ -12,16 +13,21 @@ import {
   PAYOUT_MINIMUM_GBP,
   PAYOUT_RULES,
   PROGRAMME_SUMMARY,
+  REFERRAL_STATES,
   REFERRAL_TRANSITIONS,
   REVENUE_DEDUCTIONS,
   REWARD_LADDER,
   REWARD_PATH,
   RISK_PATH,
+  SEASON_LENGTH_WEEKS,
+  SOCIAL_UNIT_SIZE,
   TRUST_HOLD_THRESHOLD,
   TRUST_REJECT_THRESHOLD,
   TRUST_SIGNAL_DEFINITIONS,
   VALIDATION_WINDOW_DAYS,
+  canTransitionReferral,
   commissionFor,
+  countsTowardsLadder,
   nextRung,
   payoutDecision,
   statusFor,
@@ -38,6 +44,19 @@ export class GrowthController {
     return {
       summary: PROGRAMME_SUMMARY,
       ladder: REWARD_LADDER.map((r) => ({ ...r, acuReward: LADDER_ACU_REWARD[r.status] })),
+      /*
+       * Which referral states count towards the ladder, and which moves
+       * between states are legal. Both were specified and neither was
+       * published, so a partner could only learn the rules by watching
+       * their own numbers move.
+       */
+      countsTowardsLadder: REFERRAL_STATES.filter(countsTowardsLadder),
+      legalStateChanges: REFERRAL_STATES.flatMap((from) =>
+        REFERRAL_STATES.filter((to) => canTransitionReferral(from, to)).map((to) => `${from} -> ${to}`),
+      ),
+      seasonLengthWeeks: SEASON_LENGTH_WEEKS,
+      socialUnitSize: SOCIAL_UNIT_SIZE,
+      bereavementHoldMaxDays: BEREAVEMENT_HOLD_MAX_DAYS,
       kinds: PARTNER_KIND_DEFINITIONS,
       commission: {
         rate: COMMISSION_RATE,

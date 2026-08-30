@@ -7,6 +7,7 @@ import {
   TopUpDto,
 } from './acu.dto';
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { freeTierState } from '@jessmove/shared';
 import {
   ACU_ACTIONS,
   ACU_PER_GBP,
@@ -16,6 +17,7 @@ import {
   WALLET_PRECEDENCE,
   WALLET_VALIDITY_DAYS,
   ZERO_ACU_ACTIONS,
+  canExecute,
   requiredAcus,
   type CostInput,
 } from '@jessmove/body-command';
@@ -40,6 +42,17 @@ export class AcuController {
       actionBands: ACU_ACTIONS,
       hardStop:
         'At zero balance, paid AI actions stop. Non-AI features continue and no debt is created.',
+      /*
+       * `canExecute` is the hard stop expressed as a function, and it was
+       * specified and never called — the wallet had its own inline
+       * `balance < acusRequired`. Publishing the rule and using the shared
+       * predicate is how the two stay the same sentence.
+       */
+      hardStopExample: {
+        balance: 10,
+        cost: 25,
+        wouldRun: canExecute(10, 25),
+      },
     };
   }
 
@@ -75,10 +88,20 @@ export class AcuController {
   @Get('balance/:userId')
   async balanceFor(@Param('userId') userId: string) {
     const wallet = await this.wallets.forSubject('user', userId);
+    /*
+     * `freeTierState` composes the sentence a member reads about their own
+     * free allowance — how many months are used, whether it is exhausted,
+     * and that it does not renew. It was written for exactly this response
+     * and never appeared in one, so the balance number changed and nothing
+     * explained it. That is the "surprise bill" the account page promises
+     * it is not.
+     */
+    const sourceRefs = wallet.grants.map((g) => g.sourceRef ?? '');
     return {
       walletId: wallet.id,
       balance: await this.wallets.balance(wallet.id),
       grants: wallet.grants.filter((g) => g.remaining > 0),
+      freeTier: freeTierState(sourceRefs, userId),
     };
   }
 

@@ -1,7 +1,13 @@
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import type { Request } from 'express';
-import { MOVA_REFUSES, PRESENCE_DEFINITIONS } from '@jessmove/shared';
+import {
+  MOVA_REFUSES,
+  NORMALISER_USER_LABEL,
+  PRESENCE_DEFINITIONS,
+  PRIZE_INTEGRITY_THRESHOLD,
+  countsTowardPrizes,
+} from '@jessmove/shared';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
 import { MovaService } from './mova.service';
@@ -55,6 +61,18 @@ export class MovaController {
     return {
       refuses: MOVA_REFUSES,
       presence: PRESENCE_DEFINITIONS,
+      /*
+       * Effort is normalised so two people working equally hard at
+       * different baselines earn the same. The label matters as much as
+       * the rule: it is never called a handicap or an adjustment, and
+       * publishing the word here is how that stays true across surfaces.
+       */
+      effortNormaliser: {
+        label: NORMALISER_USER_LABEL,
+        prizeEligibleAbove: PRIZE_INTEGRITY_THRESHOLD,
+        prizeEligible: countsTowardPrizes(PRIZE_INTEGRITY_THRESHOLD),
+        fair: 'Two people at their own baselines earn identical Sparks.',
+      },
       note: 'These refusals are rules, not confidence thresholds. A better model does not unlock them.',
     };
   }

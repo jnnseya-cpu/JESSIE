@@ -9,6 +9,7 @@ import {
   WALLET_VALIDITY_DAYS,
   annualMonthlyDeposit,
   breachesProtectionRule,
+  canExecute,
   monthlyAcuAllocation,
   requiredAcus,
   type CostInput,
@@ -573,7 +574,13 @@ export class WalletService implements OnModuleDestroy {
       if (controls.approvalThreshold !== undefined && acusRequired > controls.approvalThreshold) {
         return { ok: false, reason: 'requires_approval', balance };
       }
-      if (balance < acusRequired) {
+      /*
+       * `canExecute` rather than `balance < acusRequired`. Same comparison,
+       * and the shared one is where the rule is written down — "at zero
+       * balance, paid AI actions stop and no debt is created" — so the
+       * gate and the published policy are one expression.
+       */
+      if (!canExecute(balance, acusRequired)) {
         // Hard stop. No debt, no partial execution, no provider call.
         return { ok: false, reason: 'insufficient_balance', balance };
       }
