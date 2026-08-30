@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { LINK_TARGETS, TOPIC_CLUSTERS } from '@jessmove/shared';
+import { TOPIC_CLUSTERS, indexableTargets } from '@jessmove/shared';
 import { POSTS } from './blog/posts';
 import { publishedPosts } from './blog/published';
 
@@ -53,7 +53,7 @@ function newestPost(): Date {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const clusterPillars = new Set(TOPIC_CLUSTERS.map((c) => c.pillarPath));
 
-  const pages = LINK_TARGETS.filter((t) => !t.noIndex).map((target) => ({
+  const pages = indexableTargets().map((target) => ({
     url: `${SITE}${target.path === '/' ? '' : target.path}`,
     // A page that aggregates articles is as fresh as its newest one.
     lastModified: target.path === '/blog' || target.path === '/' ? newestPost() : undefined,

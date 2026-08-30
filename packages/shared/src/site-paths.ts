@@ -297,8 +297,35 @@ export function targetFor(path: string): LinkTarget | null {
   return BY_PATH.get(normalisePath(path)) ?? null;
 }
 
-/** Everything a crawler should be offered, in the order it should meet it. */
+/**
+ * Everything a crawler should be offered, in the order it should meet it.
+ *
+ * One definition of "indexable", because there were two: this function,
+ * and the same `!t.noIndex` filter written inline in the sitemap. They
+ * agreed, which is the only reason it never showed — but the registry is
+ * where a page gets marked `noIndex`, and a second copy of the rule is a
+ * second place to forget.
+ *
+ * The sitemap needs the whole target to read a change date off it, so the
+ * objects are the primary form and the paths derive from them.
+ */
+export function indexableTargets(): readonly LinkTarget[] {
+  return LINK_TARGETS.filter((t) => !t.noIndex);
+}
+
 export function indexablePaths(): readonly string[] {
-  return LINK_TARGETS.filter((t) => !t.noIndex).map((t) => t.path);
+  return indexableTargets().map((t) => t.path);
+}
+
+/**
+ * The pages robots.txt disallows — the exact complement of the sitemap.
+ *
+ * Kept beside `indexableTargets` so the two files cannot disagree about
+ * which pages exist for a crawler. A page listed in the sitemap and
+ * disallowed in robots.txt is a conflicting instruction, and a crawler
+ * resolves it by trusting neither.
+ */
+export function nonIndexableTargets(): readonly LinkTarget[] {
+  return LINK_TARGETS.filter((t) => t.noIndex);
 }
 

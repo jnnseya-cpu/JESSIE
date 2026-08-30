@@ -573,22 +573,54 @@ export interface PublishedPost extends PostDraft {
 }
 
 /** schema.org Article, as a plain object ready for JSON.stringify. */
-export function articleJsonLd(post: PublishedPost, siteUrl: string): Record<string, unknown> {
+/**
+ * What an article looks like to a search engine.
+ *
+ * Structural rather than `PublishedPost`, because two things render an
+ * article — the seeded corpus and the editorial pipeline — and their
+ * shapes differ. The narrow signature is why the blog page grew its own
+ * copy of this object instead of calling it, and the copy was worse in
+ * three ways that each cost real indexing: only the primary keyword
+ * reached `keywords`, `dateModified` was set to the publication date so
+ * an edited article never looked edited, and the author was hardcoded
+ * rather than taken from the post.
+ *
+ * `wordCount` prefers a count the caller already has. Recomputing it from
+ * the body is correct and wasteful when the page has measured it to show
+ * a reading time.
+ */
+export interface JsonLdArticle {
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly category: string;
+  readonly keyword: string;
+  readonly secondaryKeywords?: readonly string[];
+  readonly body?: string;
+  readonly words?: number;
+  readonly publishedAt: string;
+  readonly updatedAt?: string;
+  readonly author?: string;
+}
+
+export function articleJsonLd(post: JsonLdArticle, siteUrl: string): Record<string, unknown> {
   const url = `${siteUrl.replace(/\/$/, '')}/blog/${post.slug}`;
+  const keywords = [post.keyword, ...(post.secondaryKeywords ?? [])].filter(Boolean).join(', ');
+
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
     description: post.description,
     articleSection: post.category,
-    keywords: [post.keyword, ...post.secondaryKeywords].join(', '),
-    wordCount: countWords(post.body),
+    keywords,
+    wordCount: post.words ?? (post.body ? countWords(post.body) : undefined),
     datePublished: post.publishedAt,
-    dateModified: post.updatedAt,
+    dateModified: post.updatedAt ?? post.publishedAt,
     inLanguage: 'en-GB',
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     url,
-    author: { '@type': 'Organization', name: post.author },
+    author: { '@type': 'Organization', name: post.author ?? 'JESS MOVE' },
     publisher: { '@type': 'Organization', name: 'JESS MOVE' },
   };
 }

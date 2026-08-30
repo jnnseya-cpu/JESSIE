@@ -95,7 +95,7 @@ export const LIGHT = {
   surface: '#FFFFFF',
   surfaceSecondary: '#EAF2F1',
   textPrimary: '#102A43',
-  textSecondary: '#536575',
+  textSecondary: '#475663',
   divider: '#DCE6E4',
 } as const;
 

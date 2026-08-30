@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { LINK_TARGETS } from '@jessmove/shared';
+import { nonIndexableTargets } from '@jessmove/shared';
 
 /**
  * robots.txt, which this site also did not have.
@@ -20,7 +20,7 @@ const SITE = 'https://jessmove.com';
 
 export default function robots(): MetadataRoute.Robots {
   const disallow = [
-    ...LINK_TARGETS.filter((t) => t.noIndex).map((t) => `${t.path}/`),
+    ...nonIndexableTargets().map((t) => `${t.path}/`),
     '/api/',
   ].sort();
 

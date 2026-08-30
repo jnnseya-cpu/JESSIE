@@ -37,7 +37,15 @@ const SPEC_DIRS = [
   'packages/body-command/src',
   'packages/foodlens/src',
 ];
-const CONSUMER_GLOBS = ['apps/backend/src', 'apps/frontend/app', 'packages'];
+/**
+ * What counts as using a rule.
+ *
+ * `scripts/` belongs here and was missing at first, which made eleven
+ * economics exports look dead when `economics-report.mjs` reads all of
+ * them. A committed script that runs is a consumer; the report it prints
+ * is how the cost model reaches a person.
+ */
+const CONSUMER_GLOBS = ['apps/backend/src', 'apps/frontend/app', 'packages', 'scripts'];
 
 const listFiles = (dir) =>
   execFileSync('find', [join(root, dir), '-name', '*.ts', '-o', '-name', '*.tsx'], {
@@ -79,6 +87,8 @@ function usedElsewhere(name, declaringFile) {
         '-rw',
         '--include=*.ts',
         '--include=*.tsx',
+        '--include=*.mjs',
+        '--include=*.js',
         '-l',
         name,
         ...CONSUMER_GLOBS.map((d) => join(root, d)),
@@ -130,9 +140,28 @@ function allMentions(name) {
  *            worst — the export is a contract for tests or for a future
  *            caller, and it is not a claim that something runs.
  */
+/**
+ * Symbols whose correct consumer really is a test.
+ *
+ * Not every rule runs at runtime. A contrast ratio, a seizure-safety
+ * limit, a touch-target floor and a palette that must match a stylesheet
+ * are all build-time invariants: there is no request during which they
+ * are "consulted", and the only way to hold them is to measure the thing
+ * they describe and fail the build.
+ *
+ * This list exists so that legitimate case cannot be used as cover for
+ * the illegitimate one. Every entry needs a reason, and the reason has to
+ * say what measures it — "checked in a test" is not a reason, it is a
+ * restatement.
+ */
+const VERIFIED_BY_TEST = JSON.parse(
+  readFileSync(join(root, 'apps/backend/test/unwired-accounted.json'), 'utf8'),
+);
+
 const dead = [];
 const testOnly = [];
 const internal = [];
+const accounted = [];
 
 for (const dir of SPEC_DIRS) {
   for (const file of listFiles(dir)) {
@@ -151,7 +180,9 @@ for (const dir of SPEC_DIRS) {
       const usesInOwnFile =
         (ownFile.match(new RegExp(`\\b${name.replace(/\$/g, '\\$')}\\b`, 'g')) ?? []).length > 1;
 
+      const key = `${rel}:${name}`;
       if (usesInOwnFile) internal.push({ name, file: rel, tests: inTests.length });
+      else if (VERIFIED_BY_TEST[key]) accounted.push({ name, file: rel, why: VERIFIED_BY_TEST[key] });
       else if (inTests.length > 0) testOnly.push({ name, file: rel, tests: inTests });
       else dead.push({ name, file: rel });
     }
@@ -189,7 +220,11 @@ console.log('   Not even a test. A leftover, or a rule nobody finished.\n');
 if (dead.length) group(dead);
 else console.log('  none\n');
 
-console.log(`\nC. USED ONLY INSIDE ITS OWN MODULE — ${internal.length}`);
+console.log(`\nC. A BUILD-TIME INVARIANT, MEASURED BY A TEST — ${accounted.length}`);
+console.log('   Declared in unwired-accounted.json with a reason. These do not');
+console.log('   run during a request and were never meant to.\n');
+
+console.log(`\nD. USED ONLY INSIDE ITS OWN MODULE — ${internal.length}`);
 console.log('   Exported for a test or a future caller. Untidy at worst: it');
 console.log('   does not claim that anything runs. Not listed.\n');
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { TOPIC_CLUSTERS } from '@jessmove/shared';
+import { TOPIC_CLUSTERS, articleJsonLd } from '@jessmove/shared';
 import { Footer, JoinCta, Nav, SkipLink } from '../../ui';
 import { ViewBeacon } from '../view-beacon';
 import { renderBody, type PublishedPost } from '../published';
@@ -30,9 +30,23 @@ export function AgentPost({ post }: { post: PublishedPost }) {
   const blocks = renderBody(post.body, selfPath);
   const words = post.body.split(/\s+/).filter(Boolean).length;
 
+  /*
+   * Structured data, which this page had none of.
+   *
+   * The hand-written corpus shipped an Article object and everything the
+   * editorial pipeline published shipped nothing — so the half of the blog
+   * that grows was the half a search engine could not read properly. Same
+   * function as the corpus page now, so the two cannot drift again.
+   */
+  const jsonLd = articleJsonLd({ ...post, words }, 'https://jessmove.com');
+
   return (
     <>
       <SkipLink />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Nav current="/blog" />
       <ViewBeacon slug={post.slug} />
 

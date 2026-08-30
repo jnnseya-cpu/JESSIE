@@ -36,8 +36,59 @@
   --jm-surface: #ffffff;
   --jm-surface-2: #eaf2f1;
   --jm-text: #102a43;
-  --jm-text-2: #536575;
+  /* Darkened from #536575 to clear 7:1 (AAA) on both --jm-bg and
+     --jm-surface. The later-life modes publish an AAA target and this
+     token was 5.63:1 — AA, and short of the promise, for exactly the
+     readers the target exists for. Same hue, 15% darker. */
+  --jm-text-2: #475663;
   --jm-divider: #dce6e4;
+
+  /* ------------------------------------------------------------------
+     §11–§12, §29 — Shape, spacing, motion and type.
+
+     These were declared in packages/shared/src/design.ts and existed
+     nowhere else: the stylesheet had colour tokens and hardcoded every
+     radius, gap and duration, so the spec described one design system and
+     this file implemented another. They agreed by luck, not by anything.
+
+     `accessibility-promises.test.ts` now asserts these values against
+     design.ts, so the token is the specification and this is the shipped
+     form of it. Existing rules are being moved onto them incrementally;
+     new work uses the variable.
+     ------------------------------------------------------------------ */
+
+  --jm-radius-small: 12px;
+  --jm-radius-input: 14px;
+  --jm-radius-card: 20px;
+  --jm-radius-hero: 24px;
+  --jm-radius-modal: 24px;
+  --jm-radius-sheet: 28px;
+  --jm-radius-pill: 999px;
+
+  --jm-space-micro: 4px;
+  --jm-space-compact: 8px;
+  --jm-space-small: 12px;
+  --jm-space-standard: 16px;
+  --jm-space-section: 24px;
+  --jm-space-large: 32px;
+  --jm-space-screen: 48px;
+  --jm-space-hero: 64px;
+
+  /* Nothing repeating may be faster than 333ms — WCAG 2.3.1. */
+  --jm-motion-micro: 140ms;
+  --jm-motion-transition: 250ms;
+  --jm-motion-transformation: 420ms;
+  --jm-motion-celebration: 1500ms;
+
+  --jm-type-primary: Inter;
+  --jm-type-display: Manrope;
+  --jm-type-youth: 'Nunito Sans';
+
+  /* WCAG 2.2 AA floor is 24px; this platform ships 48, and 56 in the
+     later-life modes, because many readers are older or one-handed. */
+  --jm-target-min: 24px;
+  --jm-target-standard: 48px;
+  --jm-target-later-life: 56px;
 
   /* §7 — Dark surfaces */
   --jm-bg-d: #081a27;

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TOPIC_CLUSTERS, backlinksTo } from '@jessmove/shared';
+import { TOPIC_CLUSTERS, articleJsonLd, backlinksTo } from '@jessmove/shared';
 import { Footer, Nav, SkipLink, JoinCta } from '../../ui';
 import { POSTS, postBySlug } from '../posts';
 import { SITE_GRAPH } from '../graph';
@@ -106,22 +106,16 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
   // backlinks, which are the part of "backlinks" anybody actually controls.
   const backlinks = backlinksTo(SITE_GRAPH, selfPath).slice(0, 6);
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.title,
-    description: post.description,
-    articleSection: post.category,
-    keywords: post.keyword,
-    wordCount: post.words,
-    datePublished: post.publishedAt,
-    dateModified: post.publishedAt,
-    inLanguage: 'en-GB',
-    url: `${SITE}/blog/${post.slug}`,
-    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE}/blog/${post.slug}` },
-    author: { '@type': 'Organization', name: 'JESS MOVE' },
-    publisher: { '@type': 'Organization', name: 'JESS MOVE' },
-  };
+  /*
+   * `articleJsonLd` rather than an object built here, which is what this
+   * was. The shared version already existed and was never called, and the
+   * copy had drifted in three ways that each cost indexing: only the
+   * primary keyword reached `keywords`, `dateModified` was the publication
+   * date so an edited article never looked edited, and the author was
+   * hardcoded. One implementation, and the SEO audit and the page now
+   * describe the same article.
+   */
+  const jsonLd = articleJsonLd(post, SITE);
 
   const breadcrumbs = {
     '@context': 'https://schema.org',

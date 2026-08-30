@@ -130,6 +130,53 @@ test('the controls the audit wired are still wired', () => {
   );
 });
 
+test('every build-time invariant is actually measured by a test', () => {
+  /*
+   * `unwired-accounted.json` is the escape hatch, and an escape hatch with
+   * no lock on it is a hole. Declaring that a constant is "verified by a
+   * test" while no test names it would be precisely the dishonesty this
+   * whole exercise removes — a claim in a file, standing in for a check.
+   *
+   * So the declaration is itself checked: a symbol may only be accounted
+   * for if some test file actually refers to it, and the reason has to be
+   * a sentence rather than a shrug.
+   */
+  const accounted = JSON.parse(
+    readFileSync(new URL('./unwired-accounted.json', import.meta.url), 'utf8'),
+  ) as Record<string, string>;
+
+  const testDir = new URL('./', import.meta.url).pathname;
+  const testSources = execFileSync('bash', ['-c', `cat ${testDir}*.test.ts`], {
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+  });
+
+  const unmeasured: string[] = [];
+  const unexplained: string[] = [];
+
+  for (const [key, reason] of Object.entries(accounted)) {
+    const name = key.slice(key.lastIndexOf(':') + 1);
+    const re = new RegExp(`\\b${name.replace(/\$/g, '\\$')}\\b`);
+    if (!re.test(testSources)) unmeasured.push(key);
+    if (reason.trim().length < 40) unexplained.push(key);
+  }
+
+  assert.deepEqual(
+    unmeasured,
+    [],
+    'declared as measured by a test, and no test mentions them. Either write ' +
+      'the measurement or take the declaration out — the file is not a place ' +
+      'to park something.',
+  );
+
+  assert.deepEqual(
+    unexplained,
+    [],
+    'the reason has to say what measures it and why that is the right place. ' +
+      '"Checked in a test" is a restatement, not a reason.',
+  );
+});
+
 test('the agent tool allow-list is honest about what enforces it', () => {
   /*
    * `isToolPermitted` is on the dead list and is staying there, which is

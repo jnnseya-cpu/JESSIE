@@ -1,0 +1,20 @@
+{
+  "packages/shared/src/design.ts:CONTRAST_RATIO_MIN": "The WCAG AA floor. accessibility-promises.test.ts computes the real ratio from the real hex values for all eight reading pairs and fails below it. There is no request during which a contrast ratio is consulted.",
+  "packages/shared/src/design.ts:CONTRAST_TARGET": "Names the level each mode targets. The same test converts AAA to 7:1 and measures it. Finding that light-mode secondary text sat at 5.63:1 is what this check was for.",
+  "packages/shared/src/design.ts:MAX_FLASH_HZ": "WCAG 2.3.1 seizure limit. The test walks every repeating animation in globals.css and fails any that completes faster.",
+  "packages/shared/src/design.ts:TARGET_SIZE_PX": "Touch target floor. Asserted against the --jm-target-* properties in the shipped stylesheet.",
+  "packages/shared/src/design.ts:STATUS_LABELS": "WCAG 1.4.1 — colour is never the only carrier. The test fails any status colour with no words defined for it.",
+  "packages/shared/src/design.ts:CHART_PROHIBITIONS": "Five things a graph must not do. Three are checkable against charts.tsx and are checked; the other two are judgement and stay as prose.",
+  "packages/shared/src/design.ts:DARK": "The dark palette. Measured for contrast and asserted against the --jm-*-d properties, so the stylesheet and the specification cannot drift.",
+  "packages/shared/src/design.ts:RADII": "Shape scale. Emitted as --jm-radius-* and asserted equal, which is what makes this table the source rather than a parallel opinion.",
+  "packages/shared/src/design.ts:SPACING": "Spacing scale. Emitted as --jm-space-* and asserted equal.",
+  "packages/shared/src/design.ts:MOTION_MS": "Motion durations. Emitted as --jm-motion-* and asserted equal.",
+  "packages/shared/src/design.ts:TYPEFACES": "Type families. Emitted as --jm-type-* and asserted equal.",
+  "packages/shared/src/agents.ts:isToolPermitted": "Guards AGENT_REGISTRY.toolAllowList. Nothing calls it because nothing calls a tool — the gateway has no tool-calling path at all. unwired-spec.test.ts fails the moment one appears, so whoever adds it must route through this on that commit.",
+  "packages/shared/src/billing.ts:weakestPlanMargin": "Reports the thinnest plan. money-integrity.test.ts asserts every plan clears 4x and uses this to name the weakest. A margin is a build-time property of the price table, not a runtime one.",
+  "packages/shared/src/ai-costs.ts:realisedCallMargin": "Computes revenue over direct cost for a call. money-integrity.test.ts measures every model on the chain against COST_PROTECTION_MULTIPLE with it. Nothing consults it during a request because the 4x is already inside acusForTokens.",
+  "packages/shared/src/economics.ts:TARGET_GROSS_MARGIN": "Derived from PROFIT_MULTIPLE. economics.test.ts asserts the relationship holds, which is the whole content of the constant.",
+  "packages/shared/src/growth.ts:PAYOUT_ABOVE_CHARGE_FLOOR": "Its own comment calls it a sanity check: the payout floor must sit above MIN_TRANSACTION_GBP. That is an arithmetic relationship between two constants and belongs in a test.",
+  "packages/body-command/src/agents.ts:supervisors": "Its own comment says 'asserted in tests'. Exactly one agent may hold supervisory authority — a property of the registry, checked when the registry changes.",
+  "packages/shared/src/brand.ts:MUST_NEVER_LOOK": "Its own comment says it is kept in code as a review checklist. It is prose for a human reviewer, and the test asserts it has not been silently emptied."
+}

@@ -294,14 +294,20 @@ test('the sitemap and robots exist at all, which they did not', () => {
   const sitemap = readFileSync(new URL('../../frontend/app/sitemap.ts', import.meta.url), 'utf8');
   const robots = readFileSync(new URL('../../frontend/app/robots.ts', import.meta.url), 'utf8');
 
-  assert.match(sitemap, /LINK_TARGETS\.filter\(\(t\) => !t\.noIndex\)/, 'generated from the registry');
+  /*
+   * The property, not the expression. This used to assert the literal
+   * `LINK_TARGETS.filter((t) => !t.noIndex)`, which pinned an inline copy
+   * of a rule that also existed as `indexablePaths()` in the registry —
+   * so the test enforced the duplicate and would have failed the fix.
+   */
+  assert.match(sitemap, /indexableTargets\(\)/, 'generated from the registry');
   assert.match(sitemap, /POSTS\.map/, 'and every article is in it');
   assert.ok(
     !/lastModified: new Date\(\)/.test(sitemap),
     'a build-time date on every page tells a crawler the whole site changes daily, and it stops believing the field',
   );
   assert.match(robots, /sitemap: `\$\{SITE\}\/sitemap\.xml`/);
-  assert.match(robots, /LINK_TARGETS\.filter\(\(t\) => t\.noIndex\)/, 'one source for both files');
+  assert.match(robots, /nonIndexableTargets\(\)/, 'one source for both files');
 });
 
 test('the feed carries descriptions, not whole articles', () => {
