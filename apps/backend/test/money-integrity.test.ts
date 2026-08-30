@@ -9,6 +9,7 @@ import {
   PAST_DUE_GRACE_DAYS,
   PLAN_DEFINITIONS,
   UNKNOWN_MODEL_RATE,
+  acusForAction,
   acusForTokens,
   realisedAcuPriceGbp,
   realisedCallMargin,
@@ -18,7 +19,7 @@ import {
   topUpTierFor,
   weakestPlanMargin,
 } from '@jessmove/shared';
-import { ACU_PER_GBP, COST_PROTECTION_MULTIPLE } from '@jessmove/body-command';
+import { ACU_PER_GBP, COST_PROTECTION_MULTIPLE, requiredAcus } from '@jessmove/body-command';
 
 /**
  * Every way this platform could lose money that a search of the code could
@@ -414,4 +415,37 @@ test('the subscription and the customer link outlive the process', () => {
 test('the grace clock is not restarted by a repeated failure', () => {
   // Two failed payments in a row must not extend entitlement indefinitely.
   assert.match(STRIPE, /state_since = CASE WHEN stripe_subscriptions\.state IS DISTINCT FROM/);
+});
+
+test('the fully-loaded price is never cheaper than the gate that runs', () => {
+  /*
+   * Two pricing rules exist and only the weaker has ever run.
+   *
+   * `requiredAcus` is the gate: four times direct provider cost.
+   * `acusForAction` is the fuller model — the larger of that and twice
+   * the fully-loaded cost, which includes cloud and the support share a
+   * provider invoice does not mention. It was specified and called by
+   * nothing.
+   *
+   * The gateway cannot apply the fuller rule at the call site, because it
+   * does not know the cloud or support cost of one request. What can be
+   * held is the relationship: the fuller model must never come out below
+   * the gate. If it ever does, the gate has quietly become the stricter
+   * of the two and one of them is wrong.
+   */
+  for (const providerCostGbp of [0.0001, 0.001, 0.01, 0.1, 1]) {
+    const gate = requiredAcus({ providerCostGbp });
+    const loaded = acusForAction({
+      providerCostGbp,
+      cloudCostGbp: providerCostGbp * 0.2,
+      supportShareGbp: providerCostGbp * 0.4,
+    });
+
+    assert.ok(
+      loaded >= gate,
+      `at £${providerCostGbp} provider cost the fully-loaded price is ${loaded} ACU ` +
+        `and the gate charges ${gate} — the gate is now the stricter rule, which ` +
+        'means the two models disagree about which one protects the margin',
+    );
+  }
 });

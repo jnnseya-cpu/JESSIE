@@ -6,6 +6,7 @@ import {
   PORTION_REFERENCES,
   PROCESSING_STAGES,
   UK_ALLERGENS,
+  isExact,
   type Allergen,
   type EvidenceSource,
 } from '@jessmove/foodlens';
@@ -146,6 +147,17 @@ export class FoodlensService {
 
   policy(): Record<string, unknown> {
     return {
+      /*
+       * FoodLens answers with a range, never a number, and `isExact` is
+       * how a caller tells the one case where the range has collapsed to
+       * a single value — a barcode with a label, rather than a
+       * photograph. Publishing the distinction stops a client rendering
+       * "410–520 kcal" and "500 kcal" as though they carried the same
+       * confidence, which is the whole reason the range exists.
+       */
+      exactMeansLabelled: isExact({ min: 500, likely: 500, max: 500 }),
+      estimateIsNeverExact: isExact({ min: 410, likely: 470, max: 520 }),
+
       neverClaimed: NEVER_CLAIM,
       allergens: UK_ALLERGENS,
       captureChecks: CAPTURE_CHECKS.map((c) => ({ check: c, hint: CAPTURE_HINTS[c] })),

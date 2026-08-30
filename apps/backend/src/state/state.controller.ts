@@ -6,7 +6,9 @@ import { StateService } from './state.service';
 import {
   AUTOSAVE,
   NEVER_AUTOSAVED_FIELDS,
+  SAVE_STATES,
   retryDelayMs,
+  shouldWarnOnLeave,
 } from '@jessmove/shared';
 import { STATE_KEYS } from './state.logic';
 
@@ -34,6 +36,13 @@ export class StateController {
       neverAutosaved: NEVER_AUTOSAVED_FIELDS,
       retryDelaysMs: [0, 1, 2, 3, 4].map((attempt) => retryDelayMs(attempt)),
       warnOnLeaveAfterMs: AUTOSAVE.debounceMs,
+      /*
+       * Whether to warn before leaving with unsaved work. A blanket
+       * "are you sure?" on every form trains people to dismiss it without
+       * reading, so the rule is conditional and the client needs to know
+       * the condition rather than invent one.
+       */
+      warnOnLeave: SAVE_STATES.filter(shouldWarnOnLeave),
       note: 'Consent, date of birth and anything clinical are never saved automatically.',
     };
   }

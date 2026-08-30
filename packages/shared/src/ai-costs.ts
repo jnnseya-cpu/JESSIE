@@ -165,18 +165,3 @@ export function realisedCallMargin(
   return Number((revenue / cost).toFixed(3));
 }
 
-/**
- * The ACU ceiling to hold before a call, from the most it could consume.
- *
- * The hold has to be taken before anything is known about the response, so
- * it is priced on the output limit rather than on a guess. Settling
- * afterwards returns the difference to the grants it came from.
- */
-export function ceilingAcus(
-  model: string,
-  maxInputTokens: number,
-  maxOutputTokens: number,
-  env: Record<string, string | undefined> = {},
-): number {
-  return acusForTokens(model, maxInputTokens, maxOutputTokens, env);
-}

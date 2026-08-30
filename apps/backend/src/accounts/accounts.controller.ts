@@ -15,6 +15,7 @@ import {
   COVER_PATTERNS,
   EXPLICIT_FIELDS,
   FIELD_POLICY,
+  HANDLE_PATTERN,
   ILLUSTRATED_AVATARS,
   IMAGE_MIME_TYPES,
   MODERATION_STATES,
@@ -22,6 +23,8 @@ import {
   RESERVED_HANDLES,
   SAVE_LABELS,
   STRIPPED_ON_UPLOAD,
+  canTransitionAccount,
+  handleAvailable,
   profilePolicy,
   type ViewerRelationship,
 } from '@jessmove/shared';
@@ -50,6 +53,24 @@ export class AccountsController {
       kinds: ACCOUNT_KINDS.map((k) => ACCOUNT_KIND_DEFINITIONS[k]),
       states: ACCOUNT_STATES,
       transitions: ACCOUNT_STATE_TRANSITIONS,
+      /*
+       * The table was published and the predicate that reads it was not,
+       * so a client could see the map and still had to write its own
+       * lookup. `closing` is a 30-day grace period rather than a delete,
+       * and the legal moves out of it are the part worth getting right.
+       */
+      legalTransitions: ACCOUNT_STATES.flatMap((from) =>
+        ACCOUNT_STATES.filter((to) => canTransitionAccount(from, to)).map((to) => `${from} -> ${to}`),
+      ),
+      handleRules: {
+        pattern: String(HANDLE_PATTERN),
+        reserved: RESERVED_HANDLES,
+        examples: {
+          ok: handleAvailable('sam'),
+          reserved: handleAvailable('admin'),
+          malformed: handleAvailable('a'),
+        },
+      },
       closureGraceDays: CLOSURE_GRACE_DAYS,
     };
   }

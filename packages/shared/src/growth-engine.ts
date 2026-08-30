@@ -145,9 +145,6 @@ export const PLATFORMS: Readonly<Record<PlatformId, PlatformSpec>> = {
 
 export const PLATFORM_IDS = Object.keys(PLATFORMS) as PlatformId[];
 
-export function isPlatformId(value: string): value is PlatformId {
-  return (PLATFORM_IDS as string[]).includes(value);
-}
 
 /* ------------------------------------------------------------------ *
  * The ten tools
@@ -280,9 +277,6 @@ export const GROWTH_TOOLS: Readonly<Record<GrowthToolId, GrowthTool>> = {
 
 export const GROWTH_TOOL_IDS = Object.keys(GROWTH_TOOLS) as GrowthToolId[];
 
-export function isGrowthToolId(value: string): value is GrowthToolId {
-  return (GROWTH_TOOL_IDS as string[]).includes(value);
-}
 
 /* ------------------------------------------------------------------ *
  * The refusal that keeps the measuring tools honest

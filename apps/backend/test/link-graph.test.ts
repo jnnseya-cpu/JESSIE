@@ -10,7 +10,7 @@ import {
   autoLinksFor,
   backlinksTo,
   buildLinkGraph,
-  indexablePaths,
+  indexableTargets,
   isKnownPath,
   normalisePath,
   seoAudit,
@@ -61,7 +61,13 @@ test('every cluster pillar is a page that exists', () => {
 });
 
 test('a signed-in surface is never offered to a crawler', () => {
-  const indexable = indexablePaths();
+  /*
+   * `indexableTargets()` is what the sitemap actually calls, so this now
+   * checks the function that ships rather than a paths-only convenience
+   * derived from it. `indexablePaths` was that convenience, and this test
+   * was its only caller — a helper whose entire purpose was being tested.
+   */
+  const indexable = indexableTargets().map((t) => t.path);
   for (const path of ['/account', '/console', '/offline']) {
     assert.ok(!indexable.includes(path), `${path} is in the sitemap`);
   }

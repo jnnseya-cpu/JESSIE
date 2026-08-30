@@ -313,9 +313,6 @@ export function indexableTargets(): readonly LinkTarget[] {
   return LINK_TARGETS.filter((t) => !t.noIndex);
 }
 
-export function indexablePaths(): readonly string[] {
-  return indexableTargets().map((t) => t.path);
-}
 
 /**
  * The pages robots.txt disallows — the exact complement of the sitemap.

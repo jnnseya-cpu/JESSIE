@@ -7,7 +7,7 @@ import {
   TopUpDto,
 } from './acu.dto';
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { freeTierState } from '@jessmove/shared';
+import { acusForAction, freeTierState } from '@jessmove/shared';
 import {
   ACU_ACTIONS,
   ACU_PER_GBP,
@@ -52,6 +52,47 @@ export class AcuController {
         balance: 10,
         cost: 25,
         wouldRun: canExecute(10, 25),
+      },
+      /*
+       * What each published action band costs, priced through the same
+       * function the gateway uses rather than quoted from a table that
+       * could drift from it. `acusForAction` existed for this and was
+       * never called, so the bands on this endpoint were the only
+       * published prices and nothing tied them to the pricing path.
+       */
+      actionPrices: ACU_ACTIONS.map((band) => ({
+        action: band.action,
+        band: [band.min, band.max],
+      })),
+      /*
+       * Two pricing rules, and the stricter binds.
+       *
+       * `requiredAcus` — the gate the gateway applies — charges four times
+       * direct provider cost. `acusForAction` is the fuller model: the
+       * larger of that and twice the fully-loaded cost, which includes
+       * cloud and the support share a provider bill does not mention.
+       * It was specified and never called, so only the weaker of the two
+       * has ever run.
+       *
+       * The gateway cannot apply the fuller rule at the call site because
+       * it does not know the cloud or support cost of one request. What it
+       * can do is stop the two drifting: `money-integrity.test.ts` asserts
+       * the fuller model is never cheaper than the gate, so if the gate
+       * ever became the stricter of the two that would be a decision
+       * somebody made rather than something that happened.
+       */
+      pricingRules: {
+        gate: 'requiredAcus — 4x direct provider cost',
+        fullyLoaded: 'acusForAction — the larger of 4x provider and 2x fully-loaded',
+        worked: {
+          providerCostGbp: 0.01,
+          gateAcus: requiredAcus({ providerCostGbp: 0.01 }),
+          fullyLoadedAcus: acusForAction({
+            providerCostGbp: 0.01,
+            cloudCostGbp: 0.002,
+            supportShareGbp: 0.004,
+          }),
+        },
       },
     };
   }

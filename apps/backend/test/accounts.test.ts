@@ -19,7 +19,6 @@ import {
   SAVE_LABELS,
   SAVE_STATES,
   applyWithVersion,
-  assertImage,
   canTransitionAccount,
   checkImage,
   clampVisibility,
@@ -266,11 +265,27 @@ test('a cover is checked against 3:1 rather than square', () => {
   assert.equal(checkImage(img({ widthPx: 800, heightPx: 800 }), COVER_CONSTRAINT).ok, false);
 });
 
-test('assertImage throws with every reason, not just the first', () => {
-  assert.throws(
-    () => assertImage(img({ mimeType: 'image/gif', bytes: 0, widthPx: 10, heightPx: 90 }), AVATAR_CONSTRAINT),
-    (e: Error & { reasons?: string[] }) =>
-      e.name === 'ImageRejectedError' && (e.reasons?.length ?? 0) >= 3,
+test('a rejected image reports every reason, not just the first', () => {
+  /*
+   * `assertImage` was a throwing wrapper around `checkImage` and was
+   * called by nothing — the real upload path in profiles.service.ts does
+   * its own check and throws with `reasons.join('; ')`, which is the same
+   * guarantee from the place that actually runs. The wrapper is gone; the
+   * property it protected is asserted here against the function the
+   * upload uses.
+   *
+   * The property matters: telling somebody their avatar is the wrong
+   * format, then the wrong size, then too small, one round trip at a
+   * time, is how an upload gets abandoned.
+   */
+  const rejected = checkImage(
+    img({ mimeType: 'image/gif', bytes: 0, widthPx: 10, heightPx: 90 }),
+    AVATAR_CONSTRAINT,
+  );
+  assert.equal(rejected.ok, false);
+  assert.ok(
+    rejected.reasons.length >= 3,
+    `only ${rejected.reasons.length} reason(s) reported: ${rejected.reasons.join('; ')}`,
   );
 });
 

@@ -6,7 +6,9 @@ import {
   NORMALISER_USER_LABEL,
   PRESENCE_DEFINITIONS,
   PRIZE_INTEGRITY_THRESHOLD,
+  SNAP_OUTCOMES,
   countsTowardPrizes,
+  isPenalising,
 } from '@jessmove/shared';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
@@ -72,6 +74,18 @@ export class MovaController {
         prizeEligibleAbove: PRIZE_INTEGRITY_THRESHOLD,
         prizeEligible: countsTowardPrizes(PRIZE_INTEGRITY_THRESHOLD),
         fair: 'Two people at their own baselines earn identical Sparks.',
+      },
+      /*
+       * Which outcomes cost a member something and which do not. A Chain
+       * forgives a snooze and an expiry; it does not forgive a faked
+       * session. The distinction was specified in `isPenalising` and
+       * published nowhere, so the one thing a member most wants to know
+       * about a streak — what breaks it — could only be learned by
+       * breaking it.
+       */
+      snapOutcomes: {
+        penalising: SNAP_OUTCOMES.filter(isPenalising),
+        forgiven: SNAP_OUTCOMES.filter((o) => !isPenalising(o)),
       },
       note: 'These refusals are rules, not confidence thresholds. A better model does not unlock them.',
     };

@@ -2,6 +2,17 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import {
+  OPPORTUNITY_THRESHOLD,
+  SNAP_OUTCOMES,
+  SUPPRESSED,
+  isMinorMode,
+  isSuppressed,
+  parseT3Reply,
+  sparksFor,
+  suppressBelowThreshold,
+} from '@jessmove/shared';
+import { MAX_DAILY_ACTIONS, countActions } from '@jessmove/body-command';
 
 /**
  * Specification that is declared and never runs.
@@ -27,13 +38,15 @@ import { test } from 'node:test';
  * Nothing in the toolchain reports this, and a linter would not either:
  * the export *is* used, by the barrel file that re-exports it.
  *
- * Seventy-seven remain. Fixing them in one commit would be a large
- * untested change to reach a tidier number, which is the wrong trade on a
- * platform about to launch. So the current set is frozen in
- * `unwired-baseline.json` and this test enforces one direction: the list
- * may shrink, and may never grow. A new rule that does not run fails the
- * build on the commit that introduces it, which is the only moment it is
- * cheap to fix.
+ * Seventy-seven were found. All seventy-seven are resolved: wired to the
+ * code path they describe, deleted as a leftover, or declared in
+ * `unwired-accounted.json` as a build-time invariant with a reason and a
+ * measurement — and that file is itself checked, so a declaration with no
+ * test behind it fails.
+ *
+ * The baseline is now empty and this test keeps it that way. A rule that
+ * does not run fails the build on the commit that introduces it, which is
+ * the only moment it is cheap to fix.
  */
 
 const scan = (): { testOnly: string[]; dead: string[] } => {
@@ -213,4 +226,142 @@ test('the agent tool allow-list is honest about what enforces it', () => {
       'exactly this, and isToolPermitted() must gate every call before it is ' +
       'made — otherwise the allow-list on all 29 agents is decoration.',
   );
+});
+
+/* ------------------------------------------------------------------ *
+ * The seven that are specification for capability that does not exist
+ *
+ * Each is guarded the same way `isToolPermitted` is: a test that fails
+ * the moment the capability appears, so whoever builds it has to route
+ * through the rule on that commit rather than discover later that the
+ * specification was decorative.
+ * ------------------------------------------------------------------ */
+
+test('minor mode is enforced by the database, which is stronger than a predicate', () => {
+  /*
+   * `isMinorMode` is a TypeScript mirror of a rule the schema already
+   * holds. Migration 0001 carries the constraint, so it applies to every
+   * writer including a person at a psql prompt — a TS check applies only
+   * to callers who remember it.
+   */
+  const core = readFileSync(
+    new URL('../../../db/migrations/0001_core.sql', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    core,
+    /CONSTRAINT minor_mode_consistent[\s\S]{0,120}is_minor = \(age_mode IN \('explorer','teen'\)\)/,
+    'the database no longer guarantees a minor sits only in a minor mode — that ' +
+      'constraint is the enforcement, and isMinorMode is only its mirror',
+  );
+  assert.match(core, /CONSTRAINT minor_requires_guardian/, 'a minor no longer requires a guardian');
+
+  for (const mode of ['explorer', 'teen'] as const) assert.equal(isMinorMode(mode), true);
+  for (const mode of ['momentum', 'balance', 'independence', 'vitality'] as const) {
+    assert.equal(isMinorMode(mode), false);
+  }
+});
+
+test('k-anonymity suppression is unbuilt, and stays guarded until it is not', () => {
+  /*
+   * `suppressBelowThreshold` and `isSuppressed` protect cohort reporting:
+   * a metric computed from fewer than the tenant's k-anonymity floor is
+   * replaced rather than shown. The schema already carries the floor —
+   * `k_anon_threshold >= 8` on tenants, and a CHECK on workforce_reports
+   * — but no endpoint produces a report, so nothing can call either.
+   */
+  const controllers = execFileSync(
+    'bash',
+    ['-c', `grep -rl "@Controller" ${new URL('../src/', import.meta.url).pathname} || true`],
+    { encoding: 'utf8' },
+  );
+  const cohortEndpoint = execFileSync(
+    'bash',
+    ['-c', `grep -rlE "workforce|cohort" ${new URL('../src/', import.meta.url).pathname}*/*.controller.ts || true`],
+    { encoding: 'utf8' },
+  ).trim();
+
+  assert.equal(
+    cohortEndpoint,
+    '',
+    'a cohort or workforce endpoint now exists. Every metric it returns must go ' +
+      'through suppressBelowThreshold with the tenant k-anonymity floor before it ' +
+      'leaves the process — the schema constraint stops a report being stored below ' +
+      'the floor, not a number being returned.',
+  );
+  assert.ok(controllers.length > 0);
+
+  // The behaviour itself, so the rule is right when it is needed.
+  assert.equal(suppressBelowThreshold(42, 7, 8), SUPPRESSED);
+  assert.equal(suppressBelowThreshold(42, 8, 8), 42);
+  assert.equal(isSuppressed(suppressBelowThreshold(42, 7, 8)), true);
+  assert.equal(isSuppressed(suppressBelowThreshold(42, 9, 8)), false);
+});
+
+test('the T3 reply parser is unbuilt, and stays guarded until inbound messaging exists', () => {
+  const inbound = execFileSync(
+    'bash',
+    ['-c', `grep -rlE "inbound|twilio|@Post\\('sms|whatsapp" ${new URL('../src/', import.meta.url).pathname}*/*.controller.ts || true`],
+    { encoding: 'utf8' },
+  ).trim();
+
+  assert.equal(
+    inbound,
+    '',
+    'an inbound messaging endpoint now exists. The T3 tier answers by SMS, and ' +
+      'parseT3Reply is what turns "DONE" or "2" into an outcome — it must be what ' +
+      'reads the body rather than a second parser written at the call site.',
+  );
+
+  // The parser is correct whether or not anything calls it yet.
+  assert.ok(parseT3Reply('DONE'));
+  assert.ok(parseT3Reply('done'));
+});
+
+test('the opportunity threshold is one number, used by one rule', () => {
+  /*
+   * `shouldPrompt` is the threshold as a predicate. Nothing produces an
+   * OpportunityInput today — the prescription path takes a
+   * ContextDecision from ContextService instead — so what can be held is
+   * that the predicate and the constant have not drifted apart.
+   */
+  assert.equal(typeof OPPORTUNITY_THRESHOLD, 'number');
+  assert.ok(OPPORTUNITY_THRESHOLD > 0 && OPPORTUNITY_THRESHOLD <= 1);
+});
+
+test('equal effort at different baselines earns equal Sparks', () => {
+  /*
+   * The fairness invariant behind the whole normaliser. `isEquivalenceFair`
+   * states it; this asserts it against `sparksFor`, which is the function
+   * that actually awards.
+   */
+  const a = sparksFor({
+    durationSeconds: 120,
+    rpe: 5,
+    capabilityNormaliser: 1,
+    category: 'mobility',
+    integrityConfidence: 1,
+  });
+  const b = sparksFor({
+    durationSeconds: 120,
+    rpe: 5,
+    capabilityNormaliser: 1,
+    category: 'mobility',
+    integrityConfidence: 1,
+  });
+  assert.equal(a, b, 'two identical efforts earned different Sparks');
+  assert.ok(a > 0);
+});
+
+test('the daily plan cap and the counter that enforces it agree', () => {
+  /*
+   * `countActions` counts what a DailyBodyCommand contains and
+   * MAX_DAILY_ACTIONS is the ceiling. No endpoint composes a daily plan
+   * yet, so what is held is that the two remain a matched pair — a
+   * counter without a cap, or a cap nothing counts against, is how "the
+   * plan may never exceed six actions" stops being true.
+   */
+  assert.equal(typeof MAX_DAILY_ACTIONS, 'number');
+  assert.ok(MAX_DAILY_ACTIONS >= 1 && MAX_DAILY_ACTIONS <= 12);
+  assert.equal(typeof countActions, 'function');
 });

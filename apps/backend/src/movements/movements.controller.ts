@@ -3,7 +3,9 @@ import {
   AGE_MODES,
   DELIVERY_TIER_DEFINITIONS,
   MOVEMENT_VARIANTS,
+  SUPPORT_LADDER,
   VARIANT_LABELS,
+  isDownwardSubstitution,
   type Movement,
 } from '@jessmove/shared';
 import { MovementsService } from './movements.service';
@@ -22,6 +24,19 @@ export class MovementsController {
   @Get('gate')
   gate() {
     return {
+      /*
+       * A substitution may only ever move down the support ladder.
+       * `isDownwardSubstitution` is the rule and it was published nowhere,
+       * so a client offering a swap had to infer the direction from the
+       * ladder order. Publishing the legal moves means it cannot guess
+       * wrong and offer somebody a harder variant as a "substitution".
+       */
+      legalSubstitutions: SUPPORT_LADDER.flatMap((from) =>
+        SUPPORT_LADDER.filter((to) => isDownwardSubstitution(from, to)).map(
+          (to) => `${from} -> ${to}`,
+        ),
+      ),
+
       requiredVariants: MOVEMENT_VARIANTS.map((v) => ({
         key: v,
         label: VARIANT_LABELS[v],

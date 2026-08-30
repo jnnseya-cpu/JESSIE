@@ -7,7 +7,9 @@ import {
   SNAP_DURATION_SECONDS,
   defaultsToChairSupport,
   isDecisionFresh,
+  nextDose,
   sparksFor,
+  standingRequiresClearance,
   type AgeMode,
   type ContextDecision,
   type MovementCategory,
@@ -185,7 +187,21 @@ export class PrescriptionsService {
       ? ['chair_supported', 'seated', 'bed_recliner', 'adaptive_single_limb', 'standing']
       : ['seated', 'standing', 'chair_supported', 'adaptive_single_limb', 'bed_recliner'];
 
-    return order.find((v) => request.permittedVariants.includes(v)) ?? null;
+    /*
+     * Standing is opt-up in vitality mode, never opt-out.
+     *
+     * Ordering it last was not the same rule: if standing were the only
+     * permitted variant it would still have been selected, which is
+     * exactly the case the clearance requirement exists for. Now it is
+     * only reachable in that mode when the capability profile has been
+     * widened deliberately — `permittedVariants` is set by profiling and
+     * by clinicians, never by this service.
+     */
+    const allowed = standingRequiresClearance(request.mode)
+      ? order.filter((v) => v !== 'standing' || request.permittedVariants.includes('standing'))
+      : order;
+
+    return allowed.find((v) => request.permittedVariants.includes(v)) ?? null;
   }
 
   private selectCategory(request: PrescriptionRequest): MovementCategory {
@@ -213,7 +229,14 @@ export class PrescriptionsService {
       SNAP_DURATION_SECONDS.max,
     );
     const floor = Math.max(range[0], SNAP_DURATION_SECONDS.min);
-    return Math.max(floor, Math.min(ceiling, Math.round(floor * (1 + MAX_WEEKLY_ESCALATION))));
+    /*
+     * `nextDose` rather than `floor * (1 + MAX_WEEKLY_ESCALATION)` spelled
+     * out here. Same arithmetic, and Law 1 is written down in one place —
+     * escalate by no more than seven percent a week, and never past the
+     * five-minute ceiling. A second copy of an escalation rule is a second
+     * place for it to creep.
+     */
+    return Math.max(floor, Math.min(ceiling, nextDose(floor)));
   }
 
   private nameFor(category: MovementCategory, variant: MovementVariant): string {

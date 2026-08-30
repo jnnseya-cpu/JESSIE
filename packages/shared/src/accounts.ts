@@ -352,10 +352,6 @@ export function checkImage(
   return { ok: reasons.length === 0, reasons };
 }
 
-export function assertImage(candidate: ImageCandidate, constraint: ImageConstraint): void {
-  const result = checkImage(candidate, constraint);
-  if (!result.ok) throw new ImageRejectedError(result.reasons);
-}
 
 /* ------------------------------------------------------------------ *
  * The profile policy — the gate
