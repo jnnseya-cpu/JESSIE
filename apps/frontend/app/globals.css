@@ -2441,16 +2441,19 @@ button:focus-visible {
 .phero__head {
   display: grid;
   gap: clamp(20px, 3vw, 56px);
-  align-items: end;
 }
 @media (min-width: 1040px) {
   .phero__head {
     grid-template-columns: 1.15fr 0.85fr;
-  }
-  .phero__lede {
-    /* Optically aligned to the headline's last baseline rather than its
-       box, which sits lower because of the display face's descenders. */
-    padding-bottom: 0.35em;
+    /*
+     * Baselines, not boxes. Aligning the two columns' *ends* worked while
+     * every headline ran to three or four lines and fell apart on a short
+     * one — "Your account." is one line, so its box was pushed to the
+     * foot of a four-line standfirst and the pair read as two unrelated
+     * blocks. First baselines is what a title and a standfirst share on
+     * a printed page, and it holds at any relative height.
+     */
+    align-items: baseline;
   }
 }
 .phero h1 {
