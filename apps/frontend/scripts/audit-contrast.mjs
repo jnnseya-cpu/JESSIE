@@ -80,17 +80,80 @@ for (const route of ROUTES) {
         return (x + 0.05) / (y + 0.05);
       };
 
-      /** The nearest ancestor that actually paints something opaque. */
+      /*
+       * The ground, composited.
+       *
+       * The first version stopped at the first translucent ancestor and
+       * reported the node as unmeasurable. That is 1,121 of 7,274 nodes,
+       * and one of them was the site navigation — a bar at
+       * `rgba(16, 42, 67, 0.82)` over whatever the page starts with. A
+       * regression that put dark grey link text on that dark bar sailed
+       * through the audit and was only caught by looking at a screenshot.
+       *
+       * So translucent layers are now stacked: walk to the first opaque
+       * ancestor collecting the semi-transparent fills on the way, then
+       * composite them back down in paint order. Only a gradient still
+       * defeats it, because a gradient has no single colour to composite
+       * and text over one is a judgement rather than a measurement.
+       */
       const groundOf = (el) => {
+        const stack = [];
         for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
           const cs = getComputedStyle(n);
-          if (cs.backgroundImage !== 'none') return { gradient: true, node: n };
-          const bg = cs.backgroundColor;
-          const alpha = Number(bg.match(/[\d.]+/g)?.[3] ?? 1);
-          if (alpha >= 0.95) return { colour: rgb(bg), node: n };
-          if (alpha > 0) return { translucent: true, node: n };
+          const image = cs.backgroundImage;
+          if (image !== 'none') {
+            /*
+             * A gradient is not one colour, so it is measured as several:
+             * every colour stop in it, each composited down through the
+             * translucent layers above and the ground below, and the text
+             * is judged against the worst of them.
+             *
+             * Skipping gradients instead is what let a regression put dark
+             * grey nav links on the dark nav bar, and it would have
+             * silenced every card on the site the moment `.card--light`
+             * was given a fill that runs white to off-white. A stop list
+             * is not the same as sampling the painted pixels — a mid-stop
+             * interpolation can be marginally darker than either end — but
+             * it is measurement rather than an exemption.
+             */
+            const stops = [...image.matchAll(/rgba?\([^)]*\)/g)].map((m) => rgb(m[0]));
+            if (stops.length) {
+              /*
+               * What the gradient is painted *on* is this element's own
+               * background-color first — `background: <gradient>, navy`
+               * is shorthand for exactly that — and only then whatever is
+               * behind the element. Reading the parent's ground instead
+               * reported the closing call-to-action, a navy band, as
+               * white, and its white heading as 1:1 against it.
+               */
+              const own = rgb(cs.backgroundColor);
+              const behind = groundOf(n.parentElement ?? document.body).colours?.[0] ?? [1, 1, 1];
+              const base = own.slice(0, 3).map((c, k) => c * own[3] + behind[k] * (1 - own[3]));
+              const colours = stops.map((s) =>
+                composite(stack, [
+                  ...s.slice(0, 3).map((c, k) => c * s[3] + base[k] * (1 - s[3])),
+                  1,
+                ]),
+              );
+              return { colours, node: n };
+            }
+            return { gradient: true, node: n };
+          }
+          const layer = rgb(cs.backgroundColor);
+          if (layer[3] >= 0.95) return { colours: [composite(stack, layer)], node: stack[0]?.node ?? n };
+          if (layer[3] > 0) stack.push({ layer, node: n });
         }
-        return { colour: [1, 1, 1] };
+        return { colours: [composite(stack, [1, 1, 1, 1])], node: stack[0]?.node ?? document.body };
+      };
+
+      /** Paint `stack` (nearest first) back down onto an opaque base. */
+      const composite = (stack, base) => {
+        let out = base.slice(0, 3);
+        for (let i = stack.length - 1; i >= 0; i -= 1) {
+          const [r, g, b, a] = stack[i].layer;
+          out = [r, g, b].map((c, k) => c * a + out[k] * (1 - a));
+        }
+        return out;
       };
 
       const out = { fails: [], vague: [], count: 0 };
@@ -116,19 +179,28 @@ for (const route of ROUTES) {
 
         const ground = groundOf(el);
         out.count += 1;
-        if (!ground.colour) {
-          out.vague.push({ text: own.slice(0, 60), why: ground.gradient ? 'gradient' : 'translucent' });
+        if (!ground.colours) {
+          out.vague.push({ text: own.slice(0, 60), why: 'unresolvable background image' });
           continue;
         }
 
         // Both fades compose: the alpha in the colour itself, and any
         // `opacity` on the element. Either alone reports a contrast
-        // nobody gets; together they are what the reader receives.
+        // nobody gets; together they are what the reader receives. Where
+        // the ground is a gradient there are several candidates, and the
+        // one that matters is the worst.
         const raw = rgb(cs.color);
         const alpha = raw[3] * opacity;
-        const fg = raw.slice(0, 3).map((c, i) => c * alpha + ground.colour[i] * (1 - alpha));
-
-        const ratio = contrast(fg, ground.colour);
+        let ratio = Infinity;
+        let worstGround = ground.colours[0];
+        for (const g of ground.colours) {
+          const fg = raw.slice(0, 3).map((c, i) => c * alpha + g[i] * (1 - alpha));
+          const r = contrast(fg, g);
+          if (r < ratio) {
+            ratio = r;
+            worstGround = g;
+          }
+        }
         if (ratio < threshold) {
           out.fails.push({
             text: own.slice(0, 60),
@@ -141,7 +213,7 @@ for (const route of ROUTES) {
             need: threshold,
             size: Number(size.toFixed(1)),
             colour: cs.color,
-            ground: getComputedStyle(ground.node ?? document.body).backgroundColor,
+            ground: `rgb(${worstGround.map((c) => Math.round(c * 255)).join(', ')})`,
             groundOn:
               (ground.node?.tagName ?? 'BODY').toLowerCase() +
               (typeof ground.node?.className === 'string' && ground.node.className

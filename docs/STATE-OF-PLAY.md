@@ -201,6 +201,19 @@ this route is not behind one.
 
 ---
 
+## Watch list
+
+**One unreproduced backend test failure.** During the design pass a
+recursive `pnpm test` reported `807 pass / 1 fail` with an
+`ERR_ASSERTION`, and the failing subtest name was not captured before the
+output scrolled. Five subsequent runs — two recursive, three of the
+backend suite alone — were `808 pass / 0 fail`. It is recorded here
+rather than dismissed: an intermittent assertion in a suite that talks to
+Postgres is the shape a race has. If it reappears, capture the subtest
+name before doing anything else.
+
+---
+
 ## Known and deliberately not done
 
 **This repository has no linter.** Not in the root, not in any of the four

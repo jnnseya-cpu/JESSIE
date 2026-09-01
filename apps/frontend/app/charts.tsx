@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 
 /**
  * JESS MOVE — data visualisation primitives.
@@ -175,7 +175,8 @@ export function CompareBars({
         <li key={row.label}>
           <div className="cbars__head">
             <span>{row.label}</span>
-            <b style={{ color: row.tone }}>
+            {/* The bar keeps row.tone; the figure beside it is text. */}
+            <b style={{ ['--tone']: row.tone, color: 'var(--tone-ink)' } as CSSProperties}>
               {row.value}
               {unit}
             </b>
@@ -324,7 +325,16 @@ export function AgeColumns({
               }}
             />
           </div>
-          <div className="agec__label" style={{ color: c.tone }}>
+          {/*
+            The column above is a graphic and keeps the vivid hue. The
+            label under it is text, so it takes --tone-ink, which the
+            stylesheet resolves against whichever surface the chart is
+            sitting on.
+          */}
+          <div
+            className="agec__label"
+            style={{ ['--tone' as string]: c.tone, color: 'var(--tone-ink)' }}
+          >
             {c.label}
           </div>
           <div className="agec__range">{c.range}</div>

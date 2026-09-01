@@ -304,16 +304,6 @@
   --c5: var(--jm-purple);
   --c6: var(--jm-sky);
 
-  /* The same six as text. A ramp position used to colour a series and the
-     same position used to colour that series' *label* are different jobs;
-     --c2 is lime, which is 1.38:1 on white. See --i-* below. */
-  --ic1: var(--i-teal);
-  --ic2: var(--i-lime);
-  --ic3: var(--i-orange);
-  --ic4: var(--i-blue);
-  --ic5: var(--i-purple);
-  --ic6: var(--i-sky);
-
   /* One hue per age mode. Six decades, six colours, no hierarchy implied. */
   --mode-explorer: var(--jm-lime);
   --mode-teen: var(--jm-coral);
@@ -704,7 +694,7 @@ button:focus-visible {
  * a real teal object casts a slightly teal shadow.
  */
 .btn--primary {
-  background: linear-gradient(180deg, #12b8ab 0%, var(--jm-teal) 62%, #009a8f 100%);
+  background: linear-gradient(180deg, #17bdb0 0%, var(--jm-teal) 62%, #00a396 100%);
   color: var(--jm-navy);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.32) inset,
@@ -713,7 +703,7 @@ button:focus-visible {
 }
 
 .btn--primary:hover {
-  background: linear-gradient(180deg, #1ac6b8 0%, #00b4a7 62%, #00a396 100%);
+  background: linear-gradient(180deg, #1ecdbe 0%, #00bcae 62%, #00ab9e 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.38) inset,
     0 2px 4px rgba(0, 62, 57, 0.26),
@@ -984,13 +974,30 @@ button:focus-visible {
   padding: clamp(28px, 3.4vw, 44px) clamp(18px, 2.4vw, 30px);
 }
 
+/*
+ * The number is set in ink and the colour lives on the rule above it.
+ *
+ * Four huge numerals in four different saturated hues, over four
+ * coloured rules, in four equal columns, is the most recognisable
+ * layout on the web and it is not recognisable for a good reason. It
+ * also could not survive the real typeface: Manrope is wider than the
+ * Arial this used to render in, so "5 variants" and "10 → 100" broke
+ * across two lines the moment the font arrived.
+ *
+ * `text-wrap: nowrap` with a slightly smaller ceiling keeps each figure
+ * on one line at every width the four-column grid is used at; below
+ * 820px the grid is already two columns, which is where the space
+ * comes from.
+ */
 .proof__n {
   font-family: var(--font-display);
-  font-size: clamp(34px, 3.9vw, 48px);
+  font-size: clamp(30px, 3.2vw, 40px);
   letter-spacing: -0.03em;
-  line-height: 1;
-  color: var(--jm-navy);
+  line-height: 1.05;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-wrap: nowrap;
 }
 
 .proof__l {
@@ -1390,7 +1397,9 @@ button:focus-visible {
   border: 1px solid rgba(0, 169, 157, 0.4);
   font-family: var(--font-mono);
   font-size: 13.5px;
-  color: #046740;
+  /* The pill appears on the closing CTA, which is navy, and on light
+     sections. #046740 was the light-ground answer applied to both. */
+  color: var(--i-excellent);
 }
 
 /* ---------- CTA ---------- */
@@ -1561,12 +1570,15 @@ button:focus-visible {
   gap: 11px;
 }
 
+/* The tokens, not two literals. These two panels sit on a dark section
+   on /industries and on a white one elsewhere; #046740 on navy is
+   1.95:1. --i-* resolves per surface. */
 .panel--never h3 {
-  color: #c83b46;
+  color: var(--i-critical);
 }
 
 .panel--always h3 {
-  color: #046740;
+  color: var(--i-excellent);
 }
 
 .panel ul {
@@ -1783,7 +1795,7 @@ button:focus-visible {
 }
 
 .guardian h3 {
-  color: #c83b46;
+  color: var(--i-critical);
   margin-bottom: 14px;
 }
 
@@ -2245,14 +2257,30 @@ button:focus-visible {
   padding: 26px;
   background: rgba(244, 250, 249, 0.05);
   border: 1px solid var(--jm-divider-d);
+  /* On a dark ground a shadow is nearly invisible; what reads as height
+     is the lit top edge. Same light source as --e2, stated for dark. */
+  box-shadow: var(--e2-d);
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
+/*
+ * A card is an object on a surface, not a rectangle drawn on one.
+ *
+ * Three things do that and none of them is a new colour. The fill runs
+ * from white at the top to a hair of the page ground at the bottom, so
+ * the face catches light. The border is not one colour: the top edge is
+ * nearly invisible and the bottom is the full divider, which is what a
+ * lit edge and a shaded edge look like. And the shadow is the shared
+ * elevation scale rather than an eleventh set of numbers — one light
+ * source for the whole product, a tight contact shadow that anchors the
+ * card and a wide ambient one that gives it height.
+ */
 .card--light {
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 62%, #fbfdfd 100%);
   border-color: var(--jm-divider);
-  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.05), 0 14px 40px -26px rgba(16, 42, 67, 0.35);
+  border-top-color: #edf3f2;
+  box-shadow: var(--e2);
 }
 .card--4 {
   grid-column: span 4;
@@ -2949,22 +2977,28 @@ button:focus-visible {
  * on rather than the surface it was written for.
  */
 :root {
-  --i-teal: oklch(from var(--jm-teal) calc(min(l, 0.5)) c h);
-  --i-lime: oklch(from var(--jm-lime) calc(min(l, 0.5)) c h);
-  --i-blue: oklch(from var(--jm-blue) calc(min(l, 0.5)) c h);
-  --i-purple: oklch(from var(--jm-purple) calc(min(l, 0.5)) c h);
-  --i-coral: oklch(from var(--jm-coral) calc(min(l, 0.5)) c h);
-  --i-orange: oklch(from var(--jm-orange) calc(min(l, 0.5)) c h);
-  --i-sky: oklch(from var(--jm-sky) calc(min(l, 0.5)) c h);
-  --i-magenta: oklch(from var(--jm-magenta) calc(min(l, 0.5)) c h);
-  --i-excellent: oklch(from var(--jm-excellent) calc(min(l, 0.5)) c h);
-  --i-positive: oklch(from var(--jm-positive) calc(min(l, 0.5)) c h);
-  --i-monitor: oklch(from var(--jm-monitor) calc(min(l, 0.5)) c h);
-  --i-action: oklch(from var(--jm-action) calc(min(l, 0.5)) c h);
-  --i-critical: oklch(from var(--jm-critical) calc(min(l, 0.5)) c h);
-  --i-information: oklch(from var(--jm-information) calc(min(l, 0.5)) c h);
-  --i-specialist: oklch(from var(--jm-specialist) calc(min(l, 0.5)) c h);
-  --i-unavailable: oklch(from var(--jm-unavailable) calc(min(l, 0.5)) c h);
+  --i-teal: oklch(from var(--jm-teal) calc(min(l, 0.46)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(min(l, 0.46)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(min(l, 0.46)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(min(l, 0.46)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(min(l, 0.46)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(min(l, 0.46)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(min(l, 0.46)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(min(l, 0.46)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(min(l, 0.46)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(min(l, 0.46)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(min(l, 0.46)) c h);
+  --i-action: oklch(from var(--jm-action) calc(min(l, 0.46)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(min(l, 0.46)) c h);
+  --i-information: oklch(from var(--jm-information) calc(min(l, 0.46)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(min(l, 0.46)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(min(l, 0.46)) c h);
+  --ic1: var(--i-teal);
+  --ic2: var(--i-lime);
+  --ic3: var(--i-orange);
+  --ic4: var(--i-blue);
+  --ic5: var(--i-purple);
+  --ic6: var(--i-sky);
 }
 
 .hero,
@@ -2973,6 +3007,8 @@ button:focus-visible {
 .cta,
 .foot,
 .card:not(.card--light),
+.nav,
+.section--ink .pills li,
 .mode,
 .metric,
 .spectrum,
@@ -2984,23 +3020,31 @@ button:focus-visible {
 .pwa,
 .mnav__sheet,
 .scan__stage,
-.tile--ink {
-  --i-teal: oklch(from var(--jm-teal) calc(max(l, 0.78)) c h);
-  --i-lime: oklch(from var(--jm-lime) calc(max(l, 0.78)) c h);
-  --i-blue: oklch(from var(--jm-blue) calc(max(l, 0.78)) c h);
-  --i-purple: oklch(from var(--jm-purple) calc(max(l, 0.78)) c h);
-  --i-coral: oklch(from var(--jm-coral) calc(max(l, 0.78)) c h);
-  --i-orange: oklch(from var(--jm-orange) calc(max(l, 0.78)) c h);
-  --i-sky: oklch(from var(--jm-sky) calc(max(l, 0.78)) c h);
-  --i-magenta: oklch(from var(--jm-magenta) calc(max(l, 0.78)) c h);
-  --i-excellent: oklch(from var(--jm-excellent) calc(max(l, 0.78)) c h);
-  --i-positive: oklch(from var(--jm-positive) calc(max(l, 0.78)) c h);
-  --i-monitor: oklch(from var(--jm-monitor) calc(max(l, 0.78)) c h);
-  --i-action: oklch(from var(--jm-action) calc(max(l, 0.78)) c h);
-  --i-critical: oklch(from var(--jm-critical) calc(max(l, 0.78)) c h);
-  --i-information: oklch(from var(--jm-information) calc(max(l, 0.78)) c h);
-  --i-specialist: oklch(from var(--jm-specialist) calc(max(l, 0.78)) c h);
-  --i-unavailable: oklch(from var(--jm-unavailable) calc(max(l, 0.78)) c h);
+.tile--ink,
+.section--ink .panel--never,
+.section--ink .panel--always {
+  --i-teal: oklch(from var(--jm-teal) calc(max(l, 0.82)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(max(l, 0.82)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(max(l, 0.82)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(max(l, 0.82)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(max(l, 0.82)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(max(l, 0.82)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(max(l, 0.82)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(max(l, 0.82)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(max(l, 0.82)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(max(l, 0.82)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(max(l, 0.82)) c h);
+  --i-action: oklch(from var(--jm-action) calc(max(l, 0.82)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(max(l, 0.82)) c h);
+  --i-information: oklch(from var(--jm-information) calc(max(l, 0.82)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(max(l, 0.82)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(max(l, 0.82)) c h);
+  --ic1: var(--i-teal);
+  --ic2: var(--i-lime);
+  --ic3: var(--i-orange);
+  --ic4: var(--i-blue);
+  --ic5: var(--i-purple);
+  --ic6: var(--i-sky);
 }
 
 .section--tint,
@@ -3026,41 +3070,53 @@ button:focus-visible {
 .asr__haz,
 .allergens li,
 .join__promise li {
-  --i-teal: oklch(from var(--jm-teal) calc(min(l, 0.5)) c h);
-  --i-lime: oklch(from var(--jm-lime) calc(min(l, 0.5)) c h);
-  --i-blue: oklch(from var(--jm-blue) calc(min(l, 0.5)) c h);
-  --i-purple: oklch(from var(--jm-purple) calc(min(l, 0.5)) c h);
-  --i-coral: oklch(from var(--jm-coral) calc(min(l, 0.5)) c h);
-  --i-orange: oklch(from var(--jm-orange) calc(min(l, 0.5)) c h);
-  --i-sky: oklch(from var(--jm-sky) calc(min(l, 0.5)) c h);
-  --i-magenta: oklch(from var(--jm-magenta) calc(min(l, 0.5)) c h);
-  --i-excellent: oklch(from var(--jm-excellent) calc(min(l, 0.5)) c h);
-  --i-positive: oklch(from var(--jm-positive) calc(min(l, 0.5)) c h);
-  --i-monitor: oklch(from var(--jm-monitor) calc(min(l, 0.5)) c h);
-  --i-action: oklch(from var(--jm-action) calc(min(l, 0.5)) c h);
-  --i-critical: oklch(from var(--jm-critical) calc(min(l, 0.5)) c h);
-  --i-information: oklch(from var(--jm-information) calc(min(l, 0.5)) c h);
-  --i-specialist: oklch(from var(--jm-specialist) calc(min(l, 0.5)) c h);
-  --i-unavailable: oklch(from var(--jm-unavailable) calc(min(l, 0.5)) c h);
+  --i-teal: oklch(from var(--jm-teal) calc(min(l, 0.46)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(min(l, 0.46)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(min(l, 0.46)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(min(l, 0.46)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(min(l, 0.46)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(min(l, 0.46)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(min(l, 0.46)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(min(l, 0.46)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(min(l, 0.46)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(min(l, 0.46)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(min(l, 0.46)) c h);
+  --i-action: oklch(from var(--jm-action) calc(min(l, 0.46)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(min(l, 0.46)) c h);
+  --i-information: oklch(from var(--jm-information) calc(min(l, 0.46)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(min(l, 0.46)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(min(l, 0.46)) c h);
+  --ic1: var(--i-teal);
+  --ic2: var(--i-lime);
+  --ic3: var(--i-orange);
+  --ic4: var(--i-blue);
+  --ic5: var(--i-purple);
+  --ic6: var(--i-sky);
 }
 
 .tile--ink {
-  --i-teal: oklch(from var(--jm-teal) calc(max(l, 0.78)) c h);
-  --i-lime: oklch(from var(--jm-lime) calc(max(l, 0.78)) c h);
-  --i-blue: oklch(from var(--jm-blue) calc(max(l, 0.78)) c h);
-  --i-purple: oklch(from var(--jm-purple) calc(max(l, 0.78)) c h);
-  --i-coral: oklch(from var(--jm-coral) calc(max(l, 0.78)) c h);
-  --i-orange: oklch(from var(--jm-orange) calc(max(l, 0.78)) c h);
-  --i-sky: oklch(from var(--jm-sky) calc(max(l, 0.78)) c h);
-  --i-magenta: oklch(from var(--jm-magenta) calc(max(l, 0.78)) c h);
-  --i-excellent: oklch(from var(--jm-excellent) calc(max(l, 0.78)) c h);
-  --i-positive: oklch(from var(--jm-positive) calc(max(l, 0.78)) c h);
-  --i-monitor: oklch(from var(--jm-monitor) calc(max(l, 0.78)) c h);
-  --i-action: oklch(from var(--jm-action) calc(max(l, 0.78)) c h);
-  --i-critical: oklch(from var(--jm-critical) calc(max(l, 0.78)) c h);
-  --i-information: oklch(from var(--jm-information) calc(max(l, 0.78)) c h);
-  --i-specialist: oklch(from var(--jm-specialist) calc(max(l, 0.78)) c h);
-  --i-unavailable: oklch(from var(--jm-unavailable) calc(max(l, 0.78)) c h);
+  --i-teal: oklch(from var(--jm-teal) calc(max(l, 0.82)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(max(l, 0.82)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(max(l, 0.82)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(max(l, 0.82)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(max(l, 0.82)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(max(l, 0.82)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(max(l, 0.82)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(max(l, 0.82)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(max(l, 0.82)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(max(l, 0.82)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(max(l, 0.82)) c h);
+  --i-action: oklch(from var(--jm-action) calc(max(l, 0.82)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(max(l, 0.82)) c h);
+  --i-information: oklch(from var(--jm-information) calc(max(l, 0.82)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(max(l, 0.82)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(max(l, 0.82)) c h);
+  --ic1: var(--i-teal);
+  --ic2: var(--i-lime);
+  --ic3: var(--i-orange);
+  --ic4: var(--i-blue);
+  --ic5: var(--i-purple);
+  --ic6: var(--i-sky);
 }
 
 /* ============================================================
@@ -3113,7 +3169,7 @@ button:focus-visible {
  * genuinely paint a dark ground take the dark branch.
  */
 :root {
-  --tone-ink: oklch(from var(--tone) calc(min(l, 0.5)) c h);
+  --tone-ink: oklch(from var(--tone, var(--ink)) calc(min(l, 0.46)) c h);
 }
 
 .hero,
@@ -3122,6 +3178,8 @@ button:focus-visible {
 .cta,
 .foot,
 .card:not(.card--light),
+.nav,
+.section--ink .pills li,
 .mode,
 .metric,
 .spectrum,
@@ -3133,8 +3191,10 @@ button:focus-visible {
 .pwa,
 .mnav__sheet,
 .scan__stage,
-.tile--ink {
-  --tone-ink: oklch(from var(--tone) calc(max(l, 0.78)) c h);
+.tile--ink,
+.section--ink .panel--never,
+.section--ink .panel--always {
+  --tone-ink: oklch(from var(--tone, var(--ink)) calc(max(l, 0.82)) c h);
 }
 
 /* Light islands inside a dark section put the light branch back. Every
@@ -3163,22 +3223,37 @@ button:focus-visible {
 .asr__haz,
 .allergens li,
 .join__promise li {
-  --tone-ink: oklch(from var(--tone) calc(min(l, 0.5)) c h);
+  --tone-ink: oklch(from var(--tone, var(--ink)) calc(min(l, 0.46)) c h);
 }
 
 /* …and `.tile--ink` is the one that is deliberately dark, so it comes
    back to the dark branch after `.tile`. */
-.tile--ink {
-  --tone-ink: oklch(from var(--tone) calc(max(l, 0.78)) c h);
+.tile--ink,
+.section--ink .panel--never,
+.section--ink .panel--always {
+  --tone-ink: oklch(from var(--tone, var(--ink)) calc(max(l, 0.82)) c h);
 }
 
 /* Proof strip: each statistic gets its own hue and a top rule. */
 .proof__cell {
   --tone: var(--jm-teal);
-  border-top: 4px solid var(--tone);
+  /* A hairline, not a 4px band. The band was the loudest thing on the
+     page and it was decorating a statistic, not stating one. */
+  border-top: 1px solid var(--jm-divider);
 }
-.proof__n {
-  color: var(--tone-ink);
+/*
+ * Not the number. The hue identifies the column on the rule above it,
+ * where it is a graphic and needs 3:1, rather than in the figure, where
+ * it is text and needed 4.5:1 that four of the six hues never had.
+ */
+.proof__n::after {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin-top: 14px;
+  border-radius: 2px;
+  background: var(--tone);
 }
 
 /* Six modes, six columns, six hues. */
@@ -3272,6 +3347,8 @@ button:focus-visible {
 .cta,
 .foot,
 .card:not(.card--light),
+.nav,
+.section--ink .pills li,
 .mode,
 .metric,
 .spectrum,
@@ -3283,10 +3360,17 @@ button:focus-visible {
 .pwa,
 .mnav__sheet,
 .scan__stage,
-.tile--ink {
+/* `.panel` paints #fff and is in the light list above, but these two
+   modifiers repaint it as a translucent tint that sits on whatever is
+   behind — on /industries, a dark section. They come after `.panel` so
+   the modifier wins, which is the order the cascade already implies. */
+.tile--ink,
+.section--ink .panel--never,
+.section--ink .panel--always {
   --ink: var(--jm-text-d);
   --ink-2: rgba(244, 250, 249, 0.78);
   --ink-3: rgba(244, 250, 249, 0.62);
+  color: var(--ink);
 }
 
 /* The same light islands, restoring the light ink levels. `.tier__name`
@@ -3344,10 +3428,17 @@ button:focus-visible {
   --jm-hairline: var(--jm-divider);
 }
 
-.tile--ink {
+/* `.panel` paints #fff and is in the light list above, but these two
+   modifiers repaint it as a translucent tint that sits on whatever is
+   behind — on /industries, a dark section. They come after `.panel` so
+   the modifier wins, which is the order the cascade already implies. */
+.tile--ink,
+.section--ink .panel--never,
+.section--ink .panel--always {
   --ink: var(--jm-text-d);
   --ink-2: rgba(244, 250, 249, 0.78);
   --ink-3: rgba(244, 250, 249, 0.62);
+  color: var(--ink);
 }
 
 .section--ink .card__note,
