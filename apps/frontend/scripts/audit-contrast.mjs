@@ -13,12 +13,13 @@
  *
  * Exits non-zero when anything fails, so it can gate a release.
  *
- * Scope and honesty about it: this measures foreground against the
- * nearest ancestor with an opaque background, which is what a reader
- * sees in the overwhelming majority of cases. Text over a photograph or
- * over the middle of a gradient is not something a static walk can
- * settle, and those are reported separately as `unmeasurable` rather than
- * being counted as passes.
+ * Scope and honesty about it: translucent ancestors are composited and
+ * gradients are measured at every colour stop, so the only thing left
+ * unmeasured is text over a raster image — reported as `unmeasurable`
+ * rather than counted as a pass. A stop list is also not quite the
+ * painted pixels: an interpolation between two stops can be marginally
+ * darker than either, so a result that only just clears the threshold on
+ * a gradient deserves an eye as well as a number.
  */
 import { chromium } from 'playwright';
 
@@ -240,7 +241,11 @@ if (asJson) {
   console.log(JSON.stringify({ checked, failures, unmeasurable }, null, 2));
 } else {
   console.log(`\n${checked} text nodes measured across ${ROUTES.length} routes.`);
-  console.log(`${unmeasurable.length} sit on a gradient or a translucent ground and are not counted either way.`);
+  if (unmeasurable.length) {
+    console.log(
+      `${unmeasurable.length} sit on a background image this cannot resolve and are not counted either way.`,
+    );
+  }
   if (failures.length === 0) {
     console.log('No text below its WCAG 2.2 AA threshold.');
   } else {

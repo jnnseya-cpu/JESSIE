@@ -33,7 +33,8 @@ is the point of the file.
 | What | Proven by |
 |---|---|
 | The brand typefaces are actually delivered | Six self-hosted woff2 in `apps/frontend/public/fonts`; §8 named Inter and Manrope and nothing ever loaded them |
-| Every text node on every public route clears WCAG AA | `pnpm check:contrast` — 7,274 nodes across 28 routes, 0 below threshold, down from 1,097 |
+| Every text node on every public route clears WCAG AA | `pnpm check:contrast` — 7,274 nodes across 28 routes, 0 below threshold, down from 1,097. Translucent layers composited, gradients measured at every stop |
+| No page overflows, clips its own text or ships an undersized target | `pnpm check:layout` — 28 routes at 1440px and 390px, 0 problems, down from 133 |
 | Walking counts as movement | Migration 0018, tests against real Postgres |
 | Macros in the ledger, protein in the advice | Migration 0020, coverage honesty tested |
 | A human check on every door | `packages/shared/src/humanity.ts`, 6 doors, per-door token age and attempt limits |

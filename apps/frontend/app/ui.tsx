@@ -323,8 +323,10 @@ export function PageHero({
           </p>
         )}
         <p className="eyebrow eyebrow--onDark">{eyebrow}</p>
-        <h1>{title}</h1>
-        <p className="phero__lede">{lede}</p>
+        <div className="phero__head">
+          <h1>{title}</h1>
+          <p className="phero__lede">{lede}</p>
+        </div>
       </div>
     </section>
   );
