@@ -27,11 +27,18 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://jessmove.com/communications' },
 };
 
+/*
+ * The readable aliases, not the vivid §5 tokens. These are set as the
+ * colour of a severity label — text — and measured on this page's light
+ * ground the vivid ones give 4.47:1 for info, 4.22 for success and 2.10
+ * for warning. `--i-*` is the same hue with its lightness clamped to
+ * the measured AA threshold; see globals.css.
+ */
 const SEVERITY_COLOUR: Record<EventSeverity, string> = {
-  info: 'var(--jm-information)',
-  success: 'var(--jm-excellent)',
-  warning: 'var(--jm-monitor)',
-  critical: 'var(--jm-critical)',
+  info: 'var(--i-information)',
+  success: 'var(--i-excellent)',
+  warning: 'var(--i-monitor)',
+  critical: 'var(--i-critical)',
 };
 
 /** Worked examples. Each is resolved at build time by the real function. */
@@ -177,7 +184,7 @@ export default function Communications() {
                 <div className="stat__k">Channels wired</div>
                 <div className="stat__v">
                   {WIRED_CHANNELS.length}
-                  <span style={{ fontSize: '0.5em', opacity: 0.55 }}> / {MESSAGE_CHANNELS.length}</span>
+                  <span style={{ fontSize: '0.5em', color: 'var(--ink-3)' }}> / {MESSAGE_CHANNELS.length}</span>
                 </div>
                 <p className="card__note">email · in-app · sms · push · whatsapp</p>
               </article>
@@ -256,7 +263,7 @@ export default function Communications() {
                       <h3 className="card__t">{s.title}</h3>
                       <span
                         className="card__tag"
-                        style={{ color: sent ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}
+                        style={{ color: sent ? 'var(--i-excellent)' : 'var(--i-monitor)' }}
                       >
                         {sent ? 'delivered' : 'suppressed'}
                       </span>
@@ -312,7 +319,7 @@ export default function Communications() {
                     <div className="bar__label">
                       {def.label}
                       {!def.wired && (
-                        <span style={{ opacity: 0.55 }}> · no provider</span>
+                        <span style={{ color: 'var(--ink-3)' }}> · no provider</span>
                       )}
                     </div>
                     <div className="bar__track">
@@ -341,7 +348,7 @@ export default function Communications() {
                       <h3 className="card__t">{def.label}</h3>
                       <span
                         className="card__tag"
-                        style={{ color: def.wired ? 'var(--jm-excellent)' : 'var(--jm-unavailable)' }}
+                        style={{ color: def.wired ? 'var(--i-excellent)' : 'var(--i-unavailable)' }}
                       >
                         {def.wired ? 'wired' : 'unwired'}
                       </span>
@@ -388,7 +395,7 @@ export default function Communications() {
                             <td style={{ minWidth: 210 }}>
                               <strong>{e.name}</strong>
                               <br />
-                              <code style={{ fontSize: 12.5, opacity: 0.6 }}>{e.key}</code>
+                              <code style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>{e.key}</code>
                             </td>
                             <td>{e.subject}</td>
                             <td style={{ whiteSpace: 'nowrap' }}>
@@ -402,7 +409,9 @@ export default function Communications() {
                                   <li
                                     key={c}
                                     style={{
-                                      opacity: CHANNEL_DEFINITIONS[c].wired ? 1 : 0.45,
+                                      color: CHANNEL_DEFINITIONS[c].wired
+                                        ? 'var(--ink)'
+                                        : 'var(--ink-3)',
                                       fontSize: 12,
                                     }}
                                   >

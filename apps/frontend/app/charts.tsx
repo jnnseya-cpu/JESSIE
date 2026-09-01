@@ -657,10 +657,22 @@ export function ConfidenceCone({
 
 /* ---------------- UK traffic lights ---------------- */
 
+/*
+ * Two ramps, because the band is drawn twice: as a filled bar, which is a
+ * graphic and keeps the vivid §5 hue, and as the word beside it, which is
+ * text. Amber as text on white is 2.24:1; `--i-monitor` is the same hue
+ * clamped to the measured AA lightness.
+ */
 const BAND_TONE = {
   green: 'var(--jm-positive)',
   amber: 'var(--jm-monitor)',
   red: 'var(--jm-action)',
+} as const;
+
+const BAND_LABEL_TONE = {
+  green: 'var(--i-positive)',
+  amber: 'var(--i-monitor)',
+  red: 'var(--i-action)',
 } as const;
 
 /**
@@ -692,7 +704,7 @@ export function TrafficLights({
             />
           </span>
           <b>{r.grams}g</b>
-          <span className="tlights__band" style={{ color: BAND_TONE[r.band] }}>
+          <span className="tlights__band" style={{ color: BAND_LABEL_TONE[r.band] }}>
             {r.band === 'green' ? 'Low' : r.band === 'amber' ? 'Medium' : 'High'}
           </span>
         </li>

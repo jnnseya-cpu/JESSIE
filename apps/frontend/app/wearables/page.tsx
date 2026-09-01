@@ -75,7 +75,7 @@ export default function Wearables() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-sky)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-sky)' }}>
                 What connects
               </p>
               <h2>Two of them never let your data off the phone.</h2>
@@ -110,9 +110,9 @@ export default function Wearables() {
                           </td>
                           <td>
                             {d.rawDataLeavesDevice ? (
-                              <span style={{ color: 'var(--jm-monitor)' }}>Yes</span>
+                              <span style={{ color: 'var(--i-monitor)' }}>Yes</span>
                             ) : (
-                              <span style={{ color: 'var(--jm-excellent)' }}>
+                              <span style={{ color: 'var(--i-excellent)' }}>
                                 <Tick /> No
                               </span>
                             )}
@@ -225,8 +225,8 @@ export default function Wearables() {
                         <td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>
                           {s.replace(/_/g, ' ')}
                         </td>
-                        <td style={{ opacity: 0.8 }}>{DEGRADATION[s].losesPrecision}</td>
-                        <td style={{ color: 'var(--jm-excellent)' }}>{DEGRADATION[s].stillWorks}</td>
+                        <td style={{ color: 'var(--ink-2)' }}>{DEGRADATION[s].losesPrecision}</td>
+                        <td style={{ color: 'var(--i-excellent)' }}>{DEGRADATION[s].stillWorks}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -238,7 +238,7 @@ export default function Wearables() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Four guarantees on disconnecting</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     shown before you connect
                   </span>
                 </div>
@@ -293,7 +293,7 @@ export default function Wearables() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Three sources, one step count</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-monitor)' }}>
                     {RESOLUTION.disagreementPct}% apart
                   </span>
                 </div>
@@ -321,7 +321,7 @@ export default function Wearables() {
                             {isStale(r) && (
                               <>
                                 {' '}
-                                <span style={{ color: 'var(--jm-monitor)', fontWeight: 600 }}>
+                                <span style={{ color: 'var(--i-monitor)', fontWeight: 600 }}>
                                   stale
                                 </span>
                               </>
@@ -329,11 +329,11 @@ export default function Wearables() {
                           </td>
                           <td>
                             {r.provider === RESOLUTION.chosen.provider ? (
-                              <span style={{ color: 'var(--jm-excellent)', fontWeight: 600 }}>
+                              <span style={{ color: 'var(--i-excellent)', fontWeight: 600 }}>
                                 <Tick /> chosen
                               </span>
                             ) : (
-                              <span style={{ opacity: 0.4 }}>—</span>
+                              <span style={{ color: 'var(--ink-3)' }}>—</span>
                             )}
                           </td>
                         </tr>

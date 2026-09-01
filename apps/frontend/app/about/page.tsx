@@ -105,7 +105,7 @@ export default function About() {
                   Below 18 the answer is different and it is not negotiable: no weight, BMI,
                   calorie or appearance framing is shown to a child in any mode, under any consent
                   setting. Growth, energy, confidence and routine are the frame instead.{' '}
-                  <Link href="/body-balance" style={{ color: 'var(--jm-purple)', fontWeight: 600 }}>
+                  <Link href="/body-balance" style={{ color: 'var(--i-purple)', fontWeight: 600 }}>
                     How Body Balance works →
                   </Link>
                 </p>
@@ -151,7 +151,7 @@ export default function About() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">In the MVP</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     build
                   </span>
                 </div>
@@ -164,7 +164,7 @@ export default function About() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Deliberately excluded</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-coral)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-coral)' }}>
                     later
                   </span>
                 </div>

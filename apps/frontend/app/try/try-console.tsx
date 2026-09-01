@@ -173,7 +173,7 @@ export function TryConsole() {
       <article className="card card--light" style={{ marginBottom: 22 }}>
         <div className="card__head">
           <h3 className="card__t">API</h3>
-          <span className="card__tag" style={{ color: error ? 'var(--jm-critical)' : 'var(--jm-excellent)' }}>
+          <span className="card__tag" style={{ color: error ? 'var(--i-critical)' : 'var(--i-excellent)' }}>
             {error ? 'unreachable' : `${personas.length} accounts`}
           </span>
         </div>
@@ -237,12 +237,12 @@ export function TryConsole() {
                   style={{
                     cursor: 'pointer',
                     borderColor: p.userId === active ? 'var(--jm-teal)' : undefined,
-                    color: p.userId === active ? 'var(--jm-teal)' : undefined,
+                    color: p.userId === active ? 'var(--i-teal)' : undefined,
                     fontWeight: p.userId === active ? 650 : undefined,
                   }}
                 >
                   {p.displayName}
-                  {p.age != null && <span style={{ opacity: 0.6 }}> · {p.age}</span>}
+                  {p.age != null && <span style={{ color: 'var(--ink-3)' }}> · {p.age}</span>}
                 </button>
               </li>
             ))}
@@ -263,7 +263,7 @@ export function TryConsole() {
               <span className="metric__k">Can be charged</span>
               <span
                 className="metric__v"
-                style={{ color: definition.canTransact ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}
+                style={{ color: definition.canTransact ? 'var(--i-excellent)' : 'var(--i-monitor)' }}
               >
                 {definition.canTransact ? 'yes' : 'no'}
               </span>
@@ -355,7 +355,7 @@ export function TryConsole() {
                     style={{
                       cursor: 'pointer',
                       borderColor: v === viewer ? 'var(--jm-teal)' : undefined,
-                      color: v === viewer ? 'var(--jm-teal)' : undefined,
+                      color: v === viewer ? 'var(--i-teal)' : undefined,
                     }}
                   >
                     {v}
@@ -377,7 +377,7 @@ export function TryConsole() {
                   <span className="metric__k">Real name</span>
                   <span
                     className="metric__v"
-                    style={{ color: seen.realName ? undefined : 'var(--jm-unavailable)' }}
+                    style={{ color: seen.realName ? undefined : 'var(--i-unavailable)' }}
                   >
                     {seen.realName ?? 'hidden'}
                   </span>
@@ -426,7 +426,7 @@ export function TryConsole() {
                   </span>
                   <span
                     className="metric__v"
-                    style={{ color: delivered ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}
+                    style={{ color: delivered ? 'var(--i-excellent)' : 'var(--i-monitor)' }}
                   >
                     {delivered ? plan.deliver.join(', ') : plan.suppressed.join(', ')}
                     {plan.guardianCopy && ' + guardian'}

@@ -171,7 +171,7 @@ export default function PartnerProgramme() {
                       <td style={{ width: 130 }}>
                         <strong style={{ fontSize: 20 }}>{rung.paidReferrals}</strong>
                         <br />
-                        <span style={{ opacity: 0.55, fontSize: 13 }}>paid referrals</span>
+                        <span style={{ color: 'var(--ink-3)', fontSize: 13 }}>paid referrals</span>
                       </td>
                       <td>
                         <strong>{rung.label}</strong>
@@ -182,11 +182,11 @@ export default function PartnerProgramme() {
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {rung.cashUnlocked ? (
-                          <span style={{ color: 'var(--jm-excellent)', fontWeight: 600 }}>
+                          <span style={{ color: 'var(--i-excellent)', fontWeight: 600 }}>
                             cash unlocked
                           </span>
                         ) : (
-                          <span style={{ opacity: 0.5 }}>no cash yet</span>
+                          <span style={{ color: 'var(--ink-3)' }}>no cash yet</span>
                         )}
                       </td>
                     </tr>
@@ -206,8 +206,8 @@ export default function PartnerProgramme() {
                         className="card__tag"
                         style={{
                           color: def.earnsCashImmediately
-                            ? 'var(--jm-excellent)'
-                            : 'var(--jm-monitor)',
+                            ? 'var(--i-excellent)'
+                            : 'var(--i-monitor)',
                         }}
                       >
                         {def.earnsCashImmediately ? 'cash eligible' : 'rewards only'}
@@ -250,8 +250,8 @@ export default function PartnerProgramme() {
                       </tr>
                       {DEDUCTION_LABELS.map(([key, label]) => (
                         <tr key={key}>
-                          <td style={{ opacity: 0.75 }}>− {label}</td>
-                          <td className="num" style={{ opacity: WORKED[key] === 0 ? 0.4 : 0.85 }}>
+                          <td style={{ color: 'var(--ink-2)' }}>− {label}</td>
+                          <td className="num" style={{ color: WORKED[key] === 0 ? 'var(--ink-3)' : 'var(--ink)' }}>
                             {money(WORKED[key])}
                           </td>
                         </tr>
@@ -266,7 +266,7 @@ export default function PartnerProgramme() {
                         <td>
                           <strong>Commission at {COMMISSION_RATE * 100}%</strong>
                         </td>
-                        <td className="num" style={{ fontWeight: 700, color: 'var(--jm-excellent)' }}>
+                        <td className="num" style={{ fontWeight: 700, color: 'var(--i-excellent)' }}>
                           {money(eligibleResult.commissionGbp)}
                         </td>
                       </tr>
@@ -284,7 +284,7 @@ export default function PartnerProgramme() {
               <article className="card card--5 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Never commissionable</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                     {NEVER_COMMISSIONABLE.length}
                   </span>
                 </div>
@@ -306,7 +306,7 @@ export default function PartnerProgramme() {
               <article className="card card--4 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Same revenue, 13 referrals</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-monitor)' }}>
                     not yet
                   </span>
                 </div>
@@ -320,7 +320,7 @@ export default function PartnerProgramme() {
               <article className="card card--4 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Same revenue, influencer</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     payable
                   </span>
                 </div>
@@ -330,7 +330,7 @@ export default function PartnerProgramme() {
               <article className="card card--4 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Near the lifetime cap</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-monitor)' }}>
                     capped
                   </span>
                 </div>
@@ -372,11 +372,11 @@ export default function PartnerProgramme() {
                             <td className="num">−{def.penalty}</td>
                             <td style={{ whiteSpace: 'nowrap', width: 120 }}>
                               {def.fatal ? (
-                                <span style={{ color: 'var(--jm-critical)', fontWeight: 600 }}>
+                                <span style={{ color: 'var(--i-critical)', fontWeight: 600 }}>
                                   disqualifying
                                 </span>
                               ) : (
-                                <span style={{ opacity: 0.5 }}>cumulative</span>
+                                <span style={{ color: 'var(--ink-3)' }}>cumulative</span>
                               )}
                             </td>
                           </tr>
@@ -396,10 +396,10 @@ export default function PartnerProgramme() {
                   const t = trustScore(ex.signals);
                   const colour =
                     t.verdict === 'verified'
-                      ? 'var(--jm-excellent)'
+                      ? 'var(--i-excellent)'
                       : t.verdict === 'held'
-                        ? 'var(--jm-monitor)'
-                        : 'var(--jm-critical)';
+                        ? 'var(--i-monitor)'
+                        : 'var(--i-critical)';
                   return (
                     <div className="metric" key={ex.label}>
                       <span className="metric__k">{ex.label}</span>
@@ -416,7 +416,7 @@ export default function PartnerProgramme() {
               <article className="card card--6">
                 <div className="card__head">
                   <h3 className="card__t">Reward path</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     forward only
                   </span>
                 </div>
@@ -436,7 +436,7 @@ export default function PartnerProgramme() {
               <article className="card card--6">
                 <div className="card__head">
                   <h3 className="card__t">Risk path</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                     terminal
                   </span>
                 </div>
@@ -497,10 +497,10 @@ export default function PartnerProgramme() {
                         return (
                           <tr key={ex.label}>
                             <td>{ex.label}</td>
-                            <td className="num" style={{ color: ok ? 'var(--jm-excellent)' : 'var(--jm-monitor)' }}>
+                            <td className="num" style={{ color: ok ? 'var(--i-excellent)' : 'var(--i-monitor)' }}>
                               {ok ? money(d.payableGbp) : '—'}
                             </td>
-                            <td style={{ opacity: 0.75 }}>{d.reason}</td>
+                            <td style={{ color: 'var(--ink-2)' }}>{d.reason}</td>
                           </tr>
                         );
                       })}

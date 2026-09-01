@@ -197,7 +197,7 @@ export default function Contact() {
               <Tick />
               <span>
                 Registered in England. Full corporate and regulatory details on{' '}
-                <Link href="/policies" style={{ color: 'var(--jm-teal)' }}>
+                <Link href="/policies" style={{ color: 'var(--i-teal)' }}>
                   All policies
                 </Link>
                 .

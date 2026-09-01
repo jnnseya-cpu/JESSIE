@@ -36,7 +36,7 @@ const EMPLOYER_MAY = [
   'anonymous free-text feedback',
 ];
 
-const TONE = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+const TONE = ['var(--ic1)', 'var(--ic2)', 'var(--ic3)', 'var(--ic4)', 'var(--ic5)'];
 
 export default function Industries() {
   return (

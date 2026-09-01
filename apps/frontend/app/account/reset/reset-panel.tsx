@@ -55,7 +55,7 @@ export function ResetPanel() {
         <div className="acct-auth__head"><h3>This link is incomplete</h3></div>
         <p className="acct__note" style={{ margin: 0 }}>
           Open the reset link from your email again, or ask for a fresh one from the{' '}
-          <a href="/account" style={{ color: 'var(--jm-teal)' }}>sign-in page</a>.
+          <a href="/account" style={{ color: 'var(--i-teal)' }}>sign-in page</a>.
         </p>
       </article>
     );

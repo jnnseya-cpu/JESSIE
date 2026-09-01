@@ -71,6 +71,34 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB">
+      <head>
+        {/*
+          The two faces every page uses in its first paint: Inter latin for
+          body and interface, Manrope latin for the headings. Preloaded
+          because a @font-face is only discovered once the stylesheet has
+          parsed and the browser has found a character that needs it, which
+          is one round trip too late — and a swap that lands after the
+          reader has started reading is the reflow the metric-matched
+          fallback in globals.css exists to make invisible. The italic and
+          the latin-ext faces are deliberately not preloaded: most pages
+          use neither, and preloading a file a page never requests spends
+          the same bandwidth as loading it.
+        */}
+        <link
+          rel="preload"
+          href="/fonts/inter-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/manrope-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>
         {/*
           First in the body so it is in the first bytes the browser parses

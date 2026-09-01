@@ -179,7 +179,7 @@ export default function MicroMovement() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-teal)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-teal)' }}>
                 The narrowing
               </p>
               <h2>Four movements. Four real rooms.</h2>
@@ -200,7 +200,7 @@ export default function MicroMovement() {
                         <th scope="col" key={r.name}>
                           {r.name}
                           <br />
-                          <small style={{ opacity: 0.6, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                          <small style={{ color: 'var(--ink-3)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
                             {r.note}
                           </small>
                         </th>
@@ -216,12 +216,12 @@ export default function MicroMovement() {
                           return (
                             <td key={r.name} title={fit.fits ? 'Available' : fit.blockedBy.join(' ')}>
                               {fit.fits ? (
-                                <span style={{ color: 'var(--jm-excellent)' }}>
+                                <span style={{ color: 'var(--i-excellent)' }}>
                                   <Tick /> Available
                                 </span>
                               ) : (
-                                <span style={{ opacity: 0.8 }}>
-                                  <span style={{ color: 'var(--jm-action)' }}>
+                                <span style={{ color: 'var(--ink-2)' }}>
+                                  <span style={{ color: 'var(--i-action)' }}>
                                     <Cross />
                                   </span>{' '}
                                   <small>{fit.blockedBy[0]}</small>
@@ -333,7 +333,7 @@ export default function MicroMovement() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">Selection only ever moves down the ladder</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     gentlest first
                   </span>
                 </div>
@@ -366,11 +366,11 @@ export default function MicroMovement() {
                         <tr key={row.label}>
                           <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.label}</td>
                           <td>
-                            <strong style={{ color: 'var(--jm-teal)' }}>
+                            <strong style={{ color: 'var(--i-teal)' }}>
                               {VARIANT_LABELS[row.pick.variant]}
                             </strong>
                             <br />
-                            <small style={{ opacity: 0.72 }}>{row.pick.because}</small>
+                            <small style={{ color: 'var(--ink-2)' }}>{row.pick.because}</small>
                           </td>
                         </tr>
                       ))}
@@ -402,7 +402,7 @@ export default function MicroMovement() {
                   <h3 className="card__t">Eight weeks, computed by the engine</h3>
                   <span className="card__tag">seconds per micro-movement</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--jm-teal)' }}>
+                <div className="card__big" style={{ color: 'var(--i-teal)' }}>
                   {DOSE_SERIES[DOSE_SERIES.length - 1]}s
                 </div>
                 <Spark series={DOSE_SERIES} label="Prescribed dose over eight weeks" tone="var(--jm-teal)" />

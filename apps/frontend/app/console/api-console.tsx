@@ -262,7 +262,7 @@ export function ApiConsole() {
             <span
               className="card__tag"
               style={{
-                color: passed === PROBES.length ? 'var(--jm-excellent)' : 'var(--jm-monitor)',
+                color: passed === PROBES.length ? 'var(--i-excellent)' : 'var(--i-monitor)',
               }}
             >
               {passed} / {PROBES.length} as expected
@@ -323,7 +323,7 @@ export function ApiConsole() {
               {r && 'status' in r && (
                 <>
                   <p className="probe__meta">
-                    <strong style={{ color: r.ok ? 'var(--jm-excellent)' : 'var(--jm-critical)' }}>
+                    <strong style={{ color: r.ok ? 'var(--i-excellent)' : 'var(--i-critical)' }}>
                       {r.ok ? '✓' : '✗'} {r.status}
                     </strong>{' '}
                     · {r.ms}ms · expected {p.expect}

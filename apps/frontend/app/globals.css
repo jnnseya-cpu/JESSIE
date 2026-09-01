@@ -5,6 +5,133 @@
    icon or a label.
    ============================================================ */
 
+/* ============================================================
+   TYPE DELIVERY
+
+   §8 names Inter for interface and Manrope for display. Until now the
+   stylesheet named them and nothing loaded them: there was no @font-face,
+   no next/font, no stylesheet link. Every visitor got the fallback —
+   Arial or Liberation Sans — wearing tracking values (-0.022em on h1,
+   0.16em on the eyebrow) that were measured for Inter, and every italic
+   was a browser-synthesised oblique rather than a drawn one. The design
+   system was specified and never delivered.
+
+   Self-hosted, from files in this repository, for three reasons that are
+   not preference:
+
+   1. A webfont CDN sends every visitor's IP to a third party on every
+      page load — including behind the login and on health surfaces. This
+      platform allows Vercel and Firebase, plus two consent-gated
+      measurement tags on public marketing pages only. A font host is a
+      third vendor and a fourth on the "never on a health surface" list.
+   2. The build must not depend on a network fetch of a typeface.
+   3. `font-display: swap` with no `size-adjust` is the reflow everybody
+      recognises. The fallback metrics below are measured, not guessed —
+      see `scripts/measure-fallback.mjs`.
+
+   Both families are SIL Open Font License 1.1; see public/fonts/OFL.txt.
+   Variable files: one weight axis each, plus Inter's `opsz` optical-size
+   axis, which is why `font-optical-sizing: auto` is set on the root.
+   ============================================================ */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* The drawn italic. Without this face the browser shears the roman, which
+   is what produced the slanted "Powerful" in the hero. */
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/inter-italic-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/inter-italic-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/manrope-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/manrope-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/*
+ * The swap targets. A fallback stack of "Arial, sans-serif" sets a line of
+ * text at a different width and a different cap height from the face that
+ * replaces it, so the page visibly jumps when the woff2 arrives. These two
+ * faces are the local system font re-metricised to match — `size-adjust`
+ * from measured average character width, ascent/descent/line-gap from the
+ * real font tables — so the swap changes the shapes and nothing else.
+ *
+ * Named in the stack *after* the real family and *before* the generic, so
+ * they are used only during the swap window and by anyone the woff2 never
+ * reaches.
+ */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 97.05%;
+  ascent-override: 99.95%;
+  descent-override: 24.73%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Manrope Fallback";
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 100.27%;
+  ascent-override: 106.71%;
+  descent-override: 29.92%;
+  line-gap-override: 0%;
+}
+
 :root {
   color-scheme: light;
 
@@ -80,6 +207,41 @@
   --jm-motion-transformation: 420ms;
   --jm-motion-celebration: 1500ms;
 
+  /* ------------------------------------------------------------------
+     Elevation.
+
+     Every shadow in this file used to be written at its call site, and
+     there were eleven different ones: `0 14px 40px -26px`, `0 18px 46px`,
+     `0 24px 48px`, `0 34px 70px -28px`. Each is plausible alone; together
+     they describe a room with eleven light sources, which is why surfaces
+     that should have read as one material read as a collection of
+     separately-styled boxes.
+
+     One light, high and slightly forward. Each level is two shadows —
+     a tight contact shadow that anchors the element to what it sits on,
+     and a wide ambient one that gives it height — because a single large
+     blur is the flat, sprayed-on look and no real object casts it.
+     ------------------------------------------------------------------ */
+  --e1:
+    0 1px 2px rgba(16, 42, 67, 0.06),
+    0 2px 6px -2px rgba(16, 42, 67, 0.08);
+  --e2:
+    0 1px 2px rgba(16, 42, 67, 0.05),
+    0 8px 20px -10px rgba(16, 42, 67, 0.18);
+  --e3:
+    0 2px 4px rgba(16, 42, 67, 0.05),
+    0 18px 40px -22px rgba(16, 42, 67, 0.34);
+  --e4:
+    0 4px 8px rgba(16, 42, 67, 0.07),
+    0 34px 70px -34px rgba(16, 42, 67, 0.45);
+
+  /* The same four on dark ground, where a shadow is nearly invisible and
+     the thing that actually reads as height is the lit top edge. */
+  --e1-d: 0 1px 0 rgba(244, 250, 249, 0.05) inset, 0 2px 6px rgba(0, 0, 0, 0.35);
+  --e2-d: 0 1px 0 rgba(244, 250, 249, 0.06) inset, 0 10px 24px -12px rgba(0, 0, 0, 0.6);
+  --e3-d: 0 1px 0 rgba(244, 250, 249, 0.07) inset, 0 22px 48px -22px rgba(0, 0, 0, 0.7);
+  --e4-d: 0 1px 0 rgba(244, 250, 249, 0.08) inset, 0 34px 70px -28px rgba(0, 0, 0, 0.8);
+
   --jm-type-primary: Inter;
   --jm-type-display: Manrope;
   --jm-type-youth: 'Nunito Sans';
@@ -89,6 +251,35 @@
   --jm-target-min: 24px;
   --jm-target-standard: 48px;
   --jm-target-later-life: 56px;
+
+  /* ------------------------------------------------------------------
+     Ink.
+
+     Secondary text on this platform was dimmed with `opacity` — 55 rules
+     of `opacity: 0.55` to `0.86` — rather than given a colour. Three
+     things follow from that, and all three were happening:
+
+     1. It is unreadable. `--jm-text-2` is #475663, chosen and tested at
+        7.06:1 on white; at `opacity: 0.68` the reader gets 3.42:1, which
+        is below the AA floor. That is the body copy of every card on the
+        site. `scripts/audit-contrast.mjs` measured 1,097 instances.
+     2. It compounds. On the dark sections `.card__note` was already given
+        `rgba(244, 250, 249, 0.7)` explicitly and then had 0.68 applied on
+        top of it — 0.48 of the way to the background.
+     3. It looks cheap. Faded body text is the difference between a page
+        that was designed and a page that was filled in; a real secondary
+        colour is a decision, and a percentage of the primary is the
+        absence of one.
+
+     These three inherit, so a dark container redefines them once and
+     everything inside follows. --ink-3 is for genuinely subordinate text
+     — a timestamp, an axis label — and still clears AA on every ground
+     this platform uses. There is no fourth level: if text needs to be
+     fainter than --ink-3, it needs to be smaller or somewhere else.
+     ------------------------------------------------------------------ */
+  --ink: var(--jm-text);
+  --ink-2: var(--jm-text-2);
+  --ink-3: #5c6b78;
 
   /* §7 — Dark surfaces */
   --jm-bg-d: #081a27;
@@ -113,6 +304,16 @@
   --c5: var(--jm-purple);
   --c6: var(--jm-sky);
 
+  /* The same six as text. A ramp position used to colour a series and the
+     same position used to colour that series' *label* are different jobs;
+     --c2 is lime, which is 1.38:1 on white. See --i-* below. */
+  --ic1: var(--i-teal);
+  --ic2: var(--i-lime);
+  --ic3: var(--i-orange);
+  --ic4: var(--i-blue);
+  --ic5: var(--i-purple);
+  --ic6: var(--i-sky);
+
   /* One hue per age mode. Six decades, six colours, no hierarchy implied. */
   --mode-explorer: var(--jm-lime);
   --mode-teen: var(--jm-coral);
@@ -121,12 +322,13 @@
   --mode-independence: var(--jm-sky);
   --mode-vitality: var(--jm-purple);
 
-  /* §8 — Type. Inter for interface, Manrope for display, Nunito Sans in Explorer. */
-  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, sans-serif;
-  --font-youth: "Nunito Sans", "Inter", sans-serif;
+  /* §8 — Type. Inter for interface, Manrope for display.
+     "* Fallback" is the metric-matched swap target declared above; the
+     generic families after it are the last resort if even Arial is absent. */
+  --font-ui: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Manrope", "Manrope Fallback", "Inter", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
   --body-size: 17px;
@@ -178,7 +380,21 @@ body {
   background: var(--jm-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "kern" 1, "liga" 1, "cv11" 1;
+  /*
+   * `cv05` and `cv08` are Inter's disambiguation forms: a tailed lowercase
+   * l and a serifed uppercase I. Without them l, I and 1 are three nearly
+   * identical verticals, which is a legibility problem on a product read
+   * by ten-year-olds and hundred-year-olds and one that shows dose codes,
+   * postcodes and reference numbers. `calt` carries Inter's contextual
+   * alternates. `cv11` — the single-storey a — is deliberately *not* set:
+   * it reads geometric and technical, and this is a health product.
+   */
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "cv05" 1, "cv08" 1;
+  /* Inter ships an optical-size axis. At 82px the display cut is tighter
+     and finer than the text cut; letting the browser interpolate it is the
+     difference between type that is set and type that is merely scaled. */
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
 }
 
 /* Motion is opt-out at the OS level. §2 */
@@ -225,7 +441,7 @@ body {
 }
 
 .eyebrow--onDark {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 h1,
@@ -272,11 +488,65 @@ p {
 .section--ink {
   background: var(--jm-navy);
   color: var(--jm-bg);
+  /* Positioned so the grain pseudo-element below has something to fill,
+     and isolated so its blend does not reach through to the section
+     underneath. */
+  position: relative;
+  isolation: isolate;
 }
 
+/*
+ * Grain.
+ *
+ * A large area of flat CSS gradient is the most recognisable signature of
+ * a page that was generated rather than made: real surfaces — paper,
+ * anodised metal, a photographed wall — are never perfectly smooth. A
+ * smooth navy-to-teal ramp also bands visibly on 8-bit displays, and the
+ * noise is what breaks the bands up.
+ *
+ * `feTurbulence` at a high base frequency, desaturated, held at about 3%.
+ * Inline as a data URI rather than a PNG: no extra request, no asset to
+ * lose, and nothing fetched from anywhere.
+ *
+ * Attached to the dark section classes rather than to a `.grain` class in
+ * the markup, so it reaches every page — twenty-seven routes — without
+ * twenty-seven edits, and so a dark section written next month gets it by
+ * default rather than by memory. `.phero` uses ::before because its
+ * ::after already carries the aura gradient.
+ */
+.hero::after,
+.section--ink::after,
+.phero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* Content in a dark section sits above the texture. Without this the
+   grain lies over the type and softens it, which is the opposite of the
+   point. */
+.section--ink > * {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * The token, not a literal. A white card inside a dark section is a light
+ * ground, and this selector (0,2,1) outranks the card's own rule (0,1,0),
+ * so a hard-coded white here painted white text on `.variant`, `.tier` and
+ * every other light island — 30-odd paragraphs on /foodlens and
+ * /micro-movement at about 1.04:1. Resolving through --ink-2 lets the
+ * island's own declaration win, because it is the island that knows what
+ * colour it is.
+ */
 .section--ink .lede,
 .section--ink p {
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 
 .section--tint {
@@ -359,7 +629,7 @@ button:focus-visible {
 }
 
 .nav__links a {
-  color: rgba(244, 250, 249, 0.72);
+  color: var(--ink-2);
   text-decoration: none;
   font-size: 15px;
   transition: color 0.18s ease;
@@ -383,7 +653,10 @@ button:focus-visible {
   justify-content: center;
   gap: 9px;
   padding: 15px 26px;
-  border-radius: 999px;
+  /* §25 — every interactive target clears 48px; 56px in later-life modes.
+     The radius matches the input radius so a button and the field beside
+     it are cut from the same shape language. */
+  border-radius: var(--r-input);
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
@@ -393,34 +666,78 @@ button:focus-visible {
      showed it, so the bug only appeared on real buttons. */
   background: transparent;
   cursor: pointer;
+  /*
+   * `cubic-bezier(.2,.7,.3,1)` rather than `ease`, and 190ms rather than
+   * 160. `ease` decelerates symmetrically, which reads mechanical; this
+   * curve leaves quickly and settles slowly, which is how a physical
+   * control behaves. Durations sit inside --jm-motion-transition (250ms).
+   */
   transition:
-    transform 0.16s ease,
-    background 0.18s ease,
-    border-color 0.18s ease;
+    transform 190ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 190ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    background 190ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    border-color 190ms cubic-bezier(0.2, 0.7, 0.3, 1);
   /* 44px minimum target */
   min-height: 48px;
+  /* Inter's default figures are proportional; a button reading "Save £5"
+     next to one reading "Save £11" should not shift its baseline grid. */
+  font-variant-numeric: tabular-nums;
 }
 
 .btn:hover {
   transform: translateY(-1px);
 }
 
+.btn:active {
+  /* The press. Without it the button lifts on hover and then does nothing
+     at all on the one interaction that matters. */
+  transform: translateY(0);
+  transition-duration: 60ms;
+}
+
+/*
+ * A filled control is a lit object, not a coloured rectangle. Three
+ * things do that work and none of them is a new colour: a gradient of
+ * about six percent across the fill so the top catches more light than
+ * the bottom, a one-pixel inset highlight along the top edge, and a
+ * shadow tinted with the fill's own hue rather than neutral black —
+ * a real teal object casts a slightly teal shadow.
+ */
 .btn--primary {
-  background: var(--jm-teal);
+  background: linear-gradient(180deg, #12b8ab 0%, var(--jm-teal) 62%, #009a8f 100%);
   color: var(--jm-navy);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.32) inset,
+    0 1px 2px rgba(0, 62, 57, 0.28),
+    0 8px 18px -8px rgba(0, 90, 83, 0.55);
 }
 
 .btn--primary:hover {
-  background: #00c2b4;
+  background: linear-gradient(180deg, #1ac6b8 0%, #00b4a7 62%, #00a396 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.38) inset,
+    0 2px 4px rgba(0, 62, 57, 0.26),
+    0 14px 26px -10px rgba(0, 90, 83, 0.6);
+}
+
+.btn--primary:active {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 1px 2px rgba(0, 62, 57, 0.3);
 }
 
 .btn--ghost {
   border-color: var(--jm-divider-d);
   color: var(--jm-bg);
+  /* A hairline of the surface's own light along the top, so the outline
+     button sits in the same room as the filled one instead of reading as
+     a rectangle drawn on top of it. */
+  box-shadow: 0 1px 0 rgba(244, 250, 249, 0.06) inset;
 }
 
 .btn--ghost:hover {
   border-color: rgba(244, 250, 249, 0.45);
+  background: rgba(244, 250, 249, 0.05);
 }
 
 /* A ghost button on a light card inverts: navy text, visible border.
@@ -493,14 +810,14 @@ button:focus-visible {
 
 .hero h1 em {
   font-style: italic;
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 .hero__lede {
   margin-top: 26px;
   font-size: clamp(19px, 1.8vw, 22px);
   line-height: 1.55;
-  color: rgba(244, 250, 249, 0.76);
+  color: var(--ink-2);
   max-width: 54ch;
 }
 
@@ -514,7 +831,7 @@ button:focus-visible {
 .hero__note {
   margin-top: 26px;
   font-size: 14px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
   max-width: 46ch;
 }
 
@@ -547,7 +864,7 @@ button:focus-visible {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   background: rgba(0, 169, 157, 0.11);
   border: 1px solid rgba(0, 169, 157, 0.28);
   padding: 6px 12px;
@@ -576,7 +893,7 @@ button:focus-visible {
 .snapcard__time {
   font-family: var(--font-mono);
   font-size: 13px;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 
@@ -591,7 +908,7 @@ button:focus-visible {
 .snapcard__why {
   font-size: 15.5px;
   line-height: 1.55;
-  color: rgba(244, 250, 249, 0.66);
+  color: var(--ink-2);
   max-width: none;
 }
 
@@ -615,7 +932,7 @@ button:focus-visible {
   font-size: 11px;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: rgba(244, 250, 249, 0.44);
+  color: var(--ink-3);
   margin-bottom: 6px;
 }
 
@@ -632,14 +949,14 @@ button:focus-visible {
   align-items: center;
   gap: 12px;
   font-size: 13.5px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 
 .tick {
   width: 17px;
   height: 17px;
   flex: none;
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 /* ---------- Proof strip ---------- */
@@ -782,7 +1099,7 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-size: 12.5px;
   letter-spacing: 0.1em;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   margin-bottom: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -798,7 +1115,7 @@ button:focus-visible {
 .mode__desc {
   font-size: 14.5px;
   line-height: 1.5;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   max-width: none;
 }
 
@@ -808,7 +1125,7 @@ button:focus-visible {
   border-top: 1px solid var(--jm-divider-d);
   font-family: var(--font-mono);
   font-size: 11.5px;
-  color: rgba(244, 250, 249, 0.42);
+  color: var(--ink-3);
   line-height: 1.7;
 }
 
@@ -843,7 +1160,7 @@ button:focus-visible {
 .variant__icon {
   width: 34px;
   height: 34px;
-  color: var(--jm-blue);
+  color: var(--i-blue);
   margin-bottom: 16px;
 }
 
@@ -866,7 +1183,7 @@ button:focus-visible {
   padding: 22px 24px;
   border-radius: var(--radius);
   background: var(--jm-navy);
-  color: rgba(244, 250, 249, 0.82);
+  color: var(--ink-2);
   font-size: 15.5px;
   line-height: 1.6;
   display: flex;
@@ -875,7 +1192,7 @@ button:focus-visible {
 }
 
 .gate__rule strong {
-  color: var(--jm-teal);
+  color: var(--i-teal);
   font-weight: 600;
 }
 
@@ -916,7 +1233,7 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.12em;
-  color: var(--jm-coral);
+  color: var(--i-coral);
   margin-bottom: 12px;
 }
 
@@ -937,8 +1254,7 @@ button:focus-visible {
 .tier__ch {
   margin-top: 16px;
   font-size: 13px;
-  color: var(--jm-navy);
-  opacity: 0.62;
+  color: var(--ink-3);
   font-family: var(--font-mono);
   line-height: 1.7;
 }
@@ -971,7 +1287,7 @@ button:focus-visible {
 .query__bar {
   padding: 13px 18px;
   border-bottom: 1px solid var(--jm-divider-d);
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
   font-size: 12px;
   letter-spacing: 0.06em;
   display: flex;
@@ -981,20 +1297,20 @@ button:focus-visible {
 
 .query__body {
   padding: 20px 18px 22px;
-  color: rgba(244, 250, 249, 0.82);
+  color: var(--ink-2);
   overflow-x: auto;
 }
 
 .query__body .k {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 .query__body .c {
-  color: rgba(244, 250, 249, 0.38);
+  color: var(--ink-3);
 }
 
 .query__body .s {
-  color: var(--jm-coral);
+  color: var(--i-coral);
   font-weight: 600;
 }
 
@@ -1019,7 +1335,7 @@ button:focus-visible {
   height: 19px;
   flex: none;
   margin-top: 3px;
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 /* ---------- Charter ---------- */
@@ -1095,7 +1411,7 @@ button:focus-visible {
 
 .cta p {
   margin: 24px auto 0;
-  color: rgba(244, 250, 249, 0.68);
+  color: var(--ink-2);
   max-width: 56ch;
 }
 
@@ -1113,7 +1429,7 @@ button:focus-visible {
   background: var(--jm-navy);
   border-top: 1px solid var(--jm-divider-d);
   padding-block: 46px 54px;
-  color: rgba(244, 250, 249, 0.52);
+  color: var(--ink-3);
   font-size: 14.5px;
 }
 
@@ -1129,7 +1445,7 @@ button:focus-visible {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 17px;
-  color: rgba(244, 250, 249, 0.8);
+  color: var(--ink-2);
   max-width: 40ch;
 }
 
@@ -1146,7 +1462,7 @@ button:focus-visible {
 
 .foot__legal p {
   max-width: 62ch;
-  color: rgba(244, 250, 249, 0.44);
+  color: var(--ink-3);
 }
 
 /* ============================================================
@@ -1154,7 +1470,7 @@ button:focus-visible {
    ============================================================ */
 
 .nav__links a.is-current {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 /* ---------- audience hero ---------- */
@@ -1192,18 +1508,18 @@ button:focus-visible {
 
 .ahero h1 em {
   font-style: italic;
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 .ahero--warm h1 em {
-  color: var(--jm-orange);
+  color: var(--i-orange);
 }
 
 .ahero__lede {
   margin-top: 24px;
   font-size: clamp(18px, 1.7vw, 21px);
   line-height: 1.56;
-  color: rgba(244, 250, 249, 0.76);
+  color: var(--ink-2);
   max-width: 58ch;
 }
 
@@ -1277,11 +1593,11 @@ button:focus-visible {
 }
 
 .panel--never li svg {
-  color: var(--jm-critical);
+  color: var(--i-critical);
 }
 
 .panel--always li svg {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 /* ---------- day plan ---------- */
@@ -1442,7 +1758,7 @@ button:focus-visible {
 .bar__pct {
   font-family: var(--font-mono);
   font-size: 14px;
-  color: var(--jm-text-2);
+  color: var(--ink-2);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -1517,7 +1833,7 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.05em;
-  color: rgba(244, 250, 249, 0.62);
+  color: var(--ink-3);
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -1529,14 +1845,14 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.7;
-  color: rgba(244, 250, 249, 0.82);
+  color: var(--ink);
   overflow-x: auto;
 }
 
-.api__body .k { color: var(--jm-teal); }
-.api__body .n { color: var(--jm-orange); }
-.api__body .s { color: var(--jm-coral); }
-.api__body .c { color: rgba(244, 250, 249, 0.38); }
+.api__body .k { color: var(--i-teal); }
+.api__body .n { color: var(--i-orange); }
+.api__body .s { color: var(--i-coral); }
+.api__body .c { color: var(--ink-3); }
 
 /* ============================================================
    Data visualisation — §2 palette only, no external assets
@@ -1699,7 +2015,7 @@ button:focus-visible {
 .cbars__note {
   margin: 8px 0 0;
   font-size: 14px;
-  opacity: 0.62;
+  color: var(--ink-2);
 }
 
 /* ---------- Day timeline ---------- */
@@ -1734,7 +2050,7 @@ button:focus-visible {
   justify-content: space-between;
   font-size: 12px;
   letter-spacing: 0.08em;
-  opacity: 0.5;
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 .tl__key {
@@ -1786,7 +2102,7 @@ button:focus-visible {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   fill: currentColor;
-  opacity: 0.55;
+  color: var(--ink-3);
 }
 .donut__key {
   list-style: none;
@@ -1848,7 +2164,7 @@ button:focus-visible {
 }
 .agec__range {
   font-size: 12px;
-  opacity: 0.55;
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 720px) {
@@ -1897,21 +2213,21 @@ button:focus-visible {
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.6;
+  color: var(--ink-3);
   margin-bottom: 10px;
 }
 .stat__v {
   font-family: var(--font-display);
   font-size: clamp(28px, 3.4vw, 40px);
   line-height: 1;
-  color: var(--tone);
+  color: var(--tone-ink);
   font-variant-numeric: tabular-nums;
 }
 .stat__s {
   margin: 12px 0 0;
   font-size: 14px;
   line-height: 1.5;
-  opacity: 0.66;
+  color: var(--ink-2);
 }
 
 /* ============================================================
@@ -1982,14 +2298,14 @@ button:focus-visible {
   padding: 5px 10px;
   border-radius: 99px;
   border: 1px solid currentColor;
-  opacity: 0.7;
+  color: var(--ink-2);
   white-space: nowrap;
 }
 .card__note {
   margin: 0;
   font-size: 14.5px;
   line-height: 1.55;
-  opacity: 0.68;
+  color: var(--ink-2);
 }
 .card__big {
   font-family: var(--font-display);
@@ -2016,7 +2332,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  opacity: 0.8;
+  color: var(--ink-2);
 }
 .console i {
   width: 8px;
@@ -2062,13 +2378,13 @@ button:focus-visible {
   max-width: 62ch;
   font-size: clamp(18px, 1.5vw, 21px);
   line-height: 1.55;
-  opacity: 0.82;
+  color: var(--ink-2);
 }
 .phero__crumbs {
   display: flex;
   gap: 10px;
   font-size: 13px;
-  opacity: 0.6;
+  color: var(--ink-3);
   margin: 0 0 20px;
 }
 .phero__crumbs a {
@@ -2129,7 +2445,7 @@ button:focus-visible {
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: 0.12em;
-  color: var(--tone);
+  color: var(--tone-ink);
   margin-bottom: 12px;
 }
 .tile h3 {
@@ -2140,7 +2456,7 @@ button:focus-visible {
   margin: 0;
   font-size: 15.5px;
   line-height: 1.58;
-  opacity: 0.75;
+  color: var(--ink-2);
 }
 .tile ul {
   margin: 12px 0 0;
@@ -2149,7 +2465,7 @@ button:focus-visible {
 }
 .tile li {
   margin-bottom: 6px;
-  opacity: 0.8;
+  color: var(--ink-2);
 }
 
 /* Pill list */
@@ -2194,8 +2510,7 @@ button:focus-visible {
   font-family: var(--font-display);
   font-size: 34px;
   line-height: 1;
-  color: var(--jm-text-2);
-  opacity: 0.45;
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 .steprow h3 {
@@ -2204,7 +2519,7 @@ button:focus-visible {
 }
 .steprow p {
   margin: 0;
-  opacity: 0.75;
+  color: var(--ink-2);
   line-height: 1.6;
 }
 @media (max-width: 640px) {
@@ -2245,11 +2560,11 @@ button:focus-visible {
 }
 .plancard__cadence {
   font-size: 14px;
-  opacity: 0.6;
+  color: var(--ink-3);
 }
 .plancard__who {
   font-size: 15px;
-  opacity: 0.75;
+  color: var(--ink-2);
   margin: 0;
   line-height: 1.5;
 }
@@ -2300,7 +2615,7 @@ button:focus-visible {
   display: block;
   font-weight: 400;
   font-size: 14px;
-  opacity: 0.6;
+  color: var(--ink-3);
   margin-top: 3px;
 }
 .statusrow__bars {
@@ -2331,11 +2646,11 @@ button:focus-visible {
 }
 .badge--ok {
   background: rgba(0, 169, 157, 0.16);
-  color: var(--jm-excellent);
+  color: var(--i-excellent);
 }
 .badge--warn {
   background: rgba(245, 158, 61, 0.2);
-  color: var(--jm-action);
+  color: var(--i-action);
 }
 .badge--build {
   background: rgba(83, 101, 117, 0.16);
@@ -2367,7 +2682,7 @@ button:focus-visible {
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.55;
+  color: var(--ink-3);
   font-weight: 600;
 }
 .endpoints code {
@@ -2381,11 +2696,11 @@ button:focus-visible {
   padding: 3px 8px;
   border-radius: 5px;
   background: rgba(0, 169, 157, 0.16);
-  color: var(--jm-excellent);
+  color: var(--i-excellent);
 }
 .endpoints .verb--post {
   background: rgba(118, 86, 232, 0.14);
-  color: var(--jm-purple);
+  color: var(--i-purple);
 }
 .tablewrap {
   overflow-x: auto;
@@ -2410,7 +2725,7 @@ button:focus-visible {
 }
 .post__meta {
   font-size: 13px;
-  opacity: 0.55;
+  color: var(--ink-3);
   line-height: 1.5;
 }
 .post__cat {
@@ -2420,7 +2735,7 @@ button:focus-visible {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 650;
-  color: var(--jm-coral);
+  color: var(--i-coral);
 }
 .post h3 {
   font-size: 22px;
@@ -2429,7 +2744,7 @@ button:focus-visible {
 }
 .post p {
   margin: 0;
-  opacity: 0.72;
+  color: var(--ink-2);
   line-height: 1.6;
   max-width: 62ch;
 }
@@ -2482,7 +2797,7 @@ button:focus-visible {
 }
 .field__hint {
   font-size: 13.5px;
-  opacity: 0.6;
+  color: var(--ink-2);
 }
 
 /* Contact channel cards */
@@ -2504,12 +2819,12 @@ button:focus-visible {
 .channel p {
   margin: 0 0 12px;
   font-size: 15px;
-  opacity: 0.7;
+  color: var(--ink-2);
   line-height: 1.5;
 }
 .channel a {
   font-weight: 600;
-  color: var(--jm-purple);
+  color: var(--i-purple);
   word-break: break-word;
 }
 
@@ -2536,13 +2851,13 @@ button:focus-visible {
 .policyrow p {
   margin: 0;
   font-size: 15px;
-  opacity: 0.68;
+  color: var(--ink-2);
   max-width: 64ch;
   line-height: 1.5;
 }
 .policyrow__when {
   font-size: 13px;
-  opacity: 0.55;
+  color: var(--ink-3);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -2569,7 +2884,7 @@ button:focus-visible {
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.55;
+  color: var(--ink-3);
   margin: 0 0 14px;
   font-weight: 650;
 }
@@ -2581,9 +2896,8 @@ button:focus-visible {
   gap: 10px;
 }
 .foot__col a {
-  color: inherit;
+  color: var(--ink-2);
   text-decoration: none;
-  opacity: 0.82;
   font-size: 15.5px;
 }
 .foot__col a:hover {
@@ -2595,7 +2909,7 @@ button:focus-visible {
   margin: 14px 0 0;
   font-size: 15px;
   line-height: 1.55;
-  opacity: 0.62;
+  color: var(--ink-2);
   max-width: 34ch;
 }
 .foot__status {
@@ -2604,8 +2918,7 @@ button:focus-visible {
   gap: 9px;
   margin-top: 18px;
   font-size: 14px;
-  opacity: 0.8;
-  color: inherit;
+  color: var(--ink-2);
   text-decoration: none;
 }
 .foot__status i {
@@ -2615,9 +2928,249 @@ button:focus-visible {
   background: var(--jm-teal);
 }
 
+/*
+ * The palette, at a lightness that can be read as text.
+ *
+ * §4 and §5 fix sixteen hues, and `scripts/measure-contrast.mjs` measures
+ * what they do as text on the two light grounds: lime 1.38:1, sky 1.82,
+ * orange 1.99, monitor 2.10, coral 2.61, teal 2.74, blue 3.29, magenta
+ * 3.56, excellent 4.22, critical 4.43, information 4.47. Only purple
+ * clears 4.5. Every one of those was in use as the colour of a label, a
+ * badge, a statistic or a link.
+ *
+ * `--i-*` is the same hue and the same chroma with the lightness clamped
+ * to the measured threshold — `min(l, 0.5)` on light ground, `max(l,
+ * 0.78)` on dark, both verified worst-case above 5:1. The vivid token
+ * stays exactly as specified and keeps doing what it is for: fills,
+ * rules, chart series, icons, spines. Only text moves to `--i-*`.
+ *
+ * Two rules, not sixteen call-site decisions, and a component that moves
+ * between a dark section and a white card follows the surface it lands
+ * on rather than the surface it was written for.
+ */
+:root {
+  --i-teal: oklch(from var(--jm-teal) calc(min(l, 0.5)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(min(l, 0.5)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(min(l, 0.5)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(min(l, 0.5)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(min(l, 0.5)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(min(l, 0.5)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(min(l, 0.5)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(min(l, 0.5)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(min(l, 0.5)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(min(l, 0.5)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(min(l, 0.5)) c h);
+  --i-action: oklch(from var(--jm-action) calc(min(l, 0.5)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(min(l, 0.5)) c h);
+  --i-information: oklch(from var(--jm-information) calc(min(l, 0.5)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(min(l, 0.5)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(min(l, 0.5)) c h);
+}
+
+.hero,
+.phero,
+.section--ink,
+.cta,
+.foot,
+.card:not(.card--light),
+.mode,
+.metric,
+.spectrum,
+.gate__rule,
+.query,
+.api__card,
+.ahero,
+.probe__out,
+.pwa,
+.mnav__sheet,
+.scan__stage,
+.tile--ink {
+  --i-teal: oklch(from var(--jm-teal) calc(max(l, 0.78)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(max(l, 0.78)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(max(l, 0.78)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(max(l, 0.78)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(max(l, 0.78)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(max(l, 0.78)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(max(l, 0.78)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(max(l, 0.78)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(max(l, 0.78)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(max(l, 0.78)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(max(l, 0.78)) c h);
+  --i-action: oklch(from var(--jm-action) calc(max(l, 0.78)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(max(l, 0.78)) c h);
+  --i-information: oklch(from var(--jm-information) calc(max(l, 0.78)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(max(l, 0.78)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(max(l, 0.78)) c h);
+}
+
+.section--tint,
+.card--light,
+.proof,
+.proof__cell,
+.law,
+.variant,
+.tier,
+.rule,
+.panel,
+.slot,
+.path,
+.guardian__list li,
+.tile,
+.pills li,
+.plancard,
+.channel,
+.asr__counts > div,
+.asr__gap,
+.asr__onesentence,
+.asr__officer,
+.asr__haz,
+.allergens li,
+.join__promise li {
+  --i-teal: oklch(from var(--jm-teal) calc(min(l, 0.5)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(min(l, 0.5)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(min(l, 0.5)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(min(l, 0.5)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(min(l, 0.5)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(min(l, 0.5)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(min(l, 0.5)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(min(l, 0.5)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(min(l, 0.5)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(min(l, 0.5)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(min(l, 0.5)) c h);
+  --i-action: oklch(from var(--jm-action) calc(min(l, 0.5)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(min(l, 0.5)) c h);
+  --i-information: oklch(from var(--jm-information) calc(min(l, 0.5)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(min(l, 0.5)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(min(l, 0.5)) c h);
+}
+
+.tile--ink {
+  --i-teal: oklch(from var(--jm-teal) calc(max(l, 0.78)) c h);
+  --i-lime: oklch(from var(--jm-lime) calc(max(l, 0.78)) c h);
+  --i-blue: oklch(from var(--jm-blue) calc(max(l, 0.78)) c h);
+  --i-purple: oklch(from var(--jm-purple) calc(max(l, 0.78)) c h);
+  --i-coral: oklch(from var(--jm-coral) calc(max(l, 0.78)) c h);
+  --i-orange: oklch(from var(--jm-orange) calc(max(l, 0.78)) c h);
+  --i-sky: oklch(from var(--jm-sky) calc(max(l, 0.78)) c h);
+  --i-magenta: oklch(from var(--jm-magenta) calc(max(l, 0.78)) c h);
+  --i-excellent: oklch(from var(--jm-excellent) calc(max(l, 0.78)) c h);
+  --i-positive: oklch(from var(--jm-positive) calc(max(l, 0.78)) c h);
+  --i-monitor: oklch(from var(--jm-monitor) calc(max(l, 0.78)) c h);
+  --i-action: oklch(from var(--jm-action) calc(max(l, 0.78)) c h);
+  --i-critical: oklch(from var(--jm-critical) calc(max(l, 0.78)) c h);
+  --i-information: oklch(from var(--jm-information) calc(max(l, 0.78)) c h);
+  --i-specialist: oklch(from var(--jm-specialist) calc(max(l, 0.78)) c h);
+  --i-unavailable: oklch(from var(--jm-unavailable) calc(max(l, 0.78)) c h);
+}
+
 /* ============================================================
    Colour overrides — the --tone variable set per item
    ============================================================ */
+
+/*
+ * --tone-ink: the same hue, at a lightness that can actually be read.
+ *
+ * The rules below paint headings, statistics and labels in `--tone`, the
+ * vivid brand hue. Measured against the two light grounds by
+ * `scripts/measure-contrast.mjs`, seven of the eight fail AA as text:
+ *
+ *   lime 1.38:1 · sky 1.82 · orange 1.99 · coral 2.61 · teal 2.74
+ *   blue 3.29 · magenta 3.56 · purple 4.60 (the only one that passes)
+ *
+ * Lime at 1.38:1 is not a low-contrast heading, it is an invisible one,
+ * and the eight-column proof strip on the landing page was setting a
+ * 48px statistic in it. §5 says colour is never the only signal; it does
+ * not licence colour that cannot be seen.
+ *
+ * Rather than eight hand-picked replacement hexes — eight more values to
+ * drift out of step with the eight they shadow — the lightness is capped
+ * in oklch and the hue and chroma are passed through untouched. `min(l,
+ * 0.5)` is the measured answer: it is the highest cap at which every hue
+ * clears 4.5:1 on both light grounds with margin (worst case 5.08:1,
+ * teal). The colour is still unmistakably the brand colour; it is simply
+ * dark enough to read.
+ *
+ * On the dark grounds the fault is the mirror image — purple at 2.6:1 on
+ * navy — so there the lightness is floored instead. `max(l, 0.78)` is
+ * the measured answer there (worst case 5.11:1, coral).
+ *
+ * Registered with @property so that a browser without relative colour
+ * syntax falls back to the navy initial value — legible — rather than to
+ * the vivid hue that is the defect.
+ */
+@property --tone-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #102a43;
+}
+
+/*
+ * Which branch applies is decided by the surface the element paints, not
+ * by the section it happens to sit in. `.tier`, `.variant` and `.rule`
+ * are white cards that live inside dark sections; keying the ink off the
+ * ancestor put white text on white cards — text that is not low-contrast
+ * but absent. So: light is the default, and only the elements that
+ * genuinely paint a dark ground take the dark branch.
+ */
+:root {
+  --tone-ink: oklch(from var(--tone) calc(min(l, 0.5)) c h);
+}
+
+.hero,
+.phero,
+.section--ink,
+.cta,
+.foot,
+.card:not(.card--light),
+.mode,
+.metric,
+.spectrum,
+.gate__rule,
+.query,
+.api__card,
+.ahero,
+.probe__out,
+.pwa,
+.mnav__sheet,
+.scan__stage,
+.tile--ink {
+  --tone-ink: oklch(from var(--tone) calc(max(l, 0.78)) c h);
+}
+
+/* Light islands inside a dark section put the light branch back. Every
+   selector here is a rule in this file that paints #fff, --jm-surface or
+   --jm-bg; they are listed together so the pairing stays visible. */
+.section--tint,
+.card--light,
+.proof,
+.proof__cell,
+.law,
+.variant,
+.tier,
+.rule,
+.panel,
+.slot,
+.path,
+.guardian__list li,
+.tile,
+.pills li,
+.plancard,
+.channel,
+.asr__counts > div,
+.asr__gap,
+.asr__onesentence,
+.asr__officer,
+.asr__haz,
+.allergens li,
+.join__promise li {
+  --tone-ink: oklch(from var(--tone) calc(min(l, 0.5)) c h);
+}
+
+/* …and `.tile--ink` is the one that is deliberately dark, so it comes
+   back to the dark branch after `.tile`. */
+.tile--ink {
+  --tone-ink: oklch(from var(--tone) calc(max(l, 0.78)) c h);
+}
 
 /* Proof strip: each statistic gets its own hue and a top rule. */
 .proof__cell {
@@ -2625,7 +3178,7 @@ button:focus-visible {
   border-top: 4px solid var(--tone);
 }
 .proof__n {
-  color: var(--tone);
+  color: var(--tone-ink);
 }
 
 /* Six modes, six columns, six hues. */
@@ -2663,7 +3216,7 @@ button:focus-visible {
   border-top: 3px solid var(--tone);
 }
 .mode__age {
-  color: var(--tone);
+  color: var(--tone-ink);
 }
 
 /* Variants and tiers carry the ramp too. */
@@ -2671,17 +3224,17 @@ button:focus-visible {
   --tone: var(--jm-teal);
 }
 .variant__icon {
-  color: var(--tone);
+  color: var(--tone-ink);
 }
 .variant__name {
-  color: var(--tone);
+  color: var(--tone-ink);
 }
 .tier {
   --tone: var(--jm-teal);
   border-left: 3px solid var(--tone);
 }
 .tier__code {
-  color: var(--tone);
+  color: var(--tone-ink);
 }
 .rule {
   --tone: var(--jm-teal);
@@ -2702,10 +3255,105 @@ button:focus-visible {
   --track: #dce6e4;
 }
 
+/*
+ * The ink levels, inverted for every dark ground. Declared once here
+ * rather than at each of the fifty-odd rules that needed dimmed text, so
+ * a new component gets a readable secondary colour by inheriting rather
+ * than by remembering to ask for one.
+ *
+ * Measured against --jm-navy: --ink-2 at 9.5:1, --ink-3 at 6.3:1.
+ * `.card--light` and `.section--tint` restore the light levels, because a
+ * white card inside a dark section is a light ground again and inherited
+ * white-on-white is the failure mode this whole block exists to avoid.
+ */
+.hero,
+.phero,
+.section--ink,
+.cta,
+.foot,
+.card:not(.card--light),
+.mode,
+.metric,
+.spectrum,
+.gate__rule,
+.query,
+.api__card,
+.ahero,
+.probe__out,
+.pwa,
+.mnav__sheet,
+.scan__stage,
+.tile--ink {
+  --ink: var(--jm-text-d);
+  --ink-2: rgba(244, 250, 249, 0.78);
+  --ink-3: rgba(244, 250, 249, 0.62);
+}
+
+/* The same light islands, restoring the light ink levels. `.tier__name`
+   inherited its colour, so with the dark branch reaching it through
+   `.section--ink` it was rendering #f4f8f7 on a #ffffff card at 1.07:1 —
+   invisible, not merely faint, on the delivery-tier table that tells a
+   member which phone they need. */
+.section--tint,
+.card--light,
+.proof,
+.proof__cell,
+.law,
+.variant,
+.tier,
+.rule,
+.panel,
+.slot,
+.path,
+.guardian__list li,
+.tile,
+.pills li,
+.plancard,
+.channel,
+.asr__counts > div,
+.asr__gap,
+.asr__onesentence,
+.asr__officer,
+.asr__haz,
+.allergens li,
+.join__promise li {
+  --ink: var(--jm-text);
+  --ink-2: var(--jm-text-2);
+  --ink-3: #5c6b78;
+  /* Not only the tokens: the island's own text colour, so a heading that
+     sets no colour of its own stops inheriting the dark section's white. */
+  color: var(--ink);
+
+  /*
+   * The console has its own three ink levels — --jm-ink, --jm-dim,
+   * --jm-faint — declared once for dark surfaces and used at 59 call
+   * sites. Several of those components are reused on the marketing
+   * pages inside white cards, where a token that means "white at 58%"
+   * produces white on white: the FoodLens worked example rendered its
+   * whole nutrient table, headers and all, at about 1.03:1.
+   *
+   * Rather than rewrite 59 call sites or fork the components, the
+   * console tokens are made surface-relative here. On a dark ground
+   * they keep the values declared with the console; on a light island
+   * they resolve to the light ink levels, and the components are
+   * legible in both places without knowing which one they are in.
+   */
+  --jm-ink: var(--jm-text);
+  --jm-dim: var(--jm-text-2);
+  --jm-faint: #5c6b78;
+  --jm-hairline: var(--jm-divider);
+}
+
+.tile--ink {
+  --ink: var(--jm-text-d);
+  --ink-2: rgba(244, 250, 249, 0.78);
+  --ink-3: rgba(244, 250, 249, 0.62);
+}
+
 .section--ink .card__note,
 .section--ink .cbars__note,
 .section--ink .tl__axis {
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 
 .section--ink .pills li {
@@ -2734,7 +3382,7 @@ button:focus-visible {
 .heat__col,
 .heat__row {
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--ink-3);
   text-align: center;
 }
 .heat__row {
@@ -2752,7 +3400,7 @@ button:focus-visible {
   gap: 6px;
   margin-top: 14px;
   font-size: 12.5px;
-  opacity: 0.62;
+  color: var(--ink-3);
 }
 .heat__scale i {
   width: 20px;
@@ -2836,10 +3484,10 @@ button:focus-visible {
   font-size: 16px;
 }
 .wfall b.is-up {
-  color: var(--jm-positive);
+  color: var(--i-positive);
 }
 .wfall b.is-down {
-  color: var(--jm-action);
+  color: var(--i-action);
 }
 @media (max-width: 560px) {
   .wfall li {
@@ -2880,7 +3528,7 @@ button:focus-visible {
 }
 .sbars__label {
   font-size: 12.5px;
-  opacity: 0.62;
+  color: var(--ink-3);
 }
 
 /* ---------- Confidence cone ---------- */
@@ -2897,17 +3545,17 @@ button:focus-visible {
   font-size: 40px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--jm-orange);
+  color: var(--i-orange);
 }
 .cone__likely em {
   font-size: 17px;
   font-style: normal;
-  opacity: 0.7;
+  color: var(--ink-3);
   margin-left: 4px;
 }
 .cone__range {
   font-size: 15px;
-  opacity: 0.65;
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 .cone__track {
@@ -2937,7 +3585,7 @@ button:focus-visible {
   margin: 12px 0 0;
   font-size: 14px;
   line-height: 1.5;
-  opacity: 0.7;
+  color: var(--ink-2);
 }
 
 /* ============================================================
@@ -2960,25 +3608,34 @@ button:focus-visible {
   background: var(--grad-recovery);
 }
 
-/* §25 — every interactive target clears 48px; 56px in later-life modes. */
-.btn {
-  min-height: 48px;
-  border-radius: var(--r-input);
-}
-.btn--primary {
-  background: var(--jm-teal);
-  color: #ffffff;
-}
-.btn--primary:hover {
-  background: #00c2b4;
-}
+/*
+ * `.btn` and `.btn--primary` were redefined here, seven hundred lines
+ * after their first definition, and this copy won: it set the radius to
+ * 14px over the pill, and it set the primary label to `#ffffff` over the
+ * navy chosen upstairs. White on `--jm-teal` is 2.94:1. That is below the
+ * 4.5:1 AA floor, at 16px/600 which is not large text, on the primary
+ * call to action of every page on the site — the one element on the page
+ * that must be readable. Navy on the same fill is 4.99:1.
+ *
+ * The radius the duplicate chose is the better one and is now stated once,
+ * in the single definition upstairs, along with the fill. Only the
+ * genuinely distinct variants remain here.
+ */
 .btn--ai {
   background: var(--grad-ai);
   color: #ffffff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 1px 2px rgba(30, 20, 80, 0.3),
+    0 8px 18px -8px rgba(50, 34, 130, 0.55);
 }
 .btn--success {
-  background: var(--jm-excellent);
+  background: linear-gradient(180deg, #159a6b 0%, var(--jm-excellent) 62%, #0d7350 100%);
   color: #ffffff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.26) inset,
+    0 1px 2px rgba(4, 48, 32, 0.3),
+    0 8px 18px -8px rgba(6, 62, 42, 0.55);
 }
 
 /* §25 — focus must survive both light and dark surfaces. */
@@ -3036,7 +3693,9 @@ textarea:focus-visible {
   top: -12px;
   left: 24px;
   background: var(--jm-teal);
-  color: #ffffff;
+  /* Navy, not white: white on --jm-teal is 2.93:1 and this is the flag on
+     the recommended plan — the label most likely to be read at a glance. */
+  color: var(--jm-navy);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -3081,7 +3740,7 @@ textarea:focus-visible {
 .radar__label {
   font-size: 10.5px;
   fill: currentColor;
-  opacity: 0.72;
+  color: var(--ink-2);
   font-weight: 500;
 }
 
@@ -3203,7 +3862,7 @@ textarea:focus-visible {
 }
 .cam__pct {
   font-weight: 500;
-  opacity: 0.75;
+  color: var(--ink-2);
 }
 .cam__corner {
   fill: none;
@@ -3268,7 +3927,7 @@ textarea:focus-visible {
   display: block;
   font-style: normal;
   font-size: 13.5px;
-  opacity: 0.66;
+  color: var(--ink-2);
   margin-top: 2px;
   line-height: 1.4;
 }
@@ -3287,11 +3946,14 @@ textarea:focus-visible {
 }
 .cchecks .is-todo .cchecks__mark {
   background: var(--jm-monitor);
+  /* Amber is the one health-state fill light enough that white sits at
+     2.24:1 on it. Navy gives 6.5:1 and keeps the amber unchanged. */
+  color: var(--jm-navy);
 }
 .cchecks__score {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  opacity: 0.62;
+  color: var(--ink-3);
   font-size: 13.5px;
 }
 .section--ink .cchecks li {
@@ -3331,7 +3993,7 @@ textarea:focus-visible {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   fill: currentColor;
-  opacity: 0.55;
+  color: var(--ink-3);
 }
 .macro__key {
   list-style: none;
@@ -3357,7 +4019,7 @@ textarea:focus-visible {
 }
 .macro__key em {
   font-style: normal;
-  opacity: 0.6;
+  color: var(--ink-3);
   font-size: 13.5px;
   min-width: 46px;
   text-align: right;
@@ -3400,7 +4062,7 @@ textarea:focus-visible {
 .garden__new {
   margin: 16px 0 0;
   font-size: 14.5px;
-  opacity: 0.78;
+  color: var(--ink-2);
   line-height: 1.5;
 }
 
@@ -3443,7 +4105,7 @@ textarea:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 .swapsim__nums s {
-  opacity: 0.5;
+  color: var(--ink-3);
   font-size: 13.5px;
 }
 .swapsim__nums em {
@@ -3452,10 +4114,10 @@ textarea:focus-visible {
   font-weight: 700;
 }
 .swapsim__nums em.is-down {
-  color: var(--jm-excellent);
+  color: var(--i-excellent);
 }
 .swapsim__nums em.is-up {
-  color: var(--jm-action);
+  color: var(--i-action);
 }
 @media (max-width: 620px) {
   .swapsim li {
@@ -3501,13 +4163,13 @@ textarea:focus-visible {
 .ladder__rank {
   font-family: var(--font-mono);
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--ink-3);
 }
 .ladder__level {
   font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.65;
+  color: var(--ink-3);
 }
 .ladder li.is-active .ladder__name {
   font-weight: 650;
@@ -3599,7 +4261,7 @@ textarea:focus-visible {
 .proc span.proc__d {
   display: block;
   font-size: 14px;
-  opacity: 0.68;
+  color: var(--ink-2);
   margin-top: 3px;
   line-height: 1.5;
 }
@@ -3637,7 +4299,7 @@ textarea:focus-visible {
 .mi__of {
   font-size: 11px;
   fill: currentColor;
-  opacity: 0.55;
+  color: var(--ink-3);
   letter-spacing: 0.1em;
 }
 .mi__band {
@@ -3659,7 +4321,7 @@ textarea:focus-visible {
 .mi__says {
   margin: 0;
   font-size: 15px;
-  opacity: 0.72;
+  color: var(--ink-2);
   line-height: 1.5;
 }
 @media (max-width: 560px) {
@@ -3691,7 +4353,7 @@ textarea:focus-visible {
   margin-top: 14px;
   font-size: 14.5px;
   font-weight: 650;
-  color: var(--tone);
+  color: var(--tone-ink);
 }
 .foot__nav {
   grid-template-columns: 1.2fr repeat(5, 1fr);
@@ -3724,7 +4386,7 @@ textarea:focus-visible {
   margin: 4px 0 0;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
-  opacity: 0.8;
+  color: var(--ink-2);
 }
 .probe__out {
   margin: 0;
@@ -3745,7 +4407,7 @@ textarea:focus-visible {
   border-radius: var(--r-small);
   background: rgba(200, 59, 70, 0.08);
   box-shadow: inset 3px 0 0 var(--jm-critical);
-  color: var(--jm-critical);
+  color: var(--i-critical);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -3773,7 +4435,7 @@ textarea:focus-visible {
   margin: 0 0 18px;
   font-size: 17px;
   line-height: 1.72;
-  opacity: 0.86;
+  color: var(--ink);
 }
 .article p:last-child {
   margin-bottom: 0;
@@ -3787,7 +4449,7 @@ textarea:focus-visible {
   margin-top: 22px;
   font-size: 13.5px;
   letter-spacing: 0.02em;
-  opacity: 0.6;
+  color: var(--ink-3);
 }
 
 .post__more {
@@ -3797,14 +4459,14 @@ textarea:focus-visible {
   opacity: 1 !important;
 }
 .post__more a {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 .post h3 a {
   color: inherit;
   text-decoration: none;
 }
 .post h3 a:hover {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 @media (max-width: 680px) {
@@ -3841,7 +4503,7 @@ textarea:focus-visible {
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.55;
+  color: var(--ink-3);
   font-weight: 650;
   border-top: 0;
   white-space: nowrap;
@@ -3858,7 +4520,7 @@ textarea:focus-visible {
 }
 .dtable code {
   font-size: 12.5px;
-  opacity: 0.62;
+  color: var(--ink-2);
 }
 .dtable .pills {
   margin: 0;
@@ -3906,7 +4568,7 @@ textarea:focus-visible {
   margin: 0 0 14px;
   font-size: 15px;
   line-height: 1.55;
-  opacity: 0.88;
+  color: var(--ink-2);
 }
 .pwa strong { opacity: 1; }
 .pwa__row {
@@ -3975,14 +4637,14 @@ textarea:focus-visible {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 650;
-  opacity: 0.6;
+  color: var(--ink-3);
 }
 .mnav__sheet nav {
   display: flex;
   flex-direction: column;
 }
 .mnav__sheet nav a {
-  color: rgba(244, 250, 249, 0.85);
+  color: var(--ink-2);
   text-decoration: none;
   font-size: 19px;
   font-weight: 600;
@@ -3990,7 +4652,7 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--jm-divider-d);
 }
 .mnav__sheet nav a.is-current {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 .mnav__sheet .btn {
   margin-top: 20px;
@@ -3999,7 +4661,7 @@ textarea:focus-visible {
 
 /* Sign in — always one step from any page, on both layouts. */
 .nav__signin {
-  color: rgba(244, 250, 249, 0.85);
+  color: var(--ink-2);
   text-decoration: none;
   font-size: 15px;
   font-weight: 600;
@@ -4011,7 +4673,7 @@ textarea:focus-visible {
 }
 .mnav__sheet .mnav__signin {
   display: block;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   text-decoration: none;
   font-size: 19px;
   font-weight: 600;
@@ -4044,7 +4706,7 @@ textarea:focus-visible {
 .plancard__means li {
   font-size: 13.5px;
   line-height: 1.5;
-  opacity: 0.85;
+  color: var(--ink-2);
   padding-left: 0;
 }
 .plancard__means li::before {
@@ -4201,7 +4863,7 @@ textarea:focus-visible {
   border-bottom: 1px solid rgba(45, 212, 191, 0.4);
 }
 .acct__editbtn:hover {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 .acct__editrow {
   display: inline-flex;
@@ -4212,7 +4874,7 @@ textarea:focus-visible {
 .acct__meta {
   margin: 0;
   font-size: 14.5px;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
@@ -4225,7 +4887,7 @@ textarea:focus-visible {
   border-radius: 999px;
   background: rgba(45, 212, 191, 0.14);
   border: 1px solid rgba(45, 212, 191, 0.35);
-  color: var(--jm-teal);
+  color: var(--i-teal);
   font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -4239,7 +4901,7 @@ textarea:focus-visible {
   margin: 14px 24px 0;
   font-size: 14px;
   line-height: 1.55;
-  color: rgba(244, 250, 249, 0.72);
+  color: var(--ink-2);
 }
 
 /* ---- stat band ---- */
@@ -4270,7 +4932,7 @@ textarea:focus-visible {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .acct__statv {
   font-size: 32px;
@@ -4282,10 +4944,10 @@ textarea:focus-visible {
 .acct__statv small {
   font-size: 14px;
   font-weight: 600;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   letter-spacing: 0.04em;
 }
-.acct__statv--ok { color: var(--jm-teal); }
+.acct__statv--ok { color: var(--i-teal); }
 .acct__statv--warn { color: #f2b04c; }
 .acct__statv--dim { color: rgba(244, 250, 249, 0.45); }
 .acct__statv--code {
@@ -4297,7 +4959,7 @@ textarea:focus-visible {
 .acct__stats2 {
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .acct__statbtn {
   justify-self: start;
@@ -4349,11 +5011,11 @@ textarea:focus-visible {
 }
 .acct__links span::after {
   content: ' →';
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 .acct__links em {
   font-style: normal;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
   font-size: 13.5px;
   text-align: right;
 }
@@ -4367,7 +5029,7 @@ textarea:focus-visible {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   border: 1px solid rgba(45, 212, 191, 0.4);
   border-radius: 999px;
   padding: 3px 10px;
@@ -4425,7 +5087,7 @@ textarea:focus-visible {
 .acct__livechecks {
   margin: 16px 0 0;
   font-size: 13.5px;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
@@ -4461,7 +5123,7 @@ textarea:focus-visible {
 .tdv__mode {
   margin: 0 0 10px;
   font-size: 12.5px;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .tdv__items {
   list-style: none;
@@ -4481,7 +5143,7 @@ textarea:focus-visible {
 }
 .tdv__items li em {
   font-style: normal;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   margin-left: 6px;
   font-size: 12px;
 }
@@ -4489,7 +5151,7 @@ textarea:focus-visible {
   margin: 8px 0 0;
   font-size: 14px;
   line-height: 1.55;
-  color: rgba(244, 250, 249, 0.85);
+  color: var(--ink-2);
 }
 .tdv__line strong {
   color: #f4faf9;
@@ -4507,7 +5169,7 @@ textarea:focus-visible {
   margin: 0 0 14px;
   font-size: 14.5px;
   line-height: 1.6;
-  color: rgba(244, 250, 249, 0.72);
+  color: var(--ink-2);
 }
 .tdv__askrow {
   display: flex;
@@ -4537,7 +5199,7 @@ textarea:focus-visible {
   font-size: 12.5px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   margin-bottom: 6px;
 }
 .tdv__field select {
@@ -4558,7 +5220,7 @@ textarea:focus-visible {
 .tdv__bignum span {
   font-size: 15px;
   font-weight: 500;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
 }
 .tdv__chips {
   display: flex;
@@ -4572,7 +5234,7 @@ textarea:focus-visible {
   border-radius: 999px;
   border: 1px solid rgba(244, 250, 249, 0.2);
   background: transparent;
-  color: rgba(244, 250, 249, 0.8);
+  color: var(--ink-2);
   font-size: 13px;
   cursor: pointer;
   text-decoration: none;
@@ -4645,7 +5307,7 @@ textarea:focus-visible {
 }
 .dash__assets span {
   font-size: 13px;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 .dash__assets strong {
   color: #2dd4bf;
@@ -4670,7 +5332,7 @@ textarea:focus-visible {
   font-size: 11.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .dash__rvalue {
   font-size: 27px;
@@ -4684,7 +5346,7 @@ textarea:focus-visible {
 .dash__rsays {
   font-size: 12px;
   line-height: 1.45;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .tdv__bar {
   height: 8px;
@@ -4718,7 +5380,7 @@ textarea:focus-visible {
 .tdv__list em {
   font-style: normal;
   font-size: 12.5px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 .tdv__steps {
   margin: 12px 0 4px;
@@ -4747,7 +5409,7 @@ textarea:focus-visible {
   font-size: 14.5px;
 }
 .acct__ghostbtn:hover {
-  border-color: rgba(244, 250, 249, 0.5);
+  border-color: var(--ink-3);
 }
 
 /* ---- danger ---- */
@@ -4781,7 +5443,7 @@ textarea:focus-visible {
   margin: 0;
   font-size: 14.5px;
   line-height: 1.55;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
   max-width: 58ch;
 }
 .acct__dangerrow {
@@ -4843,7 +5505,7 @@ textarea:focus-visible {
   color: rgba(244, 250, 249, 0.75);
 }
 .acct-auth .field__hint {
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 .acct-auth .btn--ghost {
   color: #f4faf9;
@@ -4900,16 +5562,16 @@ textarea:focus-visible {
 .acct__results em {
   font-style: normal;
   font-size: 13px;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .acct__results-empty {
   padding: 12px 14px;
   font-size: 14px;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
 }
 .acct__selecteduser {
   font-size: 14px;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   border: 1px solid rgba(45, 212, 191, 0.35);
   border-radius: 999px;
   padding: 8px 14px;
@@ -4935,11 +5597,11 @@ textarea:focus-visible {
   border: none;
   border-radius: 10px;
   background: none;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   cursor: pointer;
 }
 .pwfield__eye:hover {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 .acct__dangerrow .pwfield {
   flex: 0 1 260px;
@@ -4968,13 +5630,13 @@ textarea:focus-visible {
   justify-self: start;
 }
 .acct-auth__forgot:hover {
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 .acct-auth__notice {
   margin: 0;
   font-size: 14.5px;
   line-height: 1.55;
-  color: var(--jm-teal);
+  color: var(--i-teal);
 }
 
 /* ---- FoodLens 360°, drawn ---- */
@@ -4983,14 +5645,14 @@ textarea:focus-visible {
   font-size: 12.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   font-weight: 600;
 }
 .fl__note {
   margin: 8px 0 0;
   font-size: 12.5px;
   line-height: 1.55;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 .fl__gauge {
   display: flex;
@@ -5009,7 +5671,7 @@ textarea:focus-visible {
   display: block;
   font-size: 12.5px;
   line-height: 1.5;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   max-width: 24ch;
 }
 .fl__energy {
@@ -5029,7 +5691,7 @@ textarea:focus-visible {
 }
 .fl__unit {
   font-size: 13.5px;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
 }
 .fl__conf {
   margin-left: auto;
@@ -5077,7 +5739,7 @@ textarea:focus-visible {
   display: flex;
   justify-content: space-between;
   font-size: 11.5px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 .fl__stack {
   display: flex;
@@ -5092,7 +5754,7 @@ textarea:focus-visible {
   gap: 6px 14px;
   margin-top: 8px;
   font-size: 12.5px;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 .fl__legend i {
   display: inline-block;
@@ -5127,7 +5789,7 @@ textarea:focus-visible {
 .fl__lightname {
   display: block;
   font-size: 11.5px;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   text-transform: capitalize;
 }
 .fl__lightval {
@@ -5141,7 +5803,7 @@ textarea:focus-visible {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 .fl__wheelwrap {
   max-width: 300px;
@@ -5157,7 +5819,7 @@ textarea:focus-visible {
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid rgba(244, 250, 249, 0.14);
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   text-transform: capitalize;
 }
 .fl__alg--present {
@@ -5217,7 +5879,7 @@ textarea:focus-visible {
   gap: 6px 14px;
   margin-top: 8px;
   font-size: 11.5px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 .chart__daykey i {
   display: inline-block;
@@ -5239,7 +5901,7 @@ textarea:focus-visible {
 }
 .chart__wlabel {
   font-size: 12.5px;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 .chart__wtrack {
   height: 8px;
@@ -5297,7 +5959,7 @@ textarea:focus-visible {
 .fl__check em {
   display: block;
   font-style: normal;
-  color: rgba(244, 250, 249, 0.55);
+  color: var(--ink-3);
   font-size: 12.5px;
   line-height: 1.45;
 }
@@ -5310,7 +5972,7 @@ textarea:focus-visible {
 }
 .fl__ladder li {
   font-size: 13.5px;
-  color: rgba(244, 250, 249, 0.85);
+  color: var(--ink-2);
 }
 .fl__ladder strong {
   display: block;
@@ -5353,7 +6015,7 @@ textarea:focus-visible {
   background: rgba(244, 250, 249, 0.05);
   border: 1px solid rgba(244, 250, 249, 0.1);
   font-size: 12px;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   line-height: 1.4;
 }
 .mm__facts strong {
@@ -5387,7 +6049,7 @@ textarea:focus-visible {
   display: block;
   font-style: normal;
   font-size: 12px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
   line-height: 1.45;
 }
 
@@ -5405,7 +6067,7 @@ textarea:focus-visible {
   border-radius: 6px;
   margin-bottom: 4px;
   background: rgba(244, 250, 249, 0.05);
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 .mm__factor--plus {
   border-left: 2px solid rgba(45, 212, 191, 0.6);
@@ -5418,7 +6080,7 @@ textarea:focus-visible {
   padding-left: 20px;
   font-size: 12.5px;
   line-height: 1.6;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 
 /* ---- FoodLens capture panel ---- */
@@ -5464,7 +6126,7 @@ textarea:focus-visible {
   border-radius: 10px;
   border: 1px dashed rgba(244, 250, 249, 0.28);
   background: transparent;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   font-size: 10.5px;
   line-height: 1.25;
   padding: 6px;
@@ -5782,7 +6444,7 @@ textarea:focus-visible {
   font-size: 9.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(244, 250, 249, 0.42);
+  color: var(--ink-3);
   margin-top: 2px;
 }
 
@@ -5824,7 +6486,7 @@ textarea:focus-visible {
   animation: fl-rise 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .scan__item--miss {
-  opacity: 0.75;
+  color: var(--ink-3);
   border-style: dashed;
 }
 .scan__head strong {
@@ -5836,7 +6498,7 @@ textarea:focus-visible {
 .scan__head span {
   display: block;
   font-size: 12px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
 }
 .scan__kcal {
   display: inline-block;
@@ -5877,7 +6539,7 @@ textarea:focus-visible {
   margin: 4px 0 0;
   font-size: 12.5px;
   line-height: 1.5;
-  color: rgba(244, 250, 249, 0.62);
+  color: var(--ink-2);
 }
 
 /* ---- the quiet autosave word ---- */
@@ -5919,7 +6581,7 @@ textarea:focus-visible {
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: rgba(244, 250, 249, 0.6);
+  color: var(--ink-2);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -5954,7 +6616,7 @@ textarea:focus-visible {
   font-style: normal;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(244, 250, 249, 0.7);
+  color: var(--ink-2);
 }
 .warn--note {
   background: rgba(96, 165, 250, 0.1);
@@ -5983,7 +6645,7 @@ textarea:focus-visible {
 .scan__size span {
   display: block;
   font-size: 11.5px;
-  color: rgba(244, 250, 249, 0.5);
+  color: var(--ink-3);
   margin-bottom: 4px;
 }
 .scan__size input:not([type='checkbox']):not([type='radio']) {
@@ -6061,7 +6723,7 @@ textarea:focus-visible {
 .ledger__carrier em { display: block; font-size: 12px; color: var(--jm-dim); font-style: normal; margin-bottom: 8px; }
 .ledger__carrier ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .ledger__carrier li { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
-.ledger__carrier li b { color: var(--jm-teal); font-variant-numeric: tabular-nums; }
+.ledger__carrier li b { color: var(--i-teal); font-variant-numeric: tabular-nums; }
 
 .ledger__recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 
@@ -6144,8 +6806,8 @@ textarea:focus-visible {
 .risk__steps { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 7px; font-size: 14px; line-height: 1.55; }
 .risk__limits { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; font-size: 13px; color: var(--jm-dim); line-height: 1.55; }
 .risk__limits li { padding-left: 16px; position: relative; }
-.risk__limits li::before { content: '·'; position: absolute; left: 4px; color: var(--jm-teal); font-weight: 700; }
-.risk__limits--urgent li::before { color: var(--jm-critical); }
+.risk__limits li::before { content: '·'; position: absolute; left: 4px; color: var(--i-teal); font-weight: 700; }
+.risk__limits--urgent li::before { color: var(--i-critical); }
 
 /* ── The worked example, on the public FoodLens page ────────────────── */
 
@@ -6157,7 +6819,7 @@ textarea:focus-visible {
 .wex__items { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
 .wex__items li { display: grid; gap: 2px; }
 .wex__items strong { font-size: 14.5px; }
-.wex__items span { font-size: 12px; color: var(--jm-teal); font-variant-numeric: tabular-nums; }
+.wex__items span { font-size: 12px; color: var(--i-teal); font-variant-numeric: tabular-nums; }
 .wex__items em { font-style: normal; font-size: 12.5px; color: var(--jm-dim); line-height: 1.5; }
 
 /* The table scrolls inside itself; the page never moves sideways. */
@@ -6240,7 +6902,7 @@ textarea:focus-visible {
 .ge__sub em { font-style: normal; color: var(--jm-dim); }
 
 .ge__report { border: 1px solid var(--jm-hairline); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
-.ge__refresh { font: inherit; font-size: 13px; background: none; border: 0; color: var(--jm-teal); cursor: pointer; padding: 0; text-decoration: underline; }
+.ge__refresh { font: inherit; font-size: 13px; background: none; border: 0; color: var(--i-teal); cursor: pointer; padding: 0; text-decoration: underline; }
 
 .ge__totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
 .ge__total { text-align: center; padding: 10px 6px; border-radius: 9px; background: color-mix(in srgb, var(--jm-teal) 8%, transparent); }
@@ -6398,10 +7060,10 @@ textarea:focus-visible {
 .cond__privacy summary { cursor: pointer; font-weight: 600; line-height: 1.45; }
 .cond__privacy ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; color: var(--jm-dim); line-height: 1.55; }
 .cond__privacy li { padding-left: 15px; position: relative; }
-.cond__privacy li::before { content: '·'; position: absolute; left: 4px; color: var(--jm-teal); font-weight: 700; }
+.cond__privacy li::before { content: '·'; position: absolute; left: 4px; color: var(--i-teal); font-weight: 700; }
 
 .cond__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.cond__saved { margin: 0; font-size: 13px; color: var(--jm-teal); }
+.cond__saved { margin: 0; font-size: 13px; color: var(--i-teal); }
 
 .cond__suppressed {
   list-style: none;
@@ -6461,9 +7123,9 @@ textarea:focus-visible {
 .cond__block li::before { content: '·'; position: absolute; left: 3px; font-weight: 700; }
 
 .cond__block { margin-top: 10px; }
-.cond__block--help li::before { color: var(--jm-teal); }
-.cond__block--careful li::before { color: var(--jm-action); }
-.cond__block--clinician li::before { color: var(--jm-critical); }
+.cond__block--help li::before { color: var(--i-teal); }
+.cond__block--careful li::before { color: var(--i-action); }
+.cond__block--clinician li::before { color: var(--i-critical); }
 
 /* ── The BMI path ───────────────────────────────────────────────────── */
 
@@ -6514,7 +7176,7 @@ textarea:focus-visible {
   text-align: center;
 }
 
-.bmi__step strong { display: block; font-size: 21px; line-height: 1.1; color: var(--jm-teal); }
+.bmi__step strong { display: block; font-size: 21px; line-height: 1.1; color: var(--i-teal); }
 .bmi__step span { font-size: 11px; color: var(--jm-dim); }
 
 @media (max-width: 420px) {
@@ -6527,17 +7189,17 @@ textarea:focus-visible {
 .fl__light--unmeasured {
   background: transparent;
   border: 1px dashed var(--jm-hairline);
-  opacity: 0.72;
+  color: var(--ink-2);
 }
 
 .fl__light--unmeasured .fl__lightval { color: var(--jm-faint); font-weight: 400; }
 .fl__light--unmeasured .fl__lightband { color: var(--jm-dim); letter-spacing: 0.02em; }
-.fl__light--unmeasured .fl__lightbasis { color: var(--jm-teal); }
+.fl__light--unmeasured .fl__lightbasis { color: var(--i-teal); }
 
 /* A published composition figure. Real, useful, and not a reading of this
    particular plate — the tile is banded like any other but the word under
    it says where it came from. */
-.fl__light--reference .fl__lightbasis { color: var(--jm-sky); }
+.fl__light--reference .fl__lightbasis { color: var(--i-sky); }
 
 /* ══════════════════════════════════════════════════════════════════════
    Strength and balance.
@@ -6605,7 +7267,7 @@ textarea:focus-visible {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--jm-action);
+  color: var(--i-action);
   font-weight: 700;
 }
 .str__see ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 7px; }
@@ -6641,7 +7303,7 @@ textarea:focus-visible {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 700;
-  color: var(--jm-critical);
+  color: var(--i-critical);
 }
 .str__safety ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 8px; }
 .str__safety li { font-size: 15px; line-height: 1.55; color: var(--jm-ink); }
@@ -6717,7 +7379,7 @@ textarea:focus-visible {
   font-size: 32px;
   line-height: 1.05;
   letter-spacing: -0.02em;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   font-variant-numeric: tabular-nums;
 }
 .asr__counts span {
@@ -6782,7 +7444,7 @@ textarea:focus-visible {
 }
 /* Enforced is the ordinary case, so it is the quiet one. A gap is what a
    reader came for, so it is the one that carries colour. */
-.asr__ctl--enforced .asr__badge { color: var(--jm-information); }
+.asr__ctl--enforced .asr__badge { color: var(--i-information); }
 .asr__ctl--gap .asr__badge,
 .asr__badge--warn {
   background: color-mix(in srgb, var(--jm-action) 16%, transparent);
@@ -6836,7 +7498,7 @@ textarea:focus-visible {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.06em;
-  color: var(--jm-teal);
+  color: var(--i-teal);
   font-variant-numeric: tabular-nums;
 }
 .asr__haz > header h3 { margin: 0; font-size: 17px; line-height: 1.4; letter-spacing: -0.01em; }
@@ -6887,7 +7549,7 @@ textarea:focus-visible {
    read. */
 .asr__acc--acceptable { color: var(--jm-text-2); }
 .asr__acc--undesirable { color: #a34a11; }
-.asr__acc--unacceptable { color: var(--jm-critical); }
+.asr__acc--unacceptable { color: var(--i-critical); }
 
 .asr__controls { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
 .asr__controls li { display: grid; grid-template-columns: 78px 1fr; gap: 12px; align-items: start; }
@@ -6911,7 +7573,7 @@ textarea:focus-visible {
   background: var(--jm-surface-2);
   color: var(--jm-text-2);
 }
-.asr__t--yes { color: var(--jm-information); background: color-mix(in srgb, var(--jm-information) 12%, transparent); }
+.asr__t--yes { color: var(--i-information); background: color-mix(in srgb, var(--jm-information) 12%, transparent); }
 
 .asr__outstanding {
   margin: 14px 0 0;
@@ -7012,7 +7674,7 @@ textarea:focus-visible {
   max-width: 58ch;
   font-size: 13.5px;
   line-height: 1.6;
-  opacity: 0.72;
+  color: var(--ink-2);
 }
 
 /* ── The page behind a link somebody hands over ──────────────────────
@@ -7208,8 +7870,8 @@ textarea:focus-visible {
   background: var(--jm-surface-2); color: var(--jm-dim);
 }
 .edq__run--queued .edq__outcome { color: var(--jm-move); background: color-mix(in srgb, var(--jm-move) 16%, transparent); }
-.edq__run--rejected .edq__outcome { color: var(--jm-action); background: color-mix(in srgb, var(--jm-action) 16%, transparent); }
-.edq__run--failed .edq__outcome { color: var(--jm-critical); background: color-mix(in srgb, var(--jm-critical) 16%, transparent); }
+.edq__run--rejected .edq__outcome { color: var(--i-action); background: color-mix(in srgb, var(--jm-action) 16%, transparent); }
+.edq__run--failed .edq__outcome { color: var(--i-critical); background: color-mix(in srgb, var(--jm-critical) 16%, transparent); }
 .edq__run strong { display: block; font-size: 14px; color: var(--jm-ink); }
 .edq__run em { display: block; margin-top: 3px; font-size: 12.5px; font-style: normal; line-height: 1.55; color: var(--jm-dim); }
 
@@ -7236,7 +7898,7 @@ textarea:focus-visible {
 .edq__ok { border-color: color-mix(in srgb, var(--jm-move) 40%, transparent); }
 .edq__ok strong { color: var(--jm-move); }
 .edq__bad { border-color: color-mix(in srgb, var(--jm-critical) 45%, transparent); }
-.edq__bad strong { color: var(--jm-critical); }
+.edq__bad strong { color: var(--i-critical); }
 
 /* Where an allowance came from. A balance that moves with no visible
    history is exactly the surprise the card promises it is not. */
@@ -7444,7 +8106,7 @@ textarea:focus-visible {
   .splash__line {
     margin: clamp(5px, 1.6vmin, 10px) 0 0;
     font-size: clamp(12px, 3.2vmin, 17px);
-    color: rgba(244, 250, 249, 0.58);
+    color: var(--ink-3);
     animation: splash-rise 300ms cubic-bezier(0.2, 0.7, 0.3, 1) 80ms both;
   }
 }
@@ -7493,7 +8155,7 @@ textarea:focus-visible {
 }
 .mcb__inner > div:first-child { flex: 1 1 420px; }
 .mcb strong { display: block; font-size: 15px; color: #f4faf9; }
-.mcb p { margin: 5px 0 0; font-size: 13px; line-height: 1.55; color: rgba(244, 250, 249, 0.72); }
+.mcb p { margin: 5px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
 .mcb__detail { font-size: 12px !important; color: rgba(244, 250, 249, 0.5) !important; }
 .mcb__actions { display: flex; gap: 10px; flex: 0 0 auto; }
 

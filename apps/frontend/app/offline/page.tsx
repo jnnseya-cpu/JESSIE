@@ -36,7 +36,7 @@ export default function Offline() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Available now</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     cached
                   </span>
                 </div>

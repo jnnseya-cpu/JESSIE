@@ -22,7 +22,12 @@ export const metadata: Metadata = {
     'absent by design, so the fittest person cannot win every event on their own.',
 };
 
+/* The donut slices — a graphic — keep the vivid ramp. */
 const TERM_TONE = ['var(--jm-teal)', 'var(--jm-lime)', 'var(--jm-blue)', 'var(--jm-purple)'];
+
+/* The same four terms as row labels are text, and lime as text on white is
+   1.48:1. Same hues, readable lightness. */
+const TERM_INK = ['var(--i-teal)', 'var(--i-lime)', 'var(--i-blue)', 'var(--i-purple)'];
 
 /* Two teams, scored by the engine. */
 const ATHLETIC_TEAM = teamScore({
@@ -97,7 +102,7 @@ export default function Challenges() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-lime)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-lime)' }}>
                 Team Score
               </p>
               <h2>Four terms, and none of them is output.</h2>
@@ -132,13 +137,13 @@ export default function Challenges() {
                     <tbody>
                       {TEAM_SCORE_TERMS.map((t, i) => (
                         <tr key={t.key}>
-                          <td style={{ fontWeight: 650, color: TERM_TONE[i], whiteSpace: 'nowrap' }}>
+                          <td style={{ fontWeight: 650, color: TERM_INK[i], whiteSpace: 'nowrap' }}>
                             {t.label}
                             <br />
-                            <small style={{ opacity: 0.6 }}>{Math.round(t.weight * 100)}%</small>
+                            <small style={{ color: 'var(--ink-3)' }}>{Math.round(t.weight * 100)}%</small>
                           </td>
                           <td>{t.what}</td>
-                          <td style={{ opacity: 0.78 }}>{t.why}</td>
+                          <td style={{ color: 'var(--ink-2)' }}>{t.why}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -165,7 +170,7 @@ export default function Challenges() {
             <article className="card">
               <div className="card__head">
                 <h3 className="card__t">Rejected field names</h3>
-                <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                   <Cross /> throws
                 </span>
               </div>
@@ -260,11 +265,11 @@ export default function Challenges() {
             <article className="card card--light" style={{ marginTop: 26 }}>
               <div className="card__head">
                 <h3 className="card__t">What your absence costs your team</h3>
-                <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                   measured
                 </span>
               </div>
-              <div className="card__big" style={{ color: 'var(--jm-excellent)' }}>
+              <div className="card__big" style={{ color: 'var(--i-excellent)' }}>
                 {WITHDRAWAL_COST_TO_TEAM}
               </div>
               <p className="card__note">

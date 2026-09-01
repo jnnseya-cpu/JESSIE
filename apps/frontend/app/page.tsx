@@ -374,7 +374,7 @@ export default function Home() {
                   <h3 className="card__t">Completion rate</h3>
                   <span className="card__tag">14 days</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--jm-teal)' }}>
+                <div className="card__big" style={{ color: 'var(--i-teal)' }}>
                   {COMPLETION[COMPLETION.length - 1]}%
                 </div>
                 <Spark series={COMPLETION} label="Completion rate over fourteen days" />
@@ -480,7 +480,7 @@ export default function Home() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What a generic reminder knows about you</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-action)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-action)' }}>
                     nothing
                   </span>
                 </div>
@@ -494,7 +494,7 @@ export default function Home() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What {BRAND.app} settles first</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     nine questions
                   </span>
                 </div>
@@ -644,7 +644,7 @@ export default function Home() {
         <section className="section section--tint" id="foodlens">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-orange)' }}>
                 FoodLens 360°
               </p>
               <h2>Photograph the meal. Get an honest answer.</h2>
@@ -659,7 +659,7 @@ export default function Home() {
               <article className="card card--5 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Energy estimate</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-orange)' }}>
                     AI visual estimate
                   </span>
                 </div>
@@ -719,7 +719,7 @@ export default function Home() {
         <section className="section" id="bodycommand">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-magenta)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-magenta)' }}>
                 BodyCommand AI
               </p>
               <h2>Weight is one of nine pathways — and it is yours to choose.</h2>
@@ -735,7 +735,7 @@ export default function Home() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Body trajectory</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-purple)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-purple)' }}>
                     8 weeks · widening cone
                   </span>
                 </div>
@@ -807,7 +807,7 @@ export default function Home() {
             <p className="lede" style={{ marginTop: 30 }}>
               An employer never sees health conditions, movement history, heart rate, sleep,
               disability, declined activities, calendar content or an individual risk score.{' '}
-              <Link href="/industries" style={{ color: 'var(--jm-lime)', fontWeight: 600 }}>
+              <Link href="/industries" style={{ color: 'var(--i-lime)', fontWeight: 600 }}>
                 See the five duties of care →
               </Link>
             </p>

@@ -41,7 +41,7 @@ export default function ConsolePage() {
                 The same checks run headless in CI and from{' '}
                 <code>scripts/smoke.sh</code>. This page exists so somebody without a terminal
                 can verify a deployment too. See{' '}
-                <Link href="/developers" style={{ color: 'var(--jm-purple)', fontWeight: 600 }}>
+                <Link href="/developers" style={{ color: 'var(--i-purple)', fontWeight: 600 }}>
                   the developer reference
                 </Link>{' '}
                 for the full endpoint list.

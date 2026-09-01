@@ -155,7 +155,7 @@ export default function Growth() {
                   <h3 className="card__t">Retention after activation</h3>
                   <span className="card__tag">12 weeks</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--c1)' }}>
+                <div className="card__big" style={{ color: 'var(--ic1)' }}>
                   {RETENTION[RETENTION.length - 1]}%
                 </div>
                 <Spark series={RETENTION} label="Retention curve over twelve weeks" />

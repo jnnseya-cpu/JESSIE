@@ -15,7 +15,7 @@ type Row = { name: string; what: string; when: string; href?: string };
 const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] }> = [
   {
     group: 'Legal',
-    tone: 'var(--jm-blue)',
+    tone: 'var(--i-blue)',
     rows: [
       {
         name: 'Terms of Service',
@@ -48,7 +48,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'Safety & clinical',
-    tone: 'var(--jm-critical)',
+    tone: 'var(--i-critical)',
     rows: [
       {
         name: 'Clinical Safety Statement',
@@ -74,7 +74,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'People & safeguarding',
-    tone: 'var(--jm-orange)',
+    tone: 'var(--i-orange)',
     rows: [
       {
         name: 'Safeguarding Policy',
@@ -100,7 +100,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'AI & data',
-    tone: 'var(--jm-purple)',
+    tone: 'var(--i-purple)',
     rows: [
       {
         name: 'Responsible AI Statement',
@@ -126,7 +126,7 @@ const GROUPS: ReadonlyArray<{ group: string; tone: string; rows: readonly Row[] 
   },
   {
     group: 'Commercial',
-    tone: 'var(--jm-teal)',
+    tone: 'var(--i-teal)',
     rows: [
       {
         name: 'Ethical Gamification Charter',
@@ -226,7 +226,7 @@ export default function Policies() {
               <Tick />
               <span>
                 Requests for any document not linked above:{' '}
-                <a href="mailto:hello@jessmove.com" style={{ color: 'var(--jm-lime)' }}>
+                <a href="mailto:hello@jessmove.com" style={{ color: 'var(--i-lime)' }}>
                   hello@jessmove.com
                 </a>
               </span>

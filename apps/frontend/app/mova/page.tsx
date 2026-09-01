@@ -89,7 +89,7 @@ export default function Mova() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-purple)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-purple)' }}>
                 Constraint one — explainability
               </p>
               <h2>“Why this?” is not a feature. It is the precondition.</h2>
@@ -104,7 +104,7 @@ export default function Mova() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">The card you actually see</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-purple)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-purple)' }}>
                     confidence {Math.round(TRACE.confidence * 100)}%
                   </span>
                 </div>
@@ -178,7 +178,7 @@ export default function Mova() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">What each setting keeps</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     all four fully supported
                   </span>
                 </div>
@@ -192,7 +192,7 @@ export default function Mova() {
               <article className="card card--5">
                 <div className="card__head">
                   <h3 className="card__t">Off — data only</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     still yours
                   </span>
                 </div>
@@ -270,11 +270,11 @@ export default function Mova() {
                         {MOVA_PRESENCE.map((p) => (
                           <td key={p}>
                             {mayDeliver(k, p) ? (
-                              <span style={{ color: 'var(--jm-excellent)' }}>
+                              <span style={{ color: 'var(--i-excellent)' }}>
                                 <Tick />
                               </span>
                             ) : (
-                              <span style={{ opacity: 0.35 }}>
+                              <span style={{ color: 'var(--ink-3)' }}>
                                 <Cross />
                               </span>
                             )}
@@ -322,12 +322,12 @@ export default function Mova() {
                       <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {AGE_MODE_DEFINITIONS[m].label}
                         <br />
-                        <small style={{ opacity: 0.55 }}>
+                        <small style={{ color: 'var(--ink-3)' }}>
                           {AGE_MODE_DEFINITIONS[m].minAge}–{AGE_MODE_DEFINITIONS[m].maxAge}
                         </small>
                       </td>
                       <td>“{REGISTERS[m].opens}”</td>
-                      <td style={{ opacity: 0.75 }}>{REGISTERS[m].never}</td>
+                      <td style={{ color: 'var(--ink-2)' }}>{REGISTERS[m].never}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -359,7 +359,7 @@ export default function Mova() {
                 <tbody>
                   {MOVA_REFUSES.map((r) => (
                     <tr key={r.ask}>
-                      <td style={{ color: 'var(--jm-coral)', fontWeight: 600 }}>{r.ask}</td>
+                      <td style={{ color: 'var(--i-coral)', fontWeight: 600 }}>{r.ask}</td>
                       <td>{r.instead}</td>
                     </tr>
                   ))}
@@ -371,7 +371,7 @@ export default function Mova() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">Never sent to a model provider</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                     redacted at the gateway
                   </span>
                 </div>

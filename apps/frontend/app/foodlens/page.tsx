@@ -278,7 +278,7 @@ export default function FoodLens() {
         <section className="section section--tint">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-orange)' }}>
                 One meal, actually read
               </p>
               <h2>What comes back, on a plate where only one thing had a label.</h2>
@@ -376,7 +376,7 @@ export default function FoodLens() {
         <section className="section">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-orange)' }}>
                 Stage one — capture
               </p>
               <h2>The camera earns the estimate before the shutter fires.</h2>
@@ -391,7 +391,7 @@ export default function FoodLens() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">{MEAL.name}</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-orange)' }}>
                     4 items recognised
                   </span>
                 </div>
@@ -477,7 +477,7 @@ export default function FoodLens() {
         <section className="section section--tint">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow" style={{ color: 'var(--jm-orange)' }}>
+              <p className="eyebrow" style={{ color: 'var(--i-orange)' }}>
                 Stage three — the result
               </p>
               <h2>Meal Intelligence is about the analysis, not the food.</h2>
@@ -513,9 +513,15 @@ export default function FoodLens() {
                   <div>
                     <span
                       className="mi__band"
+                      /*
+                       * Navy on the fill, not white. Measured against the
+                       * three §5 band colours white gives 2.24:1 on amber,
+                       * 3.06 on green and 3.16 on orange; navy gives 6.5,
+                       * 4.79 and 4.64. The fill is unchanged.
+                       */
                       style={{
                         background: BAND_TONE[band.band],
-                        color: '#fff',
+                        color: 'var(--jm-navy)',
                       }}
                     >
                       {band.band}
@@ -534,7 +540,7 @@ export default function FoodLens() {
               <article className="card card--5 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Energy</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-orange)' }}>
                     {confidenceFor('ai_visual_estimate')} confidence
                   </span>
                 </div>
@@ -654,7 +660,7 @@ export default function FoodLens() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What a food may be called</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     exhaustive list
                   </span>
                 </div>
@@ -670,7 +676,7 @@ export default function FoodLens() {
                   <h3 className="card__t" style={{ fontSize: 17 }}>
                     And what it may never be called
                   </h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                     <Cross /> banned
                   </span>
                 </div>
@@ -729,7 +735,7 @@ export default function FoodLens() {
                     <span>
                       {r.name}
                       <br />
-                      <small style={{ opacity: 0.62 }}>
+                      <small style={{ color: 'var(--ink-3)' }}>
                         {r.status === 'declared_present'
                           ? 'Declared present'
                           : r.status === 'declared_absent'
@@ -762,17 +768,17 @@ export default function FoodLens() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Level 2 simulated</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-orange)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-orange)' }}>
                     grill instead of deep-fry
                   </span>
                 </div>
                 <SwapSim
                   rows={[
-                    { label: 'Energy', before: energy.likely, after: swap.after.energyKcal, unit: ' kcal', tone: 'var(--jm-excellent)' },
-                    { label: 'Saturates', before: MEAL.saturatesG, after: swap.after.saturatesG, unit: 'g', tone: 'var(--jm-excellent)' },
-                    { label: 'Salt', before: MEAL.saltG, after: swap.after.saltG, unit: 'g', tone: 'var(--jm-monitor)' },
-                    { label: 'Fibre', before: MEAL.fibreG, after: swap.after.fibreG, unit: 'g', tone: 'var(--jm-excellent)' },
-                    { label: 'Protein', before: MEAL.grams.proteinG, after: swap.after.proteinG, unit: 'g', tone: 'var(--jm-magenta)' },
+                    { label: 'Energy', before: energy.likely, after: swap.after.energyKcal, unit: ' kcal', tone: 'var(--i-excellent)' },
+                    { label: 'Saturates', before: MEAL.saturatesG, after: swap.after.saturatesG, unit: 'g', tone: 'var(--i-excellent)' },
+                    { label: 'Salt', before: MEAL.saltG, after: swap.after.saltG, unit: 'g', tone: 'var(--i-monitor)' },
+                    { label: 'Fibre', before: MEAL.fibreG, after: swap.after.fibreG, unit: 'g', tone: 'var(--i-excellent)' },
+                    { label: 'Protein', before: MEAL.grams.proteinG, after: swap.after.proteinG, unit: 'g', tone: 'var(--i-magenta)' },
                   ]}
                 />
                 <p className="card__note">
@@ -828,7 +834,7 @@ export default function FoodLens() {
                   <h3 className="card__t">This meal against your median</h3>
                   <span className="card__tag">14 days</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--jm-orange)' }}>
+                <div className="card__big" style={{ color: 'var(--i-orange)' }}>
                   {pattern.deltaPct > 0 ? '+' : ''}
                   {pattern.deltaPct}%
                 </div>
@@ -865,7 +871,7 @@ export default function FoodLens() {
               <article className="card card--12 card--light">
                 <div className="card__head">
                   <h3 className="card__t">Plant diversity</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     {PLANT_GROUPS.length} groups
                   </span>
                 </div>
@@ -909,7 +915,7 @@ export default function FoodLens() {
                   <Tick />
                   <span>&ldquo;{MOVEMENT_PAIRING_COPY.correct}&rdquo;</span>
                 </p>
-                <p className="card__note" style={{ display: 'flex', gap: 10, opacity: 0.75 }}>
+                <p className="card__note" style={{ display: 'flex', gap: 10, color: 'var(--ink-2)' }}>
                   <Cross />
                   <span>
                     <s>&ldquo;{MOVEMENT_PAIRING_COPY.forbidden}&rdquo;</s>

@@ -96,7 +96,7 @@ export default function HowItWorks() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">The formula</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     fires at ≥ {OPPORTUNITY_THRESHOLD}
                   </span>
                 </div>
@@ -158,7 +158,7 @@ export default function HowItWorks() {
                   <h3 className="card__t">Readiness</h3>
                   <span className="card__tag">14 days</span>
                 </div>
-                <div className="card__big" style={{ color: 'var(--c1)' }}>
+                <div className="card__big" style={{ color: 'var(--ic1)' }}>
                   {READINESS[READINESS.length - 1]}
                 </div>
                 <Spark series={READINESS} label="Readiness trend" tone="var(--c1)" />
@@ -231,7 +231,7 @@ export default function HowItWorks() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What earns points</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-excellent)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-excellent)' }}>
                     <Tick /> permitted
                   </span>
                 </div>
@@ -244,7 +244,7 @@ export default function HowItWorks() {
               <article className="card card--6 card--light">
                 <div className="card__head">
                   <h3 className="card__t">What never earns points</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                     <Cross /> banned
                   </span>
                 </div>
@@ -339,7 +339,7 @@ export default function HowItWorks() {
 
             <p className="lede" style={{ marginTop: 30 }}>
               The full pathway model, the safety gate and the scorecard are documented on{' '}
-              <Link href="/body-balance" style={{ color: 'var(--jm-teal)', fontWeight: 600 }}>
+              <Link href="/body-balance" style={{ color: 'var(--i-teal)', fontWeight: 600 }}>
                 Body Balance
               </Link>
               .

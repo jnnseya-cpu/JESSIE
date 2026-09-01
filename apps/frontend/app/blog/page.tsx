@@ -211,7 +211,7 @@ export default async function Blog() {
               <article className="card card--7 card--light">
                 <div className="card__head">
                   <h3 className="card__t">The rule the agent cannot negotiate</h3>
-                  <span className="card__tag" style={{ color: 'var(--jm-critical)' }}>
+                  <span className="card__tag" style={{ color: 'var(--i-critical)' }}>
                     blocker
                   </span>
                 </div>
@@ -276,7 +276,7 @@ export default async function Blog() {
                       <span
                         className="card__tag"
                         style={{
-                          color: done ? 'var(--jm-excellent)' : 'var(--jm-monitor)',
+                          color: done ? 'var(--i-excellent)' : 'var(--i-monitor)',
                         }}
                       >
                         {published}/{c.supporting.length}

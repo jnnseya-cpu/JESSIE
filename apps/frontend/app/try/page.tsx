@@ -32,7 +32,7 @@ export default function Try() {
             <article className="card card--12 card--light" style={{ marginBottom: 26 }}>
               <div className="card__head">
                 <h3 className="card__t">This is not a login</h3>
-                <span className="card__tag" style={{ color: 'var(--jm-monitor)' }}>
+                <span className="card__tag" style={{ color: 'var(--i-monitor)' }}>
                   no authentication yet
                 </span>
               </div>

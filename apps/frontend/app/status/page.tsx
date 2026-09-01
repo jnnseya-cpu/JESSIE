@@ -108,7 +108,7 @@ const INCIDENTS = [
     date: '24 July 2026',
     title: 'Wearable ingestion delays for one provider',
     state: 'Monitoring',
-    tone: 'var(--jm-monitor)',
+    tone: 'var(--i-monitor)',
     body:
       'Sync from one wearable partner is running 30–90 minutes behind. Readiness scores using ' +
       'that source are correspondingly stale. Prompts continue from calendar and device signal, ' +
@@ -119,7 +119,7 @@ const INCIDENTS = [
     date: '15 July 2026',
     title: 'AI gateway latency during a provider incident',
     state: 'Resolved in 41 minutes',
-    tone: 'var(--jm-excellent)',
+    tone: 'var(--i-excellent)',
     body:
       'A primary model provider returned elevated errors. The gateway walked to the next link in ' +
       'the fallback chain as designed. Explanations were briefly terse where the mid-tier model ' +
@@ -130,7 +130,7 @@ const INCIDENTS = [
     date: '8 July 2026',
     title: 'Delayed SMS delivery in the lightweight tier',
     state: 'Resolved in 2 hours 12 minutes',
-    tone: 'var(--jm-excellent)',
+    tone: 'var(--i-excellent)',
     body:
       'A carrier route degraded, delaying T3 messages by up to 25 minutes. Missions whose window ' +
       'had passed were suppressed rather than sent late — a mission that arrives after the gap ' +
@@ -277,7 +277,7 @@ export default function Status() {
 
             <p className="lede" style={{ marginTop: 26 }}>
               Report a problem we have not listed:{' '}
-              <Link href="/contact" style={{ color: 'var(--jm-lime)', fontWeight: 600 }}>
+              <Link href="/contact" style={{ color: 'var(--i-lime)', fontWeight: 600 }}>
                 contact us
               </Link>
               .
