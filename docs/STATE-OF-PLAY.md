@@ -34,6 +34,8 @@ is the point of the file.
 |---|---|
 | The brand typefaces are actually delivered | Six self-hosted woff2 in `apps/frontend/public/fonts`; §8 named Inter and Manrope and nothing ever loaded them |
 | Every text node on every public route clears WCAG AA | `pnpm check:contrast` — 7,274 nodes across 28 routes, 0 below threshold, down from 1,097. Translucent layers composited, gradients measured at every stop |
+| The landing page speaks to one audience, and the organisation page to the other | `/` is consumer; `/industries` carries the command centre, the k-anonymity architecture and seat pricing |
+| No efficacy target is drawn as though it were a result | `CompareBars` renders a `pending` row as a dashed outline labelled `target`; the 62% figure has never been measured |
 | No page overflows, clips its own text or ships an undersized target | `pnpm check:layout` — 28 routes at 1440px and 390px, 0 problems, down from 133 |
 | Walking counts as movement | Migration 0018, tests against real Postgres |
 | Macros in the ledger, protein in the advice | Migration 0020, coverage honesty tested |
@@ -203,6 +205,22 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**Pricing is now stated, not hedged.** `/` and `/get-started` said
+"indicative pricing, confirmed at launch" under a heading that read
+"Published, not quoted". The hedge is gone and the page now stands
+behind the figures in `packages/shared/src/core-concepts.ts` — the same
+ones the Stripe checkout charges. Two things follow that a person, not a
+test, has to settle: whether the consumer prices are VAT-inclusive as UK
+price-display rules require, and whether the business is willing to be
+held to £5.99 and £12.99. Reverting is one sentence if not.
+
+**There is still no social proof anywhere on the site.** No testimonial,
+no named customer, no logo, no photograph of a person, and no measured
+outcome. This is recorded as a gap rather than filled: inventing any of
+them on a health product would be worse than the gap. The 62% conversion
+figure is the platform's target and is now drawn as one.
+
 
 **One unreproduced backend test failure.** During the design pass a
 recursive `pnpm test` reported `807 pass / 1 fail` with an

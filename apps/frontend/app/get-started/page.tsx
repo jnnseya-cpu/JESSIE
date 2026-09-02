@@ -183,10 +183,11 @@ export default function GetStarted() {
           <div className="wrap">
             <div className="section__head">
               <p className="eyebrow">Plans</p>
-              <h2>Indicative pricing, published rather than quoted.</h2>
+              <h2>Published, not quoted.</h2>
               <p className="lede">
-                Final pricing is confirmed at launch. Organisation pricing carries a minimum
-                annual contract and a setup and integration fee.
+                Every plan and every compute limit is on this page. Organisation pricing carries a
+                minimum annual contract and a setup and integration fee; everything else is what
+                you see.
               </p>
             </div>
 

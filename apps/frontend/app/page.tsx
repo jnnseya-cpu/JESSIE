@@ -8,12 +8,12 @@ import {
   EVALUATED_SAFETY_RULES,
   FLAGSHIP_PROMISE,
   K_ANONYMITY_THRESHOLD,
+  MIN_TRANSACTION_GBP,
   MOVEMENT_VARIANTS,
   NUDGE_CONVERSION_TARGET,
   PERSONALITY,
   PLANS,
   SNAP_DURATION_SECONDS,
-  TAGLINE,
   VARIANT_LABELS,
 } from '@jessmove/shared';
 import {
@@ -64,18 +64,26 @@ const DAY: readonly DaySlot[] = [
   'busy', 'busy', 'gap', 'snap', 'busy', 'held', 'gap', 'busy',
 ];
 
+/*
+ * One of these was measured and one has not happened yet, and the chart
+ * now says which is which rather than leaving it to a caption. See the
+ * note on CompareBars in charts.tsx.
+ */
 const CONVERSION = [
   {
-    label: 'Jess Move target',
+    label: 'Jess Move',
     value: Math.round(NUDGE_CONVERSION_TARGET * 100),
     tone: 'var(--jm-teal)',
-    note: 'Prompt to completed micro-movement. The number the whole engine is optimised against.',
+    pending: true,
+    note:
+      'What the engine is optimised against, and the number this platform will publish once it ' +
+      'has one. It has not been measured on real members yet, so it is drawn as an outline.',
   },
   {
     label: 'Generic reminder apps',
     value: 11,
     tone: 'var(--jm-coral)',
-    note: 'Best case for a notification that knows nothing about your day. Worst case is 4%.',
+    note: 'Measured. Best case for a notification that knows nothing about your day; worst is 4%.',
   },
 ];
 
@@ -217,15 +225,43 @@ export default function Home() {
           <div className="hero__grid" aria-hidden="true" />
           <div className="wrap hero__inner">
             <div>
-              <p className="eyebrow eyebrow--onDark">{BRAND.descriptor}</p>
-              <h1>
-                Small Moves.<br />
-                <em>Powerful</em> Change.
+              {/*
+                The headline is the product's own output, not a slogan about it.
+                "Small Moves. Powerful Change." could sit on a yoghurt pot, a
+                physio clinic or a pension app — it said nothing only this
+                product can say, and it was the first thing a stranger read.
+                The line below is the single most specific thing on the site
+                and it was set at 15px inside a mock card as decoration.
+
+                It is labelled as an illustration, deliberately and visibly. It
+                is not a customer quote and must never be mistaken for one:
+                this platform has no testimonials yet, and inventing the
+                appearance of one would be the worst thing on the page rather
+                than the best.
+              */}
+              <p className="eyebrow eyebrow--onDark">What it actually says, and when</p>
+              <h1 className="hero__said">
+                <span aria-hidden="true" className="hero__said-mark">
+                  &ldquo;
+                </span>
+                You have been sitting for 94 minutes. Your next call is at 15:00.
+                {/* The second sentence is the offer, so it starts a line rather
+                    than trailing the first wherever the measure happens to
+                    break — "This / one takes three." was the natural break and
+                    it split the clause in the wrong place. */}
+                <br />
+                <em>This one takes three.</em>
               </h1>
+              <p className="hero__attrib">
+                <span>MOVA · 14:35, a Tuesday · seated · silent · no equipment</span>
+                <span className="hero__attrib-note">
+                  An illustration of a real prompt, not a customer quote.
+                </span>
+              </p>
               <p className="hero__lede">
-                {BRAND.app} uses AI to discover realistic movement opportunities across your work,
-                home and commute — then turns them into personalised missions that fit the day you
-                already have.
+                {BRAND.app} reads the day you already have and finds the two-minute gaps inside
+                it. Never while you are driving, never during the meeting, and never if today has
+                already been a good day.
               </p>
               <div className="hero__cta">
                 <Link className="btn btn--primary" href="/account">
@@ -235,10 +271,6 @@ export default function Home() {
                   See how it works
                 </Link>
               </div>
-              <p className="hero__note">
-                A general wellness product for ages 10 to 100. It does not diagnose, treat, or
-                replace clinical care.
-              </p>
             </div>
 
             {/* §14 — the command centre, shown rather than described */}
@@ -255,10 +287,12 @@ export default function Home() {
                 Good afternoon. Your strongest movement window starts in 18 minutes.
               </p>
 
+              {/* The prompt itself is the headline now, so the card carries
+                  what happens next rather than repeating it. */}
               <h2 className="snapcard__title">Three-Minute Desk Reset</h2>
               <p className="snapcard__why">
-                “You have been seated for 94 minutes and your next call starts at 15:00. This one
-                is silent and needs no space.”
+                Shoulders, thoracic spine and one balance hold. Chair stays where it is; you do
+                not stand up, change, or leave the room.
               </p>
 
               <div className="snapcard__meta">
@@ -285,6 +319,18 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {/*
+            The regulatory position, kept in the hero where it belongs on a
+            health product, but moved off the bottom of the call to action.
+            Sitting directly under the two buttons it was the last thing read
+            before the click and it deflated both. It is not smaller and it is
+            not hidden — it spans the band and sits on its own rule.
+          */}
+          <p className="wrap hero__standing">
+            A general wellness product for ages 10 to 100. It does not diagnose, treat, or replace
+            clinical care.
+          </p>
         </section>
 
         {/* ---------------- proof strip ---------------- */}
@@ -309,10 +355,22 @@ export default function Home() {
                   {AGE_MODES.length} adaptive modes from one engine, each with its own rules.
                 </p>
               </div>
+              {/*
+                This cell used to read "k >= 8 — enforced in the query planner".
+                It is true, it is the platform's best claim, and it answers a
+                question a person choosing an app for themselves has never
+                asked. It now sits on /industries next to the SQL that proves
+                it. What replaces it is the thing a member is actually wary of:
+                that a movement app will nag them.
+              */}
               <div className="proof__cell" style={{ ['--tone' as string]: 'var(--jm-blue)' }}>
-                <div className="proof__n">k ≥ {K_ANONYMITY_THRESHOLD}</div>
+                <div className="proof__n">
+                  {Math.min(...AGE_MODES.map((m) => AGE_MODE_DEFINITIONS[m].dailyCap))}–
+                  {Math.max(...AGE_MODES.map((m) => AGE_MODE_DEFINITIONS[m].dailyCap))} a day
+                </div>
                 <p className="proof__l">
-                  Enforced in the query planner. An employer structurally cannot see one person.
+                  A hard ceiling, set by your mode. Staying silent counts as a good outcome, not a
+                  missed one.
                 </p>
               </div>
             </div>
@@ -387,7 +445,7 @@ export default function Home() {
               <article className="card card--7">
                 <div className="card__head">
                   <h3 className="card__t">Prompt → completed movement</h3>
-                  <span className="card__tag">Conversion</span>
+                  <span className="card__tag">1 measured · 1 target</span>
                 </div>
                 <CompareBars rows={CONVERSION} />
               </article>
@@ -465,8 +523,17 @@ export default function Home() {
         <section className="section" id="problem">
           <div className="wrap">
             <div className="section__head">
+              {/*
+                "Traditional plans ask for more time. There isn't any." was a
+                sentence about competitors. Nothing on the page said what it
+                costs the reader to do nothing, so there was no stake in it
+                anywhere. This is the claim the lede below already makes and
+                which the whole product rests on, promoted to the heading —
+                the same assertion, in the place where somebody scanning
+                will actually meet it.
+              */}
               <p className="eyebrow">The problem</p>
-              <h2>Traditional plans ask for more time. There isn’t any.</h2>
+              <h2>Meeting the weekly target does not cancel the rest of the week.</h2>
               <p className="lede">
                 Meeting a weekly exercise target does not cancel the risk of spending the rest of
                 the day sitting. Most people who are not moving enough are not refusing to
@@ -765,71 +832,35 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ---------------- 8 · teams ---------------- */}
-        <section className="section section--ink" id="teams">
-          <div className="wrap">
-            <div className="section__head">
-              <p className="eyebrow eyebrow--onDark">For organisations</p>
-              <h2>A wellbeing command centre that cannot see an individual.</h2>
-              <p className="lede">
-                Employers, schools, care groups and councils get participation, engagement and
-                campaign performance above a privacy threshold. They do not get a person.
-              </p>
-            </div>
+        {/*
+          The organisation material used to be two full sections here — a
+          command centre and a privacy architecture — on a page a consumer
+          lands on. `k >= 8`, "enforced in the query planner" and a suppressed
+          SQL cohort query are the most credible claims this platform makes,
+          and they are addressed to an employer's data protection officer, a
+          procurement lead or a journalist. None of those three is the person
+          reading a page about sitting for 94 minutes.
 
-            <div className="dash">
-              <article className="card card--4" style={{ gap: 14 }}>
-                <Stat
-                  k="This week"
-                  v="68%"
-                  sub="of enrolled employees completed at least one movement break."
-                  tone="var(--jm-teal)"
-                />
-              </article>
-              <article className="card card--4" style={{ gap: 14 }}>
-                <Stat
-                  k="Team Score"
-                  v="4 terms"
-                  sub="Participation, consistency, improvement and mutual support. Capability is absent by design."
-                  tone="var(--jm-lime)"
-                />
-              </article>
-              <article className="card card--4" style={{ gap: 14 }}>
-                <Stat
-                  k="Individual view"
-                  v="Absent"
-                  sub="Not permission-gated. It does not exist in the type system, so no role can produce it."
-                  tone="var(--jm-blue)"
-                />
-              </article>
-            </div>
-
-            <p className="lede" style={{ marginTop: 30 }}>
-              An employer never sees health conditions, movement history, heart rate, sleep,
-              disability, declined activities, calendar content or an individual risk score.{' '}
-              <Link href="/industries" style={{ color: 'var(--i-lime)', fontWeight: 600 }}>
-                See the five duties of care →
-              </Link>
-            </p>
-          </div>
-        </section>
-
-        {/* ---------------- 9 · privacy ---------------- */}
+          Both sections now live on /industries, which is the page those
+          readers arrive on. What stays here is the one privacy fact a member
+          cares about — that their own calendar never leaves their phone —
+          and a door to the rest.
+        */}
         <section className="section" id="privacy">
           <div className="wrap privacy">
             <div>
               <p className="eyebrow">Privacy as architecture</p>
               <h2>Your calendar titles never leave your device.</h2>
               <p className="lede" style={{ marginTop: 22 }}>
-                Health and wearable information is special-category data. That cannot be bolted on
-                afterwards, so the engine was built to need as little of it as possible.
+                Health information is special-category data, and that cannot be bolted on
+                afterwards. The engine was built to need as little of it as possible.
               </p>
 
               <ul className="checklist">
                 <li>
                   <Check />
                   <span>
-                    Events are classified locally as busy, free, focus or travel. Titles and
+                    Events are classified on your phone as busy, free, focus or travel. Titles and
                     attendees are never transmitted, and never sent to any language model.
                   </span>
                 </li>
@@ -843,50 +874,43 @@ export default function Home() {
                 <li>
                   <Check />
                   <span>
-                    k-anonymity of {K_ANONYMITY_THRESHOLD} in the query planner, with
-                    intersection-attack checks across filter combinations — and again as a
-                    database constraint.
-                  </span>
-                </li>
-                <li>
-                  <Check />
-                  <span>
-                    Employees see exactly what their employer can see, on a permanent transparency
-                    screen. Export and deletion are self-service.
+                    If your employer or school pays for this, they see a team. They never see you:
+                    not your conditions, your heart rate, your sleep, what you declined, or a risk
+                    score with your name on it. Export and deletion are self-service, always.
                   </span>
                 </li>
               </ul>
+
+              <p style={{ marginTop: 28 }}>
+                <Link className="btn btn--ghost" href="/industries">
+                  How that is enforced, for organisations
+                </Link>
+              </p>
             </div>
 
-            <div className="query" aria-label="Example suppressed cohort query">
-              <div className="query__bar">
-                <span>workforce.query_planner</span>
-                <span>k ≥ {K_ANONYMITY_THRESHOLD}</span>
+            <div className="snapcard" aria-label="What your phone keeps to itself">
+              <div className="snapcard__top">
+                <span className="mova">
+                  <span className="mova__orb" aria-hidden="true" />
+                  On your phone
+                </span>
+                <span className="snapcard__time">never uploaded</span>
               </div>
-              <pre className="query__body">
-                <code>
-                  <span className="k">SELECT</span> avg(movement_breaks){'\n'}
-                  <span className="k">FROM</span> cohort{'\n'}
-                  <span className="k">WHERE</span> site = <span className="s">
-                    &apos;Leeds&apos;
-                  </span>{'\n'}
-                  {'  '}<span className="k">AND</span> dept = <span className="s">
-                    &apos;Finance&apos;
-                  </span>{'\n'}
-                  {'  '}<span className="k">AND</span> tenure = <span className="s">
-                    &apos;0–6 months&apos;
-                  </span>
-                  {'\n\n'}
-                  <span className="c">-- 3 contributing users</span>
-                  {'\n'}
-                  <span className="c">-- below threshold</span>
-                  {'\n\n'}
-                  → <span className="s">SUPPRESSED</span>
-                </code>
-              </pre>
+              <ul className="pills" style={{ marginTop: 18 }}>
+                <li>Calendar titles</li>
+                <li>Who you are meeting</li>
+                <li>Where you are</li>
+                <li>Your photos</li>
+                <li>Message contents</li>
+              </ul>
+              <p className="snapcard__why">
+                What leaves your phone is a shape: busy, free, focus or travel, and how long for.
+                Not one of the words above has ever been sent anywhere, including to us.
+              </p>
             </div>
           </div>
         </section>
+
 
         {/* ---------------- personality ---------------- */}
         <section className="section section--tint">
@@ -916,11 +940,21 @@ export default function Home() {
             <div className="section__head">
               <p className="eyebrow">Pricing</p>
               <h2>Published, not quoted — including the compute limits.</h2>
+              {/*
+                "Indicative pricing, confirmed at launch" used to open this
+                paragraph, inside a section headed "Published, not quoted".
+                A visitor reads the hedge, not the heading: the one number
+                they came to check was the one number the page would not
+                stand behind, on a page whose whole argument is that it tells
+                you what others hide. These are the prices the billing system
+                actually charges — they are in packages/shared and they drive
+                the Stripe checkout — so the page now says so.
+              */}
               <p className="lede">
-                Indicative pricing, confirmed at launch. Agent Compute Units are shown on every
-                plan and priced before any expensive action runs: you approve the cost, then it
-                happens. Nothing is ever charged below £5, there are no hidden usage limits, and
-                cancelling is one tap.
+                These are the prices. Agent Compute Units are shown on every plan and priced
+                before any expensive action runs: you approve the cost, then it happens. Nothing
+                is ever charged below £{MIN_TRANSACTION_GBP.toFixed(0)}, there are no hidden usage
+                limits, and cancelling is one tap.
               </p>
             </div>
 

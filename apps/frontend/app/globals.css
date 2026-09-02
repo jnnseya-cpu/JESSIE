@@ -716,28 +716,31 @@ button:focus-visible {
     0 1px 2px rgba(0, 62, 57, 0.3);
 }
 
+/*
+ * The outline button, on whichever ground it lands on.
+ *
+ * This was `color: var(--jm-bg)` — near-white — with a single exception
+ * for `.card--light`. So it worked on the dark hero and inside a white
+ * card, and was invisible everywhere else: put one on an ordinary light
+ * section and it rendered white on near-white, a button-shaped hole with
+ * no label in it. That is exactly what happened the first time one was
+ * used on the privacy section.
+ *
+ * `--ink` already means "the right text colour for this surface" and is
+ * redefined by every dark and light container in this file, so the button
+ * inherits the answer instead of guessing at it. `currentColor` on the
+ * border then keeps the outline and the label the same colour, which is
+ * what an outline button is.
+ */
 .btn--ghost {
-  border-color: var(--jm-divider-d);
-  color: var(--jm-bg);
-  /* A hairline of the surface's own light along the top, so the outline
-     button sits in the same room as the filled one instead of reading as
-     a rectangle drawn on top of it. */
+  color: var(--ink);
+  border-color: color-mix(in srgb, currentColor 34%, transparent);
   box-shadow: 0 1px 0 rgba(244, 250, 249, 0.06) inset;
 }
 
 .btn--ghost:hover {
-  border-color: rgba(244, 250, 249, 0.45);
-  background: rgba(244, 250, 249, 0.05);
-}
-
-/* A ghost button on a light card inverts: navy text, visible border.
-   The default ghost colours are for dark sections and vanish here. */
-.card--light .btn--ghost {
-  color: var(--jm-navy);
-  border-color: rgba(11, 37, 64, 0.35);
-}
-.card--light .btn--ghost:hover {
-  border-color: var(--jm-navy);
+  border-color: color-mix(in srgb, currentColor 62%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
 }
 
 .btn--dark {
@@ -815,12 +818,82 @@ button:focus-visible {
   margin-inline-end: 0.06em;
 }
 
+/*
+ * The spoken headline.
+ *
+ * A sentence the product says, set as the page's h1. It is longer than a
+ * slogan, so it is set smaller than the old one and at a tighter leading —
+ * a quotation wants to look like speech, not like a billboard. The opening
+ * quotation mark hangs into the left margin, which is what typesetters do
+ * with quotes and what makes the block's left edge look straight even
+ * though the mark is outside it.
+ */
+.hero__said {
+  font-size: clamp(30px, 3.7vw, 47px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  max-width: 18ch;
+  position: relative;
+  text-wrap: pretty;
+}
+
+.hero__said-mark {
+  position: absolute;
+  right: 100%;
+  top: -0.06em;
+  /* Optical, not metric: the mark is lighter than the letters beside it,
+     so it hangs a little less than its own width or the line reads as
+     indented rather than aligned. */
+  margin-right: 0.04em;
+  color: var(--i-teal);
+  opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  /* No margin to hang into on a phone. The mark rejoins the line. */
+  .hero__said-mark {
+    position: static;
+    margin-right: 0;
+  }
+}
+
+.hero__attrib {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* Says in plain words that the line above is an illustration. A health
+   product that has no customers yet must not let a demonstration be read
+   as somebody's testimony, and the label is the difference. */
+.hero__attrib-note {
+  font-family: var(--font-ui);
+  font-style: italic;
+}
+
 .hero__lede {
   margin-top: 26px;
-  font-size: clamp(19px, 1.8vw, 22px);
-  line-height: 1.55;
+  font-size: clamp(18px, 1.55vw, 20px);
+  line-height: 1.6;
   color: var(--ink-2);
-  max-width: 54ch;
+  max-width: 56ch;
+}
+
+/* The regulatory line, on its own rule at the foot of the hero band. */
+.hero__standing {
+  position: relative;
+  z-index: 1;
+  margin-top: clamp(40px, 5vw, 64px);
+  padding-top: 18px;
+  border-top: 1px solid var(--jm-divider-d);
+  font-size: 14px;
+  color: var(--ink-3);
+  max-width: none;
 }
 
 .hero__cta {
@@ -828,13 +901,6 @@ button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-}
-
-.hero__note {
-  margin-top: 26px;
-  font-size: 14px;
-  color: var(--ink-3);
-  max-width: 46ch;
 }
 
 /* ---------- The Snap card (hero visual) ---------- */
@@ -2031,6 +2097,32 @@ button:focus-visible {
   transform-origin: left;
   animation: grow 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
+
+/*
+ * A target, not a measurement.
+ *
+ * No fill and a dashed edge, so it reads as an outline somebody drew
+ * rather than a quantity somebody counted — the same distinction an
+ * architect's dashed line makes. It keeps the hue, so the row still
+ * belongs to the chart, and it is legible before the caption is read,
+ * which is the whole point: a caption arrives after the conclusion.
+ */
+.cbars__fill--target {
+  background: none;
+  border: 1.5px dashed var(--tone);
+  opacity: 0.85;
+}
+
+.cbars__target {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-left: 8px;
+  vertical-align: 0.12em;
+}
 .cbars__note {
   margin: 8px 0 0;
   font-size: 14px;
@@ -2327,6 +2419,12 @@ button:focus-visible {
   gap: 8px 14px;
 }
 .card__t {
+  /* Shrinkable, so a long title wraps its own text and the tag beside it
+     stays on the first row. Without this the flex-wrap that keeps the tag
+     on the page at 390px also dropped it to a second line at 1440px,
+     where there was plenty of room. */
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
@@ -2582,6 +2680,12 @@ button:focus-visible {
 .pills--ink li {
   background: rgba(244, 250, 249, 0.05);
   border-color: var(--jm-divider-d);
+}
+
+/* `.snapcard` lays its children out with no flow margins of its own, so a
+   list dropped into it sat on top of the paragraph after it. */
+.snapcard .pills {
+  margin-block: 4px 18px;
 }
 
 /* Numbered step rail */
@@ -3075,6 +3179,7 @@ button:focus-visible {
 .foot,
 .card:not(.card--light),
 .nav,
+.snapcard,
 .section--ink .pills li,
 .mode,
 .metric,
@@ -3246,6 +3351,7 @@ button:focus-visible {
 .foot,
 .card:not(.card--light),
 .nav,
+.snapcard,
 .section--ink .pills li,
 .mode,
 .metric,
@@ -3415,6 +3521,7 @@ button:focus-visible {
 .foot,
 .card:not(.card--light),
 .nav,
+.snapcard,
 .section--ink .pills li,
 .mode,
 .metric,

@@ -160,12 +160,41 @@ export function Spark({
 
 /* ---------------- comparison bars ---------------- */
 
+/**
+ * Comparison bars, with one row type for things that were measured and
+ * another for things that are only aimed at.
+ *
+ * `pending` exists because of a specific failure. This chart carried a 62%
+ * Jess Move figure against 11% for generic reminder apps, in the same
+ * visual language, as two solid bars. The 11% is a measured property of
+ * real products; the 62% is this platform's optimisation target and has
+ * never been observed. A caption said so at 14px underneath.
+ *
+ * Two identical bars assert two facts of the same kind, and no caption
+ * undoes that — the reader has already drawn the conclusion by the time
+ * they reach it. It is also the wrong side of the line for a UK health
+ * product, where an efficacy comparison has to be substantiated, and it
+ * is the one place a page whose entire argument is "we publish what
+ * others hide" was quietly doing the opposite.
+ *
+ * A target now renders as a dashed outline with no fill and carries the
+ * word `target` beside the figure. It is legible at a glance as a
+ * different kind of claim, which is the only honest way to show it next
+ * to a real one. When there is a measured number, drop `pending` and the
+ * bar fills in.
+ */
 export function CompareBars({
   rows,
   max = 100,
   unit = '%',
 }: {
-  rows: ReadonlyArray<{ label: string; value: number; tone: string; note?: string }>;
+  rows: ReadonlyArray<{
+    label: string;
+    value: number;
+    tone: string;
+    note?: string;
+    pending?: boolean;
+  }>;
   max?: number;
   unit?: string;
 }) {
@@ -179,12 +208,20 @@ export function CompareBars({
             <b style={{ ['--tone']: row.tone, color: 'var(--tone-ink)' } as CSSProperties}>
               {row.value}
               {unit}
+              {row.pending && <em className="cbars__target">target</em>}
             </b>
           </div>
           <div className="cbars__track">
             <div
-              className="cbars__fill"
-              style={{ width: `${(row.value / max) * 100}%`, background: row.tone }}
+              className={`cbars__fill${row.pending ? ' cbars__fill--target' : ''}`}
+              style={
+                row.pending
+                  ? ({
+                      width: `${(row.value / max) * 100}%`,
+                      ['--tone']: row.tone,
+                    } as CSSProperties)
+                  : { width: `${(row.value / max) * 100}%`, background: row.tone }
+              }
             />
           </div>
           {row.note && <p className="cbars__note">{row.note}</p>}

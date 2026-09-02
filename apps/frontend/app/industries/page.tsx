@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  CONSENT_SCOPES,
+  PLANS,
   DELIVERY_TIERS,
   DELIVERY_TIER_DEFINITIONS,
   INDUSTRIES,
@@ -9,11 +11,16 @@ import {
 import { Donut, Stat } from '../charts';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink, JoinCta } from '../ui';
 
+/** The organisation plan, from the same source of truth the checkout uses. */
+const ORG_PLAN = PLANS.find((p) => p.key === 'organisation');
+
 export const metadata: Metadata = {
-  title: 'Industries — JESS MOVE',
+  title: 'For organisations — JESS MOVE',
   description:
-    'Workplaces, schools, care providers, councils and families — one engine, five very ' +
-    'different duties of care.',
+    'A wellbeing command centre that cannot see an individual. Workplaces, schools, care ' +
+    'providers and councils — one engine, five very different duties of care, and a privacy ' +
+    'boundary enforced in the query planner rather than in a contract.',
+  alternates: { canonical: 'https://jessmove.com/industries' },
 };
 
 const EMPLOYER_NEVER = [
@@ -45,21 +52,153 @@ export default function Industries() {
       <Nav current="/industries" />
 
       <main id="main">
+        {/*
+          The organisation landing page.
+          
+          This was "Who this is for" — a segment index. The line below was
+          section eight of twelve on the consumer landing page, where the
+          person reading about sitting for 94 minutes had no use for it. It is
+          the strongest claim this platform makes and it is addressed to a
+          data protection officer, a procurement lead and a works council, so
+          it now opens the page those three arrive on.
+        */}
         <PageHero
-          crumb="Industries"
-          eyebrow="Who this is for"
+          crumb="For organisations"
+          eyebrow="For employers, schools, care groups and councils"
           title={
             <>
-              Five duties of care,<br />
-              one engine.
+              A wellbeing command centre
+              <br />
+              that cannot see an individual.
             </>
           }
           lede={
-            'An employer, a school, a care home and a council each need something different from ' +
-            'the same platform — and each needs a hard boundary the others do not. Those ' +
-            'boundaries are architectural, not contractual.'
+            'You get participation, engagement and campaign performance above a privacy ' +
+            'threshold. You do not get a person. That is not a policy you are asked to trust — ' +
+            'the individual view does not exist in the type system, so no role, escalation or ' +
+            'support ticket can produce one.'
           }
         />
+
+        {/* ---------------- what an organisation actually sees ---------------- */}
+        <section className="section section--ink" id="command-centre">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow eyebrow--onDark">The command centre</p>
+              <h2>Three numbers, and none of them is a name.</h2>
+              <p className="lede">
+                Employers, schools, care groups and councils get participation, engagement and
+                campaign performance above a privacy threshold. Below it, the answer is
+                suppressed — for you as well as for everyone else.
+              </p>
+            </div>
+
+            <div className="dash">
+              <article className="card card--4" style={{ gap: 14 }}>
+                <Stat
+                  k="This week"
+                  v="68%"
+                  sub="of enrolled employees completed at least one movement break."
+                  tone="var(--jm-teal)"
+                />
+              </article>
+              <article className="card card--4" style={{ gap: 14 }}>
+                <Stat
+                  k="Team Score"
+                  v="4 terms"
+                  sub="Participation, consistency, improvement and mutual support. Capability is absent by design."
+                  tone="var(--jm-lime)"
+                />
+              </article>
+              <article className="card card--4" style={{ gap: 14 }}>
+                <Stat
+                  k="Individual view"
+                  v="Absent"
+                  sub="Not permission-gated. It does not exist in the type system, so no role can produce it."
+                  tone="var(--jm-blue)"
+                />
+              </article>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------- how the boundary is enforced ---------------- */}
+        <section className="section" id="architecture">
+          <div className="wrap privacy">
+            <div>
+              <p className="eyebrow">Privacy as architecture</p>
+              <h2>The query returns nothing, not less.</h2>
+              <p className="lede" style={{ marginTop: 22 }}>
+                Health and wearable information is special-category data under UK GDPR. That
+                cannot be bolted on afterwards, so the engine was built to need as little of it as
+                possible — and the reporting layer was built so that the interesting question is
+                the one it refuses to answer.
+              </p>
+
+              <ul className="checklist">
+                <li>
+                  <Check />
+                  <span>
+                    k-anonymity of {K_ANONYMITY_THRESHOLD} in the query planner, with
+                    intersection-attack checks across filter combinations — and again as a
+                    database constraint, so it survives a refactor of the service that enforces
+                    it.
+                  </span>
+                </li>
+                <li>
+                  <Check />
+                  <span>
+                    Calendar events are classified on the member&rsquo;s own device as busy, free,
+                    focus or travel. Titles and attendees are never transmitted, and never sent to
+                    any language model.
+                  </span>
+                </li>
+                <li>
+                  <Check />
+                  <span>
+                    {CONSENT_SCOPES.length} consent switches, each independent and each revocable
+                    without disabling the product. A member who withdraws one keeps the rest.
+                  </span>
+                </li>
+                <li>
+                  <Check />
+                  <span>
+                    Employees see exactly what you can see, on a permanent transparency screen.
+                    Export and deletion are self-service and do not route through you.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="query" aria-label="Example suppressed cohort query">
+              <div className="query__bar">
+                <span>workforce.query_planner</span>
+                <span>k ≥ {K_ANONYMITY_THRESHOLD}</span>
+              </div>
+              <pre className="query__body">
+                <code>
+                  <span className="k">SELECT</span> avg(movement_breaks){'\n'}
+                  <span className="k">FROM</span> cohort{'\n'}
+                  <span className="k">WHERE</span> site = <span className="s">
+                    &apos;Leeds&apos;
+                  </span>{'\n'}
+                  {'  '}<span className="k">AND</span> dept = <span className="s">
+                    &apos;Finance&apos;
+                  </span>{'\n'}
+                  {'  '}<span className="k">AND</span> tenure = <span className="s">
+                    &apos;0–6 months&apos;
+                  </span>
+                  {'\n\n'}
+                  <span className="c">-- 3 contributing users</span>
+                  {'\n'}
+                  <span className="c">-- below threshold</span>
+                  {'\n\n'}
+                  → <span className="s">SUPPRESSED</span>
+                </code>
+              </pre>
+            </div>
+          </div>
+        </section>
 
         <section className="section">
           <div className="wrap">
@@ -227,6 +366,70 @@ export default function Industries() {
                     );
                   })}
                 </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------- what it costs ---------------- */}
+        <section className="section section--tint" id="pricing">
+          <div className="wrap">
+            <div className="section__head">
+              <p className="eyebrow">What it costs</p>
+              <h2>A floor, not a teaser.</h2>
+              <p className="lede">
+                Organisation pricing is a contract, so the exact figure is agreed rather than
+                picked at checkout — but the range is published here rather than hidden behind a
+                form, and the bottom of it is a real price somebody pays.
+              </p>
+            </div>
+
+            <div className="dash">
+              {ORG_PLAN && (
+                <article className="card card--5 card--light plancard">
+                  <div className="plancard__name">{ORG_PLAN.name}</div>
+                  <div>
+                    <div className="plancard__price">{ORG_PLAN.price}</div>
+                    <div className="plancard__cadence">{ORG_PLAN.cadence}</div>
+                  </div>
+                  <p className="plancard__who">{ORG_PLAN.forWhom}</p>
+                  <ul className="plancard__means">
+                    {ORG_PLAN.priceMeans.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                  <ul>
+                    {ORG_PLAN.includes.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
+                  </ul>
+                  <Link className="btn btn--primary" href="/contact" style={{ marginTop: 'auto' }}>
+                    Talk to us
+                  </Link>
+                </article>
+              )}
+
+              <article className="card card--7 card--light">
+                <div className="card__head">
+                  <h3 className="card__t">What a seat does not buy</h3>
+                  <span className="card__tag">no upgrade path</span>
+                </div>
+                <p className="card__note">
+                  There is no tier, no enterprise agreement and no support escalation that returns
+                  an individual. It is not a feature that has been withheld from your plan — the
+                  query planner has no code path that produces one, and the database will not
+                  store the shape. If a supplier has offered you individual-level wellbeing
+                  reporting, that is the difference between the two products.
+                </p>
+                <ul className="pills" style={{ marginTop: 4 }}>
+                  <li>No individual dashboards</li>
+                  <li>No risk scores by name</li>
+                  <li>No re-identification support tier</li>
+                </ul>
+                <p className="card__note">
+                  Members can see everything you can see about their group, at any time, without
+                  asking you.
+                </p>
               </article>
             </div>
           </div>

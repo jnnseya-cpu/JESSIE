@@ -158,7 +158,7 @@ const NAV = [
   { href: '/', label: 'The OS' },
   { href: '/how-it-works', label: 'The Engine' },
   { href: '/foodlens', label: 'FoodLens' },
-  { href: '/industries', label: 'Who it’s for' },
+  { href: '/industries', label: 'For organisations' },
   { href: '/developers', label: 'The API' },
   { href: '/about', label: 'Why Jess Move' },
 ];
@@ -219,7 +219,7 @@ const FOOT_NAV: ReadonlyArray<{
   {
     heading: 'Solutions',
     links: [
-      { href: '/industries', label: 'Industries' },
+      { href: '/industries', label: 'For organisations' },
       { href: '/industries#workplaces', label: 'Workplaces' },
       { href: '/industries#schools', label: 'Schools' },
       { href: '/industries#care', label: 'Care & later life' },
