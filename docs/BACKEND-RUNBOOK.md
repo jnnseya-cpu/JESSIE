@@ -20,6 +20,22 @@ Paste that into **Stripe → Developers → Webhooks → Add endpoint**.
 > ⚠️ **It works after Step 5** (a ten-minute, click-only deploy on Vercel). While
 > developing, use the local address in Step 4 instead.
 
+> ⚠️ **Two documents disagree about where the API runs.** This runbook
+> deploys it to Vercel as a second project (Step 5); `docs/DEPLOY.md` §3
+> deploys it to Google Cloud Run. Only one is true in production, and it
+> decides where `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` have to be
+> set — a secret in the wrong dashboard is invisible and refuses every
+> event with a 400. Settle it in one command; the answer is in the
+> response headers:
+>
+> ```bash
+> curl -sI https://api.jessmove.com/api/health | grep -iE 'server|x-vercel-id|x-cloud-trace'
+> ```
+>
+> `x-vercel-id` means Vercel. `server: Google Frontend` or
+> `x-cloud-trace-context` means Cloud Run. Then delete whichever of the two
+> deployment sections is wrong, so the next person does not have to ask.
+
 ---
 
 ## 1 · Run it
@@ -328,6 +344,153 @@ enforces, all server-side:
 `AUTH_ENFORCE=true` additionally locks the protected endpoints to signed-in sessions —
 leave it off while /try and /console are in use, and turn it on before real users.
 `/auth/status` always reports which mode you are in.
+
+---
+
+## 9 · Replaying webhook events Stripe could not deliver
+
+When the endpoint URL was wrong, or the signing secret did not match,
+Stripe recorded delivery failures and eventually stops retrying. Those
+events have to be resent by hand, and **the order matters** — a resend in
+the wrong order is not recoverable by another resend.
+
+### Before touching anything
+
+**A 400 is not proof the endpoint is ready.** Both of these answer 400:
+
+```
+{"message":"stripe webhook rejected: STRIPE_WEBHOOK_SECRET is not configured"}
+{"message":"stripe webhook rejected: no Stripe-Signature header"}
+```
+
+Only the second means the endpoint is working. Read the body, or read
+the flag:
+
+```bash
+curl -s https://api.jessmove.com/api/stripe/status \
+  | python3 -c "import json,sys; d=json.load(sys.stdin)['data']; \
+      print('secret key   ', d['secretKeyConfigured']); \
+      print('webhook secret', d['webhookSecretConfigured']); \
+      print('missing prices', d['missingPriceIds'])"
+```
+
+All three must be `True`, `True`, `[]`. **`missingPriceIds` matters more
+than it looks:** `invoice.paid` grants an allowance only when the invoice
+line carries `metadata.plan`. Without it the handler logs *"No plan
+metadata, so no allowance granted"* and returns **200** — Stripe marks the
+event delivered, `processed_events` marks it done, and it can never be
+replayed. Fix price metadata in Stripe *first*.
+
+### The order, and the two rules that produce it
+
+1. **Identity before money.** `invoice.paid` and `payment_intent.succeeded`
+   resolve the member through `stripe_customers`, and only
+   `checkout.session.completed` writes that row. Resent first, they find no
+   user, grant nothing, and settle as `done`.
+2. **Money before its reversal.** `charge.refunded` and
+   `charge.dispute.created` find the allowance they are clawing back by the
+   invoice reference on the grant. With no grant, there is nothing to find.
+
+Oldest first within each group:
+
+| # | Event | Why here |
+|---|---|---|
+| 1 | `checkout.session.completed` | Writes `stripe_customers`. Everything below needs it. |
+| 2 | `customer.subscription.created` | Records the subscription. |
+| 3 | `customer.subscription.updated` | State, plan, period. |
+| 4 | `invoice.paid` | **The only event that grants ACU.** |
+| 5 | `payment_intent.succeeded` | Credits one-off top-ups. |
+| 6 | `invoice.payment_failed` | Moves to `past_due`; needs 2–3 first. |
+| 7 | `payment_intent.payment_failed` | Records only. |
+| 8 | `charge.refunded` | Reverses a grant from 4. |
+| 9 | `charge.dispute.created` | Freezes and reverses a grant from 4. |
+| 10 | `customer.subscription.deleted` | Last, or it is undone by 3. |
+
+### Doing it
+
+The dashboard resends one event at a time (Developers → Events → the
+event → **Resend**). For sixty of them, use the CLI, which can be driven
+in the right order. Check the flags against `stripe events resend --help`
+before running a batch — they move between versions:
+
+```bash
+# The endpoint id, from Developers -> Webhooks -> your endpoint (we_...).
+EP=we_xxxxxxxxxxxx
+
+for TYPE in checkout.session.completed \
+            customer.subscription.created \
+            customer.subscription.updated \
+            invoice.paid \
+            payment_intent.succeeded \
+            invoice.payment_failed \
+            payment_intent.payment_failed \
+            charge.refunded \
+            charge.dispute.created \
+            customer.subscription.deleted
+do
+  echo "== $TYPE"
+  # Oldest first: the API returns newest first, so reverse.
+  stripe events list --type "$TYPE" --limit 100 \
+    | python3 -c "import json,sys; [print(e['id']) for e in reversed(json.load(sys.stdin)['data'])]" \
+    | while read -r ID; do
+        stripe events resend "$ID" --webhook-endpoint "$EP" >/dev/null && echo "  sent $ID"
+        sleep 1
+      done
+done
+```
+
+### Watching it land
+
+**Do not use `eventsProcessed` from `/api/stripe/status` as the total.**
+It is `seenEvents.size`, an in-memory Set, so on more than one instance
+each reports only what it handled. The durable count is in Postgres:
+
+```sql
+-- how many events have been taken, by type
+SELECT kind, status, count(*) FROM processed_events GROUP BY 1, 2 ORDER BY 1;
+
+-- gate after group 1: every paying customer should have a row
+SELECT count(*) FROM stripe_customers;
+
+-- gate after group 4: the allowances that were granted
+SELECT w.subject_id,
+       g->>'sourceRef'          AS source_ref,
+       (g->>'amount')::int      AS granted,
+       (g->>'remaining')::int   AS remaining
+FROM app_wallets w, jsonb_array_elements(w.data->'grants') g
+WHERE g->>'sourceRef' LIKE 'invoice_%'
+ORDER BY w.subject_id;
+
+-- gate after groups 8-9: what was clawed back
+SELECT wallet_id, kind, reference, clawed_acus, shortfall_acus, created_at
+FROM wallet_adjustments ORDER BY created_at;
+```
+
+Stop and check between each group rather than at the end. A wrong order
+is visible immediately as a group-4 gate with no rows.
+
+### If you get the order wrong
+
+A settled event is a duplicate forever — that is the guard that stops one
+payment granting twice, and it does not distinguish a redelivery from a
+correction. There is no admin replay endpoint. Delete the claim, then
+resend:
+
+```sql
+DELETE FROM processed_events WHERE event_id = 'evt_...';
+```
+
+### What is safe
+
+- **Resending twice.** `processed_events.event_id` is the primary key and
+  the claim is the insert, so a second delivery grants nothing.
+- **Old events.** The signature is verified against the *delivery*
+  timestamp, which Stripe re-signs on every attempt, so a fortnight-old
+  event validates today.
+- **Annual plans.** `invoice.paid` deposits a twelfth and schedules
+  eleven more; `annual_deposits` is `UNIQUE (invoice_id, month_index)`, so
+  a repeat schedules nothing new.
+- **Event types the platform ignores.** Claimed, settled, no effect.
 
 ---
 

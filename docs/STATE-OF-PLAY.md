@@ -206,6 +206,17 @@ this route is not behind one.
 
 ## Watch list
 
+**Two documents disagree about where the API runs.**
+`docs/BACKEND-RUNBOOK.md` §5 deploys it to Vercel as a second project;
+`docs/DEPLOY.md` §3 deploys it to Google Cloud Run. Only one is true, and
+it decides which dashboard `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET` belong in — a secret set in the wrong one is
+invisible and refuses every webhook with a 400, which is a shape this
+platform has already been in. Settled by
+`curl -sI https://api.jessmove.com/api/health` and reading the headers;
+then delete whichever section is wrong. Cannot be settled from this
+environment, which the network policy refuses that host.
+
 **Pricing is now stated, not hedged.** `/` and `/get-started` said
 "indicative pricing, confirmed at launch" under a heading that read
 "Published, not quoted". The hedge is gone and the page now stands
