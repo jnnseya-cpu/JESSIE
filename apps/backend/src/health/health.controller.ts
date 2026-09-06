@@ -16,6 +16,7 @@ import {
   type HealthReport,
 } from '@jessmove/shared';
 import { AiGatewayService } from '../ai/ai-gateway.service';
+import { DbService } from '../db/db.service';
 import { BUILD_BRANCH, BUILD_COMMIT, BUILT_AT } from '../build-info';
 
 /**
@@ -43,15 +44,56 @@ function buildInfo(): HealthReport['build'] {
 export class HealthController {
   private readonly startedAt = Date.now();
 
-  constructor(private readonly gateway: AiGatewayService) {}
+  constructor(
+    private readonly gateway: AiGatewayService,
+    private readonly db: DbService,
+  ) {}
 
   @Get('health')
-  health(): HealthReport {
+  async health(): Promise<HealthReport> {
     const providers = this.gateway.health();
     const anyConfigured = providers.some((p) => p.configured);
 
+    /*
+     * The database is checked by connecting, not by reading a flag.
+     *
+     * `/status` renders whatever this says, so a check that reports
+     * "configured" without touching Postgres would put a green tick on a
+     * public page during an outage — which is worse than no status page,
+     * because somebody would believe it. `DbService.status()` opens a
+     * connection and answers `reachable` from whether that worked.
+     *
+     * Only three facts cross the boundary: reachable, whether the schema
+     * is current, and how many migrations are recorded. No connection
+     * string, no host, no error text — an outage is not a reason to
+     * publish the shape of the infrastructure.
+     */
+    const db = await this.db.status().catch(() => null);
+    const configured = db?.configured === true;
+    const reachable = db?.reachable === true;
+    const upToDate = db?.upToDate === true;
+
+    const database = configured
+      ? reachable
+        ? {
+            status: (upToDate ? 'ok' : 'degraded') as 'ok' | 'degraded',
+            detail: upToDate
+              ? `Connected. Schema current at ${(db?.migrationsApplied as unknown[])?.length ?? 0} migrations.`
+              : 'Connected, but the schema is behind the code.',
+          }
+        : { status: 'down' as const, detail: 'Configured, and not answering.' }
+      : {
+          status: 'degraded' as const,
+          detail: 'No database configured — durable stores are running in memory.',
+        };
+
+    // The worst component sets the headline. A page that says "ok" while
+    // one part is down is the failure mode a status page exists to avoid.
+    const status: HealthReport['status'] =
+      database.status === 'down' ? 'down' : anyConfigured && database.status === 'ok' ? 'ok' : 'degraded';
+
     return {
-      status: anyConfigured ? 'ok' : 'degraded',
+      status,
       version: '1.0.0',
       uptimeSeconds: Math.round((Date.now() - this.startedAt) / 1000),
       build: buildInfo(),
@@ -62,6 +104,7 @@ export class HealthController {
             ? `${providers.filter((p) => p.configured).length}/${providers.length} providers configured`
             : 'No provider configured — serving cached prescriptions only',
         },
+        database,
       },
     };
   }

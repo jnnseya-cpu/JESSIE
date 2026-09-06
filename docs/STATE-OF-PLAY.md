@@ -41,6 +41,8 @@ is the point of the file.
 | A failed push does not spend the member's ceiling | Proven: a delivery to an unreachable endpoint records `failed` and writes no `snap_offered` row |
 | The context engine is no longer fed fabrications | The web client asserted `motionState: 'still'` and `locationClass: 'home'` on every request; both are now `unknown` and `onCall`/`doNotDisturb` are omitted rather than guessed |
 | The comms module cannot claim a delivery it did not make | Four phantom provider keys deleted; every channel without a transport in this repository records `sandbox` |
+| The status page publishes nothing it has not measured | `/status` reads `/api/health` per request, uncached. Proven both ways: with the API up it renders the live database and gateway checks; with the API killed it renders "Down / Unknown / Unknown" rather than guessing. `public-claims.test.ts` fails if a synthetic history or a dated incident returns |
+| The site offers no integration nobody can make | `PROVIDER_AVAILABILITY` gives every wearable a "connect today" answer, and `MOBILE_APP_RELEASED` is the one fact the API's readiness and the page's copy both read |
 | The brand typefaces are actually delivered | Six self-hosted woff2 in `apps/frontend/public/fonts`; §8 named Inter and Manrope and nothing ever loaded them |
 | Every text node on every public route clears WCAG AA | `pnpm check:contrast` — 7,274 nodes across 28 routes, 0 below threshold, down from 1,097. Translucent layers composited, gradients measured at every stop |
 | The landing page speaks to one audience, and the organisation page to the other | `/` is consumer; `/industries` carries the command centre, the k-anonymity architecture and seat pricing |
@@ -214,6 +216,49 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**The public site was audited for claims, and three were not true.**
+
+*The status page was fiction.* Twelve services with hardcoded `state`
+values, each carrying a thirty-day history built from `up(30)` with
+invented `degraded` days, under a heading reading "Live availability for
+every part of the platform" — and three incident write-ups with dates,
+resolution times and detail ("Partner has acknowledged; we will update
+daily") describing events that had never happened. A status page is the
+page somebody opens when deciding whether to rely on this, and again
+during an outage; invented uptime there is worse than no page, because a
+missing page tells you nothing and a false one tells you something wrong
+with confidence. It now checks `/api/health` per request and reports
+three things it can see, lists what is built but unmonitored as
+*unknown*, names what is in build, and says plainly that there is no
+incident history yet. `/api/health` gained a real database check — it
+connects rather than reading a flag, because a green tick sourced from
+configuration is the same failure in a smaller box.
+
+*The wearables table offered seven integrations, none connectable.*
+Columns for scopes, transport, privacy and lag, and no column for
+availability. Two need an app that is in neither store, three need OAuth
+credentials nobody has provisioned, one is a partner programme, and
+Samsung Health has no client code at all. The API agreed with the page —
+`connectionInfo` returned `ready: true` for on-device providers, which
+was true about the server and false about the world. `MOBILE_APP_RELEASED`
+is now the single fact both read, and flipping it on store-release day
+corrects the API, the table and the copy together.
+
+*An unmeasured business figure sat on the B2B page.* "This week — 68% of
+enrolled employees completed at least one movement break", unlabelled. No
+organisation has run a cohort. A buyer would have carried it into a
+procurement document. Now marked as illustrative.
+
+Checked and found honest: `/communications` (the `wired` flag is real and
+SMS and WhatsApp are false), the homepage completion chart (the Jess Move
+bar is explicitly an outline because it has not been measured), and the
+absence of any store link or testimonial anywhere.
+
+Still worth a human eye: the homepage cites 11% and 4% for generic
+reminder apps as "Measured" with no source named. It is a claim about
+other products rather than this one, and no citation could be added from
+an environment that cannot reach the research.
 
 **Settled, on the owner's instruction.** The two below were held back as
 money decisions and have now been made.

@@ -2,144 +2,101 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BRAND } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { readLiveStatus } from './live';
+
+/*
+ * Checked on every request, never cached.
+ *
+ * A status page served from a cache reports the past, and the moment it
+ * matters most is the one where the cached answer is stale and green.
+ */
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Platform status — JESS MOVE',
   description:
-    'Current availability of every Jess Move service, the incident history, and what happens ' +
-    'to your day when a component fails.',
+    'A live check of the Jess Move API and database, what is not yet monitored, and what ' +
+    'happens to your day when a component fails.',
 };
 
-type State = 'ok' | 'warn' | 'build';
+type State = 'ok' | 'warn' | 'down' | 'build' | 'unknown';
 
 const BADGE: Record<State, { cls: string; label: string }> = {
   ok: { cls: 'badge--ok', label: 'Operational' },
   warn: { cls: 'badge--warn', label: 'Degraded' },
+  down: { cls: 'badge--warn', label: 'Down' },
   build: { cls: 'badge--build', label: 'In build' },
+  unknown: { cls: 'badge--build', label: 'Unknown' },
 };
 
-/** 30-day history, most recent last. */
-type Day = 'up' | 'degraded' | 'down' | 'none';
-
-const up = (n: number): Day[] => Array.from({ length: n }, () => 'up');
-
-const SERVICES: ReadonlyArray<{
-  name: string;
-  sub: string;
-  state: State;
-  history: readonly Day[];
-}> = [
-  {
-    name: 'Movement Opportunity Engine',
-    sub: 'Scoring, timing and the decision to stay silent',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'Mission delivery',
-    sub: 'Push, in-app, SMS and WhatsApp tiers',
-    state: 'ok',
-    history: [...up(19), 'degraded', ...up(10)],
-  },
-  {
-    name: 'AI gateway',
-    sub: 'Provider routing, redaction, fallback chain',
-    state: 'ok',
-    history: [...up(11), 'degraded', 'degraded', ...up(17)],
-  },
-  {
-    name: 'Calendar structure sync',
-    sub: 'Google, Microsoft and Apple — on-device classification',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'Wearable ingestion',
-    sub: 'Apple Health, Health Connect, Fitbit, Garmin, Samsung, Oura, Polar',
-    state: 'warn',
-    history: [...up(26), 'up', 'degraded', 'degraded', 'degraded'],
-  },
-  {
-    name: 'FoodLens',
-    sub: 'Image estimation, barcode lookup, swap ladder',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'BodyCommand',
-    sub: 'Pathway assessment, trajectory, behaviour waterfall',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'Challenges & team scoring',
-    sub: 'Participation, consistency, improvement, mutual support',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'ACU wallet & billing',
-    sub: 'Quotes, spend controls, top-ups and the cost floor',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'Organisation analytics',
-    sub: 'Aggregate reporting above the k-anonymity floor',
-    state: 'ok',
-    history: [...up(30)],
-  },
-  {
-    name: 'Public API',
-    sub: 'Partner and integration endpoints',
-    state: 'build',
-    history: [...Array.from({ length: 30 }, () => 'none' as Day)],
-  },
-  {
-    name: 'Smart-TV & voice',
-    sub: 'Care-setting and Vitality Mode delivery',
-    state: 'build',
-    history: [...Array.from({ length: 30 }, () => 'none' as Day)],
-  },
+/**
+ * Parts of the platform that are built but have no independent check.
+ *
+ * They are listed as `unknown` rather than green, because nothing is
+ * watching them. That is a less impressive page and a true one: every
+ * row here previously carried a hardcoded "Operational" badge and a
+ * thirty-day history that was an array literal.
+ */
+const UNMONITORED = [
+  { name: 'Movement Opportunity Engine', sub: 'Scoring, timing and the decision to stay silent' },
+  { name: 'Snap delivery', sub: 'Web push to a browser, APNs and FCM to the installed app' },
+  { name: 'FoodLens', sub: 'Image estimation, barcode lookup, swap ladder' },
+  { name: 'BodyCommand', sub: 'Pathway assessment, trajectory, behaviour waterfall' },
+  { name: 'Challenges & team scoring', sub: 'Participation, consistency, improvement, mutual support' },
+  { name: 'ACU wallet & billing', sub: 'Quotes, spend controls, top-ups and the cost floor' },
 ];
 
-const INCIDENTS = [
-  {
-    date: '24 July 2026',
-    title: 'Wearable ingestion delays for one provider',
-    state: 'Monitoring',
-    tone: 'var(--i-monitor)',
-    body:
-      'Sync from one wearable partner is running 30–90 minutes behind. Readiness scores using ' +
-      'that source are correspondingly stale. Prompts continue from calendar and device signal, ' +
-      'so missions are unaffected — they are simply less well-targeted for affected accounts. ' +
-      'Partner has acknowledged; we will update daily.',
-  },
-  {
-    date: '15 July 2026',
-    title: 'AI gateway latency during a provider incident',
-    state: 'Resolved in 41 minutes',
-    tone: 'var(--i-excellent)',
-    body:
-      'A primary model provider returned elevated errors. The gateway walked to the next link in ' +
-      'the fallback chain as designed. Explanations were briefly terse where the mid-tier model ' +
-      'answered instead of the frontier one. No prompts were missed and no data was lost, ' +
-      'because the engine falls back to the cached plan rather than failing.',
-  },
-  {
-    date: '8 July 2026',
-    title: 'Delayed SMS delivery in the lightweight tier',
-    state: 'Resolved in 2 hours 12 minutes',
-    tone: 'var(--i-excellent)',
-    body:
-      'A carrier route degraded, delaying T3 messages by up to 25 minutes. Missions whose window ' +
-      'had passed were suppressed rather than sent late — a mission that arrives after the gap ' +
-      'has closed is exactly the defect the second law exists to prevent.',
-  },
+/** Named because they are not built, not because they are quiet. */
+const IN_BUILD = [
+  { name: 'Public API', sub: 'Partner and integration endpoints' },
+  { name: 'Smart-TV & voice', sub: 'Care-setting and Vitality Mode delivery' },
+  { name: 'SMS and WhatsApp delivery', sub: 'The lightweight tiers, for a phone that is not a smartphone' },
+  { name: 'Organisation analytics', sub: 'Aggregate reporting above the k-anonymity floor' },
 ];
 
-export default function Status() {
-  const degraded = SERVICES.filter((s) => s.state === 'warn').length;
+function Row({ name, sub, state, detail }: { name: string; sub: string; state: State; detail?: string }) {
+  return (
+    <div className="statusrow">
+      <div>
+        <span className="statusrow__name">{name}</span>
+        <span className="statusrow__sub">{detail ?? sub}</span>
+      </div>
+      <span className={`badge ${BADGE[state].cls}`}>{BADGE[state].label}</span>
+    </div>
+  );
+}
+
+export default async function Status() {
+  const { report, checkedAt } = await readLiveStatus();
+
+  /*
+   * The API row is about the API, not about the platform.
+   *
+   * Taking the aggregate `report.status` here produced a row reading
+   * "API — Degraded — Answering", which is a contradiction on the one
+   * page that has to be readable during an incident. If it answered, it
+   * is up; the parts it reports on have their own rows, and the headline
+   * above carries the aggregate.
+   */
+  const api: State = report ? 'ok' : 'down';
+  const db = report?.checks?.database;
+  const gateway = report?.checks?.ai_gateway;
+
+  const upFor = (seconds: number) => {
+    const minutes = Math.max(1, Math.round(seconds / 60));
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 48) return `${hours} hour${hours === 1 ? '' : 's'}`;
+    return `${Math.round(hours / 24)} days`;
+  };
+
+  const toState = (s?: string): State => (s === 'ok' ? 'ok' : s === 'down' ? 'down' : s === 'degraded' ? 'warn' : 'unknown');
+
+  const headline = !report
+    ? 'The API is not answering.'
+    : report.status === 'ok'
+      ? 'Everything checked is answering.'
+      : 'Something checked is degraded.';
 
   return (
     <>
@@ -149,52 +106,83 @@ export default function Status() {
       <main id="main">
         <PageHero
           crumb="Platform status"
-          eyebrow={degraded ? 'One service degraded' : 'All systems operational'}
-          title={degraded ? 'One service is degraded.' : 'All systems operational.'}
+          eyebrow={report ? (report.status === 'ok' ? 'Checked just now' : 'Checked just now — degraded') : 'Checked just now — unreachable'}
+          title={headline}
           lede={
-            'Live availability for every part of the platform, and — more usefully — what ' +
-            'actually happens to your day when one of them fails. In almost every case the ' +
-            'answer is that the engine falls back to your cached plan rather than showing you a ' +
-            'broken app.'
+            'Checked when you loaded this page, not cached. Only three things below are ' +
+            'actually measured — the rest are listed as unknown, because nothing is yet ' +
+            'watching them, and a green tick nobody is checking is worse than no tick at all.'
           }
         />
 
         <section className="section">
           <div className="wrap">
             <div className="section__head" style={{ marginBottom: 24 }}>
-              <p className="eyebrow">Services</p>
-              <h2>Current state.</h2>
+              <p className="eyebrow">Checked live</p>
+              <h2>Three things this page actually knows.</h2>
               <p className="lede">
-                Each row shows the last 30 days. State is carried by the badge text as well as
-                the colour.
+                Read from the API&rsquo;s own health endpoint at{' '}
+                {new Date(checkedAt).toUTCString()}. State is carried by the badge text as well
+                as the colour.
               </p>
             </div>
 
             <div className="status">
-              {SERVICES.map((s) => (
-                <div className="statusrow" key={s.name}>
-                  <div>
-                    <span className="statusrow__name">{s.name}</span>
-                    <span className="statusrow__sub">{s.sub}</span>
-                  </div>
-                  <div className="statusrow__bars" aria-hidden="true">
-                    {s.history.map((d, i) => (
-                      <i
-                        key={`${s.name}-${i}`}
-                        className={
-                          d === 'up'
-                            ? ''
-                            : d === 'degraded'
-                              ? 'is-degraded'
-                              : d === 'down'
-                                ? 'is-down'
-                                : 'is-none'
-                        }
-                      />
-                    ))}
-                  </div>
-                  <span className={`badge ${BADGE[s.state].cls}`}>{BADGE[s.state].label}</span>
-                </div>
+              <Row
+                name="API"
+                sub="Every request the site and the app make"
+                state={api}
+                detail={
+                  report
+                    ? `Answering. Up ${upFor(report.uptimeSeconds)} on ${report.build.shortCommit ?? 'an unstamped build'}.`
+                    : 'This page could not reach api.jessmove.com. If the rest of the site works, the problem is between them.'
+                }
+              />
+              <Row
+                name="Database"
+                sub="Accounts, wallets, schedules and the movement ledger"
+                state={report ? toState(db?.status) : 'unknown'}
+                detail={report ? db?.detail : undefined}
+              />
+              <Row
+                name="AI gateway"
+                sub="Provider routing, redaction, fallback chain"
+                state={report ? toState(gateway?.status) : 'unknown'}
+                detail={report ? gateway?.detail : undefined}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="section section--tint">
+          <div className="wrap">
+            <div className="section__head" style={{ marginBottom: 24 }}>
+              <p className="eyebrow">Not yet monitored</p>
+              <h2>Built, running, and nothing is watching it.</h2>
+              <p className="lede">
+                These are live in the product. There is no independent check on them yet, so
+                this page will not claim one. When uptime monitoring is in place they move up.
+              </p>
+            </div>
+
+            <div className="status">
+              {UNMONITORED.map((s) => (
+                <Row key={s.name} name={s.name} sub={s.sub} state="unknown" />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="wrap">
+            <div className="section__head" style={{ marginBottom: 24 }}>
+              <p className="eyebrow">In build</p>
+              <h2>Named here so nothing implies otherwise.</h2>
+            </div>
+
+            <div className="status">
+              {IN_BUILD.map((s) => (
+                <Row key={s.name} name={s.name} sub={s.sub} state="build" />
               ))}
             </div>
           </div>
@@ -203,26 +191,15 @@ export default function Status() {
         <section className="section section--tint">
           <div className="wrap">
             <div className="section__head">
-              <p className="eyebrow">Incidents</p>
-              <h2>What happened, and what it meant for a real day.</h2>
-            </div>
-
-            <div className="posts">
-              {INCIDENTS.map((i) => (
-                <article className="post" key={i.title}>
-                  <div className="post__meta">
-                    <span className="post__cat" style={{ color: i.tone }}>
-                      {i.state}
-                    </span>
-                    <br />
-                    {i.date}
-                  </div>
-                  <div>
-                    <h3>{i.title}</h3>
-                    <p>{i.body}</p>
-                  </div>
-                </article>
-              ))}
+              <p className="eyebrow">Incident history</p>
+              <h2>There isn&rsquo;t one yet, and inventing one was the alternative.</h2>
+              <p className="lede">
+                Nothing has been recording availability, so there is no history to publish.
+                This page previously showed thirty days of green bars and three written-up
+                incidents with dates and resolution times. None of it had happened. It has been
+                removed rather than left to be believed, and when a real incident occurs it will
+                be written here with the same detail those inventions had.
+              </p>
             </div>
           </div>
         </section>
@@ -232,6 +209,10 @@ export default function Status() {
             <div className="section__head">
               <p className="eyebrow eyebrow--onDark">Degradation policy</p>
               <h2>A slow model must never produce a broken app.</h2>
+              <p className="lede">
+                This part is not a status report — it is how the system is built to fail, which
+                is true whether or not anything is failing today.
+              </p>
             </div>
 
             <div className="tiles">

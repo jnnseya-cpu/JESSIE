@@ -57,6 +57,61 @@ export const NATIVE_BRIDGE_VERSION = 1;
 export const NATIVE_PLATFORMS = ['ios', 'android'] as const;
 export type NativePlatform = (typeof NATIVE_PLATFORMS)[number];
 
+/**
+ * Whether a member can actually install the app yet.
+ *
+ * This exists because several true statements about the platform become
+ * false ones when nobody can install anything. `/wearables` advertises
+ * Apple Health and Health Connect as on-device integrations, and
+ * `connectionInfo` in the wearables service reported them `ready: true` —
+ * both correct in the sense that the code is written and shipped, and
+ * both a promise no visitor could keep, because reading either store
+ * needs the shell and the shell is in neither store.
+ *
+ * A boolean rather than a date or a feature flag: it is one fact, it
+ * changes exactly once, and it changes on the day the listings go live.
+ * Flip it in the same commit as the store release and the site, the API
+ * and the marketing copy all stop over-claiming together.
+ */
+export const MOBILE_APP_RELEASED = false;
+
+/**
+ * What an on-device provider is waiting for, in a member's words.
+ *
+ * Rendered on `/wearables` and returned by the API, so the two cannot
+ * drift into telling somebody different things about the same button.
+ */
+export const ON_DEVICE_REQUIRES = MOBILE_APP_RELEASED
+  ? 'Available in the Jess Move app.'
+  : 'Needs the Jess Move app, which is not in the stores yet.';
+
+/**
+ * What a visitor can actually connect today, per provider.
+ *
+ * `/wearables` published a table of seven providers with columns for
+ * scopes, transport, privacy and lag — and no column for whether any of
+ * them could be connected. All seven read as live integrations. None of
+ * them is: two need an app that is in neither store, three need OAuth
+ * credentials that have not been provisioned, one is a partner programme
+ * that has to be granted, and one has no client code at all.
+ *
+ * Samsung Health is the one worth naming separately. It shares the
+ * `on_device` transport with Apple Health and Health Connect, so a rule
+ * derived from transport alone would say the app unblocks it — and the
+ * app would not. Its SDK is a separate partner integration and nothing
+ * has been built against it, which is why the native shell deliberately
+ * refuses to claim the platform at all.
+ */
+export const PROVIDER_AVAILABILITY: Readonly<Record<Provider, string>> = {
+  apple_health: ON_DEVICE_REQUIRES,
+  health_connect: ON_DEVICE_REQUIRES,
+  samsung_health: 'No — its SDK is a separate partner integration and nothing is built against it.',
+  garmin: 'No — Garmin grants Health API access through their partner programme.',
+  fitbit: 'Not yet — the provider connection is not switched on.',
+  oura: 'Not yet — the provider connection is not switched on.',
+  polar: 'Not yet — the provider connection is not switched on.',
+};
+
 export const HEALTH_PROVIDER_FOR: Readonly<Record<NativePlatform, Provider>> = {
   ios: 'apple_health',
   android: 'health_connect',

@@ -89,16 +89,19 @@ export default function Industries() {
               <p className="lede">
                 Employers, schools, care groups and councils get participation, engagement and
                 campaign performance above a privacy threshold. Below it, the answer is
-                suppressed — for you as well as for everyone else.
+                suppressed — for you as well as for everyone else. The first card is an example
+                of the shape a result takes; no organisation has run a cohort yet, so there is
+                no real figure to put there and inventing one is how a number nobody measured
+                ends up in a procurement document.
               </p>
             </div>
 
             <div className="dash">
               <article className="card card--4" style={{ gap: 14 }}>
                 <Stat
-                  k="This week"
+                  k="Example week"
                   v="68%"
-                  sub="of enrolled employees completed at least one movement break."
+                  sub="of enrolled employees completed at least one movement break. Illustrative — not a measured result."
                   tone="var(--jm-teal)"
                 />
               </article>

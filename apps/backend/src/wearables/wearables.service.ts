@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   DEGRADATION,
+  MOBILE_APP_RELEASED,
+  ON_DEVICE_REQUIRES,
   PROVIDERS,
   PROVIDER_DEFINITIONS,
   REVOCATION_GUARANTEES,
@@ -69,7 +71,20 @@ export class WearablesService {
 
   private connectionInfo(p: Provider): Record<string, unknown> {
     if (PROVIDER_DEFINITIONS[p].transport === 'on_device') {
-      return { method: 'on_device', ready: true, note: 'The phone app pushes consented samples to /wearables/ingest.' };
+      /*
+       * Ready means a member can connect it, not that the code exists.
+       *
+       * This returned `ready: true` unconditionally, which was true about
+       * the server and false about the world: reading Apple Health or
+       * Health Connect needs the shell, and the shell is in neither
+       * store. `/wearables` renders this, so the site was offering a
+       * connection nobody could make.
+       */
+      return {
+        method: 'on_device',
+        ready: MOBILE_APP_RELEASED,
+        note: ON_DEVICE_REQUIRES,
+      };
     }
     if (!isOauthProvider(p)) return { method: 'oauth_cloud', ready: false };
     const oauth = OAUTH[p];

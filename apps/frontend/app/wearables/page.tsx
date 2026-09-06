@@ -12,6 +12,7 @@ import {
   REFUSAL_REASON,
   REVOCATION_GUARANTEES,
   STALE_AFTER_MINUTES,
+  PROVIDER_AVAILABILITY,
   disclosureFor,
   isStale,
   resolveConflict,
@@ -68,7 +69,9 @@ export default function Wearables() {
             `The floor of this product is a phone that receives a text message. A wearable ` +
             `improves the estimate; it never gates the experience. Every connection is revocable ` +
             `on its own, and this page states exactly what revoking each one costs — because ` +
-            `"you can turn it off" means nothing if nobody tells you the price.`
+            `"you can turn it off" means nothing if nobody tells you the price. None of the ` +
+            `seven can be connected today, and the last column of the table says what each one ` +
+            `is waiting for rather than leaving you to find out by pressing a button.`
           }
         />
 
@@ -97,6 +100,7 @@ export default function Wearables() {
                       <th scope="col">Transport</th>
                       <th scope="col">Raw data leaves device</th>
                       <th scope="col">Typical lag</th>
+                      <th scope="col">Connect today</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -121,6 +125,14 @@ export default function Wearables() {
                           <td style={{ fontVariantNumeric: 'tabular-nums' }}>
                             ~{d.typicalLagMinutes} min
                           </td>
+                          {/*
+                            Whether a person reading this can actually
+                            press a button today. The table listed seven
+                            providers with no availability column at all,
+                            which read as seven live integrations — and
+                            not one of them can be connected right now.
+                          */}
+                          <td style={{ color: 'var(--ink-2)' }}>{PROVIDER_AVAILABILITY[p]}</td>
                         </tr>
                       );
                     })}
