@@ -9,7 +9,7 @@ for:
 | Health Connect | same, `health_connect` | none |
 | Device calendar | `member_windows`, `windowsFromBusy` | `.ics` file import |
 | Continuous motion | `ContextSignals.motionState`, used to withhold a prompt from somebody driving | always `unknown` |
-| Push without "add to home screen" | VAPID, `/api/nudge/cron` | PWA only |
+| Push without "add to home screen" | `/push/device`, APNs and FCM senders, `/api/nudge/cron` | PWA only |
 
 ## Why Capacitor and not React Native
 
@@ -169,6 +169,40 @@ already, in both directions and in both languages, which is why
 `native-bridge.test.ts` now reads the Swift and the Kotlin and asserts
 they match.
 
+## Notifications, which do not go through the webview at all
+
+Web Push cannot reach either shell. A Capacitor webview has no
+`PushManager` — on iOS because Safari's push belongs to home-screen web
+apps, which this is not, and on Android because the System WebView has
+none. So `account-panel.tsx` checked for it, found nothing, and reported
+"unsupported" in the application built to deliver notifications.
+
+The shell registers natively instead: `PushNotifications.register()`,
+token to the web app, web app posts it to `/push/device` with the
+member's id and time-zone offset. The split is deliberate — the shell
+never learns who is signed in, the same division everything else here
+uses.
+
+Three things this needs on the device side:
+
+- **Android:** a notification channel with id `jessmove-snap`, created in
+  `installHost`. Android 8+ silently drops a notification naming a
+  channel the app never created, and FCM's `channel_id` names this one.
+- **iOS:** the Push Notifications capability and Background Modes →
+  Remote notifications, both already in the Xcode list above.
+- **The tap:** `pushNotificationActionPerformed` navigates to the `url`
+  in the payload. Without it the notification opens the app wherever it
+  was last, which for a two-minute movement offered at eleven o'clock is
+  the difference between doing it and not.
+
+Server side, iOS goes to Apple directly and Android through FCM, both
+without an SDK — see `apns.logic.ts`, `fcm.logic.ts` and the runbook for
+the environment variables. The alert text is a movement name and a
+duration, and that is a constraint rather than a coincidence: unlike Web
+Push, which encrypts to the device, APNs and FCM can read what they
+carry. Nothing about a health reading, a symptom, a measurement or a
+wallet balance travels through them.
+
 ## How motion works, and why it is shaped oddly
 
 `CMMotionActivityManager` answers a historical query and Android's
@@ -233,7 +267,9 @@ Nothing that can be closed from here. What a device has to confirm:
   none, so it could never have returned `.sharingAuthorized`;
 - granting calendar access in the system settings app and returning makes
   the device-calendar button work without a reload, which is what the
-  `visibilitychange` refresh in `installHost` is for.
+  `visibilitychange` refresh in `installHost` is for;
+- a notification arrives on a locked phone, and tapping it opens
+  `/account` rather than wherever the app was last.
 
 None of the Swift or Kotlin has been compiled. The first `xcodebuild` and
 the first Gradle build remain the first real check of both.

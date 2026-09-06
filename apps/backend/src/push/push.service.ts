@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { makePool } from '../db/pg';
+import { NativePushService } from './native-push.service';
 import { buildPushRequest, type VapidKeys } from './webpush.logic';
 
 /**
@@ -51,7 +52,7 @@ export class PushService implements OnModuleDestroy {
   private readonly memory = new Map<string, StoredSubscription>();
   private pool: PgPoolLike | null = null;
 
-  constructor() {
+  constructor(private readonly native: NativePushService) {
     const url = process.env.DATABASE_URL;
     if (url) {
       this.pool = makePool(url, 2);
@@ -68,8 +69,29 @@ export class PushService implements OnModuleDestroy {
     return process.env.VAPID_SUBJECT ?? 'mailto:jess@jessmove.com';
   }
 
+  /**
+   * Whether a browser can be subscribed. Web Push only, by name.
+   *
+   * Kept narrow deliberately: `account-panel.tsx` reads this to decide
+   * whether to hand a VAPID public key to `pushManager.subscribe`, and an
+   * answer that also counted APNs would have it try with no key at all.
+   * The scheduler asks `canReachAnybody()` instead.
+   */
   configured(): boolean {
     return this.vapid() !== null;
+  }
+
+  /**
+   * Whether any transport can reach any device.
+   *
+   * The scheduler used to abort its entire run on `configured()`, which
+   * was right when Web Push was the only way out and wrong the moment it
+   * was not: a deployment with APNs and FCM set up but no VAPID keys
+   * would have skipped every member on every run, and reported it as
+   * "push is not configured".
+   */
+  canReachAnybody(): boolean {
+    return this.configured() || this.native.configured();
   }
 
   status(): Record<string, unknown> {
@@ -77,6 +99,7 @@ export class PushService implements OnModuleDestroy {
       configured: this.configured(),
       publicKey: this.vapid()?.publicKey ?? null,
       store: this.pool ? 'postgres' : 'memory',
+      native: this.native.status(),
       note: this.configured()
         ? 'Ready. The page subscribes with this public key; the private key never leaves the server.'
         : 'Set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT to enable background notifications.',
@@ -114,17 +137,24 @@ export class PushService implements OnModuleDestroy {
 
   private async subscriptionsFor(userId?: string): Promise<StoredSubscription[]> {
     if (this.pool) {
+      // The offset is selected because `StoredSubscription` declares it.
+      // It was documented, stored on subscribe, and then never read back —
+      // so every subscription this method returned looked offset-less to
+      // anything that asked. The scheduler queries the column itself and
+      // was unaffected; the next caller would not have been.
+      const columns = 'endpoint, user_id, p256dh, auth, utc_offset_minutes';
       const result = userId
         ? await this.pool.query(
-            'SELECT endpoint, user_id, p256dh, auth FROM push_subscriptions WHERE user_id = $1',
+            `SELECT ${columns} FROM push_subscriptions WHERE user_id = $1`,
             [userId],
           )
-        : await this.pool.query('SELECT endpoint, user_id, p256dh, auth FROM push_subscriptions');
+        : await this.pool.query(`SELECT ${columns} FROM push_subscriptions`);
       return result.rows.map((r) => ({
         endpoint: String(r.endpoint),
         userId: r.user_id == null ? null : String(r.user_id),
         p256dh: String(r.p256dh),
         auth: String(r.auth),
+        utcOffsetMinutes: r.utc_offset_minutes == null ? null : Number(r.utc_offset_minutes),
       }));
     }
     const all = [...this.memory.values()];
@@ -140,20 +170,54 @@ export class PushService implements OnModuleDestroy {
     payload: { title: string; body: string; url?: string },
     userId?: string,
   ): Promise<Record<string, unknown>> {
-    const vapid = this.vapid();
-    if (!vapid) {
+    if (!this.canReachAnybody()) {
       throw new BadRequestException(
-        'Push is not configured — set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT.',
+        'Push is not configured — set VAPID keys for the browser, APNs and FCM credentials for the app, or both.',
       );
     }
-    const subs = await this.subscriptionsFor(userId);
-    if (subs.length === 0) {
-      return { sent: 0, note: userId ? 'no subscriptions for this user' : 'no subscriptions at all' };
+
+    /*
+     * Native devices first, and unconditionally.
+     *
+     * Not because they matter more, but because the Web Push half returns
+     * early when it has no subscriptions and used to throw when VAPID was
+     * unset — either of which would have silently skipped a member whose
+     * only device is the installed app. Both halves now report into one
+     * total, and a member with a browser and a phone is woken on both,
+     * which is what every other product does and what people expect.
+     */
+    const native = await this.native.send(payload, userId);
+
+    const vapid = this.vapid();
+    const subs = vapid ? await this.subscriptionsFor(userId) : [];
+    if (!vapid || subs.length === 0) {
+      return {
+        sent: native.sent,
+        expired: native.expired,
+        failures: native.failures,
+        /*
+         * The note is what lands in `nudge_runs` and is the whole answer a
+         * member gets to "why did nothing happen at eleven?". A registered
+         * app reported as "no subscriptions for this user" would send
+         * whoever reads it looking at the member's device instead of at
+         * the deployment's missing APNs key.
+         */
+        note:
+          native.sent > 0
+            ? undefined
+            : native.attempted > 0
+              ? `${native.attempted} app device(s) registered and none could be reached: ${
+                  native.failures.join('; ') || 'no reason reported'
+                }`
+              : userId
+                ? 'no subscriptions for this user'
+                : 'no subscriptions at all',
+      };
     }
 
-    let sent = 0;
-    let expired = 0;
-    const failures: string[] = [];
+    let sent = native.sent;
+    let expired = native.expired;
+    const failures: string[] = [...native.failures];
     for (const sub of subs) {
       const request = buildPushRequest(
         sub.endpoint,
@@ -186,14 +250,22 @@ export class PushService implements OnModuleDestroy {
     return { sent, expired, failures };
   }
 
-  /** Account deletion's sweep: every device this user registered. */
+  /**
+   * Account deletion's sweep: every device this user registered.
+   *
+   * Both stores, in one call, because `auth.service.ts` calls this one
+   * method and a native token left behind would keep a deleted member's
+   * phone reachable — and the row would still carry their user id.
+   */
   async deleteForUser(userId: string): Promise<number> {
+    const native = await this.native.deleteForUser(userId);
+
     if (this.pool) {
       const result = await this.pool.query(
         'DELETE FROM push_subscriptions WHERE user_id = $1 RETURNING endpoint',
         [userId],
       );
-      return result.rows.length;
+      return result.rows.length + native;
     }
     let removed = 0;
     for (const [endpoint, sub] of this.memory) {
@@ -202,7 +274,7 @@ export class PushService implements OnModuleDestroy {
         removed += 1;
       }
     }
-    return removed;
+    return removed + native;
   }
 
   async onModuleDestroy(): Promise<void> {

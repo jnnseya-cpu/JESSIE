@@ -228,6 +228,7 @@ Real Chromium, 420 × 900, through the whole journey:
 | Barcode lookup against the open label database | Outbound network is restricted here. | Scan one real barcode on production. |
 | A real Stripe checkout session | No secret key here. The webhook side — the half that moves money — is fully proven. | One live-mode £5 top-up, refunded. |
 | Web push delivery | No VAPID keys. | Set the three VAPID variables, then send yourself a test. |
+| APNs and FCM delivery | No Apple key, no Google service account and no device here. Everything decided before the request leaves is proven — signatures verify, claims match what Apple and Google require, and every response code maps to the right action. Nothing has been delivered. | Set the APNs and FCM variables, install the app, press Enable notifications, then `POST /push/test`. |
 | Anything on jessmove.com | The sandbox cannot reach it (gateway answers 403 to CONNECT). | Re-run the journey against production. |
 | k-anonymity **above** the floor of 8 | The registration rate limit prevents making nine accounts here. Below-floor suppression is proven. | Nine members in one organisation, then read the report. |
 | Postgres-backed persistence | No `DATABASE_URL` here; everything ran in memory. | Set it, restart, confirm an account survives. |
@@ -244,6 +245,10 @@ Real Chromium, 420 × 900, through the whole journey:
 - [ ] Stripe live mode: `plan` metadata on every price, and
       `STRIPE_WEBHOOK_SECRET`
 - [ ] `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- [ ] `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_TOPIC` — and
+      `APNS_ENVIRONMENT=sandbox` only for a development build. Set to sandbox in
+      production and every real device token is deleted as `BadDeviceToken`.
+- [ ] `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, `FCM_PRIVATE_KEY`
 - [ ] Blob store connected for profile media
 - [ ] SPF, DKIM and DMARC at Hostinger
 

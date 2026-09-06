@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { grantSourceLabel } from '@jessmove/shared';
 import { apiBase, mediaUrl } from '../api-base';
+import { enableNativePush, isNative } from '../native';
 import { FoodLensModule, SnapModule } from './test-drive';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
 import { ScannerModule } from './scanner';
@@ -142,6 +143,20 @@ export function AccountPanel() {
   >('checking');
 
   useEffect(() => {
+    /*
+     * The installed app takes a different road entirely.
+     *
+     * A Capacitor webview has no `PushManager` — on iOS because Safari's
+     * push belongs to Home Screen web apps, which the shell is not, and
+     * on Android because the System WebView has none. This check found
+     * nothing and reported "unsupported", so the application built to
+     * deliver notifications was the one place they could not be switched
+     * on. Inside a shell the offer is APNs or FCM instead.
+     */
+    if (isNative()) {
+      setPush('off');
+      return;
+    }
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setPush('unsupported');
       return;
@@ -161,6 +176,15 @@ export function AccountPanel() {
 
   const enablePush = async (userId: string) => {
     setPush('busy');
+
+    // In the shell, the OS prompt and the token both come from native
+    // code; there is no service worker and no VAPID key involved.
+    if (isNative()) {
+      const ok = await enableNativePush(userId);
+      setPush(ok ? 'on' : 'denied');
+      return;
+    }
+
     try {
       const status = (await (await fetch(`${apiBase()}/push/status`)).json()) as {
         data: { configured: boolean; publicKey: string | null };
@@ -680,8 +704,11 @@ export function AccountPanel() {
             <span className="acct__stats2">
               {push === 'on' && 'Arrives even when the app is closed.'}
               {push === 'off' && 'One tap. Works with the app closed.'}
-              {push === 'busy' && 'Asking your browser…'}
-              {push === 'denied' && 'Blocked in browser settings for jessmove.com.'}
+              {push === 'busy' && (isNative() ? 'Asking your phone…' : 'Asking your browser…')}
+              {push === 'denied' &&
+                (isNative()
+                  ? 'Blocked in your phone’s notification settings for Jess Move.'
+                  : 'Blocked in browser settings for jessmove.com.')}
               {push === 'unsupported' && 'On iPhone, install the app to your home screen first.'}
               {push === 'unconfigured' && 'Not switched on for this deployment yet.'}
               {push === 'checking' && 'Checking this device…'}

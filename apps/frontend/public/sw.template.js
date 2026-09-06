@@ -196,6 +196,15 @@ self.addEventListener('push', (event) => {
       body: payload.body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
+      /*
+       * One tag, so a later Snap replaces an earlier one instead of
+       * stacking beside it. Not tidiness: the earlier one described a
+       * window that has since closed, and a prompt for a movement that no
+       * longer fits is the thing this product exists not to send. The
+       * native transports collapse on the same key.
+       */
+      tag: 'jessmove-snap',
+      renotify: true,
       data: { url: payload.url },
     }),
   );

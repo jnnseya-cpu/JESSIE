@@ -76,8 +76,17 @@ export class NudgeService implements OnModuleDestroy {
       summary.detail.push('no DATABASE_URL — declared windows are not stored, so nothing can be due');
       return summary;
     }
-    if (!this.push.configured()) {
-      summary.detail.push('push is not configured — set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT');
+    /*
+     * Any transport, not Web Push specifically. This asked
+     * `push.configured()`, which names the VAPID keys alone — so a
+     * deployment that had set up APNs and FCM but not VAPID would have
+     * abandoned every run before looking at a single member, and said
+     * "push is not configured" while two working transports sat idle.
+     */
+    if (!this.push.canReachAnybody()) {
+      summary.detail.push(
+        'no push transport is configured — set VAPID keys for browsers, APNs and FCM credentials for the app, or both',
+      );
       return summary;
     }
 
@@ -193,17 +202,44 @@ export class NudgeService implements OnModuleDestroy {
   private async candidates(): Promise<Candidate[]> {
     if (!this.pool) return [];
     /*
+     * A device is a browser subscription or an app registration, and the
+     * union is what makes the installed app reachable at all. Joining
+     * `push_subscriptions` alone meant a member whose only device was the
+     * app had no offset, so the join dropped them and the scheduler never
+     * considered them — native delivery would have been built and then
+     * addressed nobody.
+     *
      * `max(utc_offset_minutes)` rather than any: a member with two devices
      * in two time zones has no single local hour, and picking one
      * deterministically is better than picking whichever row the planner
-     * returned first. Subscriptions with no recorded offset are excluded
-     * by the join — an unknown offset would mean guessing at their
-     * midnight.
+     * returned first. Devices with no recorded offset are excluded by the
+     * WHERE — an unknown offset would mean guessing at their midnight.
      */
     const result = await this.pool.query(
-      `SELECT w.user_id,
+      /*
+       * The offset is reduced to one row per member *before* the join,
+       * not during it. Joining devices to windows multiplies them —
+       * three devices and four windows produced twelve rows and an
+       * aggregate containing each window three times. Harmless to
+       * `openWindow`, which stops at the first match, and about to stop
+       * being harmless now that the device list spans two tables.
+       */
+      `WITH offsets AS (
+              SELECT user_id, max(utc_offset_minutes) AS offset_minutes
+                FROM (
+                      SELECT user_id, utc_offset_minutes
+                        FROM push_subscriptions
+                       WHERE utc_offset_minutes IS NOT NULL
+                       UNION ALL
+                      SELECT user_id, utc_offset_minutes
+                        FROM device_push_tokens
+                       WHERE utc_offset_minutes IS NOT NULL
+                     ) d
+               GROUP BY user_id
+            )
+       SELECT w.user_id,
               u.age,
-              max(s.utc_offset_minutes) AS offset_minutes,
+              o.offset_minutes,
               json_agg(json_build_object(
                 'weekday', w.weekday,
                 'startMinute', w.start_minute,
@@ -211,9 +247,8 @@ export class NudgeService implements OnModuleDestroy {
               )) AS windows
          FROM member_windows w
          JOIN app_users u ON u.user_id = w.user_id
-         JOIN push_subscriptions s
-           ON s.user_id = w.user_id AND s.utc_offset_minutes IS NOT NULL
-        GROUP BY w.user_id, u.age`,
+         JOIN offsets o ON o.user_id = w.user_id
+        GROUP BY w.user_id, u.age, o.offset_minutes`,
       [],
     );
 

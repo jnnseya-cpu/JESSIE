@@ -47,6 +47,7 @@ interface NativeHost {
   requestHealthAccess?: () => Promise<unknown>;
   requestMotionAccess?: () => Promise<unknown>;
   requestCalendarAccess?: () => Promise<unknown>;
+  requestPushToken?: () => Promise<unknown>;
 }
 
 /** How long the shell gets before it is treated as absent. */
@@ -217,6 +218,50 @@ export function requestMotionAccess(): Promise<boolean> {
 export function requestCalendarAccess(): Promise<boolean> {
   const h = host();
   return requestAccess(h?.requestCalendarAccess?.bind(h));
+}
+
+/**
+ * Notifications for the installed app.
+ *
+ * Web Push cannot reach either shell. A Capacitor webview has no
+ * `PushManager` — on iOS because Safari's push belongs to Home Screen web
+ * apps, which this is not, and on Android because the System WebView has
+ * none. So `account-panel.tsx` checked for it, found nothing, and told
+ * members notifications were unsupported inside the app built to deliver
+ * them.
+ *
+ * The shell registers with APNs or FCM and returns the token; this posts
+ * it with the member's id and time zone, which the shell deliberately
+ * does not know. Same offset reasoning as the browser path: the scheduler
+ * runs in UTC and the device is the only thing that knows where it is.
+ */
+export async function enableNativePush(userId: string): Promise<boolean> {
+  const h = host();
+  if (!h?.requestPushToken) return false;
+
+  let registration: { token?: unknown; transport?: unknown } | null = null;
+  try {
+    registration = (await h.requestPushToken()) as { token?: unknown; transport?: unknown } | null;
+  } catch {
+    return false;
+  }
+
+  const token = typeof registration?.token === 'string' ? registration.token : null;
+  const transport = registration?.transport;
+  if (!token || (transport !== 'apns' && transport !== 'fcm')) return false;
+
+  const res = await fetch(`${apiBase()}/push/device`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      token,
+      transport,
+      utcOffsetMinutes: -new Date().getTimezoneOffset(),
+    }),
+  });
+  return res.ok;
 }
 
 export { NATIVE_BRIDGE_VERSION };

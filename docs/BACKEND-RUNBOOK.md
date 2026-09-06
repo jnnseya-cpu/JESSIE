@@ -216,8 +216,47 @@ whole API as one function. Same account as the website, second project, and
 
    Then any signed-in person presses **Enable notifications** on /account, and
    `POST /push/test {"userId":"u_…"}` proves delivery on a locked phone. Subscriptions
-   live in Postgres (`0003_push.sql`, self-applied). On iPhone, notifications require
-   the app installed to the home screen — an iOS rule, not ours.
+   live in Postgres (`0003_push.sql`, self-applied). In a browser on iPhone,
+   notifications require the site installed to the home screen — an iOS rule, not
+   ours. The installed app does not use Web Push at all; see below.
+
+   **Background notifications (the installed app)** — Web Push cannot reach either
+   shell. A Capacitor webview has no `PushManager`: on iOS because Safari's push
+   belongs to home-screen web apps, which the shell is not, and on Android because the
+   System WebView has none. So the app registers with APNs or FCM and posts its token
+   to `POST /push/device`, which is `@SelfOnly` and therefore needs a session.
+
+   iOS goes to Apple directly rather than through Firebase — Apple publishes the
+   endpoint, and routing it through a third party would put a vendor in the path for
+   no capability. From the Apple developer console, Keys → new key with **Apple Push
+   Notifications service** enabled; the .p8 downloads once and cannot be re-downloaded.
+
+   | Name | Value |
+   |---|---|
+   | `APNS_KEY_ID` | the ten-character Key ID shown next to the key |
+   | `APNS_TEAM_ID` | the ten-character Team ID, top right of the console |
+   | `APNS_PRIVATE_KEY` | the whole .p8 file including the BEGIN/END lines |
+   | `APNS_TOPIC` | `com.jessmove.app` — the bundle identifier |
+   | `APNS_ENVIRONMENT` | `sandbox` for a development build; omit for production |
+
+   Android has no alternative to FCM, which is Firebase and already approved. Firebase
+   console → Project settings → Service accounts → Generate new private key. The JSON
+   holds all three values.
+
+   | Name | Value |
+   |---|---|
+   | `FCM_PROJECT_ID` | `project_id` from the service-account JSON |
+   | `FCM_CLIENT_EMAIL` | `client_email` |
+   | `FCM_PRIVATE_KEY` | `private_key`, the whole PEM |
+
+   Both private keys survive a Vercel variable as literal `\n` rather than newlines,
+   and both are un-escaped on read — paste them as they come.
+
+   `GET /push/status` reports which transports are live (`native.apns`,
+   `native.fcm`). Getting `APNS_ENVIRONMENT` wrong is the failure worth knowing
+   about: a production token sent to sandbox returns `BadDeviceToken`, which is
+   correctly treated as a dead device, so every real registration is silently deleted.
+   The default is production for exactly that reason.
 
 4. **Deploy.** You get `https://<project>.vercel.app`. Prove it:
 

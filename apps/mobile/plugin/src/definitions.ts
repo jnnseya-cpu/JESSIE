@@ -53,3 +53,17 @@ export interface JessMoveNativePlugin {
   /** Events in the next `horizonDays`, times only. */
   readCalendar(options: { horizonDays: number }): Promise<{ events: NativeCalendarEvent[] }>;
 }
+
+/**
+ * A device registration for APNs or FCM.
+ *
+ * `transport` rather than `platform` because it is the transport the
+ * server has to speak, and the two are not always the same thing — an
+ * Android build could in principle register with a different service, and
+ * the server's job is to know which door to knock on, not which handset
+ * is behind it.
+ */
+export interface DeviceRegistration {
+  readonly token: string;
+  readonly transport: 'apns' | 'fcm';
+}

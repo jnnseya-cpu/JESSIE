@@ -347,7 +347,71 @@ now refreshes after any request and on return to the foreground.
 4-second timeout against a human reading a permission sheet — a false
 refusal looks like a considered answer.
 
-Unproven until a device runs it: that a real drive produces `driving`;
+**Notifications reach the installed app, which they could not before.**
+Web Push was finished and correct — RFC 8291 against the spec's own test
+vector, a real VAPID signature, a service worker, a scheduler — and
+reached only browsers. A Capacitor webview has no `PushManager`, so
+`account-panel.tsx` checked for one, found nothing, and told members
+notifications were unsupported inside the application built to deliver
+them.
+
+- Migration 0031 adds `device_push_tokens`, a separate table rather than
+  a nullable half of `push_subscriptions`, because the two are not the
+  same guarantee: Web Push encrypts to the device and the service relays
+  bytes it cannot read; APNs and FCM can read the alert. That is why the
+  body stays a movement name and a duration, and why nothing about a
+  health reading, a symptom, a measurement or a wallet balance goes
+  through either.
+- `apns.logic.ts` and `fcm.logic.ts` are the senders, without an SDK, on
+  the same rule as the Stripe client and Web Push. iOS goes to Apple
+  directly — Apple publishes the endpoint, and routing it through
+  Firebase would put a vendor in the path for no capability. Android has
+  no alternative to FCM, which is already approved.
+- `PushService` stays the only door. The scheduler, account deletion and
+  the admin test call one method and the fan-out happens behind it.
+
+Three things would each have made it deliver nothing. The scheduler
+aborted every run on `push.configured()`, which names the VAPID keys
+alone — a deployment with APNs and FCM but no VAPID would have skipped
+every member and reported "push is not configured". The candidate query
+joined `push_subscriptions` for a time-zone offset, so a member whose
+only device was the app had none, was dropped by the join, and was never
+considered — native delivery would have addressed nobody. And that join
+multiplied windows by devices; the offset is now reduced per member
+before it.
+
+**Caught by this repository's own guard, and it was a real hole.**
+`admin-guard.test.ts` failed on `/push/device` taking a `userId` with
+nothing checking it — anyone could have bound a device to another
+member's account and received their prompts. Now `@SelfOnly` and a
+required id. It is not the same case as `/push/subscribe`, which is
+deliberately open: a Web Push endpoint is itself the capability, issued
+by the browser, while a device token is bound to a member by the claim
+alone. Proven: an unauthenticated registration is refused 401 and writes
+no row.
+
+Also fixed on the way through: `subscriptionsFor` never selected
+`utc_offset_minutes` although `StoredSubscription` declared it, so every
+subscription it returned looked offset-less; and the service worker had
+no `tag`, so two Snaps stacked instead of the later replacing the
+earlier — which matters because the earlier one describes a window that
+has closed. Both native transports collapse on the same key.
+
+Proven here, against real Postgres: registration through the guarded
+endpoint, an app-only member becoming a scheduler candidate, the fan-out
+running, and the failure naming the actual cause — "1 app device(s)
+registered and none could be reached: apns not configured". Unproven:
+any actual delivery. There is no Apple key, no Google service account and
+no device in this environment, so what is asserted is everything decided
+before the request leaves — signatures verify against their own keys, the
+claims are what Apple and Google require, and every response code maps to
+the right action. Getting the last of those wrong has the longest tail: a
+dead token treated as retryable means pushing at an uninstalled app
+forever, and a live one treated as dead unsubscribes a member who did
+nothing.
+
+Unproven until a device runs it: that a notification arrives on a locked
+phone and its tap opens `/account`; that a real drive produces `driving`;
 that force-stopping the app and reopening it re-subscribes rather than
 answering with a state frozen at the force-stop; that the HealthKit sheet
 lists four categories; and that granting in system settings and returning
