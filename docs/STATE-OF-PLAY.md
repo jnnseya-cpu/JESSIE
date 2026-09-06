@@ -392,6 +392,33 @@ now refreshes after any request and on return to the foreground.
 4-second timeout against a human reading a permission sheet — a false
 refusal looks like a considered answer.
 
+**The bridge was never installed, and would have shipped that way.**
+`capacitor.config.ts` sets `server.url` to the deployed site, so the
+webview loads www.jessmove.com and no JavaScript from `apps/mobile` is
+ever fetched. `installHost()` — written to publish `window.JessMoveNative`,
+which `app/native.ts` then looked for — was exported and called from
+nowhere, and could not have been called anywhere. Health, calendar,
+motion and push registration would every one have returned exactly what a
+browser returns, in the app built to provide them, with every test in
+this repository passing and nothing failing loudly.
+
+What makes it work was already there: `JSExport.getPluginJS` on Android
+and a `WKUserScript` at document start on iOS both inject
+`window.Capacitor.Plugins.JessMoveNative` into whatever page the webview
+loads, one function per declared method, before the site's first line
+runs. So `app/native.ts` reads that global — a global, not an import, so
+the web build still has no Capacitor dependency — and `<NativeBridge />`
+in the root layout is the thing on the site that asks. The dead plugin
+bundle (`index.ts`, `web.ts`) is deleted; `definitions.ts` stays as the
+contract the structural tests read.
+
+Proven here: in a browser, `window.Capacitor` is undefined and every
+caller behaves as before. Against a faithful simulation of what Capacitor
+injects — the exact shape `getPluginJS` generates — the effect runs,
+`capabilities()` is called across the bridge, the answer validates through
+`usableCapabilities`, and the push tap listener is wired. That is not a
+device, and it is the closest this environment can get.
+
 **Notifications reach the installed app, which they could not before.**
 Web Push was finished and correct — RFC 8291 against the spec's own test
 vector, a real VAPID signature, a service worker, a scheduler — and

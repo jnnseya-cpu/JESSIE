@@ -253,6 +253,37 @@ const DEFINITIONS = read('apps/mobile/plugin/src/definitions.ts');
 
 const all = (text: string, pattern: RegExp) => [...text.matchAll(pattern)].map((m) => m[1]!);
 
+test('something on the site actually asks the shell what it can do', () => {
+  /*
+   * The defect this guards was one commit from shipping and would have
+   * looked like nothing at all.
+   *
+   * `capacitor.config.ts` sets `server.url` to the deployed site, so the
+   * webview loads www.jessmove.com and no JavaScript from the plugin
+   * package is ever fetched. `installHost()` — written to publish
+   * `window.JessMoveNative`, which `app/native.ts` then looked for — was
+   * exported and called from nowhere, and could not have been called
+   * anywhere. Health, calendar, motion and push registration would all
+   * have returned exactly what a browser returns, in the app built to
+   * provide them, with every test in this repository passing.
+   *
+   * What makes it work is that both platforms inject
+   * `window.Capacitor.Plugins.JessMoveNative` into whatever page the
+   * webview loads — `JSExport.getPluginJS` on Android, a `WKUserScript`
+   * at document start on iOS. So the site reads that global, and
+   * something has to mount on the site to ask it.
+   */
+  const seam = read('apps/frontend/app/native.ts');
+  assert.match(seam, /Capacitor/, 'the seam no longer looks for the injected plugin');
+  assert.match(seam, /Plugins\?\.\[name\]|Plugins\?\./, 'the seam no longer reads Capacitor.Plugins');
+
+  const bridge = read('apps/frontend/app/native-bridge.tsx');
+  assert.match(bridge, /initNative/, 'the mount point no longer initialises the bridge');
+
+  const layout = read('apps/frontend/app/layout.tsx');
+  assert.match(layout, /<NativeBridge \/>/, 'nothing mounts the bridge, so nothing ever asks');
+});
+
 test('every method the bridge contract declares is registered on both platforms', () => {
   /*
    * Capacitor 6 replaced the Objective-C `CAP_PLUGIN` macro with

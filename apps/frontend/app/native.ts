@@ -53,10 +53,251 @@ interface NativeHost {
 /** How long the shell gets before it is treated as absent. */
 const HOST_TIMEOUT_MS = 4000;
 
+/* ------------------------------------------------------------------ *
+ * How the shell is actually reached
+ *
+ * `capacitor.config.ts` sets `server.url` to the deployed site, so the
+ * webview loads www.jessmove.com rather than a bundle inside the app.
+ * That has a consequence that was very nearly shipped: none of the
+ * shell's own JavaScript ever runs. `installHost()` in the plugin package
+ * was written to publish `window.JessMoveNative`, and it could not,
+ * because the bundle containing it is never loaded. Every capability
+ * would have been dead in the installed app — health, calendar, motion
+ * and push registration all returning exactly what a browser returns —
+ * and nothing would have failed loudly.
+ *
+ * What *is* there is better. Both platforms inject a script at document
+ * start into whatever page the webview loads: `JSExport.getPluginJS` on
+ * Android and a `WKUserScript` on iOS. Both write
+ * `window.Capacitor.Plugins.<jsName>` with a function per `@PluginMethod`
+ * / `CAPPluginMethod`, plus `addListener`, and both set
+ * `window.Capacitor.PluginHeaders`. So the plugin is already on the page
+ * before the first line of site code runs.
+ *
+ * This file therefore reads that global directly. It is a global, not an
+ * import: the web build still has no dependency on Capacitor, still
+ * builds identically without the app existing, and a browser simply has
+ * no `window.Capacitor`.
+ * ------------------------------------------------------------------ */
+
+type PluginMethod = (options?: unknown) => Promise<unknown>;
+
+interface CapacitorGlobal {
+  readonly Plugins?: Record<string, Record<string, PluginMethod> | undefined>;
+  readonly isNativePlatform?: () => boolean;
+}
+
+function capacitor(): CapacitorGlobal | null {
+  if (typeof window === 'undefined') return null;
+  const c = (window as unknown as { Capacitor?: CapacitorGlobal }).Capacitor;
+  return c && typeof c === 'object' ? c : null;
+}
+
+/** The natively-injected plugin, if this page is inside the shell. */
+function plugin(name: string): Record<string, PluginMethod> | null {
+  const c = capacitor();
+  if (!c?.isNativePlatform?.()) return null;
+  const p = c.Plugins?.[name];
+  return p && typeof p === 'object' ? p : null;
+}
+
+/**
+ * Capabilities, resolved once and cached.
+ *
+ * `nativeCapabilities()` is read during render and has to answer
+ * synchronously, but the plugin call is a promise across the bridge. So
+ * `initNative()` resolves it at start-up and this holds the answer.
+ *
+ * `undefined` means "not asked yet" and `null` means "asked, and this is
+ * not a shell" — a distinction worth keeping, because the first render
+ * happens before the bridge has answered and must not cache a `null` that
+ * came from being early rather than from being a browser.
+ */
+let cachedCapabilities: NativeCapabilities | null | undefined;
+
+/**
+ * Ask the shell what it can do, and remember.
+ *
+ * Called from `<NativeBridge />` on mount, again whenever the app returns
+ * to the foreground, and after any permission prompt. The foreground case
+ * is not decorative: permissions are changed in the system settings app
+ * and the webview is not reloaded on the way back, so without it a member
+ * who granted HealthKit from Settings would find the app still refusing.
+ */
+export async function initNative(): Promise<NativeCapabilities | null> {
+  const p = plugin('JessMoveNative');
+  if (!p?.capabilities) {
+    cachedCapabilities = null;
+    return null;
+  }
+  try {
+    const announced = await withTimeout(p.capabilities());
+    cachedCapabilities = usableCapabilities(announced as Partial<NativeCapabilities>);
+  } catch {
+    cachedCapabilities = null;
+  }
+  if (cachedCapabilities) wirePushTap();
+  return cachedCapabilities;
+}
+
+/* ------------------------------------------------------------------ *
+ * Push, in the installed app
+ * ------------------------------------------------------------------ */
+
+/** Matches `channel_id` in the server's `fcm.logic.ts`. */
+const CHANNEL_ID = 'jessmove-snap';
+
+let tapWired = false;
+
+/**
+ * Opening the right screen when a notification is tapped.
+ *
+ * Without this the notification opens the app wherever it was last, which
+ * for a two-minute movement offered at eleven o'clock is the difference
+ * between doing it and not. Wired once, at init, rather than when a token
+ * is requested — a member who granted notifications last week never calls
+ * that path again, and their taps still have to land somewhere.
+ */
+function wirePushTap(): void {
+  if (tapWired) return;
+  const push = plugin('PushNotifications');
+  const addListener = push?.addListener as
+    | ((event: string, cb: (data: unknown) => void) => unknown)
+    | undefined;
+  if (!addListener) return;
+  tapWired = true;
+
+  try {
+    addListener('pushNotificationActionPerformed', (action) => {
+      const url = (action as { notification?: { data?: { url?: unknown } } })?.notification?.data?.url;
+      // Same-origin paths only. The payload crosses a vendor's
+      // infrastructure, and a notification that can send the app to an
+      // arbitrary URL is a redirect somebody else gets to choose.
+      if (typeof url === 'string' && url.startsWith('/')) window.location.assign(url);
+    });
+  } catch {
+    /* an older shell without the plugin installed */
+  }
+}
+
+/**
+ * Registers with APNs or FCM and returns the token.
+ *
+ * The token arrives on an event rather than from the call, so the
+ * listeners are attached first and the promise settles when one fires.
+ * A registration that never completes resolves null rather than hanging:
+ * the member is then told notifications could not be turned on, which is
+ * true, instead of watching a button spin forever.
+ */
+async function nativePushToken(): Promise<{ token: string; transport: 'apns' | 'fcm' } | null> {
+  const push = plugin('PushNotifications');
+  const platform = cachedCapabilities?.platform;
+  if (!push || !platform) return null;
+
+  const addListener = push.addListener as
+    | ((event: string, cb: (data: unknown) => void) => unknown)
+    | undefined;
+  if (!addListener || !push.requestPermissions || !push.register) return null;
+
+  try {
+    const permission = (await push.requestPermissions()) as { receive?: string } | null;
+    if (permission?.receive !== 'granted') return null;
+  } catch {
+    return null;
+  }
+
+  if (platform === 'android' && push.createChannel) {
+    // Android 8+ drops a notification naming a channel the app never
+    // created, and FCM's message names this one.
+    await push
+      .createChannel({
+        id: CHANNEL_ID,
+        name: 'Movement moments',
+        description: 'A two-minute movement, offered inside a window you chose.',
+        importance: 4,
+        visibility: 1,
+      })
+      .catch(() => null);
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: { token: string; transport: 'apns' | 'fcm' } | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    try {
+      addListener('registration', (token) => {
+        const value = (token as { value?: unknown })?.value;
+        if (typeof value === 'string' && value.length > 0) {
+          finish({ token: value, transport: platform === 'ios' ? 'apns' : 'fcm' });
+        } else {
+          finish(null);
+        }
+      });
+      addListener('registrationError', () => finish(null));
+      void push.register!().catch(() => finish(null));
+    } catch {
+      finish(null);
+    }
+
+    setTimeout(() => finish(null), 15_000);
+  });
+}
+
+/**
+ * Everything the rest of this file talks to, in one shape.
+ *
+ * Two sources, deliberately. The Capacitor plugin is how the shipped app
+ * works. `window.JessMoveNative` is kept because it is a plain object any
+ * future host — an embedded bundle, a test harness — can publish without
+ * knowing anything about Capacitor, and because it costs one line.
+ */
 function host(): NativeHost | null {
   if (typeof window === 'undefined') return null;
+
   const injected = (window as unknown as { JessMoveNative?: NativeHost }).JessMoveNative;
-  return injected && typeof injected === 'object' ? injected : null;
+  if (injected && typeof injected === 'object') return injected;
+
+  const p = plugin('JessMoveNative');
+  if (!p) return null;
+
+  const call = async (method: string, options?: unknown) => {
+    const fn = p[method];
+    if (!fn) return null;
+    return fn(options);
+  };
+
+  return {
+    capabilities: () => cachedCapabilities ?? null,
+    readMotion: async () => ((await call('readMotion')) as { motion?: unknown } | null)?.motion ?? null,
+    readHealth: async () =>
+      ((await call('readHealth')) as { readings?: unknown } | null)?.readings ?? null,
+    readCalendar: async (horizonDays: number) =>
+      ((await call('readCalendar', { horizonDays })) as { events?: unknown } | null)?.events ?? null,
+    requestHealthAccess: () => granting('requestHealthAccess'),
+    requestMotionAccess: () => granting('requestMotionAccess'),
+    requestCalendarAccess: () => granting('requestCalendarAccess'),
+    requestPushToken: () => nativePushToken(),
+  };
+
+  /** A prompt, and a re-read of what the shell can do afterwards. */
+  async function granting(method: string): Promise<boolean> {
+    const fn = p![method];
+    if (!fn) return false;
+    let granted = false;
+    try {
+      granted = ((await fn()) as { granted?: boolean } | null)?.granted === true;
+    } catch {
+      granted = false;
+    }
+    // The grant is the event that changes what this device can do, so the
+    // cache is refreshed before the caller acts on the answer.
+    await initNative();
+    return granted;
+  }
 }
 
 async function withTimeout<T>(work: Promise<T>): Promise<T | null> {

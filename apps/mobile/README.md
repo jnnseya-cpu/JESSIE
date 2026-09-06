@@ -41,6 +41,14 @@ Treat the first `xcodebuild` and the first Gradle build as the first real
 check of the two platform files. They are conventional API use returning
 shapes the shared contract validates, but nothing has compiled them.
 
+## Publishing it
+
+`docs/APP-RELEASE.md` is the step-by-step: what to install, what to add to
+the generated Xcode and Gradle projects, the push credentials, the
+device checklist to work through before submitting, and the two store
+rules most likely to cause a rejection. This file is the architecture;
+that one is the procedure.
+
 ## Building it
 
 Neither can be done on the machine this was written on.

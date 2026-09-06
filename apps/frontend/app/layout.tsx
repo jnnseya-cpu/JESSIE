@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { BRAND, SIGNATURE_LINE, TAGLINE } from '@jessmove/shared';
 import './globals.css';
 import { PwaRuntime } from './pwa';
+import { NativeBridge } from './native-bridge';
 import { AppReady, LaunchSplash } from './splash';
 import { Measurement } from './tracking';
 import { splashEntries } from './splash-targets';
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <AppReady />
         <PwaRuntime />
+        <NativeBridge />
         {/*
           Mounted once, here, rather than per page. It decides for itself
           whether the current path may carry a tag, so the account and every

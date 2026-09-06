@@ -15,6 +15,26 @@ import type {
  * Nothing in the middle is allowed its own idea of what a health sample
  * or a motion state is.
  *
+ * ## There is no JavaScript implementation beside this file, deliberately
+ *
+ * There was one — a `registerPlugin` call and an `installHost()` that
+ * published `window.JessMoveNative` — and it could never have run.
+ * `capacitor.config.ts` sets `server.url` to the deployed site, so the
+ * webview loads www.jessmove.com and no bundle from this package is ever
+ * fetched. Every native capability would have been dead in the installed
+ * app while behaving exactly like a browser.
+ *
+ * Nothing needs to replace it. `JSExport.getPluginJS` on Android and a
+ * `WKUserScript` on iOS inject `window.Capacitor.Plugins.JessMoveNative`
+ * into whatever page the webview loads, with one function per method
+ * below, before the site's first line runs. `apps/frontend/app/native.ts`
+ * reads that global — a global, not an import, so the web build still has
+ * no dependency on Capacitor.
+ *
+ * This file therefore describes a contract rather than implementing one,
+ * and `native-bridge.test.ts` reads it to check the Swift and Kotlin
+ * method lists still match.
+ *
  * Note the absence in `NativeCalendarEvent`: there is no title, no
  * location, no attendee and no organiser, so neither platform
  * implementation has anywhere to put one. The claim that calendar titles
