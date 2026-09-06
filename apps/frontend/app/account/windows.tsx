@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deriveFreeWindows } from '@jessmove/shared';
 import { apiBase } from '../api-base';
+import { calendarWindows, nativeCapabilities } from '../native';
 
 /**
  * When the member is usually free — the one signal that lets this
@@ -40,6 +41,12 @@ export function WindowsModule({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false);
   const [suggested, setSuggested] = useState<Window[] | null>(null);
   const [url, setUrl] = useState('');
+  /*
+   * Whether this is the installed app. Read once on mount rather than at
+   * render time, because the shell injects its host object before the
+   * first paint and reading it during SSR would answer for the server.
+   */
+  const [canReadDevice, setCanReadDevice] = useState(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [weekday, setWeekday] = useState(1);
   const [start, setStart] = useState(11 * 60);
@@ -59,6 +66,7 @@ export function WindowsModule({ userId }: { userId: string }) {
 
   useEffect(() => {
     void load();
+    setCanReadDevice(nativeCapabilities()?.calendar === true);
   }, [load]);
 
   const save = async (next: Window[]) => {
@@ -119,6 +127,32 @@ export function WindowsModule({ userId }: { userId: string }) {
       setSuggested(derived);
     } catch {
       setNote('that did not read as a calendar file');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /*
+   * The device calendar, in the installed app.
+   *
+   * Reads through the same derivation the .ics import uses, so "free"
+   * means one thing either way, and the events cross the bridge in a
+   * shape with no field for a title. In a browser this button is not
+   * rendered at all rather than rendered and disabled — an offer that
+   * cannot be taken is worse than no offer.
+   */
+  const importFromDevice = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      const derived = await calendarWindows();
+      if (!derived || derived.length === 0) {
+        setNote('nothing free was found in the next fortnight — try adding a window by hand');
+        return;
+      }
+      setSuggested(derived);
+    } catch {
+      setNote('your calendar could not be read — check the permission in your phone settings');
     } finally {
       setBusy(false);
     }
@@ -235,6 +269,14 @@ export function WindowsModule({ userId }: { userId: string }) {
         the titles, the people and the places are never read, so there is no way for them to leave
         this browser.
       </p>
+
+      {canReadDevice && (
+        <p style={{ margin: '0 0 14px' }}>
+          <button className="btn btn--primary" type="button" onClick={importFromDevice} disabled={busy}>
+            Read this device&rsquo;s calendar
+          </button>
+        </p>
+      )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
         <label className="field" style={{ flex: '1 1 260px', minWidth: 0 }}>

@@ -32,6 +32,8 @@ is the point of the file.
 
 | What | Proven by |
 |---|---|
+| A native shell exists, and the web build does not depend on it | `apps/mobile`. Proven: `window.JessMoveNative` is `undefined` in a browser, the device-calendar button is not rendered, and the Snap request sends the identical payload it sent before the shell existed |
+| A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 15 assertions. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
 | The calendar is read, and never seen | `packages/shared/src/calendar.ts` parses .ics in the browser. Proven at runtime: an event titled "Oncology follow-up with Dr Patel" produced 14 correct windows and the payload leaving the browser carried only weekdays and minutes |
 | A free trial buys thirty FoodLens analyses, not two | `LENS` moved to `mid_tier_llm` and `FREE_TIER` to 150 ACU. Asserted by what it buys rather than by the number, so a model or rate change fails the test rather than a member's first week |
 | The platform can start a conversation | Migration 0030, `/api/nudge/cron`. Proven against real Postgres: candidate → declared window → engine → VAPID sign → encrypt → POST |
@@ -251,7 +253,30 @@ decision — 500 ACU a month costs about £1.25 of real provider spend per
 free signup). The 4× protection holds at every model, so none of them
 touches margin. Nothing has been changed here.
 
-**There is no native application.** `apps/` is `backend` and `frontend`.
+**The native application is written and has never been compiled.**
+`apps/mobile` is a Capacitor shell — not a React Native rewrite, because
+the web app is thirty routes and a 7,500-line design system and a second
+implementation would be a second product to keep correct. The contract
+(`packages/shared/src/native.ts`) and the seam
+(`apps/frontend/app/native.ts`) are tested and shipped; the plugin's
+TypeScript typechecks. **`JessMoveNativePlugin.swift` and
+`JessMoveNativePlugin.kt` have never been through a compiler** — there is
+no macOS, no Xcode and no Android SDK on the machine they were written
+on, only Java and Gradle. Treat the first `xcodebuild` and the first
+Gradle build as the first real check of them. Neither app has been run on
+a device. `apps/mobile/README.md` carries the build runbook, the required
+Info.plist strings and manifest permissions, and the two things most
+likely to cause a store rejection.
+
+Still missing after it: `readMotion` on Android returns `null` and says
+why — Android's activity recognition is a subscription over a
+`PendingIntent`, not a synchronous question, so a transition receiver has
+to exist before it can answer. Until it does, Android motion is
+`unknown`, which is the same as the browser and is truthful. iOS answers
+properly.
+
+**The old note, kept because it is still the shape of the gap.** `apps/`
+was `backend` and `frontend`.
 That forecloses background motion sensing, on-device calendar access,
 HealthKit, Health Connect, and reliable iOS notification delivery for
 anyone who has not added the PWA to their home screen — and `/wearables`

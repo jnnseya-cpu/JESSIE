@@ -13,6 +13,7 @@ import {
   modeForAge,
 } from '@jessmove/shared';
 import { apiBase } from '../api-base';
+import { currentMotion } from '../native';
 import { shrinkImage } from './image-shrink';
 import { recordActivity, type Dashboard } from './dashboard';
 import {
@@ -427,6 +428,7 @@ export function SnapModule({
     setSnap(null);
     setHold(null);
     try {
+      const motionState = await currentMotion();
       const res = await fetch(`${apiBase()}/prescriptions/next`, {
         method: 'POST',
         credentials: 'include',
@@ -460,10 +462,18 @@ export function SnapModule({
            */
           signals: {
             userId: me.userId,
-            motionState: 'unknown',
+            /*
+             * Real inside the native shell, `unknown` in a browser.
+             * `currentMotion` applies the confidence floor and the
+             * staleness window itself, and every failure returns
+             * `unknown` — so the shell can make the safety layer better
+             * informed and never worse. This is the one line that stops
+             * being a limitation when the app is installed.
+             */
+            motionState,
             locationClass: 'unknown',
             localHour: new Date().getHours(),
-            consentedSignals: ['device_state'],
+            consentedSignals: motionState === 'unknown' ? ['device_state'] : ['device_state', 'motion'],
           },
         }),
       });

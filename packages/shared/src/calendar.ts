@@ -273,6 +273,38 @@ export function deriveFreeWindows(ics: string, options: DeriveOptions): FreeWind
   const horizonMinutes = horizonDays * DAY;
 
   const busy = busyIntervals(ics, utcOffsetMinutes, horizonMinutes, dayZero);
+  return windowsFromBusy(busy, {
+    dayZero,
+    horizonDays,
+    dayStartMinute,
+    dayEndMinute,
+    minGapMinutes,
+    maxPerWeekday,
+  });
+}
+
+/**
+ * The gaps, given intervals that are already busy.
+ *
+ * Split out of `deriveFreeWindows` when the native shell arrived: a
+ * device calendar hands back events directly and has no .ics to parse,
+ * and two copies of this arithmetic would be two places for a member to
+ * be interrupted during a meeting. The parsing differs; what "free"
+ * means must not.
+ */
+export function windowsFromBusy(
+  busy: readonly BusyInterval[],
+  options: {
+    dayZero: number;
+    horizonDays: number;
+    dayStartMinute: number;
+    dayEndMinute: number;
+    minGapMinutes: number;
+    maxPerWeekday: number;
+  },
+): FreeWindow[] {
+  const { dayZero, horizonDays, dayStartMinute, dayEndMinute, minGapMinutes, maxPerWeekday } =
+    options;
 
   /** Per weekday, the minutes of the day already spoken for. */
   const blocked = new Map<number, Set<number>>();
