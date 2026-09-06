@@ -39,6 +39,27 @@ export const DATA_SCOPES = [
 ] as const;
 export type DataScope = (typeof DATA_SCOPES)[number];
 
+/**
+ * What the number means, for each scope.
+ *
+ * Written down because two native shells produce these independently and
+ * `resolveConflict` compares them directly: an iPhone reporting sleep in
+ * hours and an Android phone reporting it in minutes would not disagree by
+ * a detectable margin, it would disagree by sixty times, and the
+ * disagreement tolerance would pick a winner from two numbers that were
+ * never the same measurement. There is no unit conversion anywhere in the
+ * ingestion path, and there should not be one — there is this table, and
+ * both shells match it.
+ */
+export const SCOPE_UNITS: Readonly<Record<DataScope, string>> = {
+  steps: 'count, today so far',
+  heart_rate_trend: 'beats per minute, most recent resting value',
+  sleep: 'hours, the last main sleep',
+  recovery: 'milliseconds, heart-rate variability (SDNN)',
+  workouts: 'minutes of deliberate exercise, today so far',
+  body_measurements: 'kilograms, most recent body mass',
+};
+
 export interface ProviderDefinition {
   readonly provider: Provider;
   readonly label: string;

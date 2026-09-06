@@ -28,10 +28,12 @@ whether or not this app exists.
 
 | Part | State |
 |---|---|
-| `packages/shared/src/native.ts` — the contract and every mapping | **Tested.** 20 assertions, `native-bridge.test.ts` |
+| `packages/shared/src/native.ts` — the contract and every mapping | **Tested.** 25 assertions, `native-bridge.test.ts` |
+| The Swift and Kotlin, structurally | **Tested, not compiled.** Method registration, scope lists and the motion shape are asserted by reading the source |
 | `apps/frontend/app/native.ts` — the seam | **Typechecked and shipped.** Behaves as before in a browser |
 | `capacitor.config.ts`, plugin TypeScript | **Typechecked** |
 | `JessMoveNativePlugin.swift` | **Never compiled.** No macOS or Xcode here |
+| Permission grants | **Reachable.** Health, calendar and motion each have a request path, and the host refreshes its capability cache after one |
 | `JessMoveNativePlugin.kt` and the three motion files | **Never compiled.** Java and Gradle are present, the Android SDK is not |
 | Either app on a device | **Never run** |
 
@@ -65,8 +67,9 @@ call to an API whose string is missing, with no error a user can read:
 
 ```
 NSHealthShareUsageDescription
-  Jess Move reads your steps, resting heart rate and sleep to decide when a
-  two-minute movement break would actually fit. It never writes to Health.
+  Jess Move reads your steps, resting heart rate, sleep and workouts to
+  decide when a two-minute movement break would actually fit. It never
+  writes to Health.
 NSCalendarsFullAccessUsageDescription
   Jess Move reads only the start and end times of your events, on this
   device, to find the gaps. Titles, locations and attendees are never read.
@@ -79,6 +82,13 @@ NSRemindersFullAccessUsageDescription   (only if reminders are added later)
 Capabilities: HealthKit, Push Notifications, Background Modes → Remote
 notifications.
 
+The plugin conforms to `CAPBridgedPlugin` and lists its methods
+explicitly. Capacitor 6 replaced the Objective-C `CAP_PLUGIN` macro with
+that protocol, and the failure without it is the worst kind: the app
+compiles, links, installs and runs, and every call from JavaScript fails
+as "not implemented". `native-bridge.test.ts` asserts the conformance and
+that the method list matches `definitions.ts` exactly.
+
 ### Android, before it will run
 
 `AndroidManifest.xml`:
@@ -87,10 +97,13 @@ notifications.
 <uses-permission android:name="android.permission.READ_CALENDAR" />
 <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-<!-- Health Connect, one per record type actually read -->
+<!-- Health Connect, one per record type actually read. Four, matching
+     NATIVE_HEALTH_SCOPES.android — not READ_HEART_RATE, which is the raw
+     beat-to-beat series and is on the never-ingested list. -->
 <uses-permission android:name="android.permission.health.READ_STEPS" />
-<uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+<uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE" />
 <uses-permission android:name="android.permission.health.READ_SLEEP" />
+<uses-permission android:name="android.permission.health.READ_EXERCISE" />
 ```
 
 Health Connect also requires the privacy-policy Activity and the
@@ -146,18 +159,34 @@ review notes, and make sure the reviewer's demo account has a declared
 window so a notification actually arrives during review.
 
 **Health Connect data-type declaration.** Google Play requires every
-health type read to be declared in the console and justified. The six in
-`DATA_SCOPES` are the whole list; `NEVER_INGESTED` in the shared package
-is what the app must never ask for, and the plugin's permission set is
-built to match so the two cannot drift.
+health type read to be declared in the console and justified. The list is
+`NATIVE_HEALTH_SCOPES.android` — steps, resting heart rate, sleep and
+workouts, four rather than the six in `DATA_SCOPES`, because
+`PROVIDER_DEFINITIONS.health_connect.requests` is what `/wearables`
+publishes to members and what `judgeSample` accepts on the server.
+`NEVER_INGESTED` is what the app must never ask for. These drifted once
+already, in both directions and in both languages, which is why
+`native-bridge.test.ts` now reads the Swift and the Kotlin and asserts
+they match.
 
-## How Android motion works, and why it is shaped oddly
+## How motion works, and why it is shaped oddly
 
-iOS is the easy one: `CMMotionActivityManager` answers a historical query,
-so `readMotion` asks what happened in the last three minutes and returns
-the newest sample.
+`CMMotionActivityManager` answers a historical query and Android's
+transition API does not, so the two look different — but they report the
+same kind of thing, and both now answer in the same shape.
+`CMMotionActivity.startDate` is when a state *began*, which for somebody
+at a desk is hours ago, so iOS sends `observedAt: now` and
+`continuingSince: startDate` exactly as the Android receiver does. It also
+queries six hours back rather than three minutes, because CoreMotion
+returns activities that *started* inside the window and a long-still
+person has none.
 
-Android has no such call. Activity recognition is a *subscription*: the
+That was a real defect, not a tidy-up: with `observedAt` set to
+`startDate`, every reading older than three minutes failed the staleness
+window, so the product's core user — a person who has been sitting still
+for two hours — always read `unknown`.
+
+Android has no historical call at all. Activity recognition is a *subscription*: the
 app registers a `PendingIntent` and the OS delivers a transition — "they
 started sitting still" — and then says nothing at all for as long as that
 remains true. So three pieces exist instead of one:
@@ -192,8 +221,19 @@ looks implemented while always being `unknown`.
 
 ## What is still missing after this
 
-Nothing on the motion path — but none of these four Kotlin files has been
-compiled, and the first Gradle build is the first real check of them.
-Confirm on a device that a drive produces `driving` and that force-stopping
-the app and reopening it re-subscribes rather than answering with a state
-frozen at the force-stop.
+Nothing that can be closed from here. What a device has to confirm:
+
+- a drive produces `driving`, and force-stopping the app and reopening it
+  re-subscribes rather than answering with a state frozen at the
+  force-stop;
+- the HealthKit sheet lists four categories and not six;
+- `capabilities.health` becomes true after the sheet, without a restart —
+  it is derived from `getRequestStatusForAuthorization`, because
+  `authorizationStatus(for:)` reports *write* access and this app requests
+  none, so it could never have returned `.sharingAuthorized`;
+- granting calendar access in the system settings app and returning makes
+  the device-calendar button work without a reload, which is what the
+  `visibilitychange` refresh in `installHost` is for.
+
+None of the Swift or Kotlin has been compiled. The first `xcodebuild` and
+the first Gradle build remain the first real check of both.

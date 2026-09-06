@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   DATA_SCOPES,
   DEGRADATION,
+  SCOPE_UNITS,
   DELIVERY_TIERS,
   DISAGREEMENT_TOLERANCE_PCT,
   NEVER_INGESTED,
@@ -222,8 +223,20 @@ export default function Wearables() {
                   <tbody>
                     {DATA_SCOPES.map((s) => (
                       <tr key={s}>
-                        <td style={{ fontWeight: 650, whiteSpace: 'nowrap' }}>
+                        <td style={{ fontWeight: 650 }}>
                           {s.replace(/_/g, ' ')}
+                          {/* The exact number read, so "we read your sleep"
+                              is a measurement rather than a category. */}
+                          <span
+                            style={{
+                              display: 'block',
+                              fontWeight: 400,
+                              fontSize: '0.82em',
+                              color: 'var(--ink-3)',
+                            }}
+                          >
+                            {SCOPE_UNITS[s]}
+                          </span>
                         </td>
                         <td style={{ color: 'var(--ink-2)' }}>{DEGRADATION[s].losesPrecision}</td>
                         <td style={{ color: 'var(--i-excellent)' }}>{DEGRADATION[s].stillWorks}</td>

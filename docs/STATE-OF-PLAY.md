@@ -33,7 +33,7 @@ is the point of the file.
 | What | Proven by |
 |---|---|
 | A native shell exists, and the web build does not depend on it | `apps/mobile`. Proven: `window.JessMoveNative` is `undefined` in a browser, the device-calendar button is not rendered, and the Snap request sends the identical payload it sent before the shell existed |
-| A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 20 assertions. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
+| A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 26 assertions, five of them reading the Swift and Kotlin source because no compiler here can. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
 | The calendar is read, and never seen | `packages/shared/src/calendar.ts` parses .ics in the browser. Proven at runtime: an event titled "Oncology follow-up with Dr Patel" produced 14 correct windows and the payload leaving the browser carried only weekdays and minutes |
 | A free trial buys thirty FoodLens analyses, not two | `LENS` moved to `mid_tier_llm` and `FREE_TIER` to 150 ACU. Asserted by what it buys rather than by the number, so a model or rate change fails the test rather than a member's first week |
 | The platform can start a conversation | Migration 0030, `/api/nudge/cron`. Proven against real Postgres: candidate → declared window → engine → VAPID sign → encrypt → POST |
@@ -297,9 +297,61 @@ Also fixed on that path: `requestPermissionForAlias("motion", …)` had no
 would have thrown rather than prompted and the JavaScript promise would
 never have settled. Both are now present.
 
-Unproven until a device runs it: that a real drive produces `driving`,
-and that force-stopping the app and reopening it re-subscribes rather
-than answering with the state frozen at the force-stop.
+**The iOS side, and five ways it would not have worked.** The Swift was
+conventional and wrong in ways a compiler would not have caught, so the
+checks are structural — `native-bridge.test.ts` reads the two platform
+files:
+
+- **`CAPBridgedPlugin` was missing.** Capacitor 6 replaced the
+  Objective-C `CAP_PLUGIN` macro with that protocol. Without it the app
+  compiles, links, installs, runs — and the bridge sees no methods, so
+  every call fails as "not implemented". Nothing on iOS worked.
+- **`capabilities.health` was permanently false.**
+  `authorizationStatus(for:)` reports *share* authorisation and this app
+  requests `toShare: nil`, so it could never return `.sharingAuthorized`.
+  Now derived from `getRequestStatusForAuthorization`, which answers the
+  only question HealthKit will answer — whether the sheet has been shown.
+  It cannot report whether a read was granted, by design, so the honest
+  meaning is "asked", and a read returning nothing is the safe failure.
+- **iOS motion had the bug Android was just fixed for.**
+  `CMMotionActivity.startDate` is when a state began — hours ago for
+  anybody at a desk — and it was being sent as `observedAt`, so every
+  reading older than three minutes failed the staleness window. The
+  product's core user always read `unknown`. iOS now answers in the
+  Android shape: `observedAt` now, `continuingSince` the start, and a
+  six-hour query window because CoreMotion returns activities that
+  *started* inside the range.
+- **The permission sheet contradicted the public disclosure.** The Swift
+  asked for six HealthKit categories;
+  `PROVIDER_DEFINITIONS.apple_health.requests` publishes four, and
+  `judgeSample` refuses the other two on arrival. `NATIVE_HEALTH_SCOPES`
+  is now the one source, `toIngestBatch` refuses a scope the provider is
+  not declared to request, and the test reads both platform files to check
+  they match. Android had the mirror fault: it requested Health Connect's
+  `HeartRateRecord` — the beat-to-beat series `NEVER_INGESTED` says nobody
+  asks for — and never read `workouts` at all. Now
+  `RestingHeartRateRecord` and `ExerciseSessionRecord`.
+- **Sleep counted awake time as sleep** and double-counted a watch and a
+  phone recording the same night — fourteen hours for a seven-hour night,
+  feeding a readiness score. Both platforms now exclude `awake` and merge
+  overlapping intervals.
+
+**Two things made every grant useless, on both platforms.** The device
+calendar had no request path anywhere, so `capabilities.calendar` could
+never be true, so the button offering it was never rendered — a built,
+shipped, unreachable feature. And `installHost` resolved capabilities
+once at start-up, so a member who granted HealthKit got `true` from the
+prompt and found reads still refused until the next cold start. The cache
+now refreshes after any request and on return to the foreground.
+`requestHealthAccess` and `requestMotionAccess` also no longer race a
+4-second timeout against a human reading a permission sheet — a false
+refusal looks like a considered answer.
+
+Unproven until a device runs it: that a real drive produces `driving`;
+that force-stopping the app and reopening it re-subscribes rather than
+answering with a state frozen at the force-stop; that the HealthKit sheet
+lists four categories; and that granting in system settings and returning
+works without a reload.
 
 **The old note, kept because it is still the shape of the gap.** `apps/`
 was `backend` and `frontend`.

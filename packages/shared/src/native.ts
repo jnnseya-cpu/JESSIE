@@ -36,7 +36,12 @@
  */
 
 import type { BusyInterval } from './calendar';
-import { DATA_SCOPES, type DataScope, type Provider } from './wearables';
+import {
+  DATA_SCOPES,
+  PROVIDER_DEFINITIONS,
+  type DataScope,
+  type Provider,
+} from './wearables';
 import { MOTION_STATES, type MotionState } from './context';
 
 /** Bumped when the contract changes shape. The shell sends its own. */
@@ -55,6 +60,29 @@ export type NativePlatform = (typeof NATIVE_PLATFORMS)[number];
 export const HEALTH_PROVIDER_FOR: Readonly<Record<NativePlatform, Provider>> = {
   ios: 'apple_health',
   android: 'health_connect',
+};
+
+/**
+ * Exactly what a shell may ask its health store for. Not a subset of it,
+ * and not a superset.
+ *
+ * This is derived rather than written, because the two ends of it are
+ * enforced in different languages and drifted apart the first time they
+ * were written by hand. `/wearables` publishes
+ * `PROVIDER_DEFINITIONS[provider].requests` as a disclosure to the member,
+ * and `judgeSample` on the server refuses anything outside it — so a shell
+ * asking for one category more shows a permission sheet contradicting the
+ * public disclosure, and then has its readings rejected with
+ * "Apple Health is never asked for recovery".
+ *
+ * The platform files cannot import TypeScript, so `native-bridge.test.ts`
+ * reads their source and asserts the two lists match this one. That is the
+ * only mechanism available for keeping a Swift constant honest from here,
+ * and it is better than a comment asking somebody to remember.
+ */
+export const NATIVE_HEALTH_SCOPES: Readonly<Record<NativePlatform, readonly DataScope[]>> = {
+  ios: PROVIDER_DEFINITIONS.apple_health.requests,
+  android: PROVIDER_DEFINITIONS.health_connect.requests,
 };
 
 /** What the shell says it can do. Absent means no. */
@@ -104,6 +132,10 @@ export const MAX_HEALTH_READING_AGE_MINUTES = 60 * 36;
  * guesses:
  *
  *   - a scope outside `DATA_SCOPES` is refused and named
+ *   - a scope this provider is not declared to request is refused
+ *     separately, because that is a different mistake with a different
+ *     fix: the server's `judgeSample` would reject it too, and the member
+ *     was shown a permission sheet contradicting `/wearables`
  *   - a non-finite or negative value is refused
  *   - a timestamp in the future is refused, because a clock that is wrong
  *     in that direction makes a stale reading look fresh
@@ -118,10 +150,23 @@ export function toIngestBatch(
   const samples: IngestSample[] = [];
   const refused: { scope: string; why: string }[] = [];
   const known = new Set<string>(DATA_SCOPES);
+  const requested = new Set<string>(NATIVE_HEALTH_SCOPES[platform]);
+  const provider = HEALTH_PROVIDER_FOR[platform];
 
   for (const reading of readings) {
     if (!known.has(reading.scope)) {
       refused.push({ scope: reading.scope, why: 'not a scope this platform collects' });
+      continue;
+    }
+    if (!requested.has(reading.scope)) {
+      // A real scope, from the wrong store. The server refuses this too;
+      // catching it here names the actual fault — a shell reading a
+      // category its provider's published disclosure says is never asked
+      // for — instead of a 400 that reads like a transport failure.
+      refused.push({
+        scope: reading.scope,
+        why: `${provider} is never asked for ${reading.scope}`,
+      });
       continue;
     }
     if (!Number.isFinite(reading.value) || reading.value < 0) {
@@ -148,7 +193,7 @@ export function toIngestBatch(
     samples.push({ scope: reading.scope as DataScope, value: reading.value, ageMinutes });
   }
 
-  return { provider: HEALTH_PROVIDER_FOR[platform], samples, refused };
+  return { provider, samples, refused };
 }
 
 /* ------------------------------------------------------------------ *

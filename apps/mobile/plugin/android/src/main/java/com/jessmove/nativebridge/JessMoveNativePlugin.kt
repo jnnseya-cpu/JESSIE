@@ -5,7 +5,8 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateRequest
@@ -53,6 +54,10 @@ import java.time.temporal.ChronoUnit
             alias = "motion",
             strings = ["android.permission.ACTIVITY_RECOGNITION"],
         ),
+        Permission(
+            alias = "calendar",
+            strings = [Manifest.permission.READ_CALENDAR],
+        ),
     ],
 )
 class JessMoveNativePlugin : Plugin() {
@@ -89,11 +94,53 @@ class JessMoveNativePlugin : Plugin() {
         if (MotionSubscription.granted(context)) MotionSubscription.register(context)
     }
 
+    /**
+     * Must match NATIVE_HEALTH_SCOPES.android in
+     * `packages/shared/src/native.ts` — steps, heart_rate_trend, sleep,
+     * workouts. `native-bridge.test.ts` reads this file and asserts it.
+     *
+     * `RestingHeartRateRecord`, not `HeartRateRecord`, and the difference
+     * is a promise rather than a preference. `HeartRateRecord` is the
+     * beat-to-beat series, which `NEVER_INGESTED` names as "continuous raw
+     * heart-rate time series" and says is requested by nobody. Averaging it
+     * before sending kept the raw data on the device but still put the
+     * permission on the sheet, which is the thing the disclosure said would
+     * not happen. `heart_rate_trend` is a resting value, and Health
+     * Connect has a record type that is exactly that.
+     */
     private val healthPermissions = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(HeartRateRecord::class),
+        HealthPermission.getReadPermission(RestingHeartRateRecord::class),
         HealthPermission.getReadPermission(SleepSessionRecord::class),
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
     )
+
+    /**
+     * Total minutes covered by a set of intervals, counting overlap once.
+     *
+     * A watch and a phone recording the same night, or the same run, are
+     * two records of one event. Summing their durations reported fourteen
+     * hours of sleep for a seven-hour night — and sleep feeds a readiness
+     * score, so the error does not stay cosmetic.
+     */
+    private fun mergedMinutes(intervals: List<Pair<Instant, Instant>>): Double {
+        if (intervals.isEmpty()) return 0.0
+        val sorted = intervals.sortedBy { it.first }
+        var total = 0L
+        var start = sorted[0].first
+        var end = sorted[0].second
+
+        for ((nextStart, nextEnd) in sorted.drop(1)) {
+            if (!nextStart.isAfter(end)) {
+                if (nextEnd.isAfter(end)) end = nextEnd
+            } else {
+                total += ChronoUnit.MINUTES.between(start, end)
+                start = nextStart
+                end = nextEnd
+            }
+        }
+        return (total + ChronoUnit.MINUTES.between(start, end)).toDouble()
+    }
 
     private fun healthClient(): HealthConnectClient? =
         if (HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE) {
@@ -133,6 +180,28 @@ class JessMoveNativePlugin : Plugin() {
                 client.permissionController.getGrantedPermissions().containsAll(healthPermissions)
             call.resolve(JSObject().put("granted", ok))
         }
+    }
+
+    /**
+     * The calendar prompt, which had no path at all before this.
+     *
+     * `readCalendar` returns an empty list without the permission and
+     * nothing ever asked for it, so `capabilities.calendar` could never
+     * become true and the button offering it was never rendered. The
+     * feature was built, shipped and unreachable on both platforms.
+     */
+    @PluginMethod
+    fun requestCalendarAccess(call: PluginCall) {
+        if (granted(Manifest.permission.READ_CALENDAR)) {
+            call.resolve(JSObject().put("granted", true))
+            return
+        }
+        requestPermissionForAlias("calendar", call, "calendarPermissionResult")
+    }
+
+    @PermissionCallback
+    private fun calendarPermissionResult(call: PluginCall) {
+        call.resolve(JSObject().put("granted", granted(Manifest.permission.READ_CALENDAR)))
     }
 
     @PluginMethod
@@ -297,28 +366,42 @@ class JessMoveNativePlugin : Plugin() {
                         timeRangeFilter = TimeRangeFilter.between(since, now),
                     ),
                 ).records
-                val hours = sleep.sumOf {
-                    ChronoUnit.MINUTES.between(it.startTime, it.endTime).toDouble()
-                } / 60.0
-                if (hours > 0) reading("sleep", hours, sleep.last().endTime)
+                val hours = mergedMinutes(sleep.map { it.startTime to it.endTime }) / 60.0
+                // `maxOf` rather than `last` — the request is not ordered,
+                // so the list's order is Health Connect's, not time's.
+                if (hours > 0) reading("sleep", hours, sleep.maxOf { it.endTime })
             } catch (_: Exception) {
             }
 
             try {
                 val since = now.minus(36, ChronoUnit.HOURS)
-                val beats = client.readRecords(
+                val resting = client.readRecords(
                     ReadRecordsRequest(
-                        recordType = HeartRateRecord::class,
+                        recordType = RestingHeartRateRecord::class,
                         timeRangeFilter = TimeRangeFilter.between(since, now),
                     ),
-                ).records.flatMap { it.samples }
-                if (beats.isNotEmpty()) {
-                    // A trend, not a live series. `heart_rate_trend` is the
-                    // scope the platform judges; beat-to-beat data is not
-                    // requested and is not sent.
-                    val mean = beats.map { it.beatsPerMinute.toDouble() }.average()
-                    reading("heart_rate_trend", mean, beats.last().time)
+                ).records
+                // The most recent resting value, in beats per minute —
+                // the same measurement `readHealth` reports on iOS, so
+                // `resolveConflict` is comparing like with like when
+                // somebody carries both.
+                val latest = resting.maxByOrNull { it.time }
+                if (latest != null) {
+                    reading("heart_rate_trend", latest.beatsPerMinute.toDouble(), latest.time)
                 }
+            } catch (_: Exception) {
+            }
+
+            try {
+                val exercise = client.readRecords(
+                    ReadRecordsRequest(
+                        recordType = ExerciseSessionRecord::class,
+                        timeRangeFilter = TimeRangeFilter.between(startOfDay, now),
+                    ),
+                ).records
+                // Minutes today, merged, matching SCOPE_UNITS.workouts.
+                val minutes = mergedMinutes(exercise.map { it.startTime to it.endTime })
+                if (minutes > 0) reading("workouts", minutes, exercise.maxOf { it.endTime })
             } catch (_: Exception) {
             }
 

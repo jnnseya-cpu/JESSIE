@@ -2,10 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
+  DATA_SCOPES,
   HEALTH_PROVIDER_FOR,
   MAX_CONTINUING_STATE_MINUTES,
   MAX_HEALTH_READING_AGE_MINUTES,
   NATIVE_BRIDGE_VERSION,
+  NATIVE_HEALTH_SCOPES,
+  SCOPE_UNITS,
   toBusyIntervals,
   toIngestBatch,
   toMotionState,
@@ -39,6 +42,27 @@ test('a reading the platform has never judged is refused, and named', () => {
   assert.deepEqual(batch.samples.map((s) => s.scope), ['steps']);
   assert.deepEqual(batch.refused, [
     { scope: 'blood_glucose', why: 'not a scope this platform collects' },
+  ]);
+});
+
+test('a real scope from a store that is never asked for it is refused before it is sent', () => {
+  // `recovery` is a scope this platform collects — from Fitbit and Oura.
+  // Apple Health is not asked for it, `/wearables` publishes that, and
+  // `judgeSample` would reject it server-side. Refusing here names the
+  // actual fault instead of returning a 400 that reads like a network
+  // problem.
+  const batch = toIngestBatch(
+    'ios',
+    [
+      { scope: 'recovery', value: 44, recordedAt: ago(10) },
+      { scope: 'steps', value: 3100, recordedAt: ago(10) },
+    ],
+    NOW,
+  );
+
+  assert.deepEqual(batch.samples.map((s) => s.scope), ['steps']);
+  assert.deepEqual(batch.refused, [
+    { scope: 'recovery', why: 'apple_health is never asked for recovery' },
   ]);
 });
 
@@ -208,6 +232,95 @@ test('the transition receiver stores an arrival and never a departure', () => {
   assert.match(text, /ACTIVITY_TRANSITION_EXIT/);
   // Elapsed-realtime nanos are not wall clock; the receiver must convert.
   assert.match(text, /elapsedRealtimeNanos/);
+});
+
+/* ── the two platform files, checked structurally ───────────────────── */
+
+/*
+ * Neither the Swift nor the Kotlin can be compiled here — no macOS, no
+ * Xcode, no Android SDK. These read the source instead. It is a blunt
+ * instrument and it only catches what a regex can see, but every rule
+ * below is one that has already been got wrong once, in a way no reviewer
+ * noticed and no type system would have caught.
+ */
+
+const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+const SWIFT = read('apps/mobile/plugin/ios/Sources/JessMoveNative/JessMoveNativePlugin.swift');
+const KOTLIN = read(
+  'apps/mobile/plugin/android/src/main/java/com/jessmove/nativebridge/JessMoveNativePlugin.kt',
+);
+const DEFINITIONS = read('apps/mobile/plugin/src/definitions.ts');
+
+const all = (text: string, pattern: RegExp) => [...text.matchAll(pattern)].map((m) => m[1]!);
+
+test('every method the bridge contract declares is registered on both platforms', () => {
+  /*
+   * Capacitor 6 replaced the Objective-C `CAP_PLUGIN` macro with
+   * `CAPBridgedPlugin`. A Swift plugin without that conformance compiles,
+   * links, installs and runs — and the bridge cannot see one method on it,
+   * so every call fails as "not implemented" while the file looks correct.
+   * That is the failure this test exists for.
+   */
+  assert.match(SWIFT, /CAPBridgedPlugin/, 'the iOS plugin is invisible to the Capacitor bridge');
+  assert.match(SWIFT, /let jsName = "JessMoveNative"/);
+
+  const declared = all(DEFINITIONS, /^ {2}(\w+)\(/gm).sort();
+  assert.ok(declared.length >= 7, 'the contract lost methods');
+
+  const swift = all(SWIFT, /CAPPluginMethod\(name: "(\w+)"/g).sort();
+  assert.deepEqual(swift, declared, 'the iOS method list and the contract disagree');
+
+  const kotlin = all(KOTLIN, /@PluginMethod\s+fun (\w+)\(/g).sort();
+  assert.deepEqual(kotlin, declared, 'the Android method list and the contract disagree');
+});
+
+test('both shells read exactly the scopes their provider is declared to request', () => {
+  /*
+   * `judgeSample` refuses any scope outside
+   * `PROVIDER_DEFINITIONS[provider].requests`, and `/wearables` publishes
+   * that same list to the member. A shell asking for one category more
+   * shows a permission sheet contradicting the public disclosure and then
+   * has the reading rejected on arrival. The Swift asked for six.
+   */
+  const ios = [...NATIVE_HEALTH_SCOPES.ios].sort();
+  const android = [...NATIVE_HEALTH_SCOPES.android].sort();
+
+  // Tolerant of a wrapped call — the argument list is often split.
+  assert.deepEqual([...new Set(all(SWIFT, /\bappend\(\s*"(\w+)"/g))].sort(), ios);
+  assert.deepEqual([...new Set(all(KOTLIN, /\breading\(\s*"(\w+)"/g))].sort(), android);
+
+  // The Swift constant the permission sheet is built from, as written.
+  const literal = SWIFT.match(/HEALTH_SCOPES = \[([^\]]+)\]/)?.[1] ?? '';
+  assert.deepEqual(all(literal, /"(\w+)"/g).sort(), ios);
+});
+
+test('neither shell requests a category the never-ingested list says nobody requests', () => {
+  // "Continuous raw heart-rate time series" is on that list. Health
+  // Connect's `HeartRateRecord` is exactly it; `RestingHeartRateRecord` is
+  // the trend. Averaging the series before sending kept the raw data on
+  // the device and still put the permission on the sheet.
+  assert.doesNotMatch(KOTLIN, /getReadPermission\(HeartRateRecord::class\)/);
+  assert.match(KOTLIN, /getReadPermission\(RestingHeartRateRecord::class\)/);
+
+  // The two the iOS sheet asked for that Apple Health is never asked for.
+  assert.doesNotMatch(SWIFT, /heartRateVariabilitySDNN/);
+  assert.doesNotMatch(SWIFT, /forIdentifier: \.bodyMass/);
+});
+
+test('iOS motion answers in the same shape as Android, for the same reason', () => {
+  // `CMMotionActivity.startDate` is when a state began — hours ago for
+  // anybody at a desk. Reporting it as `observedAt` put every such reading
+  // past the three-minute window, so the product's core user always read
+  // `unknown`.
+  assert.match(SWIFT, /"continuingSince": self\.iso\.string\(from: latest\.startDate\)/);
+  assert.match(SWIFT, /"observedAt": self\.iso\.string\(from: Date\(\)\)/);
+});
+
+test('every scope states its unit, so two shells cannot disagree by a factor of sixty', () => {
+  for (const scope of DATA_SCOPES) {
+    assert.equal(typeof SCOPE_UNITS[scope], 'string', `${scope} has no stated unit`);
+    assert.ok(SCOPE_UNITS[scope].length > 0);
+  }
 });
 
 /* ── calendar ───────────────────────────────────────────────────────── */

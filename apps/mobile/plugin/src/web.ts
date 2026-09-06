@@ -37,6 +37,10 @@ export class JessMoveNativeWeb extends WebPlugin implements JessMoveNativePlugin
     return { granted: false };
   }
 
+  async requestCalendarAccess() {
+    return { granted: false };
+  }
+
   async readHealth() {
     return { readings: [] };
   }

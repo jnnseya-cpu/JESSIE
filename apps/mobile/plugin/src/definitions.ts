@@ -31,6 +31,16 @@ export interface JessMoveNativePlugin {
   requestMotionAccess(): Promise<{ granted: boolean }>;
 
   /**
+   * Prompts for read access to the device calendar.
+   *
+   * Without this there was no path to the grant at all: `readCalendar`
+   * returns an empty list when it is missing, so `capabilities.calendar`
+   * stayed false, the button that reads the device calendar was never
+   * rendered, and the feature was unreachable on both platforms.
+   */
+  requestCalendarAccess(): Promise<{ granted: boolean }>;
+
+  /**
    * Recent samples for the scopes this platform collects. The shell reads
    * only the six in `DATA_SCOPES`; anything else the store holds is never
    * requested, so a permission dialogue never asks for it.

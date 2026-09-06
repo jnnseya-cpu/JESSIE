@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deriveFreeWindows } from '@jessmove/shared';
 import { apiBase } from '../api-base';
-import { calendarWindows, nativeCapabilities } from '../native';
+import { calendarWindows, isNative, nativeCapabilities, requestCalendarAccess } from '../native';
 
 /**
  * When the member is usually free — the one signal that lets this
@@ -66,7 +66,16 @@ export function WindowsModule({ userId }: { userId: string }) {
 
   useEffect(() => {
     void load();
-    setCanReadDevice(nativeCapabilities()?.calendar === true);
+    /*
+     * The shell, not the grant.
+     *
+     * This asked for `capabilities.calendar` — which is only true once
+     * permission has been given, and nothing had ever asked for it. The
+     * button was therefore never rendered, so the permission was never
+     * requested, so the capability stayed false. The offer is now made to
+     * anybody running the installed app, and the prompt happens on tap.
+     */
+    setCanReadDevice(isNative());
   }, [load]);
 
   const save = async (next: Window[]) => {
@@ -145,6 +154,19 @@ export function WindowsModule({ userId }: { userId: string }) {
     setBusy(true);
     setNote(null);
     try {
+      // Ask only when it is not already held, so a member who granted it
+      // last week is not prompted again on every import.
+      if (nativeCapabilities()?.calendar !== true) {
+        const granted = await requestCalendarAccess();
+        if (!granted) {
+          setNote(
+            'calendar access was not granted — you can allow it in your phone settings, ' +
+              'or add a window by hand below',
+          );
+          return;
+        }
+      }
+
       const derived = await calendarWindows();
       if (!derived || derived.length === 0) {
         setNote('nothing free was found in the next fortnight — try adding a window by hand');

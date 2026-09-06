@@ -46,6 +46,7 @@ interface NativeHost {
   readCalendar?: (horizonDays: number) => Promise<unknown>;
   requestHealthAccess?: () => Promise<unknown>;
   requestMotionAccess?: () => Promise<unknown>;
+  requestCalendarAccess?: () => Promise<unknown>;
 }
 
 /** How long the shell gets before it is treated as absent. */
@@ -170,19 +171,52 @@ export async function calendarWindows(horizonDays = 14): Promise<FreeWindow[] | 
   });
 }
 
-/** Asks the OS for permission. Returns whether it was granted. */
-export async function requestHealthAccess(): Promise<boolean> {
-  const h = host();
-  if (!h?.requestHealthAccess) return false;
-  const granted = await withTimeout(h.requestHealthAccess());
-  return granted === true;
+/**
+ * Asks the OS for permission. Returns whether it was granted.
+ *
+ * Deliberately not wrapped in `withTimeout`, unlike every read above.
+ *
+ * A read that hangs is a broken shell and four seconds is generous. A
+ * permission prompt that has not answered in four seconds is a person
+ * reading it — the HealthKit sheet alone is four categories and a
+ * paragraph each. Racing it would report a refusal that never happened,
+ * and then the real grant would arrive with nothing waiting for it: the
+ * member would tap Allow, watch the button say no, and reasonably conclude
+ * the feature is broken.
+ *
+ * The cost of not timing out is a promise that never settles if the shell
+ * loses the call. That is the better failure — a button that stays busy is
+ * visibly wrong, where a false refusal looks like a considered answer.
+ */
+async function requestAccess(ask: (() => Promise<unknown>) | undefined): Promise<boolean> {
+  if (!ask) return false;
+  try {
+    return (await ask()) === true;
+  } catch {
+    return false;
+  }
 }
 
-export async function requestMotionAccess(): Promise<boolean> {
+export function requestHealthAccess(): Promise<boolean> {
   const h = host();
-  if (!h?.requestMotionAccess) return false;
-  const granted = await withTimeout(h.requestMotionAccess());
-  return granted === true;
+  return requestAccess(h?.requestHealthAccess?.bind(h));
+}
+
+export function requestMotionAccess(): Promise<boolean> {
+  const h = host();
+  return requestAccess(h?.requestMotionAccess?.bind(h));
+}
+
+/**
+ * Read access to the device calendar, which had no path before this.
+ *
+ * `readCalendar` returns nothing without the grant, so
+ * `capabilities.calendar` stayed false and the button offering it was
+ * never rendered — the feature was built, shipped and unreachable.
+ */
+export function requestCalendarAccess(): Promise<boolean> {
+  const h = host();
+  return requestAccess(h?.requestCalendarAccess?.bind(h));
 }
 
 export { NATIVE_BRIDGE_VERSION };
