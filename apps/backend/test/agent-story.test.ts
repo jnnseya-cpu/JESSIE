@@ -36,7 +36,10 @@ test('each public agent owns one decision and states what it does', () => {
 
 test('the LENS vision agent is registered with a cost ceiling and a governance escalation', () => {
   const lens = AGENT_REGISTRY.LENS;
-  assert.equal(lens.modelClass, 'frontier_llm');
+  /* Mid tier deliberately: at frontier rates a free month bought two
+     photographs. The ceiling is unchanged, so a deployment that routes it
+     back up still works. See the note in agents.ts. */
+  assert.equal(lens.modelClass, 'mid_tier_llm');
   assert.ok(lens.acuCeiling > 0, 'vision calls must be metered');
   assert.equal(lens.escalatesTo, 'GOV');
 });

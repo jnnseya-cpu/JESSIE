@@ -47,7 +47,22 @@
  * enough to form a view, not enough to run on indefinitely.
  */
 export const FREE_TIER = {
-  acusPerMonth: 50,
+  /*
+   * A hundred and fifty, not fifty.
+   *
+   * Fifty was chosen before the real per-model rates existed. Measured
+   * afterwards it bought two FoodLens photographs in a month, because
+   * LENS was routed to a frontier model at 25 ACU a call — a trial
+   * nobody can form an opinion from, on the one surface most likely to
+   * make them stay.
+   *
+   * At the mid-tier model a photograph is 5 ACU, so this is thirty
+   * analyses a month for two months. The real cost is what the protection
+   * multiple says it is: 150 ACU is £0.375 of provider spend, £0.75 for
+   * the whole trial. That is the acquisition cost of one free account,
+   * and it is deliberate rather than accidental.
+   */
+  acusPerMonth: 150,
   months: 2,
   /** How long each month's grant lasts before it expires unused. */
   validityDays: 31,

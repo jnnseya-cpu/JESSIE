@@ -3180,6 +3180,9 @@ button:focus-visible {
 .card:not(.card--light),
 .nav,
 .snapcard,
+.acct__module,
+.acct__danger,
+.acct-auth,
 .section--ink .pills li,
 .mode,
 .metric,
@@ -3352,6 +3355,9 @@ button:focus-visible {
 .card:not(.card--light),
 .nav,
 .snapcard,
+.acct__module,
+.acct__danger,
+.acct-auth,
 .section--ink .pills li,
 .mode,
 .metric,
@@ -3522,6 +3528,9 @@ button:focus-visible {
 .card:not(.card--light),
 .nav,
 .snapcard,
+.acct__module,
+.acct__danger,
+.acct-auth,
 .section--ink .pills li,
 .mode,
 .metric,
@@ -5265,6 +5274,20 @@ textarea:focus-visible {
 }
 .acct__module {
   padding: 22px 24px;
+}
+
+/*
+ * The schedule module spans the grid.
+ *
+ * `.acct__grid` is auto-fit at 300px, which is right for a module that
+ * shows one number. This one carries a list of declared windows, three
+ * selects, a URL field and two import buttons, and in a 300px column the
+ * controls stack into a ladder nobody can use. It is also the module that
+ * decides whether the product can contact the member at all, so it is not
+ * a card among cards.
+ */
+.acct__module--schedule {
+  grid-column: 1 / -1;
 }
 .acct__module h3 {
   margin: 0 0 16px;

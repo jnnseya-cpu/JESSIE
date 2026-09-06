@@ -32,6 +32,8 @@ is the point of the file.
 
 | What | Proven by |
 |---|---|
+| The calendar is read, and never seen | `packages/shared/src/calendar.ts` parses .ics in the browser. Proven at runtime: an event titled "Oncology follow-up with Dr Patel" produced 14 correct windows and the payload leaving the browser carried only weekdays and minutes |
+| A free trial buys thirty FoodLens analyses, not two | `LENS` moved to `mid_tier_llm` and `FREE_TIER` to 150 ACU. Asserted by what it buys rather than by the number, so a model or rate change fails the test rather than a member's first week |
 | The platform can start a conversation | Migration 0030, `/api/nudge/cron`. Proven against real Postgres: candidate → declared window → engine → VAPID sign → encrypt → POST |
 | The daily cap is counted, not asserted by the caller | `snapsDeliveredToday`, `dailyCap` and `minutesSinceLastNudge` removed from the request DTO; counted from `member_activity` and read from the age mode. Proven: six offers today → `held / daily_cap_reached` |
 | A failed push does not spend the member's ceiling | Proven: a delivery to an unreachable endpoint records `failed` and writes no `snap_offered` row |
@@ -211,9 +213,29 @@ this route is not behind one.
 
 ## Watch list
 
-**Two decisions are the owner's, and both are money.**
+**Settled, on the owner's instruction.** The two below were held back as
+money decisions and have now been made.
 
-*The free tier cannot demonstrate the product.* `FREE_TIER` is 50 ACU a
+*The free tier.* `LENS` was `frontier_llm`, so a FoodLens photograph cost
+25 ACU and a 50-ACU free month bought two of them. `LENS` is now
+`mid_tier_llm` (5 ACU a photograph on the default provider) and
+`FREE_TIER.acusPerMonth` is 150. A free month is thirty analyses and
+premium is 119. The 4x protection multiple is untouched and holds at
+every model, so no margin moved; the real provider cost of a whole free
+trial is £0.75. The pinned test now asserts what the allowance *buys*,
+because pinning the number is how this broke silently the first time.
+
+*The calendar.* Built as an on-device import rather than a server-side
+OAuth integration. Google Calendar OAuth would have added a third vendor
+and, more importantly, would have made "your calendar titles never leave
+your device" false — the sentence the landing page and the whole
+/industries argument rest on. `.ics` is parsed in the browser; the parser
+never reads SUMMARY, DESCRIPTION, LOCATION, ATTENDEE or ORGANIZER, which
+is asserted against its own source. Known limits, stated rather than
+discovered: `RRULE` is expanded for weekly and daily only, and a named
+`TZID` is treated as local time.
+
+*What the free tier no longer hides:* `FREE_TIER` is 50 ACU a
 month for two months. Measured against the real rates now in
 `ai-costs.ts`, one FoodLens photograph (2,600 in / 500 out) costs 25 ACU
 on `claude-opus-5` — which is what `LENS` asks for, since its

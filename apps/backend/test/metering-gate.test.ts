@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
+  DEFAULT_MODELS,
+  PLAN_DEFINITIONS,
+  acusForTokens,
   FREE_TIER,
   METERING_RULE,
   NO_ACCOUNT_NO_AI,
@@ -310,9 +313,33 @@ test('the rule is published rather than merely enforced', () => {
 
 /* ── the free tier ─────────────────────────────────────────────────── */
 
-test('the free tier is fifty a month for two months, and nothing else', () => {
-  assert.equal(FREE_TIER.acusPerMonth, 50);
+test('the free tier buys enough of the product to form an opinion', () => {
+  /*
+   * The number itself is not the point and pinning it was how this went
+   * wrong: fifty ACU was correct until the real per-model rates arrived,
+   * after which it silently became two FoodLens photographs. What has to
+   * stay true is what the trial *buys*, so that is what is asserted —
+   * against the same pricing path the gateway uses, so a model change,
+   * a rate change or a tier change all fail here rather than in a
+   * member's first week.
+   */
+  const photo = acusForTokens(DEFAULT_MODELS.anthropic.mid, 2600, 500);
+  const analysesPerMonth = Math.floor(FREE_TIER.acusPerMonth / photo);
+
+  assert.ok(
+    analysesPerMonth >= 20,
+    `a free month buys ${analysesPerMonth} analyses at ${photo} ACU each — not a trial anybody can judge`,
+  );
   assert.equal(FREE_TIER.months, 2);
+});
+
+test('a paid month buys enough to photograph most meals', () => {
+  const photo = acusForTokens(DEFAULT_MODELS.anthropic.mid, 2600, 500);
+  const premium = PLAN_DEFINITIONS.premium_monthly.acuAllowance;
+  assert.ok(
+    Math.floor(premium / photo) >= 90,
+    `premium buys ${Math.floor(premium / photo)} analyses a month against roughly ninety meals`,
+  );
 });
 
 test('month one is due immediately and month two is not', () => {

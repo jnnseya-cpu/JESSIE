@@ -127,7 +127,25 @@ export const AGENT_REGISTRY: Readonly<Record<AgentCode, AgentDefinition>> = {
   SEO: { code: 'SEO', name: 'Editorial & SEO', trigger: 'editorial calendar, topic gap', output: 'Post draft, metadata and a deterministic SEO audit — never a published page', escalatesTo: 'human', modelClass: 'frontier_llm', tokenBudget: { input: 4000, output: 3000 }, acuCeiling: 92, timeoutMs: 90000, toolAllowList: ['topic.gap', 'post.draft', 'copy.lint', 'analytics.read'] },
   COMMS: { code: 'COMMS', name: 'Communication Router', trigger: 'every platform event', output: 'Resolved channel set, held or suppressed, with the reason', escalatesTo: 'GOV', modelClass: 'deterministic_rules', tokenBudget: { input: 0, output: 0 }, acuCeiling: 0, timeoutMs: 2000, toolAllowList: ['event.resolve', 'template.render', 'delivery.write', 'consent.read'] },
   STEW: { code: 'STEW', name: 'Data Steward', trigger: 'continuous', output: 'Lineage, quality, minimisation, deletion cascade', escalatesTo: 'COMP', modelClass: 'deterministic_rules', tokenBudget: { input: 800, output: 200 }, acuCeiling: 9, timeoutMs: 30000, toolAllowList: ['lineage.write', 'deletion.cascade'] },
-  LENS: { code: 'LENS', name: 'FoodLens Vision', trigger: 'meal photograph', output: 'Detected items with per-item confidence — never a claim from the forbidden list', escalatesTo: 'GOV', modelClass: 'frontier_llm', tokenBudget: { input: 2500, output: 600 }, acuCeiling: 27, timeoutMs: 30000, toolAllowList: ['food.recognise', 'label.read'] },
+  /*
+   * Mid tier, not frontier.
+   *
+   * A FoodLens photograph on `claude-opus-5` costs 25 ACU once the real
+   * per-model rates in ai-costs.ts are applied, so the fifty-ACU free
+   * month bought *two* analyses and premium bought twenty-three against a
+   * product that invites one per meal. On the mid-tier model the same
+   * photograph is 5 ACU. The 4x protection multiple is unchanged and
+   * holds at every model, so this costs no margin — it buys five times
+   * the product for the same money.
+   *
+   * Defensible on quality as well as price: FoodLens is built to return a
+   * range, its evidence source and a confidence level, and is forbidden
+   * from inventing an exact figure. It is a design that degrades
+   * gracefully with model strength, which is exactly the kind that should
+   * not be paying frontier rates by default. `acuCeiling` stays at 27, so
+   * a deployment that routes it back to a frontier model still works.
+   */
+  LENS: { code: 'LENS', name: 'FoodLens Vision', trigger: 'meal photograph', output: 'Detected items with per-item confidence — never a claim from the forbidden list', escalatesTo: 'GOV', modelClass: 'mid_tier_llm', tokenBudget: { input: 2500, output: 600 }, acuCeiling: 27, timeoutMs: 30000, toolAllowList: ['food.recognise', 'label.read'] },
 };
 
 /** Runtime guard: an agent may never call a tool outside its allow-list. */
