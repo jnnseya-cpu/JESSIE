@@ -17,6 +17,8 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import com.getcapacitor.annotation.PermissionCallback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,13 +43,51 @@ import java.time.temporal.ChronoUnit
  * three columns from the provider and `CalendarContract.Events.TITLE` is
  * not among them.
  */
-@CapacitorPlugin(name = "JessMoveNative")
+@CapacitorPlugin(
+    name = "JessMoveNative",
+    permissions = [
+        // The alias `requestPermissionForAlias("motion", …)` resolves.
+        // Without this declaration the request throws at runtime rather
+        // than prompting, so motion would be permanently ungranted.
+        Permission(
+            alias = "motion",
+            strings = ["android.permission.ACTIVITY_RECOGNITION"],
+        ),
+    ],
+)
 class JessMoveNativePlugin : Plugin() {
 
     /** Must match NATIVE_BRIDGE_VERSION in packages/shared/src/native.ts. */
     private val bridgeVersion = 1
 
+    /**
+     * What a transition is worth.
+     *
+     * The Transition API exposes no confidence value — unlike
+     * `ActivityRecognitionResult`, it emits only once the system has
+     * already decided, so there is no number to report. 0.95 rather than
+     * 1.0 because a transition is still a classification, and rather than
+     * anything lower because `MIN_MOTION_CONFIDENCE` is 0.6 and a value
+     * below it would mean this subscription could never say anything at
+     * all. It is a constant, not a measurement, and it is written down
+     * here so nobody mistakes it for one.
+     */
+    private val transitionConfidence = 0.95
+
     private val scope = CoroutineScope(Dispatchers.IO)
+
+    /**
+     * Re-subscribe whenever the plugin loads.
+     *
+     * `requestActivityTransitionUpdates` is idempotent for the same
+     * `PendingIntent`, so this costs nothing when a subscription is
+     * already live and repairs the case where one was lost — a force-stop,
+     * a Play services update, a permission granted from the system
+     * settings screen rather than through the app.
+     */
+    override fun load() {
+        if (MotionSubscription.granted(context)) MotionSubscription.register(context)
+    }
 
     private val healthPermissions = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
@@ -77,7 +117,7 @@ class JessMoveNativePlugin : Plugin() {
             result.put("platform", "android")
             result.put("health", health)
             result.put("calendar", granted(Manifest.permission.READ_CALENDAR))
-            result.put("motion", granted("android.permission.ACTIVITY_RECOGNITION"))
+            result.put("motion", MotionSubscription.granted(context))
             call.resolve(result)
         }
     }
@@ -97,32 +137,72 @@ class JessMoveNativePlugin : Plugin() {
 
     @PluginMethod
     fun requestMotionAccess(call: PluginCall) {
-        if (granted("android.permission.ACTIVITY_RECOGNITION")) {
+        if (MotionSubscription.granted(context)) {
+            // Granted already, but not necessarily subscribed — a member
+            // who granted the permission in system settings has never been
+            // through this path.
+            MotionSubscription.register(context)
             call.resolve(JSObject().put("granted", true))
             return
         }
         requestPermissionForAlias("motion", call, "motionPermissionResult")
     }
 
+    /**
+     * The other half of `requestPermissionForAlias`.
+     *
+     * Capacitor resolves nothing on its own: without this the JavaScript
+     * promise from `requestMotionAccess` would hang after the member
+     * answered the dialogue. Subscribing here rather than at the next
+     * `readMotion` matters because the first transition can be minutes
+     * away, and the sooner the subscription starts the sooner it arrives.
+     */
+    @PermissionCallback
+    private fun motionPermissionResult(call: PluginCall) {
+        val ok = MotionSubscription.granted(context)
+        if (ok) MotionSubscription.register(context)
+        call.resolve(JSObject().put("granted", ok))
+    }
+
     @PluginMethod
     fun readMotion(call: PluginCall) {
         /*
-         * Deliberately null.
+         * Android has no "what is happening right now" call. The OS
+         * delivers transitions to `ActivityTransitionReceiver`, which holds
+         * the last arrival; this reads it.
          *
-         * Android's activity recognition is a subscription: the app
-         * registers a PendingIntent and the OS delivers transitions over
-         * time. There is no "what is happening right now" call, and the
-         * honest answer to a synchronous question is that this shell does
-         * not know yet.
+         * `observedAt` is now, and that is not a fudge. The shell's grounds
+         * for believing this are current: the platform undertakes to report
+         * the next change, so silence since the last one *is* the evidence.
+         * `continuingSince` carries when the state began, and the web side
+         * judges it against `MAX_CONTINUING_STATE_MINUTES` — six hours,
+         * after which an unchanged state is treated as a missed transition
+         * rather than a fact. That ceiling lives in the shared package
+         * because that is the half of this that a test can reach.
          *
-         * `toMotionState(null)` is `unknown`, which blocks nothing and
-         * asserts nothing — the same answer the browser gives. Returning
-         * a stale cached transition instead would be the one thing the
-         * shared contract's staleness window exists to prevent. The
-         * transition receiver is the next piece of work; until it exists
-         * this is the truthful answer rather than a convenient one.
+         * Null whenever the permission is not currently held, whatever the
+         * store contains. A member who revoked it has withdrawn the
+         * grounds, not merely the future updates.
          */
-        call.resolve(JSObject().put("motion", JSObject.NULL))
+        if (!MotionSubscription.granted(context)) {
+            call.resolve(JSObject().put("motion", JSObject.NULL))
+            return
+        }
+
+        val held = MotionStore.current(context)
+        if (held == null) {
+            // Subscribed, but nothing has happened yet. `unknown`, which is
+            // what the browser has always said.
+            call.resolve(JSObject().put("motion", JSObject.NULL))
+            return
+        }
+
+        val motion = JSObject()
+        motion.put("activity", held.activity)
+        motion.put("confidence", transitionConfidence)
+        motion.put("observedAt", Instant.now().toString())
+        motion.put("continuingSince", held.enteredAt.toString())
+        call.resolve(JSObject().put("motion", motion))
     }
 
     @PluginMethod

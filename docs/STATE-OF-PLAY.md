@@ -33,7 +33,7 @@ is the point of the file.
 | What | Proven by |
 |---|---|
 | A native shell exists, and the web build does not depend on it | `apps/mobile`. Proven: `window.JessMoveNative` is `undefined` in a browser, the device-calendar button is not rendered, and the Snap request sends the identical payload it sent before the shell existed |
-| A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 15 assertions. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
+| A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 20 assertions. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
 | The calendar is read, and never seen | `packages/shared/src/calendar.ts` parses .ics in the browser. Proven at runtime: an event titled "Oncology follow-up with Dr Patel" produced 14 correct windows and the payload leaving the browser carried only weekdays and minutes |
 | A free trial buys thirty FoodLens analyses, not two | `LENS` moved to `mid_tier_llm` and `FREE_TIER` to 150 ACU. Asserted by what it buys rather than by the number, so a model or rate change fails the test rather than a member's first week |
 | The platform can start a conversation | Migration 0030, `/api/nudge/cron`. Proven against real Postgres: candidate → declared window → engine → VAPID sign → encrypt → POST |
@@ -259,21 +259,47 @@ the web app is thirty routes and a 7,500-line design system and a second
 implementation would be a second product to keep correct. The contract
 (`packages/shared/src/native.ts`) and the seam
 (`apps/frontend/app/native.ts`) are tested and shipped; the plugin's
-TypeScript typechecks. **`JessMoveNativePlugin.swift` and
-`JessMoveNativePlugin.kt` have never been through a compiler** — there is
-no macOS, no Xcode and no Android SDK on the machine they were written
-on, only Java and Gradle. Treat the first `xcodebuild` and the first
-Gradle build as the first real check of them. Neither app has been run on
-a device. `apps/mobile/README.md` carries the build runbook, the required
+TypeScript typechecks. **The Swift file and the four Kotlin files have
+never been through a compiler** — there is no macOS, no Xcode and no
+Android SDK on the machine they were written on, only Java and Gradle.
+Treat the first `xcodebuild` and the first Gradle build as the first real
+check of them. Neither app has been run on a device.
+`apps/mobile/README.md` carries the build runbook, the required
 Info.plist strings and manifest permissions, and the two things most
 likely to cause a store rejection.
 
-Still missing after it: `readMotion` on Android returns `null` and says
-why — Android's activity recognition is a subscription over a
-`PendingIntent`, not a synchronous question, so a transition receiver has
-to exist before it can answer. Until it does, Android motion is
-`unknown`, which is the same as the browser and is truthful. iOS answers
-properly.
+**Android motion is now written, and is shaped by the platform rather
+than by preference.** Android has no synchronous "what is happening now"
+call: activity recognition is a subscription over a `PendingIntent`, so
+`MotionSubscription` registers, `ActivityTransitionReceiver` receives and
+`MotionStore` holds the last arrival across a process death.
+`readMotion` reads that store. Three rules carry the risk, and only the
+last is testable here:
+
+- an ENTER is stored and an EXIT clears, because "stopped driving" does
+  not say what replaced it;
+- `FLAG_MUTABLE` is required on the `PendingIntent` from Android 12, and
+  its absence fails silently as permanent `unknown`;
+- a transition-reported state is judged on `continuingSince` rather than
+  on the three-minute sample window — the event is old while the state is
+  current — with `MAX_CONTINUING_STATE_MINUTES` (six hours) as the
+  ceiling. That constant lives in `packages/shared/src/native.ts` and is
+  tested precisely because the Kotlin producing it cannot be.
+
+The safety argument for six hours: `ContextService` blocks on `driving`
+and `cycling` only, so a stale blocking state over-blocks (silence, the
+safe direction) and a stale permissive state fails exactly as `unknown`
+already fails. Staleness here can cost a block that would have been
+missed anyway; it cannot cause a wrong one.
+
+Also fixed on that path: `requestPermissionForAlias("motion", …)` had no
+`Permission` declaration and no `@PermissionCallback`, so the request
+would have thrown rather than prompted and the JavaScript promise would
+never have settled. Both are now present.
+
+Unproven until a device runs it: that a real drive produces `driving`,
+and that force-stopping the app and reopening it re-subscribes rather
+than answering with the state frozen at the force-stop.
 
 **The old note, kept because it is still the shape of the gap.** `apps/`
 was `backend` and `frontend`.

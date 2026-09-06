@@ -176,7 +176,23 @@ export interface NativeMotion {
   readonly activity: string;
   /** 0–1. iOS low/medium/high maps to 0.33/0.66/1. */
   readonly confidence: number;
+  /**
+   * When the shell last had grounds to believe this.
+   *
+   * On iOS that is when the sample was taken. On Android it is *now*,
+   * because the platform reports transitions rather than samples: the OS
+   * says "they started sitting still" and says nothing further until that
+   * changes, so the shell's grounds are current even when the event is
+   * hours old.
+   */
   readonly observedAt: string;
+  /**
+   * When the state began, on a platform that reports transitions.
+   *
+   * Present only from Android. Its absence means the reading is a sample
+   * and `observedAt` is the whole story.
+   */
+  readonly continuingSince?: string;
 }
 
 /**
@@ -191,6 +207,33 @@ export const MIN_MOTION_CONFIDENCE = 0.6;
 
 /** Motion older than this says nothing about now. */
 export const MAX_MOTION_AGE_MINUTES = 3;
+
+/**
+ * How long a transition-reported state may be believed.
+ *
+ * Android's Activity Recognition Transition API is sparse by design: it
+ * reports that somebody started sitting still and then says nothing for
+ * as long as that remains true. So the *event* is old while the *state*
+ * is current, and applying `MAX_MOTION_AGE_MINUTES` to it would mean
+ * Android motion never worked at all — the reading would be stale within
+ * three minutes of every transition and `unknown` for the rest of the
+ * day.
+ *
+ * There is still a ceiling, because a subscription can be interrupted by
+ * a force-stop, an app update or a revoked permission, and a state that
+ * has not changed in a working day is more likely a missed transition
+ * than a fact.
+ *
+ * Six hours, and the reason it can be this generous is worth stating.
+ * `ContextService` blocks on `driving` and `cycling` only; `still`,
+ * `walking` and `unknown` all pass. So a stale *blocking* state
+ * over-blocks, which is silence, which is the safe direction. And a stale
+ * *permissive* state — believing somebody is still when they have started
+ * driving — fails exactly as `unknown` already fails, because `unknown`
+ * does not block either. Staleness here can cost a block that would have
+ * been missed anyway. It cannot cause a wrong one.
+ */
+export const MAX_CONTINUING_STATE_MINUTES = 6 * 60;
 
 /**
  * A native activity reading, as a `MotionState` the context engine takes.
@@ -210,6 +253,20 @@ export function toMotionState(
   if (Number.isNaN(at)) return 'unknown';
   const ageMinutes = (now.getTime() - at) / 60_000;
   if (ageMinutes < 0 || ageMinutes > MAX_MOTION_AGE_MINUTES) return 'unknown';
+
+  /*
+   * A transition-reported state carries when it began, and is judged on
+   * that rather than on when the shell last looked. The ceiling lives
+   * here rather than in the Kotlin because this is the half that can be
+   * tested — the receiver that produces it has never been compiled.
+   */
+  if (motion.continuingSince !== undefined) {
+    const since = Date.parse(motion.continuingSince);
+    if (Number.isNaN(since)) return 'unknown';
+    const heldForMinutes = (now.getTime() - since) / 60_000;
+    // Entered in the future is a broken clock, not a state.
+    if (heldForMinutes < 0 || heldForMinutes > MAX_CONTINUING_STATE_MINUTES) return 'unknown';
+  }
 
   if (!Number.isFinite(motion.confidence) || motion.confidence < MIN_MOTION_CONFIDENCE) {
     return 'unknown';

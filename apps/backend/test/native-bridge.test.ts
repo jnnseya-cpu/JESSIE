@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   HEALTH_PROVIDER_FOR,
+  MAX_CONTINUING_STATE_MINUTES,
   MAX_HEALTH_READING_AGE_MINUTES,
   NATIVE_BRIDGE_VERSION,
   toBusyIntervals,
@@ -132,6 +133,81 @@ test('the vocabularies of both platforms land on the engine’s own states', () 
   assert.equal(toMotionState({ activity: 'running', confidence: 1, observedAt: at }, NOW), 'walking');
   assert.equal(toMotionState({ activity: 'cycling', confidence: 1, observedAt: at }, NOW), 'cycling');
   assert.equal(toMotionState({ activity: 'unknown', confidence: 1, observedAt: at }, NOW), 'unknown');
+});
+
+/* ── motion, reported as a transition ───────────────────────────────── */
+
+test('a transition-reported state is judged on when it began, not on when it was emitted', () => {
+  // Android says "they started driving" once and then says nothing. The
+  // three-minute sample window would make that unknown before the car had
+  // left the drive, so Android motion would never have worked at all.
+  const driving = {
+    activity: 'automotive',
+    confidence: 0.95,
+    observedAt: NOW.toISOString(),
+    continuingSince: ago(90),
+  };
+  assert.equal(toMotionState(driving, NOW), 'driving');
+});
+
+test('a state nothing has contradicted all day is a missed transition, not a fact', () => {
+  const held = (minutes: number) => ({
+    activity: 'stationary',
+    confidence: 0.95,
+    observedAt: NOW.toISOString(),
+    continuingSince: ago(minutes),
+  });
+  assert.equal(toMotionState(held(MAX_CONTINUING_STATE_MINUTES - 1), NOW), 'still');
+  assert.equal(toMotionState(held(MAX_CONTINUING_STATE_MINUTES + 1), NOW), 'unknown');
+});
+
+test('a broken clock cannot make a transition believable', () => {
+  for (const continuingSince of [ago(-5), 'this morning']) {
+    assert.equal(
+      toMotionState(
+        { activity: 'automotive', confidence: 0.95, observedAt: NOW.toISOString(), continuingSince },
+        NOW,
+      ),
+      'unknown',
+    );
+  }
+});
+
+test('the continuing ceiling widens nothing else: observedAt still has to be fresh', () => {
+  // A shell that stops polling does not get to keep asserting. The sample
+  // window applies to every reading; `continuingSince` only says the
+  // *state* outlives the event that announced it.
+  assert.equal(
+    toMotionState(
+      { activity: 'stationary', confidence: 0.95, observedAt: ago(9), continuingSince: ago(20) },
+      NOW,
+    ),
+    'unknown',
+  );
+});
+
+test('the transition receiver stores an arrival and never a departure', () => {
+  /*
+   * Structural, because no compiler on this machine can check the Kotlin.
+   *
+   * The rule it guards is the one that would be easy to get wrong and
+   * impossible to notice: an EXIT transition says a state ended, not what
+   * replaced it. Storing an EXIT as the current activity would leave the
+   * shell asserting `still` for somebody who just stood up — the precise
+   * failure `unknown` exists to avoid.
+   */
+  const source = new URL(
+    '../../../apps/mobile/plugin/android/src/main/java/com/jessmove/nativebridge/ActivityTransitionReceiver.kt',
+    import.meta.url,
+  );
+  const text = readFileSync(source, 'utf8');
+
+  assert.match(text, /ActivityTransitionResult\.extractResult/);
+  assert.match(text, /ACTIVITY_TRANSITION_ENTER/);
+  // An EXIT is handled by clearing, never by writing an activity.
+  assert.match(text, /ACTIVITY_TRANSITION_EXIT/);
+  // Elapsed-realtime nanos are not wall clock; the receiver must convert.
+  assert.match(text, /elapsedRealtimeNanos/);
 });
 
 /* ── calendar ───────────────────────────────────────────────────────── */
