@@ -24,6 +24,12 @@ type Probe = {
   expect: number;
 };
 
+/*
+ * A worked example for the console. The rate-limit fields are gone
+ * because the endpoint no longer accepts them — the cap, the ceiling and
+ * the interval are counted server-side from member_activity, so a caller
+ * cannot set its own.
+ */
 const SIGNALS = {
   userId: 'u_demo',
   motionState: 'still',
@@ -31,9 +37,6 @@ const SIGNALS = {
   onCall: false,
   doNotDisturb: false,
   localHour: 14,
-  snapsDeliveredToday: 1,
-  dailyCap: 6,
-  minutesSinceLastNudge: 95,
   consentedSignals: ['calendar', 'motion', 'device_state'],
 };
 

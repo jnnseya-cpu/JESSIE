@@ -25,6 +25,7 @@ import { MailModule } from './mail/mail.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { MovementsModule } from './movements/movements.module';
+import { NudgeModule } from './nudge/nudge.module';
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { PushModule } from './push/push.module';
 import { StripeModule } from './stripe/stripe.module';
@@ -56,6 +57,7 @@ import { StripeModule } from './stripe/stripe.module';
     NewsletterModule,
     TrackingModule,
     MovementsModule,
+    NudgeModule,
     PrescriptionsModule,
     PushModule,
     StripeModule,

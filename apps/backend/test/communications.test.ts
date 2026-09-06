@@ -194,7 +194,20 @@ test('coach off means off — a coaching event does not send', () => {
 test('a coach set to off does not block a security notice', () => {
   const plan = resolveDelivery(need('security.alert'), to({ presence: 'off' }));
   assert.ok(plan.deliver.includes('email'));
-  assert.ok(plan.deliver.includes('sms'));
+  /*
+   * SMS is named by this event and is not delivered, because no SMS
+   * gateway exists in this repository. It used to be asserted as
+   * delivered on the strength of `wired: true`, which was a claim rather
+   * than a transport. What matters — and is asserted instead — is that
+   * turning the coach off does not silence a security notice: it still
+   * reaches a channel that can actually carry it, and the one that
+   * cannot is dropped with a reason rather than dropped quietly.
+   */
+  assert.ok(!plan.deliver.includes('sms'));
+  assert.deepEqual(
+    plan.dropped.filter((d) => d.channel === 'sms'),
+    [{ channel: 'sms', reason: 'no provider configured' }],
+  );
 });
 
 test('Law 2 — a held context blocks a coaching nudge', () => {
@@ -244,7 +257,10 @@ test('channel consent is honoured for ordinary events', () => {
 
 test('a mandatory notice bypasses channel consent', () => {
   const plan = resolveDelivery(need('privacy.breach_notification'), to({ consentedChannels: [] }));
-  assert.deepEqual(plan.deliver, ['email', 'in_app', 'sms']);
+  // Every channel that exists, consent or not — and SMS is not one that
+  // exists, so it is dropped rather than counted.
+  assert.deepEqual(plan.deliver, ['email', 'in_app']);
+  assert.ok(plan.dropped.some((d) => d.channel === 'sms' && d.reason === 'no provider configured'));
   assert.match(plan.explanation, /Mandatory/);
 });
 
@@ -294,9 +310,12 @@ test('cost is the sum of the delivered channels, and in-app is free', () => {
     deliveryCostGbp(plan),
     Number(
       (
+        // The channels actually delivered on. SMS is costed in the
+        // catalogue and has no gateway, so it is never delivered and
+        // never billed — a cost model that charged for it would be
+        // charging for a message nobody received.
         CHANNEL_DEFINITIONS.email.unitCostGbp +
-        CHANNEL_DEFINITIONS.in_app.unitCostGbp +
-        CHANNEL_DEFINITIONS.sms.unitCostGbp
+        CHANNEL_DEFINITIONS.in_app.unitCostGbp
       ).toFixed(6),
     ),
   );

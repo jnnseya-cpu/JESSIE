@@ -437,17 +437,33 @@ export function SnapModule({
           availableSeconds: 900,
           capabilityNormaliser: 1,
           permittedVariants: ['seated', 'standing'],
+          /*
+           * What the browser can honestly say, and nothing else.
+           *
+           * This used to assert `motionState: 'still'`, `locationClass:
+           * 'home'`, `onCall: false` and `doNotDisturb: false` on every
+           * request. A web page can observe none of those, so the safety
+           * layer was being handed four fabrications — the engine could
+           * not have withheld a prompt for driving if it wanted to,
+           * because it was told the member was sitting still at home.
+           *
+           * `unknown` is a real member of both unions and produces no
+           * block, which is correct here: this request came from somebody
+           * deliberately tapping "ask", and a person who taps is a person
+           * who is available. The tap is the signal, which is why the
+           * basis is device_state — the device is unlocked, awake and in
+           * the foreground, and that is the one thing this client
+           * genuinely knows.
+           *
+           * The cap, the ceiling and the interval are no longer sent at
+           * all: the server counts them from member_activity.
+           */
           signals: {
             userId: me.userId,
-            motionState: 'still',
-            locationClass: 'home',
-            onCall: false,
-            doNotDisturb: false,
+            motionState: 'unknown',
+            locationClass: 'unknown',
             localHour: new Date().getHours(),
-            snapsDeliveredToday: 0,
-            dailyCap: 6,
-            minutesSinceLastNudge: 120,
-            consentedSignals: ['motion', 'device_state'],
+            consentedSignals: ['device_state'],
           },
         }),
       });

@@ -10,7 +10,7 @@ import {
   type PostStatus,
 } from '@jessmove/shared';
 import { BlogAnalyticsService } from './analytics.service';
-import { assertScheduler } from './cron.guard';
+import { assertScheduler } from '../common/cron.guard';
 import { BlogService } from './blog.service';
 import { DraftPostDto, TransitionDto, ViewDto } from './blog.dto';
 import { SeoAgentService } from './seo-agent.service';

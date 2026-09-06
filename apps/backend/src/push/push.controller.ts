@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
 import { AdminOnly } from '../auth/auth.guard';
 import { PushService } from './push.service';
 
@@ -11,6 +11,11 @@ export class SubscribeDto {
   @IsString() @MaxLength(64) auth!: string;
 
   @IsOptional() @IsString() @MaxLength(64) userId?: string;
+
+  /* Minutes east of UTC. -720..+840 covers every real zone including the
+     fourteen-hour one; anything outside it is a broken client, not a
+     place. */
+  @IsOptional() @IsInt() @Min(-720) @Max(840) utcOffsetMinutes?: number;
 }
 
 export class UnsubscribeDto {
@@ -40,6 +45,7 @@ export class PushController {
       p256dh: body.p256dh,
       auth: body.auth,
       userId: body.userId ?? null,
+      utcOffsetMinutes: body.utcOffsetMinutes ?? null,
     });
   }
 

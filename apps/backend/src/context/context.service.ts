@@ -15,8 +15,14 @@ export interface ContextSignals {
   userId: string;
   motionState: MotionState;
   locationClass: LocationClass;
-  onCall: boolean;
-  doNotDisturb: boolean;
+  /*
+   * Optional because a browser cannot observe either one. Omitted means
+   * "no evidence", which is what an unanswerable question should look
+   * like in a type. It used to be required, so every caller had to assert
+   * something, and the web client asserted `false` on both.
+   */
+  onCall?: boolean;
+  doNotDisturb?: boolean;
   inLesson?: boolean;
   clinicallyFlaggedRest?: boolean;
   localHour: number;

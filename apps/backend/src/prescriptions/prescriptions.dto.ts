@@ -54,11 +54,14 @@ export class ContextSignalsDto {
   @IsIn(LOCATION_CLASSES)
   locationClass!: LocationClass;
 
+  /* Omit rather than guess — see ContextSignals. */
+  @IsOptional()
   @IsBoolean()
-  onCall!: boolean;
+  onCall?: boolean;
 
+  @IsOptional()
   @IsBoolean()
-  doNotDisturb!: boolean;
+  doNotDisturb?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -80,17 +83,17 @@ export class ContextSignalsDto {
   @Max(23, { each: true })
   quietHours?: [number, number];
 
-  @IsInt()
-  @Min(0)
-  snapsDeliveredToday!: number;
-
-  @IsInt()
-  @Min(0)
-  dailyCap!: number;
-
-  @IsInt()
-  @Min(0)
-  minutesSinceLastNudge!: number;
+  /*
+   * `snapsDeliveredToday`, `dailyCap` and `minutesSinceLastNudge` used to
+   * be here and are deliberately gone.
+   *
+   * Those three decide whether the engine is allowed to speak at all, and
+   * a caller that supplies its own cap has no cap. The browser sent
+   * `0`, `6` and `120` on every request. They are now counted from
+   * `member_activity` and read from the age mode, server-side, in
+   * PrescriptionsService — the caller cannot reach them and does not need
+   * to know them.
+   */
 
   @IsArray()
   @IsIn(SIGNAL_CLASSES, { each: true })

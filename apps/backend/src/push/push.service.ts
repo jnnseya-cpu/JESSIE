@@ -22,6 +22,16 @@ export interface StoredSubscription {
   readonly userId: string | null;
   readonly p256dh: string;
   readonly auth: string;
+  /**
+   * Minutes east of UTC, as the browser reported at subscribe time.
+   *
+   * The scheduler runs in UTC and has to know whether it is eleven in the
+   * morning where the member is; nothing else on the platform records a
+   * time zone, and the browser is the only thing that knows. Null when an
+   * older client did not send one — the scheduler skips those rather than
+   * guessing at somebody's midnight.
+   */
+  readonly utcOffsetMinutes?: number | null;
 }
 
 interface PgPoolLike {
@@ -79,10 +89,11 @@ export class PushService implements OnModuleDestroy {
     }
     if (this.pool) {
       await this.pool.query(
-        `INSERT INTO push_subscriptions (endpoint, user_id, p256dh, auth)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (endpoint) DO UPDATE SET user_id = $2, p256dh = $3, auth = $4`,
-        [sub.endpoint, sub.userId, sub.p256dh, sub.auth],
+        `INSERT INTO push_subscriptions (endpoint, user_id, p256dh, auth, utc_offset_minutes)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (endpoint) DO UPDATE
+           SET user_id = $2, p256dh = $3, auth = $4, utc_offset_minutes = $5`,
+        [sub.endpoint, sub.userId, sub.p256dh, sub.auth, sub.utcOffsetMinutes ?? null],
       );
     } else {
       this.memory.set(sub.endpoint, sub);

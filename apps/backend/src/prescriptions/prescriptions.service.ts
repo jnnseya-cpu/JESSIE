@@ -15,8 +15,22 @@ import {
   type MovementCategory,
   type MovementVariant,
 } from '@jessmove/shared';
+import { ActivityService } from '../activity/activity.service';
 import { ContextService, type ContextSignals } from '../context/context.service';
 import { guideFor } from './guide.logic';
+
+/**
+ * What a caller may state about the context.
+ *
+ * The three fields that decide whether the engine is allowed to speak —
+ * how many prompts have gone out today, what the ceiling is, and how long
+ * ago the last one was — are not among them. They are counted and derived
+ * server-side. A cap the caller supplies is not a cap.
+ */
+export type StatedSignals = Omit<
+  ContextSignals,
+  'snapsDeliveredToday' | 'dailyCap' | 'minutesSinceLastNudge'
+>;
 
 export interface PrescriptionRequest {
   userId: string;
@@ -24,7 +38,7 @@ export interface PrescriptionRequest {
   availableSeconds: number;
   maxRpe?: number;
   excludeCategories?: MovementCategory[];
-  signals: ContextSignals;
+  signals: StatedSignals;
   /** Variants the capability profile permits. Never widened by this service. */
   permittedVariants: MovementVariant[];
   capabilityNormaliser: number;
@@ -79,10 +93,28 @@ export interface PrescriptionHold {
 export class PrescriptionsService {
   private readonly logger = new Logger(PrescriptionsService.name);
 
-  constructor(private readonly context: ContextService) {}
+  constructor(
+    private readonly context: ContextService,
+    private readonly activity: ActivityService,
+  ) {}
 
-  next(request: PrescriptionRequest): Prescription | PrescriptionHold {
-    const decision: ContextDecision = this.context.evaluate(request.signals);
+  async next(request: PrescriptionRequest): Promise<Prescription | PrescriptionHold> {
+    /*
+     * The rate limit is composed here, from the database and from the age
+     * mode, and then overwrites anything the caller said about it. Doing
+     * it before `evaluate` means the existing cap check in ContextService
+     * is finally being given true numbers rather than a caller's opinion
+     * of them.
+     */
+    const { deliveredToday, minutesSinceLastNudge } = await this.activity.nudgeState(request.userId);
+    const signals: ContextSignals = {
+      ...request.signals,
+      snapsDeliveredToday: deliveredToday,
+      dailyCap: AGE_MODE_DEFINITIONS[request.mode].dailyCap,
+      minutesSinceLastNudge,
+    };
+
+    const decision: ContextDecision = this.context.evaluate(signals);
 
     /*
      * A decision older than its own TTL must not deliver.

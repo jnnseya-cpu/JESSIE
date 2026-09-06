@@ -77,6 +77,71 @@ export class ActivityService implements OnModuleDestroy {
     this.memory.set(input.userId, existing);
   }
 
+  /**
+   * How many prompts this member has already had today, and how long ago
+   * the last one was.
+   *
+   * These two numbers decide whether the engine is allowed to speak, and
+   * they used to arrive in the request body. The browser sent
+   * `snapsDeliveredToday: 0` and `minutesSinceLastNudge: 120` on every
+   * call, so the daily cap — described on the marketing page as "a hard
+   * ceiling the engine may never exceed" — was a ceiling the caller set
+   * for itself. Anything that decides whether a health product may
+   * interrupt somebody has to be counted where the caller cannot reach
+   * it.
+   *
+   * `snap_held` counts towards the interval but not towards the cap: a
+   * held prompt is one the engine decided not to send, so it is evidence
+   * about timing and not a delivery.
+   */
+  async nudgeState(userId: string): Promise<{ deliveredToday: number; minutesSinceLastNudge: number }> {
+    const FAR = 24 * 60;
+
+    if (this.pool) {
+      try {
+        const result = await this.pool.query(
+          `SELECT
+             count(*) FILTER (
+               WHERE kind = 'snap_offered' AND on_day = current_date
+             ) AS delivered_today,
+             max(at) FILTER (
+               WHERE kind IN ('snap_offered', 'snap_held')
+             ) AS last_nudge
+           FROM member_activity
+           WHERE user_id = $1`,
+          [userId],
+        );
+        const row = result.rows[0] ?? {};
+        const last = row.last_nudge == null ? null : new Date(String(row.last_nudge));
+        return {
+          deliveredToday: Number(row.delivered_today ?? 0),
+          minutesSinceLastNudge:
+            last && !Number.isNaN(last.getTime())
+              ? Math.max(0, Math.floor((Date.now() - last.getTime()) / 60_000))
+              : FAR,
+        };
+      } catch (error) {
+        /*
+         * A cap that cannot be read must not become an uncapped engine.
+         * Reporting the cap as already reached makes the failure a silence
+         * rather than a flood, which is the safe direction for a product
+         * that pushes notifications at people.
+         */
+        this.logger.error(`nudge state read failed, treating the cap as reached: ${(error as Error).message}`);
+        return { deliveredToday: Number.MAX_SAFE_INTEGER, minutesSinceLastNudge: 0 };
+      }
+    }
+
+    const rows = this.memory.get(userId) ?? [];
+    const today = dayKey(new Date());
+    const nudges = rows.filter((r) => r.kind === 'snap_offered' || r.kind === 'snap_held');
+    const last = nudges.length ? new Date(nudges[nudges.length - 1]!.at).getTime() : null;
+    return {
+      deliveredToday: rows.filter((r) => r.kind === 'snap_offered' && r.onDay === today).length,
+      minutesSinceLastNudge: last ? Math.max(0, Math.floor((Date.now() - last) / 60_000)) : FAR,
+    };
+  }
+
   async dashboard(userId: string): Promise<Dashboard & { rewards: Rewards }> {
     const today = dayKey(new Date());
     let rows: ActivityRow[] = [];

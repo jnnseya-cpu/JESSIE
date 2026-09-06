@@ -42,12 +42,25 @@ export interface ChannelDefinition {
   readonly note: string;
 }
 
+/*
+ * `wired` means a transport exists in this repository that can actually
+ * put the message on a wire — not that the channel is designed, costed
+ * and templated. Everything in this catalogue is those three things.
+ *
+ * SMS was marked wired and is not: there is no SMS provider anywhere in
+ * the backend, no client, no account and no code. The marketing page
+ * reported "4 of 5 channels wired" on the strength of this flag, and
+ * `resolveDelivery` was routing critical notices to a channel that cannot
+ * carry them — which for a catalogue containing a breach notification and
+ * a clinical red flag is the worst place to be optimistic.
+ */
 export const CHANNEL_DEFINITIONS: Readonly<Record<MessageChannel, ChannelDefinition>> = {
   email: {
     channel: 'email',
     label: 'Email',
     wired: true,
-    provider: 'transactional ESP',
+    /* MailService, over SMTP. Not an ESP API. */
+    provider: 'SMTP',
     unitCostGbp: 0.0004,
     note: 'Branded template, company logo and details on every outbound message.',
   },
@@ -62,16 +75,19 @@ export const CHANNEL_DEFINITIONS: Readonly<Record<MessageChannel, ChannelDefinit
   sms: {
     channel: 'sms',
     label: 'SMS',
-    wired: true,
-    provider: 'SMS gateway',
+    wired: false,
+    provider: 'not configured',
     unitCostGbp: 0.032,
-    note: 'Reserved for critical and mandatory notices. The most expensive channel by two orders of magnitude.',
+    note: 'Catalogued, templated and costed, but no gateway is connected — events naming it fall back to the next channel. Reserved for critical and mandatory notices when it is.',
   },
   push: {
     channel: 'push',
     label: 'Push',
     wired: true,
-    provider: 'device push service',
+    /* PushService, over VAPID and the browser's own push service. Needs
+       no vendor, which is why it is the only non-email transport that is
+       genuinely here. */
+    provider: 'Web Push (VAPID)',
     unitCostGbp: 0.00002,
     note: 'Coaching and time-sensitive events. Obeys quiet hours and the daily cap.',
   },

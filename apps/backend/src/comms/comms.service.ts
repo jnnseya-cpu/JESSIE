@@ -38,16 +38,31 @@ const LOG_LIMIT = 500;
 export class CommsService {
   private log: DeliveryRecord[] = [];
 
-  /** Which channels have a live provider key. None, in this environment. */
-  private configured(channel: MessageChannel): boolean {
-    const env: Partial<Record<MessageChannel, string | undefined>> = {
-      email: process.env.EMAIL_API_KEY,
-      sms: process.env.SMS_API_KEY,
-      push: process.env.PUSH_API_KEY,
-      whatsapp: process.env.WHATSAPP_API_KEY,
-    };
-    // In-app needs no provider — it is a row in our own database.
-    return channel === 'in_app' || Boolean(env[channel]);
+  /**
+   * Whether this channel has somewhere to send to. It does not.
+   *
+   * This used to read `EMAIL_API_KEY`, `SMS_API_KEY`, `PUSH_API_KEY` and
+   * `WHATSAPP_API_KEY` and record `status: 'sent'` when one of them was a
+   * non-empty string. There is no HTTP call to any provider anywhere in
+   * this module and never has been, so setting any of those four turned a
+   * simulation into a delivery record claiming a message had gone out.
+   * A false positive on a delivery ledger is worse than an honest
+   * `sandbox`: it is the record somebody consults when a member says
+   * "I never got the breach notice".
+   *
+   * The four variables are gone rather than left unread, because a
+   * variable named for a capability the code does not have is a promise
+   * to whoever deploys it.
+   *
+   * What is real: `in_app` is a row in our own database. Everything else
+   * resolves and renders here and transmits nowhere. The platform's only
+   * live transports are `MailService` over SMTP and `PushService` over
+   * VAPID, and neither is reached from this module — nothing in the
+   * backend calls `CommsService` at all. It is the event catalogue's
+   * dry run, and it should look like one.
+   */
+  private hasTransport(channel: MessageChannel): boolean {
+    return channel === 'in_app';
   }
 
   catalogue() {
@@ -76,7 +91,7 @@ export class CommsService {
       costGbp: deliveryCostGbp(plan),
       channels: plan.deliver.map((c) => ({
         ...CHANNEL_DEFINITIONS[c],
-        providerConfigured: this.configured(c),
+        transportPresent: this.hasTransport(c),
       })),
     };
   }
@@ -126,9 +141,14 @@ export class CommsService {
       write(event.channels[0]!, 'suppressed', plan.explanation);
     } else {
       for (const channel of plan.deliver) {
-        if (channel === 'in_app') write(channel, 'logged');
-        else if (this.configured(channel)) write(channel, 'sent');
-        else write(channel, 'sandbox', 'no provider key set — resolution and render are real');
+        if (this.hasTransport(channel)) write(channel, 'logged');
+        else {
+          write(
+            channel,
+            'sandbox',
+            `resolved and rendered, not transmitted — this module has no ${channel} transport`,
+          );
+        }
       }
     }
 
@@ -162,10 +182,14 @@ export class CommsService {
       attempted,
       byStatus,
       spentGbp: Number(this.log.reduce((n, r) => n + r.costGbp, 0).toFixed(4)),
-      providersConfigured: Object.fromEntries(
+      /* Renamed from `providersConfigured`, which asked the wrong
+         question: a configured provider and a transport that exists in
+         this codebase are not the same thing, and only the second one
+         puts a message on a wire. */
+      transportPresent: Object.fromEntries(
         (Object.keys(CHANNEL_DEFINITIONS) as MessageChannel[]).map((c) => [
           c,
-          this.configured(c),
+          this.hasTransport(c),
         ]),
       ),
     };

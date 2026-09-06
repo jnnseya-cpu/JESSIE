@@ -19,6 +19,7 @@ import { LedgerModule } from './ledger';
 import { GrowthEngineModule } from './growth-engine';
 import { InsightModule } from './insight';
 import { StrengthModule } from './strength';
+import { WindowsModule } from './windows';
 import {
   BodyCommandModule,
   ChallengesModule,
@@ -179,6 +180,14 @@ export function AccountPanel() {
         endpoint: json.endpoint,
         p256dh: json.keys.p256dh,
         auth: json.keys.auth,
+        /*
+         * The scheduler runs in UTC and needs to know whether it is
+         * eleven in the morning where this person is. Nothing else on the
+         * platform records a time zone and the browser is the only thing
+         * that knows. Negated because getTimezoneOffset counts minutes
+         * *behind* UTC and everything server-side counts them east of it.
+         */
+        utcOffsetMinutes: -new Date().getTimezoneOffset(),
       });
       setPush('on');
     } catch {
@@ -743,6 +752,7 @@ export function AccountPanel() {
             <>
               <DashboardModule data={dash} onActivity={onActivity} />
               <SnapModule me={me} onActivity={onActivity} />
+              <WindowsModule userId={me.userId} />
               <MovaModule me={me} />
             </>
           )}

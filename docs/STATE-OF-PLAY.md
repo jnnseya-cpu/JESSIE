@@ -32,6 +32,11 @@ is the point of the file.
 
 | What | Proven by |
 |---|---|
+| The platform can start a conversation | Migration 0030, `/api/nudge/cron`. Proven against real Postgres: candidate → declared window → engine → VAPID sign → encrypt → POST |
+| The daily cap is counted, not asserted by the caller | `snapsDeliveredToday`, `dailyCap` and `minutesSinceLastNudge` removed from the request DTO; counted from `member_activity` and read from the age mode. Proven: six offers today → `held / daily_cap_reached` |
+| A failed push does not spend the member's ceiling | Proven: a delivery to an unreachable endpoint records `failed` and writes no `snap_offered` row |
+| The context engine is no longer fed fabrications | The web client asserted `motionState: 'still'` and `locationClass: 'home'` on every request; both are now `unknown` and `onCall`/`doNotDisturb` are omitted rather than guessed |
+| The comms module cannot claim a delivery it did not make | Four phantom provider keys deleted; every channel without a transport in this repository records `sandbox` |
 | The brand typefaces are actually delivered | Six self-hosted woff2 in `apps/frontend/public/fonts`; §8 named Inter and Manrope and nothing ever loaded them |
 | Every text node on every public route clears WCAG AA | `pnpm check:contrast` — 7,274 nodes across 28 routes, 0 below threshold, down from 1,097. Translucent layers composited, gradients measured at every stop |
 | The landing page speaks to one audience, and the organisation page to the other | `/` is consumer; `/industries` carries the command centre, the k-anonymity architecture and seat pricing |
@@ -205,6 +210,38 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**Two decisions are the owner's, and both are money.**
+
+*The free tier cannot demonstrate the product.* `FREE_TIER` is 50 ACU a
+month for two months. Measured against the real rates now in
+`ai-costs.ts`, one FoodLens photograph (2,600 in / 500 out) costs 25 ACU
+on `claude-opus-5` — which is what `LENS` asks for, since its
+`modelClass` is `frontier_llm` and `AI_DEFAULT_PROVIDER` is anthropic.
+**A free trial is two photographs.** On `claude-sonnet-5` it is ten; on
+`gemini-2.5-flash`, fifty. Premium at £5.99 buys 23 opus photographs a
+month against a product that invites one per meal.
+
+Three levers, none of which an engineer should pull alone: change
+`LENS.modelClass` to `mid_tier_llm` (a quality decision), change
+`AI_DEFAULT_PROVIDER` (same), or raise `FREE_TIER.acusPerMonth` (a CAC
+decision — 500 ACU a month costs about £1.25 of real provider spend per
+free signup). The 4× protection holds at every model, so none of them
+touches margin. Nothing has been changed here.
+
+**There is no native application.** `apps/` is `backend` and `frontend`.
+That forecloses background motion sensing, on-device calendar access,
+HealthKit, Health Connect, and reliable iOS notification delivery for
+anyone who has not added the PWA to their home screen — and `/wearables`
+names Apple Health and Health Connect. Declared movement windows are the
+honest substitute for a scheduling signal; they are not a substitute for
+the health integrations the page claims.
+
+**SMS is catalogued and has no gateway.** `CHANNEL_DEFINITIONS.sms` said
+`wired: true` on the strength of an env var nothing read, so
+`resolveDelivery` was routing breach notifications and clinical red flags
+to a channel that cannot carry them. It is now `wired: false` and drops
+with a reason. Connecting a gateway is a new vendor decision.
 
 **Two documents disagree about where the API runs.**
 `docs/BACKEND-RUNBOOK.md` §5 deploys it to Vercel as a second project;

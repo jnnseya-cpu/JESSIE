@@ -394,7 +394,7 @@ test('the scheduler’s door refuses everything without a secret', () => {
    * money that means a deployment which forgot the variable is an open
    * door, and it fails silently, because the job still runs.
    */
-  const guard = readFileSync(new URL('../src/blog/cron.guard.ts', import.meta.url), 'utf8');
+  const guard = readFileSync(new URL('../src/common/cron.guard.ts', import.meta.url), 'utf8');
   assert.match(guard, /if \(expected\.length < 16\) throw flat/);
   assert.match(guard, /timingSafeEqual/, 'the secret is compared with ===, which leaks it');
 

@@ -12,7 +12,7 @@ import {
 import type { Request } from 'express';
 import { isValidUnsubscribeToken, NEWSLETTER } from '@jessmove/shared';
 import { AdminOnly, SelfOnly } from '../auth/auth.guard';
-import { assertScheduler } from '../blog/cron.guard';
+import { assertScheduler } from '../common/cron.guard';
 import { NewsletterService } from './newsletter.service';
 import { ComposeDto, ConsentDto, IssueStatusDto } from './newsletter.dto';
 
