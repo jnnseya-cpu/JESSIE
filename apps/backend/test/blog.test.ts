@@ -13,6 +13,7 @@ import {
   countWords,
   isEngagedRead,
   readingMinutes,
+  faqJsonLd,
   seoAudit,
   slugify,
   type PostDraft,
@@ -86,8 +87,26 @@ test('assertEditorialSafe throws with the offending terms named', () => {
  * The audit
  * ------------------------------------------------------------------ */
 
+/*
+ * An exemplary draft, and it has to be one.
+ *
+ * This fixture is the working definition of a 90: it opens with an answer
+ * an engine can lift, links up to its pillar and out to the pages it
+ * actually discusses, and answers two questions outright. When the bar
+ * moved from 80 to 90 this fixture stopped passing, which was the bar
+ * working — it had a heading as its first line, two internal links and no
+ * questions, and that was a publishable article rather than a competitive
+ * one.
+ */
 function draftOf(overrides: Partial<PostDraft> = {}): PostDraft {
   const body = [
+    // The opening answer. First thing in the file, before any heading,
+    // because that is where an extractor looks and stops.
+    'Seated movement is exercise performed entirely from a chair, and for ' +
+      'anybody who cannot stand safely it is the whole session rather than a ' +
+      'consolation prize. Every movement in this library exists as a seated ' +
+      'variant authored on its own terms, never a standing one with the ' +
+      'standing removed.',
     '## Why this matters',
     Array(320).fill('movement').join(' '),
     '## What we measured',
@@ -107,7 +126,19 @@ function draftOf(overrides: Partial<PostDraft> = {}): PostDraft {
     secondaryKeywords: ['chair supported'],
     body,
     clusterKey: 'later-life',
-    internalLinks: ['/micro-movement', '/for-adults'],
+    // Four, including the cluster pillar. Two was the old floor and it
+    // left the article an island inside its own cluster.
+    internalLinks: ['/micro-movement', '/for-adults', '/body-balance', '/assurance'],
+    faq: [
+      {
+        q: 'Is seated movement enough on its own?',
+        a: 'Yes. A seated session is a complete session, not a reduced one, and the library is authored that way rather than degraded from standing versions.',
+      },
+      {
+        q: 'Do I need to be able to stand at all?',
+        a: 'No. Chair-supported is the default in later-life modes, and standing work is opt-up rather than opt-out.',
+      },
+    ],
     ...overrides,
   };
 }
@@ -261,4 +292,118 @@ test('an empty post reports zeroes rather than NaN', () => {
   assert.equal(m.readRate, 0);
   assert.equal(m.medianDwellSeconds, 0);
   assert.equal(m.completionRate, 0);
+});
+
+/* ------------------------------------------------------------------ *
+ * Being quoted, not just ranked
+ *
+ * Everything downstream of a search box now extracts a passage rather
+ * than ranking a page. These are the rules that decide whether there is
+ * a passage to take.
+ * ------------------------------------------------------------------ */
+
+test('the bar is 90, and 90 permits one warning rather than three', () => {
+  // Worth pinning as arithmetic rather than as a number: at 25/8/3 for
+  // blocker/warning/note, 90 allows a single warning or three notes.
+  // Eighty allowed two warnings and a note — a truncated title, no link
+  // to the pillar and a thin keyword, all at once.
+  assert.equal(SEO_RULES.scorePass, 90);
+  assert.ok(100 - 8 >= SEO_RULES.scorePass, 'one warning must still pass');
+  assert.ok(100 - 8 - 3 < SEO_RULES.scorePass, 'a warning and a note must not');
+});
+
+test('an article that opens on a heading has nothing an answer engine can lift', () => {
+  const audit = seoAudit(draftOf({ body: '## Straight in\n\n' + Array(700).fill('word').join(' ') }));
+  const finding = audit.findings.find((f) => f.rule === 'answer.missing');
+  assert.ok(finding, JSON.stringify(audit.findings.map((f) => f.rule)));
+  assert.equal(finding.severity, 'blocker');
+  assert.equal(audit.passes, false);
+});
+
+test('the opening answer has to stand alone, at a liftable length', () => {
+  // The lead is everything before the *first* heading, so the fixture has
+  // to supply one — appending to a body that already opens with an answer
+  // measures the two paragraphs together, which is what a first attempt
+  // at this test did.
+  const filler = ['## Why', Array(700).fill('word').join(' ')].join('\n\n');
+
+  const short = seoAudit(draftOf({ body: `Seated movement helps.\n\n${filler}` }));
+  assert.ok(
+    short.findings.some((f) => f.rule === 'answer.length'),
+    JSON.stringify(short.measured),
+  );
+
+  const rambling = seoAudit(
+    draftOf({ body: `${Array(140).fill('seated movement matters').join(' ')}\n\n${filler}` }),
+  );
+  assert.ok(
+    rambling.findings.some((f) => f.rule === 'answer.length'),
+    JSON.stringify(rambling.measured),
+  );
+});
+
+test('an opening that never says the phrase is not obviously the answer', () => {
+  const audit = seoAudit(
+    draftOf({
+      body:
+        'Chairs are underrated. A great deal of useful work can be done from one, and the ' +
+        'library treats that as the default rather than the exception for anybody who needs ' +
+        'it, which is a decision rather than an accident of how it was built.\n\n' +
+        `## Why\n\n${Array(700).fill('word').join(' ')}`,
+    }),
+  );
+  assert.ok(
+    audit.findings.some((f) => f.rule === 'answer.keyword'),
+    JSON.stringify(audit.findings.map((f) => f.rule)),
+  );
+});
+
+test('questions answered outright become FAQPage, and an empty set does not', () => {
+  const none = seoAudit(draftOf({ faq: [] }));
+  assert.ok(none.findings.some((f) => f.rule === 'faq.count'));
+
+  // Structured data describing nothing is a markup error on a live URL,
+  // so the builder returns null rather than an empty FAQPage.
+  assert.equal(faqJsonLd([], 'https://jessmove.com/blog/x'), null);
+  assert.equal(faqJsonLd(undefined, 'https://jessmove.com/blog/x'), null);
+
+  const ld = faqJsonLd(draftOf().faq, 'https://jessmove.com/blog/x') as Record<string, unknown>;
+  assert.equal(ld['@type'], 'FAQPage');
+  assert.equal((ld.mainEntity as unknown[]).length, 2);
+});
+
+test('an answer too long to lift is summarised by the engine instead of quoted', () => {
+  const audit = seoAudit(
+    draftOf({
+      faq: [
+        { q: 'Is seated movement enough?', a: Array(80).fill('word').join(' ') },
+        { q: 'Not a question', a: 'Short enough.' },
+      ],
+    }),
+  );
+  assert.ok(audit.findings.some((f) => f.rule === 'faq.answer'));
+  assert.ok(audit.findings.some((f) => f.rule === 'faq.question'));
+});
+
+test('the named reviewer reaches the structured data, and is never invented', () => {
+  /*
+   * The one E-E-A-T signal this platform can make truthfully and most
+   * cannot, because the review is a clinical safety control rather than a
+   * workflow step — `posts` has a CHECK refusing a published row without
+   * a named reviewer.
+   */
+  const base = {
+    slug: 'x', title: 'T', description: 'D', category: 'Engineering',
+    keyword: 'k', publishedAt: '2026-01-01',
+  };
+  const reviewed = articleJsonLd({ ...base, reviewedBy: 'Dr A. Patel' }, 'https://jessmove.com');
+  assert.deepEqual(reviewed.reviewedBy, { '@type': 'Person', name: 'Dr A. Patel' });
+
+  // Absent rather than empty when nobody is named.
+  assert.equal('reviewedBy' in articleJsonLd(base, 'https://jessmove.com'), false);
+
+  // An organisation stays an organisation; a byline is never manufactured.
+  assert.deepEqual(articleJsonLd(base, 'https://jessmove.com').author, {
+    '@type': 'Organization', name: 'JESS MOVE',
+  });
 });

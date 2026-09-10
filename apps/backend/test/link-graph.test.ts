@@ -17,7 +17,12 @@ import {
   withAutoLinks,
   type GraphArticle,
   type PostDraft,
+  linkBudgetFor,
 } from '@jessmove/shared';
+// The renderer itself, not a copy of its rules — the defect it guards
+// lived in how the budget was threaded, which a reimplementation here
+// would not have reproduced.
+import { renderBody } from '../../frontend/app/blog/published.ts';
 
 /**
  * Links, and the two very different things people mean by "backlinks".
@@ -250,9 +255,41 @@ const draft = (over: Partial<PostDraft> = {}): PostDraft => ({
   category: 'Behaviour',
   keyword: 'movement break',
   secondaryKeywords: [],
-  body: `${'## A section\n\nword '.repeat(3)}${'word '.repeat(700)}`,
+  // Opens with the answer, before any heading — the passage a snippet or
+  // an AI overview lifts. A body that starts on a heading has nothing to
+  // take, and the audit now treats that as a blocker.
+  /*
+   * A real article shape, because 90 will not accept the old one.
+   *
+   * It was `'## A section\n\nword '.repeat(3)` plus filler, which produced
+   * exactly one heading — the second and third `##` were mid-line — and
+   * the keyword once in 750 words. That scored 89, and it should: a
+   * three-section article with no sections and a phrase that appears once
+   * is not an article about that phrase.
+   */
+  body: [
+    'A movement break needs about two minutes to do anything measurable, which is ' +
+      'shorter than every guideline we had read before measuring it ourselves. What ' +
+      'matters more than the length is whether it lands in a gap that was actually free.',
+    '## What we measured',
+    `A movement break was timed against completion rather than intention. ${'word '.repeat(250)}`,
+    '## What surprised us',
+    `The shortest movement break outperformed the longest one. ${'word '.repeat(250)}`,
+    '## What we changed',
+    `The default movement break is now two minutes. ${'word '.repeat(200)}`,
+  ].join('\n\n'),
   clusterKey: 'micro-movement',
   internalLinks: ['/micro-movement', '/how-it-works', '/blog', '/mova'],
+  faq: [
+    {
+      q: 'How long should a movement break be?',
+      a: 'About two minutes. Shorter than most guidelines suggest, and long enough to be measurable.',
+    },
+    {
+      q: 'Does it matter when I take it?',
+      a: 'More than the length does. A break offered into a gap that was genuinely free is finished; one offered into a meeting is not.',
+    },
+  ],
   ...over,
 });
 
@@ -345,4 +382,43 @@ test('nothing in this repository manufactures an external link', () => {
       assert.ok(!pattern.test(code), `${file} matches ${pattern}`);
     }
   }
+});
+
+/* ── how many links, and how many times the same one ───────────────── */
+
+test('link density is a rate, not a flat count', () => {
+  /*
+   * A flat cap is wrong in both directions: six links is a farm in a
+   * six-hundred-word note and an orphan in a two-thousand-word pillar
+   * piece. What a reader notices is how often the prose turns blue, and
+   * that is a rate.
+   */
+  assert.equal(linkBudgetFor(600), 4, 'a short article still reaches its pillar and siblings');
+  assert.equal(linkBudgetFor(1000), 7);
+  assert.ok(linkBudgetFor(2400) > linkBudgetFor(1200), 'a longer article carries more');
+  assert.equal(linkBudgetFor(100000), 14, 'and it stops before the page becomes a directory');
+});
+
+test('an article never points at the same page twice, across paragraphs as well as within one', () => {
+  /*
+   * `renderBody` applied `max: 6` per paragraph with `exclude` computed
+   * from that paragraph alone, so no state crossed a paragraph boundary
+   * and a twelve-paragraph article could link `/micro-movement` twelve
+   * times. `autoLinksFor` documents that one link per destination is the
+   * rule; it held inside each call while the article as a whole broke it.
+   */
+  const paragraph = 'A movement break is the unit here, and micro-movement is the idea behind it.';
+  const body = Array(8).fill(paragraph).join('\n\n');
+
+  const html = renderBody(body, '/blog/x')
+    .map((b) => b.html)
+    .join('\n');
+
+  const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
+  assert.deepEqual(
+    hrefs,
+    [...new Set(hrefs)],
+    `the same destination was linked more than once: ${hrefs.join(', ')}`,
+  );
+  assert.ok(hrefs.length > 0, 'and it still links at all');
 });

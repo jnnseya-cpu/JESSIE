@@ -281,8 +281,46 @@ export const SEO_RULES = {
   /** Above this, repetition reads as stuffing to a reader and a ranker alike. */
   keywordDensityMax: 0.025,
   keywordDensityMin: 0.003,
-  /** A passing audit. Below this the agent's draft does not reach review. */
-  scorePass: 80,
+
+  /**
+   * A passing audit. Below this the agent's draft does not reach review.
+   *
+   * Ninety, raised from eighty, and it is worth knowing exactly what that
+   * buys because the weights make it steep. A blocker costs 25, a warning
+   * 8, a note 3. So 90 permits one warning and nothing else, or three
+   * notes and nothing else. Eighty permitted two warnings and a note — an
+   * article with a truncated title, no link to its pillar and a thin
+   * keyword, which is a publishable article and not a competitive one.
+   *
+   * The number is not the point. What makes it reachable is that the
+   * repair pass gets the findings back with their fixes, so the agent is
+   * told precisely which two things to change rather than asked to try
+   * harder.
+   */
+  scorePass: 90,
+
+  /**
+   * The opening answer, in words.
+   *
+   * Everything downstream of a search box now extracts a passage rather
+   * than ranking a page: a featured snippet, an AI overview, an assistant
+   * asked a question. All of them take the first self-contained answer
+   * they can find, and an article that opens by setting the scene has
+   * nothing to take. Below 25 words there is no answer; above 90 it stops
+   * fitting in the box it is competing for.
+   */
+  answerWordsMin: 25,
+  answerWordsMax: 90,
+
+  /**
+   * Question-and-answer pairs, which become `FAQPage` structured data.
+   *
+   * The most reliable way to be quoted rather than merely ranked. A
+   * question phrased the way somebody asks it, answered in the length an
+   * answer engine will lift.
+   */
+  faqMin: 2,
+  faqAnswerWordsMax: 60,
 } as const;
 
 export const WORDS_PER_MINUTE = 220;
@@ -352,6 +390,12 @@ export function assertEditorialSafe(text: string, strict = false): void {
  * The audit
  * ------------------------------------------------------------------ */
 
+/** One question, phrased as somebody would ask it, and its answer. */
+export interface FaqPair {
+  readonly q: string;
+  readonly a: string;
+}
+
 export interface PostDraft {
   readonly title: string;
   readonly slug: string;
@@ -362,6 +406,30 @@ export interface PostDraft {
   readonly body: string;
   readonly clusterKey?: string;
   readonly internalLinks: readonly string[];
+  /**
+   * Questions this article answers outright.
+   *
+   * Optional on the type because the corpus predates it; required by the
+   * audit, which is where a rule belongs when the old rows still have to
+   * load.
+   */
+  readonly faq?: readonly FaqPair[];
+}
+
+/**
+ * The article's opening answer — everything before the first section.
+ *
+ * Split out because three things read it: the audit, which judges whether
+ * it can be lifted; the page, which renders it; and `articleJsonLd`, which
+ * hands it to `description` when nothing better exists. One definition of
+ * "the opening" rather than three near-misses.
+ */
+export function leadParagraph(body: string): string {
+  const beforeFirstHeading = body.split(/^#{2,6}\s+/m)[0] ?? '';
+  return beforeFirstHeading
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^#\s+[^\n]*$/gm, ' ')
+    .trim();
 }
 
 export type FindingSeverity = 'blocker' | 'warning' | 'note';
@@ -386,6 +454,9 @@ export interface SeoAudit {
     readonly internalLinks: number;
     readonly keywordDensity: number;
     readonly readingMinutes: number;
+    /** Words in the opening answer — what an answer engine would lift. */
+    readonly answerWords: number;
+    readonly faqPairs: number;
   };
 }
 
@@ -472,6 +543,49 @@ export function seoAudit(
       `At least ${SEO_RULES.headingsMin}, so the article is scannable and can win a snippet.`);
   }
 
+  /* --- the opening answer --- */
+  /*
+   * Nothing downstream of a search box ranks a page any more; it extracts
+   * a passage. A featured snippet, an AI overview and an assistant asked a
+   * question all take the first self-contained answer they can find, and
+   * an article that opens by setting the scene offers them nothing to
+   * take. This is the rule that decides whether the article is quotable.
+   */
+  const lead = leadParagraph(draft.body);
+  const leadWords = countWords(lead);
+  if (leadWords === 0) {
+    add('answer.missing', 'blocker', 'the article opens straight into a heading',
+      `Open with ${SEO_RULES.answerWordsMin}–${SEO_RULES.answerWordsMax} words that answer the question outright. That paragraph is what an answer engine quotes.`);
+  } else if (leadWords < SEO_RULES.answerWordsMin) {
+    add('answer.length', 'warning', `the opening is ${leadWords} words`,
+      `At least ${SEO_RULES.answerWordsMin}. Below that there is no answer to lift, only a sentence.`);
+  } else if (leadWords > SEO_RULES.answerWordsMax) {
+    add('answer.length', 'warning', `the opening is ${leadWords} words`,
+      `Trim to ${SEO_RULES.answerWordsMax}. Past that it stops fitting the box it is competing for.`);
+  }
+  if (keyword && leadWords > 0 && !lead.toLowerCase().includes(keyword)) {
+    add('answer.keyword', 'warning', `the opening does not contain "${draft.keyword}"`,
+      'An extracted passage has to stand alone. If the phrase is absent, the quote does not obviously answer the question.');
+  }
+
+  /* --- questions answered outright --- */
+  const faq = draft.faq ?? [];
+  if (faq.length < SEO_RULES.faqMin) {
+    add('faq.count', 'warning', `${faq.length} question-and-answer pairs`,
+      `At least ${SEO_RULES.faqMin}. These become FAQPage structured data, which is the most reliable way to be quoted rather than merely ranked.`);
+  }
+  for (const pair of faq) {
+    if (!pair.q.trim().endsWith('?')) {
+      add('faq.question', 'note', `"${pair.q.slice(0, 48)}" is not phrased as a question`,
+        'Phrase it the way somebody types it, ending in a question mark.');
+    }
+    const answerWords = countWords(pair.a);
+    if (answerWords > SEO_RULES.faqAnswerWordsMax) {
+      add('faq.answer', 'note', `an answer runs to ${answerWords} words`,
+        `Keep answers under ${SEO_RULES.faqAnswerWordsMax} words. A long one is summarised by the engine instead of quoted, and the summary is not ours.`);
+    }
+  }
+
   /* --- keyword --- */
   if (!keyword) {
     add('keyword.missing', 'blocker', 'no primary phrase set',
@@ -554,6 +668,8 @@ export function seoAudit(
       internalLinks: draft.internalLinks.length,
       keywordDensity: Number(density.toFixed(5)),
       readingMinutes: readingMinutes(draft.body),
+      answerWords: leadWords,
+      faqPairs: faq.length,
     },
   };
 }
@@ -601,11 +717,39 @@ export interface JsonLdArticle {
   readonly publishedAt: string;
   readonly updatedAt?: string;
   readonly author?: string;
+  /**
+   * The person who cleared it for publication.
+   *
+   * Never invented: `posts` refuses a published row without one, so this
+   * is either a real name or absent.
+   */
+  readonly reviewedBy?: string | null;
 }
 
 export function articleJsonLd(post: JsonLdArticle, siteUrl: string): Record<string, unknown> {
   const url = `${siteUrl.replace(/\/$/, '')}/blog/${post.slug}`;
   const keywords = [post.keyword, ...(post.secondaryKeywords ?? [])].filter(Boolean).join(', ');
+
+  /*
+   * The named reviewer, published as `reviewedBy`.
+   *
+   * Not a marketing flourish — it is the one E-E-A-T signal this platform
+   * can make truthfully and most cannot, because the review is already a
+   * clinical safety control rather than a workflow step. `posts` has a
+   * CHECK constraint refusing a published row without a named reviewer, so
+   * the schema guarantees this field is real wherever it appears.
+   *
+   * `author` becomes a Person when a person wrote it and stays an
+   * Organization otherwise. Publishing an organisation as the author of
+   * something a person wrote loses the strongest signal available; the
+   * reverse — a made-up byline — is worse than losing it.
+   */
+  const reviewer = post.reviewedBy?.trim();
+  const author = post.author?.trim();
+  const authored =
+    author && author !== 'JESS MOVE'
+      ? { '@type': 'Person', name: author }
+      : { '@type': 'Organization', name: 'JESS MOVE' };
 
   return {
     '@context': 'https://schema.org',
@@ -620,8 +764,37 @@ export function articleJsonLd(post: JsonLdArticle, siteUrl: string): Record<stri
     inLanguage: 'en-GB',
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     url,
-    author: { '@type': 'Organization', name: post.author ?? 'JESS MOVE' },
+    author: authored,
+    ...(reviewer ? { reviewedBy: { '@type': 'Person', name: reviewer } } : {}),
     publisher: { '@type': 'Organization', name: 'JESS MOVE' },
+  };
+}
+
+/**
+ * `FAQPage`, from the pairs the article already carries.
+ *
+ * The most reliable way to be quoted rather than merely ranked: a
+ * question in the words somebody uses, and an answer short enough to be
+ * lifted whole. Returns null rather than an empty `FAQPage`, because
+ * structured data describing nothing is a markup error on the page and a
+ * reason for a crawler to trust the rest of it less.
+ */
+export function faqJsonLd(
+  faq: readonly FaqPair[] | undefined,
+  url: string,
+): Record<string, unknown> | null {
+  const pairs = (faq ?? []).filter((p) => p.q.trim() && p.a.trim());
+  if (pairs.length === 0) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': `${url}#faq`,
+    mainEntity: pairs.map((p) => ({
+      '@type': 'Question',
+      name: p.q.trim(),
+      acceptedAnswer: { '@type': 'Answer', text: p.a.trim() },
+    })),
   };
 }
 

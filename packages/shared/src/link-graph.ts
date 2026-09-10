@@ -44,6 +44,25 @@ import {
  */
 export const MAX_AUTO_LINKS = 5;
 
+/**
+ * Links per thousand words, which is the constraint that actually holds.
+ *
+ * A flat cap is wrong in both directions: six links is a farm in a
+ * six-hundred-word note and an orphan in a two-thousand-word pillar
+ * piece. What a reader notices is density — how often the prose turns
+ * blue — and that is a rate, not a count.
+ *
+ * Seven per thousand is roughly one every two paragraphs. Floored at four
+ * so a short article still reaches its pillar, a sibling and the two
+ * product pages it discusses; capped at fourteen because past that the
+ * marginal link is worth nothing and the page reads as a directory.
+ */
+export const LINKS_PER_1000_WORDS = 7;
+
+export function linkBudgetFor(words: number): number {
+  return Math.max(4, Math.min(14, Math.round((words / 1000) * LINKS_PER_1000_WORDS)));
+}
+
 export interface AutoLink {
   readonly phrase: string;
   readonly path: string;

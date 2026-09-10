@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { SEED_POSTS, TOPIC_CLUSTERS, type SeoAudit } from '@jessmove/shared';
+import { SEED_POSTS, SEO_RULES, TOPIC_CLUSTERS, type SeoAudit } from '@jessmove/shared';
 import {
   AUTOPILOT_INTERVAL_HOURS,
   MAX_QUEUE_DEPTH,
@@ -159,7 +159,11 @@ test('a draft with a blocker is never put in front of an editor', () => {
 test('a draft that merely scores badly is also not queued', () => {
   const call = verdict(audit({ score: 71, passes: false }));
   assert.equal(call.queue, false);
-  assert.match(call.says, /below the 80 pass mark/);
+  // Derived, not spelled out. This read `/below the 80 pass mark/` and
+  // broke when the bar moved to 90 — while the message it was checking
+  // had been built from `SEO_RULES.scorePass` all along, so the only
+  // thing wrong was the test's own copy of the number.
+  assert.match(call.says, new RegExp(`below the ${SEO_RULES.scorePass} pass mark`));
 });
 
 test('a passing draft is queued, and the message says a person decides', () => {

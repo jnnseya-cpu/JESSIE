@@ -42,6 +42,9 @@ is the point of the file.
 | The context engine is no longer fed fabrications | The web client asserted `motionState: 'still'` and `locationClass: 'home'` on every request; both are now `unknown` and `onCall`/`doNotDisturb` are omitted rather than guessed |
 | The comms module cannot claim a delivery it did not make | Four phantom provider keys deleted; every channel without a transport in this repository records `sandbox` |
 | The status page publishes nothing it has not measured | `/status` reads `/api/health` per request, uncached. Proven both ways: with the API up it renders the live database and gateway checks; with the API killed it renders "Down / Unknown / Unknown" rather than guessing. `public-claims.test.ts` fails if a synthetic history or a dated incident returns |
+| An article cannot reach review below 90/100 | `SEO_RULES.scorePass` is 90. At 25/8/3 for blocker/warning/note that permits one warning and nothing else. Both audit fixtures failed when it moved and were rewritten rather than the bar lowered |
+| An article has a passage an answer engine can lift | `answer.missing` is a blocker: the body must open with 25–90 words containing the phrase, before any heading. `faq` pairs become `FAQPage`, rendered visibly as well as in the markup |
+| A share is not a blank rectangle | `opengraph-image` per article. Proven: a real 1200×630 PNG for both a corpus article and a database-backed one. Every page declared `summary_large_image` and no image existed anywhere |
 | The site offers no integration nobody can make | `PROVIDER_AVAILABILITY` gives every wearable a "connect today" answer, and `MOBILE_APP_RELEASED` is the one fact the API's readiness and the page's copy both read |
 | The brand typefaces are actually delivered | Six self-hosted woff2 in `apps/frontend/public/fonts`; §8 named Inter and Manrope and nothing ever loaded them |
 | Every text node on every public route clears WCAG AA | `pnpm check:contrast` — 7,274 nodes across 28 routes, 0 below threshold, down from 1,097. Translucent layers composited, gradients measured at every stop |
@@ -216,6 +219,51 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**The editorial pipeline now writes for being quoted, not only ranked.**
+The bar moved from 80 to 90 and three things were added that decide
+whether an article is extractable at all. Everything downstream of a
+search box takes a passage rather than ranking a page — a featured
+snippet, an AI overview, an assistant asked a question — and an article
+that opens by setting the scene has nothing to take.
+
+- **An opening answer is a blocker.** 25–90 words before any heading,
+  containing the phrase, written to stand alone when quoted.
+- **`FAQPage` structured data**, from pairs the agent must now return.
+  Rendered visibly as well as in the markup: structured data describing
+  content a reader cannot see is hidden markup by every search engine's
+  guidelines, and penalised.
+- **The named reviewer reaches the structured data** as `reviewedBy`. It
+  is the one E-E-A-T signal this platform can make truthfully and most
+  cannot, because the review is a clinical safety control rather than a
+  workflow step — `posts` has a CHECK refusing a published row without
+  one. `author` becomes a `Person` only when a person wrote it; a
+  manufactured byline is worse than the lost signal.
+
+Three gaps closed alongside it. **Every page declared
+`twitter: summary_large_image` and no image existed anywhere** — no
+`opengraph-image`, no static file, no `images` key — so every share into
+Slack, WhatsApp or LinkedIn arrived as a reserved blank. There is now a
+generated card per article, typographic rather than a stock photograph of
+somebody stretching. **`/llms.txt`** describes the site to an assistant
+in the form the convention expects, generated from the same registry the
+sitemap reads. **`robots.txt` names the assistants explicitly** —
+`GPTBot`, `ClaudeBot`, `PerplexityBot`, `Google-Extended` and the rest —
+which changes no permission the wildcard already gave and makes it a
+decision somebody has to argue with rather than a default that gets
+tightened by accident.
+
+**A real linking defect, found on the way.** `renderBody` applied
+`max: 6` per paragraph with `exclude` computed from that paragraph alone,
+so no state crossed a paragraph boundary and a twelve-paragraph article
+could link `/micro-movement` twelve times. `autoLinksFor` documents "one
+link per destination" and the rule held inside each call while the
+article as a whole broke it. One budget now spends top-down across the
+article, and it scales with length — `linkBudgetFor` at seven per
+thousand words, floored at four and capped at fourteen, because density
+is what a reader notices and that is a rate rather than a count. Proven
+against a rendered article: one link per destination in the body, with
+the cluster's own navigation link separate and deliberate.
 
 **The public site was audited for claims, and three were not true.**
 

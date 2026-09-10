@@ -24,9 +24,39 @@ export default function robots(): MetadataRoute.Robots {
     '/api/',
   ].sort();
 
+  /*
+   * The assistants, named rather than left to the wildcard.
+   *
+   * `*` already allows them, so this changes no permission. What it
+   * changes is what happens when somebody later adds a blanket rule: a
+   * named agent is a deliberate decision that has to be argued with,
+   * where a wildcard is a default that gets tightened by accident. This
+   * site's whole editorial argument is that it says specific, checkable
+   * things about movement and food — being quoted by an assistant is the
+   * distribution, not a leak, and it is worth being explicit that we want
+   * it.
+   *
+   * `Google-Extended` and `Applebot-Extended` are the two that are purely
+   * about model training and grounding rather than crawling, and are the
+   * two most often blocked by copy-pasted advice.
+   */
+  const assistants = [
+    'GPTBot',
+    'OAI-SearchBot',
+    'ChatGPT-User',
+    'ClaudeBot',
+    'Claude-User',
+    'PerplexityBot',
+    'Perplexity-User',
+    'Google-Extended',
+    'Applebot-Extended',
+    'CCBot',
+  ];
+
   return {
     rules: [
       { userAgent: '*', allow: '/', disallow },
+      ...assistants.map((userAgent) => ({ userAgent, allow: '/', disallow })),
     ],
     sitemap: `${SITE}/sitemap.xml`,
     host: SITE,

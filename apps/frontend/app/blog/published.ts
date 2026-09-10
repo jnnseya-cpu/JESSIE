@@ -1,4 +1,4 @@
-import { withAutoLinks } from '@jessmove/shared';
+import { countWords, linkBudgetFor, withAutoLinks } from '@jessmove/shared';
 
 /**
  * Articles the editorial pipeline published, read at render time.
@@ -36,6 +36,14 @@ export interface PublishedPost {
   publishedAt: string;
   reviewedBy: string | null;
   agentDrafted: boolean;
+  /**
+   * Questions the article answers outright, rendered as `FAQPage`.
+   *
+   * Absent on the list endpoint, which carries no bodies either — an
+   * index of forty articles should not ship forty sets of questions to
+   * render forty cards.
+   */
+  faq: { q: string; a: string }[];
 }
 
 function apiBase(): string {
@@ -85,6 +93,7 @@ async function fetchPosts(): Promise<PublishedPost[]> {
         publishedAt: String(r.publishedAt ?? '').slice(0, 10),
         reviewedBy: r.reviewedBy ? String(r.reviewedBy) : null,
         agentDrafted: Boolean(r.agentDrafted),
+        faq: [],
       }));
   } catch {
     return [];
@@ -122,6 +131,13 @@ export async function publishedBySlug(slug: string): Promise<PublishedPost | nul
       publishedAt: String(r.publishedAt ?? '').slice(0, 10),
       reviewedBy: r.reviewedBy ? String(r.reviewedBy) : null,
       agentDrafted: Boolean(r.agentDrafted),
+      // Pairs with both halves only. A `Question` with an empty answer is
+      // a structured-data error on a live URL, which costs more than the
+      // missing question does.
+      faq: (Array.isArray(r.faq) ? r.faq : [])
+        .map((entry) => entry as { q?: unknown; a?: unknown })
+        .map((entry) => ({ q: String(entry.q ?? '').trim(), a: String(entry.a ?? '').trim() }))
+        .filter((pair) => pair.q.length > 0 && pair.a.length > 0),
     };
   } catch {
     return null;
@@ -194,6 +210,23 @@ export function renderBody(body: string, selfPath: string): RenderedBlock[] {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
 
+  /*
+   * One budget for the article, spent as the reader goes down it.
+   *
+   * This was `max: 6` per paragraph with `exclude` computed from that
+   * paragraph alone, which meant no state crossed a paragraph boundary:
+   * a twelve-paragraph article could link `/micro-movement` twelve
+   * times. `autoLinksFor` documents "one link per destination, so an
+   * article never points at the same page four times" — and that rule
+   * held inside each call while the article as a whole broke it.
+   *
+   * Spending it top-down also puts the links in the opening argument
+   * rather than the footnotes, which is where a reader who is going to
+   * follow one actually is.
+   */
+  let remaining = linkBudgetFor(countWords(body));
+  const used: string[] = [];
+
   return body
     .split(/\n{2,}/)
     .map((block) => block.trim())
@@ -202,14 +235,27 @@ export function renderBody(body: string, selfPath: string): RenderedBlock[] {
       const heading = /^#{2,3}\s+/.test(block);
       const text = heading ? block.replace(/^#{2,3}\s+/, '') : block;
       const safe = escape(text.replace(/\n/g, ' '));
-      return {
-        kind: heading ? ('heading' as const) : ('paragraph' as const),
-        // Headings are left unlinked: a link inside a heading competes
-        // with the heading's own job, and search engines read the two
-        // differently.
-        html: heading
-          ? safe
-          : anchors(withAutoLinks(safe, { selfPath, max: 6, exclude: alreadyLinked(safe) })),
-      };
+
+      // Headings are left unlinked: a link inside a heading competes
+      // with the heading's own job, and search engines read the two
+      // differently.
+      if (heading || remaining <= 0) {
+        return { kind: heading ? ('heading' as const) : ('paragraph' as const), html: safe };
+      }
+
+      const linked = withAutoLinks(safe, {
+        selfPath,
+        max: remaining,
+        exclude: [...used, ...alreadyLinked(safe)],
+      });
+
+      for (const [, path] of linked.matchAll(/\]\((\/[^)]*)\)/g)) {
+        if (path && !used.includes(path)) {
+          used.push(path);
+          remaining -= 1;
+        }
+      }
+
+      return { kind: 'paragraph' as const, html: anchors(linked) };
     });
 }

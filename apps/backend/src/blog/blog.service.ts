@@ -155,6 +155,7 @@ export class BlogService implements OnModuleDestroy {
       category: row.category as StoredPost['category'],
       keyword: String(row.keyword ?? ''),
       secondaryKeywords: (row.secondary as string[]) ?? [],
+      faq: (row.faq as { q: string; a: string }[]) ?? [],
       body: String(row.body ?? ''),
       clusterKey: row.cluster_key ? String(row.cluster_key) : undefined,
       internalLinks: autoLinksFor(String(row.body ?? ''), {
@@ -247,8 +248,8 @@ export class BlogService implements OnModuleDestroy {
     try {
       const { rows } = await this.pool.query(
         `INSERT INTO posts (slug, title, description, category, keyword, secondary, body,
-                            cluster_key, status, agent_drafted, author, audit)
-         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,'draft',$9,$10,$11::jsonb)
+                            cluster_key, status, agent_drafted, author, audit, faq)
+         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,'draft',$9,$10,$11::jsonb,$12::jsonb)
          RETURNING *`,
         [
           draft.slug,
@@ -262,6 +263,7 @@ export class BlogService implements OnModuleDestroy {
           agentDrafted,
           agentDrafted ? 'SEO agent' : 'JESS MOVE',
           JSON.stringify(audit),
+          JSON.stringify(draft.faq ?? []),
         ],
       );
       return this.rowToPost(rows[0]!);

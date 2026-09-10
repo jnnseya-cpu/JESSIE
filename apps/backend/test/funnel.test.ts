@@ -292,11 +292,21 @@ test('auto-linked prose reaches the reader as links, not as markdown', () => {
     'utf8',
   );
   assert.match(published, /function anchors\(/);
-  assert.match(published, /anchors\(withAutoLinks\(/);
-  // Escape first, link second: after escaping there is no markup left,
-  // whatever the model wrote.
+
+  /*
+   * The three steps, in order, rather than one nested expression.
+   *
+   * This asserted the literal `anchors(withAutoLinks(` and broke when the
+   * renderer split it in two to carry a link budget across paragraphs —
+   * a refactor that changed nothing about the property being guarded.
+   * The property is the ordering: escape, then link, then anchor. After
+   * escaping there is no markup left whatever the model wrote, and
+   * `anchors` only ever accepts a site-relative path.
+   */
+  assert.match(published, /withAutoLinks\(safe, \{/, 'the escaped text is what gets linked');
+  assert.match(published, /anchors\(linked\)/, 'and the markdown it returns becomes anchors');
   assert.ok(
-    published.indexOf('const safe = escape(') < published.indexOf('anchors(withAutoLinks('),
+    published.indexOf('const safe = escape(') < published.indexOf('withAutoLinks(safe'),
     'the body is linked before it is escaped, so model output could become markup',
   );
 });

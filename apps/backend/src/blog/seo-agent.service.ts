@@ -62,7 +62,7 @@ export interface DraftRequest {
 
 const OUTPUT_SHAPE = {
   type: 'object',
-  required: ['title', 'description', 'keyword', 'secondaryKeywords', 'body', 'internalLinks'],
+  required: ['title', 'description', 'keyword', 'secondaryKeywords', 'body', 'internalLinks', 'faq'],
   properties: {
     title: { type: 'string' },
     description: { type: 'string' },
@@ -70,6 +70,20 @@ const OUTPUT_SHAPE = {
     secondaryKeywords: { type: 'array', items: { type: 'string' } },
     body: { type: 'string' },
     internalLinks: { type: 'array', items: { type: 'string' } },
+    /*
+     * Required rather than optional, because an optional field a model can
+     * omit is a field a model omits. The audit treats a missing set as a
+     * warning, so leaving it optional would have cost eight points on
+     * every draft and quietly made the 90 unreachable.
+     */
+    faq: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['q', 'a'],
+        properties: { q: { type: 'string' }, a: { type: 'string' } },
+      },
+    },
   },
 } as const;
 
@@ -98,12 +112,29 @@ export class SeoAgentService {
         ? 'This article may be read by a minor or in a later-life mode: also avoid body, shape, size, compete, beat, rank.'
         : '',
       '',
+      /*
+       * The opening answer, stated first because it is the rule most
+       * likely to be ignored and the one that decides whether the article
+       * is quoted at all. Nothing downstream of a search box ranks a page
+       * any more — it extracts a passage — and an article that opens by
+       * setting the scene offers nothing to extract.
+       */
+      `Open with ${SEO_RULES.answerWordsMin}–${SEO_RULES.answerWordsMax} words that answer the`,
+      'question outright, before any heading, containing the primary phrase. Write it so it',
+      'still makes sense quoted on its own, with no article around it.',
+      '',
       'Structure: no level-one heading (the page supplies it). Use ## for sections and ###',
       `for sub-points. At least ${SEO_RULES.headingsMin} sections.`,
       `Length: ${SEO_RULES.bodyWordsMin}–${SEO_RULES.bodyWordsMax} words.`,
       `Title: ${SEO_RULES.titleMin}–${SEO_RULES.titleMax} characters, containing the primary phrase.`,
       `Description: ${SEO_RULES.descriptionMin}–${SEO_RULES.descriptionMax} characters.`,
       'Use the primary phrase naturally — under 2.5% of the words. Repetition is penalised.',
+      '',
+      `\`faq\`: at least ${SEO_RULES.faqMin} pairs. Each \`q\` is phrased the way somebody types`,
+      `it into a search box, ending in a question mark; each \`a\` answers it in under`,
+      `${SEO_RULES.faqAnswerWordsMax} words and stands alone. These become FAQPage structured`,
+      'data, so an answer too long to lift is summarised by the engine instead of quoted, and',
+      'the summary is not ours.',
       '',
       'Return JSON only. `body` is Markdown. `internalLinks` are site-relative paths.',
     ]
@@ -211,6 +242,20 @@ export class SeoAgentService {
     const inProse = [...body.matchAll(/\]\((\/[^)]*)\)/g)].map((m) => m[1] ?? '');
     const links = this.realLinksOnly([...declared, ...inProse]);
 
+    /*
+     * Pairs with both halves present, and nothing else.
+     *
+     * A half-formed pair reaches the page as a `Question` with an empty
+     * `acceptedAnswer`, which is a structured-data error on a live URL —
+     * worse than having no FAQ block, because it teaches a crawler to
+     * trust the rest of the markup less. Dropping it costs the draft a
+     * warning instead, which the repair pass can see and fix.
+     */
+    const faq = (Array.isArray(parsed.faq) ? parsed.faq : [])
+      .map((entry) => entry as { q?: unknown; a?: unknown })
+      .map((entry) => ({ q: String(entry.q ?? '').trim(), a: String(entry.a ?? '').trim() }))
+      .filter((pair) => pair.q.length > 0 && pair.a.length > 0);
+
     return {
       title,
       slug,
@@ -221,6 +266,7 @@ export class SeoAgentService {
       body,
       clusterKey: req.clusterKey,
       internalLinks: links,
+      faq,
     };
   }
 
