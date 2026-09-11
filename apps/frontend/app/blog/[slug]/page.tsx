@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TOPIC_CLUSTERS, articleJsonLd, backlinksTo } from '@jessmove/shared';
+import { TOPIC_CLUSTERS, articleJsonLd, backlinksTo, faqJsonLd } from '@jessmove/shared';
 import { Footer, Nav, SkipLink, JoinCta } from '../../ui';
 import { POSTS, postBySlug } from '../posts';
 import { SITE_GRAPH } from '../graph';
@@ -117,6 +117,18 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
    */
   const jsonLd = articleJsonLd(post, SITE);
 
+  /*
+   * `FAQPage`, from the questions the article answers outright.
+   *
+   * Rendered visibly below as well as in the markup, which is a
+   * requirement rather than a courtesy: structured data describing
+   * content a reader cannot see is hidden markup by every search engine's
+   * guidelines. `faqJsonLd` returns null for an empty set rather than an
+   * empty FAQPage, because markup describing nothing is an error on a
+   * live URL and a reason to trust the rest of the page less.
+   */
+  const faqLd = faqJsonLd(post.faq, `${SITE}${selfPath}`);
+
   const breadcrumbs = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -140,6 +152,12 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
       />
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      )}
 
       <main id="main">
         <header className="phero">
@@ -177,6 +195,20 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
                 </section>
               ))}
             </article>
+
+            {post.faq.length > 0 && (
+              <section className="article" style={{ marginTop: 40 }}>
+                <h2>Questions this article answers</h2>
+                {post.faq.map((pair) => (
+                  <div key={pair.q}>
+                    <h3>{pair.q}</h3>
+                    <p>
+                      <Linked text={pair.a} selfPath={selfPath} budget={budget} />
+                    </p>
+                  </div>
+                ))}
+              </section>
+            )}
 
             <div className="dash" style={{ marginTop: 48 }}>
               {cluster && (

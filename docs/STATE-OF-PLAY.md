@@ -43,6 +43,7 @@ is the point of the file.
 | The comms module cannot claim a delivery it did not make | Four phantom provider keys deleted; every channel without a transport in this repository records `sandbox` |
 | The status page publishes nothing it has not measured | `/status` reads `/api/health` per request, uncached. Proven both ways: with the API up it renders the live database and gateway checks; with the API killed it renders "Down / Unknown / Unknown" rather than guessing. `public-claims.test.ts` fails if a synthetic history or a dated incident returns |
 | An article cannot reach review below 90/100 | `SEO_RULES.scorePass` is 90. At 25/8/3 for blocker/warning/note that permits one warning and nothing else. Both audit fixtures failed when it moved and were rewritten rather than the bar lowered |
+| Every article on the site can be quoted, not only the agent's | All eight hand-written corpus articles carry three question-and-answer pairs, drawn from their own prose. `blog.test.ts` audits each one through the real `seoAudit` and asserts no `faq.*` finding |
 | An article has a passage an answer engine can lift | `answer.missing` is a blocker: the body must open with 25–90 words containing the phrase, before any heading. `faq` pairs become `FAQPage`, rendered visibly as well as in the markup |
 | A share is not a blank rectangle | `opengraph-image` per article. Proven: a real 1200×630 PNG for both a corpus article and a database-backed one. Every page declared `summary_large_image` and no image existed anywhere |
 | The site offers no integration nobody can make | `PROVIDER_AVAILABILITY` gives every wearable a "connect today" answer, and `MOBILE_APP_RELEASED` is the one fact the API's readiness and the page's copy both read |
@@ -264,6 +265,29 @@ thousand words, floored at four and capped at fourteen, because density
 is what a reader notices and that is a rate rather than a count. Proven
 against a rendered article: one link per destination in the body, with
 the cluster's own navigation link separate and deliberate.
+
+**Found while adding FAQ pairs, not fixed: the hand-written corpus fails
+its own audit.** Run `seoAudit` over the eight corpus articles with their
+real prose and every one fails — scores between 0 and 65 — and four trip
+`editorial.lexicon` as a blocker.
+
+The lexicon findings are the interesting half. These are engineering
+essays *about* the rules: one is titled "A photograph cannot tell you the
+calories", another argues about what counts as a safeguarding problem, a
+third is about removing guilt from a streak. The lexicon exists so the
+product never says "burn fat" to a member, and no regular expression
+separates *using* a term from *framing somebody with* it.
+
+The rest is ordinary and would be a morning's editing: titles that do not
+contain their target phrase, descriptions outside the 110–158 window, two
+internal links where four is the floor, and ledes that do not name the
+phrase they answer.
+
+Not fixed here on purpose. Closing it means either rewriting eight
+human-reviewed articles or widening the exemptions on a safety control,
+and both are the owner's call rather than a passing test's. The new FAQ
+pairs *are* held to the lexicon and pass it — two answers were reworded
+during this work rather than the list being touched.
 
 **The public site was audited for claims, and three were not true.**
 

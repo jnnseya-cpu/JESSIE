@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  ARTICLES,
+  articleBody,
   ENGAGED_READ_SECONDS,
   ENGAGED_SCROLL_PERCENT,
   SEED_POSTS,
@@ -406,4 +408,80 @@ test('the named reviewer reaches the structured data, and is never invented', ()
   assert.deepEqual(articleJsonLd(base, 'https://jessmove.com').author, {
     '@type': 'Organization', name: 'JESS MOVE',
   });
+});
+
+/* ------------------------------------------------------------------ *
+ * The hand-written corpus
+ * ------------------------------------------------------------------ */
+
+test('every corpus article answers questions outright, to the same rules as a draft', () => {
+  /*
+   * The agent-drafted half of the blog has these enforced by the audit.
+   * Without this the hand-written half — the older, more carefully
+   * reviewed articles — would be the ones a search engine could not
+   * quote, which is precisely backwards.
+   *
+   * The articles are audited for real rather than inspected: same
+   * `seoAudit`, same thresholds, reading the same prose the site renders
+   * through `articleBody`. A rule that applies to a model's output and
+   * not to ours is not a standard, it is a hazing ritual.
+   *
+   * Scoped to `faq.*` deliberately, and the reason is worth recording
+   * because it is a live question rather than an oversight. Run the full
+   * audit over this corpus today and every article fails — between 0 and
+   * 65 — and four trip `editorial.lexicon` as a blocker. They are
+   * engineering essays *about* the rules: one is titled "A photograph
+   * cannot tell you the calories", another argues about what counts as a
+   * safeguarding problem. The lexicon exists so the product never says
+   * "burn fat" to a member, and no regular expression separates using a
+   * term from framing somebody with it.
+   *
+   * Widening the lexicon's exemptions is a change to a safety control and
+   * belongs to a person, not to a passing test. So this asserts the part
+   * that is unambiguous — the questions and answers — and the rest is
+   * reported rather than quietly accommodated.
+   */
+  for (const article of ARTICLES) {
+    const seed = SEED_POSTS.find((p) => p.slug === article.slug);
+    assert.ok(seed, `${article.slug} has prose and no seed`);
+
+    const audit = seoAudit({
+      title: seed.title,
+      slug: seed.slug,
+      description: article.description,
+      category: seed.category,
+      keyword: seed.keyword,
+      secondaryKeywords: [],
+      body: articleBody(article),
+      clusterKey: seed.clusterKey ?? undefined,
+      internalLinks: article.links.map((l) => l.href),
+      faq: article.faq,
+    });
+
+    const faqFindings = audit.findings.filter((f) => f.rule.startsWith('faq.'));
+    assert.deepEqual(
+      faqFindings,
+      [],
+      `${article.slug}: ${faqFindings.map((f) => `${f.rule} — ${f.detail}`).join('; ')}`,
+    );
+    assert.ok(
+      audit.measured.faqPairs >= SEO_RULES.faqMin,
+      `${article.slug} carries ${audit.measured.faqPairs} pairs`,
+    );
+  }
+});
+
+test('a corpus answer is held to the same lexicon as the article around it', () => {
+  // Grounding — that an answer says only what its article says — is an
+  // editorial property no assertion can check, which is why these were
+  // written from the prose rather than freshly. What *can* be checked is
+  // that the shortest, most quotable text on the page is not the one
+  // place the banned lexicon slipped through.
+  for (const article of ARTICLES) {
+    for (const pair of article.faq) {
+      assert.deepEqual(bannedTermsIn(`${pair.q} ${pair.a}`), [], `${article.slug}: "${pair.q}"`);
+    }
+    const questions = article.faq.map((p) => p.q);
+    assert.equal(new Set(questions).size, questions.length, `${article.slug} asks one twice`);
+  }
 });

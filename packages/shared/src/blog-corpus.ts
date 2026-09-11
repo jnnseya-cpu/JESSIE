@@ -18,6 +18,8 @@
  * tree — the weight was never the real cost, and the missing score was.
  */
 
+import type { FaqPair } from './blog';
+
 export interface Section {
   readonly h: string;
   readonly p: readonly string[];
@@ -29,6 +31,21 @@ export interface Article {
   readonly lede: string;
   readonly sections: readonly Section[];
   readonly links: readonly { href: string; label: string }[];
+  /**
+   * Questions the article answers outright, rendered as `FAQPage`.
+   *
+   * Every answer here is drawn from the prose below it rather than
+   * written fresh — the point is to state what the article already says
+   * in the shortest form an answer engine can lift whole. An answer that
+   * is not in the article is a claim nobody reviewed, which is the one
+   * thing this corpus cannot carry.
+   *
+   * Required rather than optional. The agent-drafted half of the blog has
+   * these enforced by the audit; leaving the hand-written half free of
+   * them would mean the older, better-reviewed articles were the ones a
+   * search engine could not quote.
+   */
+  readonly faq: readonly FaqPair[];
 }
 
 export const ARTICLES: readonly Article[] = [
@@ -111,6 +128,31 @@ export const ARTICLES: readonly Article[] = [
             'so that anybody evaluating the platform can verify the claim in a browser rather ' +
             'than believing a page like this one.',
         ],
+      },
+    ],
+    faq: [
+      {
+        q: 'Can a 17-year-old see their weight in Jess Move?',
+        a:
+          'No. C6 holds absolutely below 18 — not consent-gated, not parent-gated, absent ' +
+          'from the interface. `bodySurfacePolicy` does not read the consent flag at all ' +
+          'below 18, and the database rejects the write, so a bug in the service layer ' +
+          'cannot store one.',
+      },
+      {
+        q: 'Why not amend the rule when the market asked for the opposite?',
+        a:
+          'Because weakening a safeguarding rule that has become commercially ' +
+          'inconvenient is how safeguarding rules come apart. The rule was scoped by ' +
+          'audience instead: absolute below 18, opt-in above it, never competitive and ' +
+          'never the first thing a person sees.',
+      },
+      {
+        q: 'Where does the Charter actually live?',
+        a:
+          'In `charter.test.ts`. It is not a values page — a build that violates it does ' +
+          'not deploy. That is the only version of an ethical commitment that survives a ' +
+          'quarter where the numbers are bad.',
       },
     ],
     links: [
@@ -214,6 +256,31 @@ export const ARTICLES: readonly Article[] = [
         ],
       },
     ],
+    faq: [
+      {
+        q: 'What belongs in a database constraint rather than in application code?',
+        a:
+          'If violating it would put somebody at risk or breach their privacy, it goes ' +
+          'in the schema. If violating it would only produce a worse recommendation, it ' +
+          'stays in the service where it can be tuned weekly and reverted on a Friday ' +
+          'afternoon.',
+      },
+      {
+        q: 'What does a CHECK constraint prove that a unit test does not?',
+        a:
+          'A unit test proves one function rejects one input. A constraint proves no row ' +
+          'can exist in that state, whatever wrote it — a service, a migration, a ' +
+          'back-office script, or a person with psql open at two in the morning.',
+      },
+      {
+        q: 'Did moving the rules into Postgres actually find anything?',
+        a:
+          'Four writes the same afternoon: a Snap outside the 90 to 300 second window, a ' +
+          'prescription stored without its authorising context decision, a minor account ' +
+          'with no linked guardian, and a cohort report with fewer than eight ' +
+          'contributing people. All four had passing unit tests.',
+      },
+    ],
     links: [
       { href: '/developers', label: 'Developer reference' },
       { href: '/policies', label: 'All policies' },
@@ -303,6 +370,30 @@ export const ARTICLES: readonly Article[] = [
             'safeguarding floor and the capability profile sets the difficulty. A very fit ' +
             '70-year-old gets hard movements with a chair available and no leaderboard.',
         ],
+      },
+    ],
+    faq: [
+      {
+        q: 'Can I change my mode?',
+        a:
+          'No. Mode is derived from a verified age band and governs which safeguarding ' +
+          'rules apply. You can change your capability profile, goals, notification ' +
+          'preferences and the coach\'s presence level — but not the mode itself.',
+      },
+      {
+        q: 'Isn\'t a fit 70-year-old patronised by Independence defaults?',
+        a:
+          'No, because capability is a separate input. The mode sets the safeguarding ' +
+          'floor and the capability profile sets the difficulty, so a very fit ' +
+          '70-year-old gets hard movements with a chair available and no leaderboard.',
+      },
+      {
+        q: 'What actually changes between one mode and another?',
+        a:
+          'Interface density and target size, the coach\'s register and vocabulary, which ' +
+          'gamification mechanics are legal, what data may be collected at all, which ' +
+          'clinical guardrails apply, and the default movement variant. Body text is 16 ' +
+          'pixels in the middle modes, 18 in Independence and 20 in Vitality.',
       },
     ],
     links: [
@@ -404,6 +495,31 @@ export const ARTICLES: readonly Article[] = [
         ],
       },
     ],
+    faq: [
+      {
+        q: 'What stops Jess Move sending a notification?',
+        a:
+          'Driving, detected from motion state rather than location. An active call. ' +
+          'Do-not-disturb. The daily cap, which is per person and per mode. A minimum gap ' +
+          'since the last one. Quiet hours. And a calendar block marked as focused, which ' +
+          'is read structurally.',
+      },
+      {
+        q: 'Does Jess Move read my calendar titles?',
+        a:
+          'No. It reads start time, end time, busy or free, accepted or tentative, ' +
+          'attendee count and whether it recurs. The title is never transmitted, never ' +
+          'logged and never sent to a model — it is in the redaction list the AI Gateway ' +
+          'enforces before any external call.',
+      },
+      {
+        q: 'What happens when a nudge is held rather than sent?',
+        a:
+          'The API returns a success with `held: true`, an array of blocking reasons and ' +
+          'a retry window in seconds. Not a 4xx, not an empty body, not a silent no-op — ' +
+          'a client that receives an error retries into the same wall.',
+      },
+    ],
     links: [
       { href: '/mova', label: 'MOVA AI Coach' },
       { href: '/micro-movement', label: 'Micro-Movement' },
@@ -500,6 +616,30 @@ export const ARTICLES: readonly Article[] = [
           'The commercial case for at least two of them is genuinely strong. That is the point of ' +
             'writing the rule down before the quarter in which somebody makes it.',
         ],
+      },
+    ],
+    faq: [
+      {
+        q: 'What happens to my streak if I miss a day?',
+        a:
+          'A Grace Token is spent automatically on the first missed day, without a prompt ' +
+          'and without a decision. The notification afterwards says the chain held and ' +
+          'does not mention what it cost. If you want the detail, it is in your history.',
+      },
+      {
+        q: 'Can I buy my streak back?',
+        a:
+          'No. Paid streak restoration is banned in the Charter, because the moment a ' +
+          'company sells relief from a feeling it manufactured, it has an incentive to ' +
+          'manufacture more of it.',
+      },
+      {
+        q: 'Do I have to prove I was ill to use Flare Mode?',
+        a:
+          'No. Flare Mode is declared by you rather than detected, and it drops the daily ' +
+          'target instead of pausing the chain. There is no evidence requirement and no ' +
+          'time limit, because a proof-of-illness flow is a way of telling people you do ' +
+          'not believe them.',
       },
     ],
     links: [
@@ -608,6 +748,32 @@ export const ARTICLES: readonly Article[] = [
         ],
       },
     ],
+    faq: [
+      {
+        q: 'What are the five variants every movement must have?',
+        a:
+          'Standing; seated; chair-supported, where the chair takes load rather than just ' +
+          'holding the person; bed or recliner, for people who are not reliably ' +
+          'transferring; and adaptive single-limb, for anyone working with one usable ' +
+          'side.',
+      },
+      {
+        q: 'Will the app ever offer me a standing movement I did not ask for?',
+        a:
+          'No. Substitution goes down the support ladder and never up. Upward movement ' +
+          'happens only when you change your capability profile, or when a ' +
+          'clinician-facing clearance is recorded, because the cost of being wrong in ' +
+          'that direction is a fall.',
+      },
+      {
+        q: 'Does switching to a seated variant hurt my progress?',
+        a:
+          'No. Each variant carries an equivalence multiplier computed against a ' +
+          'reference effort rather than assumed from its posture, so a well-chosen ' +
+          'chair-supported movement can score higher than a lazily performed standing ' +
+          'one.',
+      },
+    ],
     links: [
       { href: '/micro-movement', label: 'Micro-Movement' },
       { href: '/wearables', label: 'Wearables' },
@@ -707,6 +873,31 @@ export const ARTICLES: readonly Article[] = [
         ],
       },
     ],
+    faq: [
+      {
+        q: 'Can my employer see my individual activity?',
+        a:
+          'No. There is no API that returns per-person activity to an organisation — not ' +
+          'restricted, not audited, not available to a super-admin. The response type has ' +
+          'no field for it, so a client asking for one does not compile.',
+      },
+      {
+        q: 'How small can a group be before it stops being reported?',
+        a:
+          'Eight contributing people. Below that the value is replaced with a suppression ' +
+          'marker, enforced in the query planner and again as a database constraint, and ' +
+          'the check runs across filter combinations rather than per query so an ' +
+          'intersection cannot narrow to one person.',
+      },
+      {
+        q: 'What does an employer actually get?',
+        a:
+          'Participation and engagement at cohort level, aggregate sedentary-risk ' +
+          'distribution, trend over time against a baseline, and a return-on-investment ' +
+          'model with its assumptions written down and adjustable. Enough to run a ' +
+          'programme, not enough to manage an individual.',
+      },
+    ],
     links: [
       { href: '/industries', label: 'Industries' },
       { href: '/privacy', label: 'Privacy Policy' },
@@ -804,6 +995,31 @@ export const ARTICLES: readonly Article[] = [
             'overlap the interface says the difference is not distinguishable rather than picking ' +
             'a winner.',
         ],
+      },
+    ],
+    faq: [
+      {
+        q: 'Why does FoodLens give a range instead of a calorie number?',
+        a:
+          'Because a photograph is worst at portion mass, and that error dominates. A ' +
+          'curry can vary by a factor of three in energy density depending on how it was ' +
+          'made, and nothing in the image distinguishes the versions.',
+      },
+      {
+        q: 'Does FoodLens give a meal a health score?',
+        a:
+          'No. There is no composite score — a single number ranking food good or bad is ' +
+          'the shortest path to a disordered relationship with eating, and the Charter ' +
+          'forbids it. Meal Intelligence measures how well the plate was read, not the ' +
+          'food.',
+      },
+      {
+        q: 'Can FoodLens tell me a meal is free of an allergen?',
+        a:
+          'Only from a barcode or published data. A photograph can suggest presence but ' +
+          'never establish absence, so a result is present, unknown, or verified-absent, ' +
+          'and the interface says “cannot confirm” rather than showing a reassuring empty ' +
+          'space.',
       },
     ],
     links: [
