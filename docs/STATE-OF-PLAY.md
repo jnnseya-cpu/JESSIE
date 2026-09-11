@@ -309,10 +309,24 @@ job. Five are the wearables connection flow, which cannot be reached
 because no provider can be connected yet — the same fact
 `PROVIDER_AVAILABILITY` publishes on `/wearables`.
 
-**Found while adding FAQ pairs, not fixed: the hand-written corpus fails
-its own audit.** Run `seoAudit` over the eight corpus articles with their
-real prose and every one fails — scores between 0 and 65 — and four trip
-`editorial.lexicon` as a blocker.
+**The corpus editing pass is done, and what is left is only the lexicon.**
+Scores went from 0–65 to 50–100: three articles at 100, three at 75, two
+at 50 — and those numbers are now arithmetic rather than judgement, since
+a lexicon blocker costs 25 and nothing else is firing. `blog.test.ts`
+asserts exactly that: zero non-lexicon findings on every article, and a
+score equal to `100 - lexicon × 25`. A regression names itself.
+
+The root cause was the same on all eight and worth recording: **every
+article had zero occurrences of its own target keyword**. The phrases were
+assigned as search targets and the prose was never written to them, which
+is why `title.keyword`, `answer.keyword` and `keyword.density` fired
+together everywhere. Fixed by editing the writing to say what the article
+is actually about — titles now carry their phrase inside 30–62 characters,
+ledes open with it, descriptions sit under 158, and every article links
+to four real pages including its cluster pillar. No keyword was changed to
+match weak prose.
+
+**Still not fixed, deliberately: the lexicon blockers.**
 
 The lexicon findings are the interesting half. These are engineering
 essays *about* the rules: one is titled "A photograph cannot tell you the

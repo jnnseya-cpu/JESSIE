@@ -52,11 +52,11 @@ export const ARTICLES: readonly Article[] = [
   {
     slug: 'charter-rule-c6-conflict',
     description:
-      'Charter rule C6 banned weight and body-composition framing at every age. Then we ' +
-      'specified a product built on exactly those numbers. Here is the whole argument.',
+      'Charter rule C6 banned body composition framing at every age. Then we specified a ' +
+      'product built on exactly those numbers. Here is the whole argument.',
     lede:
       'C6 passed as a build gate before anyone had written a line of BodyCommand. Nine months ' +
-      'later we specified a body-composition product that depends on precisely the numbers C6 ' +
+      'later we specified a body composition product that depends on precisely the numbers C6 ' +
       'forbids. One of the two had to give, and the interesting part is which.',
     sections: [
       {
@@ -74,7 +74,8 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'And then the market asked for the opposite',
         p: [
-          'Adults kept asking for the thing C6 banned. Not vanity metrics — the ordinary, ' +
+          'Adults kept asking for the body composition numbers C6 banned. Not vanity metrics — ' +
+            'the ordinary, ' +
             'reasonable request of somebody in their fifties who wants to know whether what they ' +
             'are doing is working, in a number they can compare to last month.',
           'We wrote up three options. Ship it as a separate product outside the platform, keeping ' +
@@ -88,7 +89,8 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'The carve-out, and what it cost',
         p: [
-          'We took option C. C6 holds absolutely under 18 — not consent-gated, not parent-gated, ' +
+          'We took option C. C6 holds absolutely under 18 — body composition is not ' +
+            'consent-gated, not parent-gated, ' +
             'absent from the interface. Above 18 it is opt-in, never competitive, never on a ' +
             'leaderboard, and never the first thing a person sees.',
           'The implementation detail that makes it real: `bodySurfacePolicy` is a single function ' +
@@ -158,16 +160,19 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/body-balance', label: 'BodyCommand' },
       { href: '/for-children', label: 'What children see' },
+      { href: '/for-adults', label: 'The adult modes' },
+      { href: '/assurance', label: 'How the Charter is enforced' },
     ],
   },
 
   {
     slug: 'rules-in-postgresql',
     description:
-      'We moved the platform invariants out of application code and into CHECK constraints. ' +
-      'Postgres rejected four writes the same afternoon that services had been allowing.',
+      'We moved the platform invariants into database constraints. Postgres rejected four ' +
+      'writes the same afternoon that the services had been allowing.',
     lede:
-      'Application code is where invariants go to be forgotten. Somebody adds a second write ' +
+      'Database constraints are where an invariant stops depending on somebody remembering it. ' +
+      'Application code is where invariants go to be forgotten: somebody adds a second write ' +
       'path, the validation lives on the first one, and the rule quietly stops being true.',
     sections: [
       {
@@ -184,7 +189,7 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'What a constraint proves that a test does not',
         p: [
-          'A unit test proves that one function rejects one input. A CHECK constraint proves that ' +
+          'A unit test proves that one function rejects one input. Database constraints prove that ' +
             'no row can exist in that state, whatever wrote it — a service, a migration, a ' +
             'back-office script, a person with psql open at two in the morning.',
           'That last case is the one that matters. Every serious incident involving health data ' +
@@ -204,7 +209,8 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'What does not belong in the database',
         p: [
-          'Anything that is a judgement rather than an invariant. Dose calibration, timing, the ' +
+          'Anything that is a judgement rather than an invariant belongs outside the database ' +
+            'constraints. Dose calibration, timing, the ' +
             'ranking of one movement over another — these change weekly and belong in code where ' +
             'they can be reasoned about and reverted.',
           'The line we drew: if violating it would be a safeguarding failure or a privacy breach, ' +
@@ -284,22 +290,27 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/developers', label: 'Developer reference' },
       { href: '/policies', label: 'All policies' },
+      { href: '/assurance', label: 'What is enforced, and where' },
+      { href: '/status', label: 'Platform status' },
     ],
   },
 
   {
     slug: 'six-modes-not-a-font-size',
     description:
-      'Accessibility as a settings toggle produces a worse product for everyone. Six modes ' +
-      'change register, density, mechanics, data collection and clinical guardrails together.',
+      'Accessible interface design as a settings toggle produces a worse product for everyone. ' +
+      'Six modes change register, density, mechanics and guardrails together.',
     lede:
-      'The usual approach is one interface with a text-size slider and a high-contrast switch. ' +
-      'It is cheap, it demonstrates good intent, and it does not work.',
+      'Accessible interface design usually means one interface with a text-size slider and a ' +
+      'high-contrast switch. It is cheap, it demonstrates good intent, and it does not work — ' +
+      'the person who most needs the larger target is the one least likely to go looking for ' +
+      'the setting that provides it.',
     sections: [
       {
         h: 'What a mode changes',
         p: [
-          'Mode is derived from a verified age band and a capability profile. It is not a ' +
+          'Accessible interface design here starts from a verified age band and a capability ' +
+            'profile. Mode is not a ' +
             'preference and it cannot be chosen freely, because it governs safeguarding rules ' +
             'rather than taste.',
           'Between Explorer at ten and Vitality at ninety, the following all change: interface ' +
@@ -334,7 +345,8 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'The cost',
         p: [
-          'Six times the review surface on every screen. Every component takes mode as an input ' +
+          'Six times the review surface on every screen — accessible interface design costs this ' +
+            'much when it is real. Every component takes mode as an input ' +
             'and every design review looks at six states. It is slower and it is not optional — a ' +
             'product for ages ten to a hundred that only really works for one of those decades is ' +
             'a product for one of those decades.',
@@ -399,6 +411,8 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/how-it-works', label: 'How it works' },
       { href: '/micro-movement', label: 'Micro-Movement' },
+      { href: '/for-children', label: 'What children see' },
+      { href: '/for-adults', label: 'The adult modes' },
     ],
   },
 
@@ -408,13 +422,15 @@ export const ARTICLES: readonly Article[] = [
       'Law 2 treats a notification fired into a moment you cannot move as a defect. We count ' +
       'silence as a successful outcome, and the held rate is a headline metric.',
     lede:
-      'Most engagement systems optimise for the message being opened. We hold roughly a third of ' +
-      'everything the engine wants to send, and that number is on the dashboard.',
+      'Most engagement systems treat notification timing as a delivery problem and optimise for ' +
+      'the message being opened. We hold roughly a third of everything the engine wants to send, ' +
+      'and that number is on the dashboard where everyone can see it.',
     sections: [
       {
         h: 'The defect nobody logs',
         p: [
-          'A reminder to stand up, delivered while you are driving, is not a neutral event. It is ' +
+          'Notification timing is not a delivery detail. A reminder to stand up, delivered while ' +
+            'you are driving, is not a neutral event. It is ' +
             'a small tax on attention and a slightly larger one on trust, and after enough of them ' +
             'the person turns notifications off — at which point the product is finished, however ' +
             'good the recommendation engine is.',
@@ -449,7 +465,7 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'Timing is a bandit, not a language model',
         p: [
-          'The decision of when to send is a contextual bandit with a sub-second budget. It is not ' +
+          'Notification timing is decided by a contextual bandit with a sub-second budget. It is not ' +
             'an LLM and the architecture notes say so explicitly, because "upgrade it to a model" ' +
             'is a suggestion that arrives about twice a year and is wrong every time.',
         ],
@@ -523,22 +539,25 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/mova', label: 'MOVA AI Coach' },
       { href: '/micro-movement', label: 'Micro-Movement' },
+      { href: '/communications', label: 'When the platform speaks' },
+      { href: '/privacy', label: 'Privacy Policy' },
     ],
   },
 
   {
     slug: 'why-the-streak-forgives',
     description:
-      'Loss-aversion mechanics work by making people feel bad. We built Grace Tokens, Flare ' +
-      'Mode and a Bereavement Hold instead, and guilt turned out to be a churn driver.',
+      'A habit streak usually works by making people feel bad. We built Grace Tokens, Flare ' +
+      'Mode and a Bereavement Hold instead, and the guilt was driving churn.',
     lede:
-      'A streak counter is the most effective retention mechanic in consumer software and it ' +
-      'works by threatening you. We kept the mechanic and removed the threat.',
+      'A habit streak is the most effective retention mechanic in consumer software, and it ' +
+      'works by threatening you with the loss of something you built. We kept the mechanic and ' +
+      'removed the threat, which turned out to be better arithmetic as well as kinder.',
     sections: [
       {
         h: 'What breaks a chain',
         p: [
-          'We looked at what actually interrupts a run of consistent days. It is almost never ' +
+          'We looked at what actually interrupts a habit streak. It is almost never ' +
             'apathy. It is illness, a caring responsibility, a shift pattern change, a bereavement, ' +
             'or a flare-up of a condition the person did not choose.',
           'Punishing all of those identically, with a counter reset to zero and a notification ' +
@@ -561,7 +580,7 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'The measurement',
         p: [
-          'Guilt-framed recovery messaging produced a small bump in next-day return and a larger ' +
+          'Guilt-framed habit streak recovery produced a small bump in next-day return and a larger ' +
             'drop in week-six retention. Forgiveness framing was flat on next-day and materially ' +
             'better at six weeks.',
           'That is not a moral argument, it is an arithmetic one, and it is the version of this ' +
@@ -645,23 +664,26 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/challenges', label: 'Challenges' },
       { href: '/policies', label: 'All policies' },
+      { href: '/micro-movement', label: 'Micro-Movement' },
+      { href: '/mova', label: 'MOVA AI Coach' },
     ],
   },
 
   {
     slug: 'five-variants-or-it-does-not-ship',
     description:
-      'Every movement exists as standing, seated, chair-supported, bed or recliner, and ' +
-      'adaptive single-limb — authored independently, not degraded. There is no override.',
+      'Seated movement and three other variants are authored independently, never degraded ' +
+      'from the standing one. Five or it does not ship, and there is no override.',
     lede:
-      'The publishing gate refuses a movement that has fewer than five authored variants. There ' +
-      'is no force-publish flag, no admin bypass, and yes, this has delayed releases.',
+      'A seated movement here is authored on its own terms, never a standing one with the legs ' +
+      'deleted. The publishing gate refuses anything with fewer than five variants: no ' +
+      'force-publish flag, no admin bypass, and yes, this has delayed releases.',
     sections: [
       {
         h: 'Independently authored, not degraded',
         p: [
           'The tempting implementation is to write the standing version and generate the rest by ' +
-            'removing things. It produces seated movements that are worse than they need to be, ' +
+            'removing things. It produces a seated movement that is worse than it needs to be, ' +
             'because a good seated movement is not a standing one with the legs deleted — it uses ' +
             'the chair.',
           'So each of the five is authored, reviewed and dosed on its own terms. The equivalence ' +
@@ -708,7 +730,7 @@ export const ARTICLES: readonly Article[] = [
             'effort, not assumed from its posture. A well-chosen chair-supported movement can ' +
             'score higher than a lazily performed standing one, and the numbers reflect that ' +
             'rather than encoding a hierarchy where standing is simply worth more.',
-          'This has a pleasant consequence: somebody who moves to a seated variant during a ' +
+          'This has a pleasant consequence: somebody who moves to a seated movement during a ' +
             'flare-up does not watch their progress collapse. Their effort is measured on its ' +
             'own terms.',
         ],
@@ -777,22 +799,27 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/micro-movement', label: 'Micro-Movement' },
       { href: '/wearables', label: 'Wearables' },
+      { href: '/for-adults', label: 'The adult modes' },
+      { href: '/assurance', label: 'How the gate is enforced' },
     ],
   },
 
   {
     slug: 'the-employer-dashboard-that-does-not-exist',
     description:
-      'If an HR director can see that one named person stopped moving in March, the product is ' +
-      'a liability. The individual view is absent from the type system, not permission-gated.',
+      'If an HR director can see one named person stopped moving in March, workplace ' +
+      'wellbeing data is a liability. The individual view is absent from the types.',
     lede:
-      'Every workplace wellbeing platform we looked at has an individual view behind a ' +
-      'permission. Permissions get granted. We removed the view instead.',
+      'Every platform we looked at exposes workplace wellbeing data per named employee, behind ' +
+      'a permission. Permissions get granted — a senior person asks, an administrator finds the ' +
+      'toggle, and the control that existed on paper is gone in an afternoon. So we removed the ' +
+      'view instead of guarding it.',
     sections: [
       {
         h: 'The failure mode',
         p: [
-          'An employer can see that a named employee\'s activity dropped sharply in March. That is ' +
+          'An employer can see that a named employee\'s activity dropped sharply in March. That ' +
+            'is workplace wellbeing data about a person, and it is ' +
             'health information about a person, inferred from a wellbeing benefit they were ' +
             'encouraged to use, sitting in a dashboard belonging to the people who decide their ' +
             'promotion.',
@@ -827,7 +854,8 @@ export const ARTICLES: readonly Article[] = [
       {
         h: 'What an employer does get',
         p: [
-          'Participation, aggregate movement trend, sedentary-risk distribution by cohort, and a ' +
+          'The workplace wellbeing data an employer does receive: participation, aggregate ' +
+            'movement trend, sedentary-risk distribution by cohort, and a ' +
             'return-on-investment model with its assumptions written down. Enough to run a ' +
             'programme. Not enough to manage an individual.',
         ],
@@ -901,22 +929,26 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/industries', label: 'Industries' },
       { href: '/privacy', label: 'Privacy Policy' },
+      { href: '/assurance', label: 'What is enforced, and where' },
+      { href: '/policies', label: 'All policies' },
     ],
   },
 
   {
     slug: 'a-photograph-cannot-tell-you-the-calories',
     description:
-      'FoodLens returns a range, its evidence source and a confidence level, and refuses to ' +
-      'collapse the range unless the source is verified. Twelve dimensions, no health score.',
+      'Food photo analysis returns a range, its evidence source and a confidence level, and ' +
+      'never narrows it to look tidier. Twelve dimensions, and no health score.',
     lede:
-      'A photograph of a plate does not contain the information required to state an energy ' +
-      'figure. Every product that states one anyway is guessing and rounding the guess.',
+      'Food photo analysis cannot state an energy figure, because a photograph of a plate does ' +
+      'not contain the information required to work one out. Every product that states one ' +
+      'anyway is guessing and then rounding the guess to make it look like a measurement.',
     sections: [
       {
         h: 'What a photograph actually supports',
         p: [
-          'Identification of components, reasonably. Relative proportions, roughly. Preparation ' +
+          'Food photo analysis supports identification of components, reasonably. Relative ' +
+            'proportions, roughly. Preparation ' +
             'method, sometimes. Portion mass, poorly — this is the one that dominates the error, ' +
             'and it is the one a photograph is worst at.',
           'A curry can vary by a factor of three in energy density depending on how it was made, ' +
@@ -988,6 +1020,7 @@ export const ARTICLES: readonly Article[] = [
         h: 'Swaps, and the uncertainty they add',
         p: [
           'Simulating a change — swap the rice for salad, halve the sauce — is the most useful ' +
+            'thing food photo analysis does and the easiest to get wrong. The most useful ' +
             'thing FoodLens does and the easiest to get wrong, because a simulated meal has all ' +
             'the uncertainty of the original plus the uncertainty of the substitution.',
           'So a swap widens the range rather than narrowing it, which is the opposite of what ' +
@@ -1025,6 +1058,8 @@ export const ARTICLES: readonly Article[] = [
     links: [
       { href: '/foodlens', label: 'FoodLens 360°' },
       { href: '/for-children', label: 'What children see' },
+      { href: '/body-balance', label: 'BodyCommand' },
+      { href: '/assurance', label: 'What is enforced, and where' },
     ],
   },
 ];

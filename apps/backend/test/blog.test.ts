@@ -458,15 +458,38 @@ test('every corpus article answers questions outright, to the same rules as a dr
       faq: article.faq,
     });
 
-    const faqFindings = audit.findings.filter((f) => f.rule.startsWith('faq.'));
+    /*
+     * Everything except the lexicon, which is the deliberate exception
+     * explained above. The editing pass closed the rest: every article
+     * carried a title without its own phrase, a description over the
+     * ceiling, a lede that never said what the article was about, two
+     * internal links where four is the floor, and — every one of the
+     * eight — zero occurrences of its target keyword anywhere in the
+     * prose. The phrases had been assigned as search targets and the
+     * writing was never done to them.
+     *
+     * What is left is arithmetic rather than judgement: an article with
+     * no lexicon finding scores 100, one blocker costs 25 and two cost
+     * 50. So a score below 100 here names exactly how many banned terms
+     * the essay uses to discuss the rules about banned terms.
+     */
+    const other = audit.findings.filter((f) => f.rule !== 'editorial.lexicon');
     assert.deepEqual(
-      faqFindings,
+      other,
       [],
-      `${article.slug}: ${faqFindings.map((f) => `${f.rule} — ${f.detail}`).join('; ')}`,
+      `${article.slug}: ${other.map((f) => `${f.rule} — ${f.detail}`).join('; ')}`,
     );
     assert.ok(
       audit.measured.faqPairs >= SEO_RULES.faqMin,
       `${article.slug} carries ${audit.measured.faqPairs} pairs`,
+    );
+
+    const lexicon = audit.findings.filter((f) => f.rule === 'editorial.lexicon').length;
+    assert.equal(
+      audit.score,
+      100 - lexicon * 25,
+      `${article.slug} scores ${audit.score} with ${lexicon} lexicon finding(s) — something ` +
+        'other than the lexicon is costing points again',
     );
   }
 });

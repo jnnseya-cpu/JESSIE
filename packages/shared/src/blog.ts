@@ -914,7 +914,7 @@ export interface SeedPost {
 export const SEED_POSTS: readonly SeedPost[] = [
   {
     slug: 'charter-rule-c6-conflict',
-    title: 'Charter rule C6, and the conflict we could not design around',
+    title: 'Body composition, and the charter rule we wrote against it',
     category: 'Product decisions',
     publishedAt: '2026-07-18',
     keyword: 'body composition',
@@ -922,7 +922,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'rules-in-postgresql',
-    title: 'We moved the rules into PostgreSQL, and it found four bugs the same afternoon',
+    title: 'Database constraints found four bugs the same afternoon',
     category: 'Engineering',
     publishedAt: '2026-07-09',
     keyword: 'database constraints',
@@ -930,7 +930,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'six-modes-not-a-font-size',
-    title: 'Six modes, not one interface with a font-size setting',
+    title: 'Accessible interface design: six modes, not a font size',
     category: 'Design',
     publishedAt: '2026-07-02',
     keyword: 'accessible interface design',
@@ -938,7 +938,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'the-nudge-we-did-not-send',
-    title: 'The nudge we did not send',
+    title: 'The nudge we did not send: notification timing as a defect',
     category: 'Behaviour',
     publishedAt: '2026-06-24',
     keyword: 'notification timing',
@@ -946,7 +946,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'why-the-streak-forgives',
-    title: 'Why the streak forgives',
+    title: 'Why the habit streak forgives, and what that cost us',
     category: 'Research',
     publishedAt: '2026-06-11',
     keyword: 'habit streak',
@@ -954,7 +954,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'five-variants-or-it-does-not-ship',
-    title: 'Five variants or it does not ship',
+    title: 'Seated movement, and why five variants or it does not ship',
     category: 'Accessibility',
     publishedAt: '2026-05-30',
     keyword: 'seated movement',
@@ -962,7 +962,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'the-employer-dashboard-that-does-not-exist',
-    title: 'The employer dashboard that does not exist',
+    title: 'Workplace wellbeing data without an employer dashboard',
     category: 'Privacy',
     publishedAt: '2026-05-17',
     keyword: 'workplace wellbeing data',
@@ -970,7 +970,7 @@ export const SEED_POSTS: readonly SeedPost[] = [
   },
   {
     slug: 'a-photograph-cannot-tell-you-the-calories',
-    title: 'A photograph cannot tell you the energy, so we stopped pretending',
+    title: 'Food photo analysis cannot tell you the energy figure',
     category: 'Nutrition',
     publishedAt: '2026-05-05',
     keyword: 'food photo analysis',
