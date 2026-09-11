@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
  * read is a token an injected script can read.
  */
 
-import { grantSourceLabel } from '@jessmove/shared';
+import { MIN_TRANSACTION_GBP, PLAN_DEFINITIONS, grantSourceLabel } from '@jessmove/shared';
 import { apiBase, mediaUrl } from '../api-base';
 import { enableNativePush, isNative } from '../native';
 import { FoodLensModule, SnapModule } from './test-drive';
@@ -299,6 +299,82 @@ export function AccountPanel() {
     }
   };
 
+  /*
+   * Billing, which the site could not reach at all.
+   *
+   * `/stripe/checkout`, `/topup`, `/portal` and `/subscription/:userId`
+   * are complete, guarded with `@SelfOnly` and covered by a webhook that
+   * is idempotent about money — and nothing in this application called any
+   * of them. The homepage advertised Premium at a monthly price with a
+   * button reading "Start free" that created a free account, and there was
+   * no path from anywhere on the site to a payment. The platform could not
+   * take money.
+   *
+   * `configured` is read from `/stripe/status` so a deployment without the
+   * secret key says so rather than offering a button that fails. Same
+   * reasoning as the push `unconfigured` state: an offer that cannot be
+   * taken is worse than no offer.
+   */
+  const [billing, setBilling] = useState<{
+    configured: boolean;
+    entitled: boolean;
+    state: string | null;
+  } | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingNote, setBillingNote] = useState<string | null>(null);
+
+  const loadBilling = useCallback(
+    async (userId: string) => {
+      try {
+        const [statusRes, subRes] = await Promise.all([
+          fetch(`${apiBase()}/stripe/status`),
+          api(`/stripe/subscription/${encodeURIComponent(userId)}`),
+        ]);
+        const status = (await statusRes.json()) as { data?: { secretKeyConfigured?: boolean } };
+        const sub = (await subRes.json()) as {
+          data?: { entitled?: boolean; subscription?: { state?: string } | null };
+        };
+        setBilling({
+          configured: status.data?.secretKeyConfigured === true,
+          entitled: sub.data?.entitled === true,
+          state: sub.data?.subscription?.state ?? null,
+        });
+      } catch {
+        setBilling(null);
+      }
+    },
+    [api],
+  );
+
+  /**
+   * Send the member to Stripe, or tell them why not.
+   *
+   * The URL comes back from our own API, which got it from Stripe. It is
+   * never built here — a checkout URL assembled on the client is a
+   * checkout somebody else can assemble too.
+   */
+  const goToStripe = useCallback(
+    async (path: string, body: object) => {
+      setBillingBusy(true);
+      setBillingNote(null);
+      try {
+        const res = await api(path, body);
+        const json = (await res.json()) as { data?: { url?: string }; message?: string };
+        const url = json.data?.url;
+        if (!res.ok || !url) {
+          setBillingNote(json.message ?? 'billing is not available right now');
+          return;
+        }
+        window.location.assign(url);
+      } catch {
+        setBillingNote('billing is not available right now');
+      } finally {
+        setBillingBusy(false);
+      }
+    },
+    [api],
+  );
+
   const loadWallet = useCallback(
     async (userId: string) => {
       try {
@@ -452,6 +528,7 @@ export function AccountPanel() {
   useEffect(() => {
     if (me) {
       void loadWallet(me.userId);
+      void loadBilling(me.userId);
       if (!grantTarget) setGrantTarget(me.userId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -631,6 +708,95 @@ export function AccountPanel() {
             </p>
           )}
           {profileNote && <p className="acct__note">{profileNote}</p>}
+        </section>
+
+        {/* ---- Billing, which had no path from this application at all ---- */}
+        <section className="acct__stats" aria-label="Billing">
+          <div className="acct__stat">
+            <span className="acct__statk">Plan</span>
+            <span className={`acct__statv${billing?.entitled ? ' acct__statv--ok' : ''}`}>
+              {billing?.entitled ? 'Premium' : 'Free'}
+            </span>
+            <span className="acct__stats2">
+              {billing === null
+                ? 'Checking your billing…'
+                : !billing.configured
+                  ? 'Payments are not switched on for this deployment yet.'
+                  : billing.entitled
+                    ? `£${PLAN_DEFINITIONS.premium_monthly.gbp} a month. Cancel in one tap.`
+                    : `Premium is £${PLAN_DEFINITIONS.premium_monthly.gbp} a month and cancels in one tap.`}
+            </span>
+
+            {billing?.configured && !billing.entitled && (
+              <button
+                className="btn btn--primary acct__statbtn"
+                type="button"
+                disabled={billingBusy}
+                onClick={() =>
+                  void goToStripe('/stripe/checkout', {
+                    userId: me.userId,
+                    plan: 'premium_monthly',
+                    successUrl: `${window.location.origin}/account?billing=done`,
+                    cancelUrl: `${window.location.origin}/account`,
+                  })
+                }
+              >
+                {billingBusy ? 'Working…' : 'Upgrade'}
+              </button>
+            )}
+
+            {billing?.configured && billing.entitled && (
+              <button
+                className="btn btn--ghost acct__statbtn"
+                type="button"
+                disabled={billingBusy}
+                onClick={() =>
+                  void goToStripe('/stripe/portal', {
+                    userId: me.userId,
+                    returnUrl: `${window.location.origin}/account`,
+                  })
+                }
+              >
+                {billingBusy ? 'Working…' : 'Manage billing'}
+              </button>
+            )}
+          </div>
+
+          <div className="acct__stat">
+            <span className="acct__statk">Top up</span>
+            <span className="acct__statv">
+              £{MIN_TRANSACTION_GBP.toFixed(0)}
+              <small> minimum</small>
+            </span>
+            <span className="acct__stats2">
+              {billing?.configured
+                ? 'Adds AI allowance. Nothing is charged below the minimum, and nothing renews.'
+                : 'Payments are not switched on for this deployment yet.'}
+            </span>
+            {billing?.configured && (
+              <button
+                className="btn btn--dark acct__statbtn"
+                type="button"
+                disabled={billingBusy}
+                onClick={() =>
+                  void goToStripe('/stripe/topup', {
+                    userId: me.userId,
+                    amountGbp: MIN_TRANSACTION_GBP,
+                    successUrl: `${window.location.origin}/account?topup=done`,
+                    cancelUrl: `${window.location.origin}/account`,
+                  })
+                }
+              >
+                {billingBusy ? 'Working…' : `Add £${MIN_TRANSACTION_GBP.toFixed(0)}`}
+              </button>
+            )}
+          </div>
+
+          {billingNote && (
+            <p className="acct__stats2" role="status">
+              {billingNote}
+            </p>
+          )}
         </section>
 
         {/* ---- The numbers that matter ---- */}

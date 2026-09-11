@@ -266,6 +266,49 @@ is what a reader notices and that is a rate rather than a count. Proven
 against a rendered article: one link per destination in the body, with
 the cluster's own navigation link separate and deliberate.
 
+**The platform could not take money, and nothing reported it.**
+`/stripe/checkout`, `/topup`, `/portal` and `/subscription/:userId` were
+complete — `@SelfOnly` guarded, priced from `PLAN_DEFINITIONS`, covered by
+a webhook that is idempotent about money — and **no code in the
+application called any of them**. The homepage advertised Premium at a
+monthly price with a button reading "Start free" that created a free
+account. There was no path from anywhere on the site to a payment.
+
+Now wired into the account panel: Upgrade, Manage billing and a £5 top-up.
+The checkout URL is always taken from our own API's response — a URL
+assembled on the client is one somebody else can assemble too — and a
+deployment without `STRIPE_SECRET_KEY` says "payments are not switched on
+for this deployment yet" rather than offering a button that fails.
+Proven: both routes refuse an unauthenticated POST with 401, and
+`/stripe/status` reports `secretKeyConfigured: false` here, which is what
+the honest UI state reads.
+
+**`scripts/find-unreachable.mjs`, and why it is a different question.**
+`find-unwired` asks whether an export is consulted; `admin-guard` asks
+whether a route is guarded. Neither asks whether a member can get to the
+thing, which is the failure that has cost the most here — the native
+bridge, calendar permission, push in the app and now payment all
+compiled, typechecked and passed every test while being unreachable.
+
+It maps all 181 routes against every call the site makes, and against the
+endpoints `/developers` publishes as a product, since those are reachable
+by a third party by design. 113 are reached; 68 are not. Getting the tool
+honest took three passes and each correction is recorded in it: matching
+helper names missed `api(\`/auth/${mode}\`)` and reported `/auth/login`
+as dead on a site that plainly logs people in; exact shape comparison
+missed wildcards on the client side; and the character class stopped at
+`encodeURIComponent(`. A reachability audit that cries wolf is worse than
+none, because the second false positive is when somebody stops reading it.
+
+**Nine member-facing routes remain unreachable, reported not fixed.** Four
+are a complete profile subsystem — `autosave` with optimistic concurrency,
+`commit`, `media`, and an `as/:viewer` visibility preview — while the
+account panel uses `/auth/me` instead. That is two profile implementations,
+and choosing between them is an architecture decision rather than a wiring
+job. Five are the wearables connection flow, which cannot be reached
+because no provider can be connected yet — the same fact
+`PROVIDER_AVAILABILITY` publishes on `/wearables`.
+
 **Found while adding FAQ pairs, not fixed: the hand-written corpus fails
 its own audit.** Run `seoAudit` over the eight corpus articles with their
 real prose and every one fails — scores between 0 and 65 — and four trip
