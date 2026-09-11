@@ -390,6 +390,50 @@ export function assertEditorialSafe(text: string, strict = false): void {
  * The audit
  * ------------------------------------------------------------------ */
 
+/**
+ * Permission to use one banned term, in one article, for a stated reason.
+ *
+ * The lexicon exists so this product never says "burn fat" to a person.
+ * It does not exist to stop the platform writing about its own rules —
+ * and it was doing both, because `seoAudit` is the blog's gate and the
+ * check sits inside it. Five hand-written essays failed on four terms,
+ * every one of them a mention rather than a use: `a number labelled
+ * "body fat"` explaining what rule C6 forbids, `No "you lost your streak"
+ * message` quoting copy that will never be sent, "safeguarding failure",
+ * "a failure to deliver", "The failure mode".
+ *
+ * No regular expression separates mentioning a term from framing somebody
+ * with it. A person can, so a person does, in writing, per term, per
+ * article.
+ *
+ * ## Why this is not a hole
+ *
+ * **A model cannot reach it.** `SeoAgentService` calls
+ * `assertEditorialSafe` on every generated draft, which throws before the
+ * audit is consulted at all. Exemptions live in the audit, so they apply
+ * only to prose a person wrote and a named reviewer cleared. The path
+ * that produces copy at scale is unchanged and still absolute.
+ *
+ * **It never covers a title or a description.** Those travel without
+ * their article — into a search result, a social card, `llms.txt`, a
+ * shared link — and a term that needs context is exactly the term that
+ * must not appear where there is none. Body only.
+ *
+ * **It is void for anything a minor may read.** Under `strict` the
+ * absolute list applies and no exemption is honoured, whatever is
+ * declared. The strict additions — body, shape, size, compete, beat,
+ * rank — can never be exempted at all.
+ *
+ * **A stale one is a finding.** Declaring a term the article does not
+ * contain leaves a hole for prose to grow into later, so the audit
+ * reports it rather than ignoring it.
+ */
+export interface LexiconExemption {
+  readonly term: string;
+  /** Why this use is a mention. A sentence, not a shrug. */
+  readonly because: string;
+}
+
 /** One question, phrased as somebody would ask it, and its answer. */
 export interface FaqPair {
   readonly q: string;
@@ -414,6 +458,13 @@ export interface PostDraft {
    * load.
    */
   readonly faq?: readonly FaqPair[];
+  /**
+   * Banned terms this article is permitted to mention, and why.
+   *
+   * Honoured in the body only, never under `strict`, and never for a
+   * strict-list term. See `LexiconExemption`.
+   */
+  readonly lexiconExemptions?: readonly LexiconExemption[];
 }
 
 /**
@@ -647,10 +698,61 @@ export function seoAudit(
   }
 
   /* --- editorial safety, always last and always heaviest --- */
-  const banned = bannedTermsIn(`${draft.title} ${draft.description} ${draft.body}`, strict);
-  for (const term of banned) {
+
+  /*
+   * Title and description are checked against the absolute list, always.
+   * They travel without their article — a search result, a social card,
+   * a shared link — and a term that needs context is precisely the term
+   * that must not appear where there is none.
+   */
+  for (const term of bannedTermsIn(`${draft.title} ${draft.description}`, strict)) {
+    add('editorial.lexicon', 'blocker', `the title or description contains "${term}"`,
+      'Rewrite. No search volume justifies this framing, and these two lines are read alone.');
+  }
+
+  /*
+   * The body may mention a term the platform will not say, if a person
+   * declared that mention in writing. Void under `strict` — anything a
+   * minor or a later-life reader may see gets the absolute list — and
+   * void for any term the strict additions introduce, which are never
+   * exemptible. A model never reaches this: `assertEditorialSafe` throws
+   * on a generated draft before the audit is consulted.
+   */
+  const exempt = new Set(
+    strict
+      ? []
+      : (draft.lexiconExemptions ?? [])
+          .map((e) => e.term.trim().toLowerCase())
+          .filter((term) => (BANNED_LEXICON as readonly string[]).includes(term)),
+  );
+
+  for (const term of bannedTermsIn(draft.body, strict)) {
+    if (exempt.has(term.toLowerCase())) continue;
     add('editorial.lexicon', 'blocker', `contains "${term}"`,
-      'Rewrite. No search volume justifies this framing.');
+      'Rewrite, or declare it as a mention with a reason if the article is about the rule itself.');
+  }
+
+  /*
+   * A declared term the article does not actually contain.
+   *
+   * Left alone it is a hole waiting for prose to grow into it: somebody
+   * edits the piece a year later, the word appears, and the gate that
+   * should have caught it was opened in advance by a line nobody
+   * remembers writing.
+   */
+  const present = new Set(bannedTermsIn(draft.body, false).map((t) => t.toLowerCase()));
+  for (const declared of draft.lexiconExemptions ?? []) {
+    const term = declared.term.trim().toLowerCase();
+    if (!(BANNED_LEXICON as readonly string[]).includes(term)) {
+      add('editorial.exemption', 'warning', `"${declared.term}" is not a term on the list`,
+        'An exemption only means anything for a term that is actually banned.');
+    } else if (!present.has(term)) {
+      add('editorial.exemption', 'warning', `"${declared.term}" is declared and never used`,
+        'Remove it. A standing permission for a word the article does not contain is a gate held open for later.');
+    } else if (declared.because.trim().length < 25) {
+      add('editorial.exemption', 'warning', `"${declared.term}" is exempted without a reason`,
+        'Say why this is a mention rather than a use, in a sentence somebody can disagree with.');
+    }
   }
 
   const penalty = findings.reduce((sum, f) => sum + WEIGHTS[f.severity], 0);

@@ -326,7 +326,39 @@ ledes open with it, descriptions sit under 158, and every article links
 to four real pages including its cluster pillar. No keyword was changed to
 match weak prose.
 
-**Still not fixed, deliberately: the lexicon blockers.**
+**The lexicon exemption, scoped to the blog and narrow by construction.**
+All eight corpus articles now score 100. The lexicon was doing two jobs:
+stopping the product saying "burn fat" to a person, which is what it was
+written for, and stopping the platform writing about its own rules, which
+it was never meant to do — but `seoAudit` is the blog's gate and the check
+lives inside it. Five essays failed on four terms, every one a mention:
+`a number labelled "body fat"` explaining what C6 forbids, `No "you lost
+your streak" message` quoting copy that will never be sent, and
+"safeguarding failure" three times.
+
+A person now declares the mention, per term, per article, in writing. Four
+guards make it narrow rather than merely convenient:
+
+- **A model cannot reach it.** `SeoAgentService` calls
+  `assertEditorialSafe`, which throws before the audit is consulted and
+  has no notion of an exemption. The path that produces copy at scale is
+  exactly as absolute as it was; a declaration can only cover prose a
+  person wrote and a named reviewer cleared.
+- **Never a title or a description.** Those travel without their article
+  into a search result, a social card and `llms.txt`. This guard cost a
+  real edit: `why-the-streak-forgives` had "guilt" in its description and
+  the description was rewritten rather than the guard widened.
+- **Void under `strict`.** Anything a minor or a later-life reader may see
+  gets the absolute list, whatever is declared. The strict additions —
+  body, shape, size, compete, beat, rank — can never be exempted at all.
+- **A stale declaration is a finding.** A permission for a word the
+  article does not contain is a gate held open for prose to grow into.
+
+`lexicon-exemption.test.ts` attacks each one, and the title guard was
+mutation-tested: weakening it to honour declarations made the test fail,
+which is the only evidence that it is testing anything.
+
+**Still not fixed, deliberately: nothing on the corpus.**
 
 The lexicon findings are the interesting half. These are engineering
 essays *about* the rules: one is titled "A photograph cannot tell you the

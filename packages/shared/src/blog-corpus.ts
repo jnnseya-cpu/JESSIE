@@ -18,7 +18,7 @@
  * tree — the weight was never the real cost, and the missing score was.
  */
 
-import type { FaqPair } from './blog';
+import type { FaqPair, LexiconExemption } from './blog';
 
 export interface Section {
   readonly h: string;
@@ -46,6 +46,14 @@ export interface Article {
    * search engine could not quote.
    */
   readonly faq: readonly FaqPair[];
+  /**
+   * Banned terms this article mentions, and why that is a mention.
+   *
+   * Honoured in the body only, never under `strict`, and only for a term
+   * the article actually contains — see `LexiconExemption` in `blog.ts`
+   * for the four guards and the reason a model can never reach this.
+   */
+  readonly lexicon?: readonly LexiconExemption[];
 }
 
 export const ARTICLES: readonly Article[] = [
@@ -130,6 +138,21 @@ export const ARTICLES: readonly Article[] = [
             'so that anybody evaluating the platform can verify the claim in a browser rather ' +
             'than believing a page like this one.',
         ],
+      },
+    ],
+    lexicon: [
+      {
+        term: 'fat',
+        because:
+          'Quoted, as the label on the number rule C6 forbids: the article explains why ' +
+          'a product used by ten-year-olds must never show it.',
+      },
+      {
+        term: 'failure',
+        because:
+          'Engineering English — "safeguarding failure" is the category of incident the ' +
+          'whole article is arguing about avoiding, and has nothing to do with a person ' +
+          'or a body.',
       },
     ],
     faq: [
@@ -260,6 +283,15 @@ export const ARTICLES: readonly Article[] = [
             'the ratio we expected. The fourteen are the ones we would have to explain to a ' +
             'regulator.',
         ],
+      },
+    ],
+    lexicon: [
+      {
+        term: 'failure',
+        because:
+          'Engineering English. The sentence draws the line between a safeguarding ' +
+          'failure and a worse recommendation, which is the rule the article exists to ' +
+          'state.',
       },
     ],
     faq: [
@@ -511,6 +543,14 @@ export const ARTICLES: readonly Article[] = [
         ],
       },
     ],
+    lexicon: [
+      {
+        term: 'failure',
+        because:
+          'Engineering English, and the opposite of the banned framing: a block is ' +
+          'recorded as a successful decision rather than a failure to deliver.',
+      },
+    ],
     faq: [
       {
         q: 'What stops Jess Move sending a notification?',
@@ -548,7 +588,7 @@ export const ARTICLES: readonly Article[] = [
     slug: 'why-the-streak-forgives',
     description:
       'A habit streak usually works by making people feel bad. We built Grace Tokens, Flare ' +
-      'Mode and a Bereavement Hold instead, and the guilt was driving churn.',
+      'Mode and a Bereavement Hold instead, and week-six retention improved.',
     lede:
       'A habit streak is the most effective retention mechanic in consumer software, and it ' +
       'works by threatening you with the loss of something you built. We kept the mechanic and ' +
@@ -635,6 +675,20 @@ export const ARTICLES: readonly Article[] = [
           'The commercial case for at least two of them is genuinely strong. That is the point of ' +
             'writing the rule down before the quarter in which somebody makes it.',
         ],
+      },
+    ],
+    lexicon: [
+      {
+        term: 'guilt',
+        because:
+          'Naming the mechanic the article rejects. "Guilt-framed recovery" is the ' +
+          'thing measured and found to cost retention, not something said to a member.',
+      },
+      {
+        term: 'you lost your streak',
+        because:
+          'Quoted inside a list of copy this platform will never send. The sentence is ' +
+          'literally No "you lost your streak" message.',
       },
     ],
     faq: [
@@ -899,6 +953,14 @@ export const ARTICLES: readonly Article[] = [
             'need attention. It is not enough to have a conversation with one employee about their ' +
             'activity, and it is not supposed to be.',
         ],
+      },
+    ],
+    lexicon: [
+      {
+        term: 'failure',
+        because:
+          'A section heading, "The failure mode", describing what goes wrong when an ' +
+          'employer can see one named person. Engineering English about a system.',
       },
     ],
     faq: [

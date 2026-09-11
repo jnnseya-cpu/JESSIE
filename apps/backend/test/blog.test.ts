@@ -426,20 +426,20 @@ test('every corpus article answers questions outright, to the same rules as a dr
    * through `articleBody`. A rule that applies to a model's output and
    * not to ours is not a standard, it is a hazing ritual.
    *
-   * Scoped to `faq.*` deliberately, and the reason is worth recording
-   * because it is a live question rather than an oversight. Run the full
-   * audit over this corpus today and every article fails — between 0 and
-   * 65 — and four trip `editorial.lexicon` as a blocker. They are
-   * engineering essays *about* the rules: one is titled "A photograph
-   * cannot tell you the calories", another argues about what counts as a
-   * safeguarding problem. The lexicon exists so the product never says
-   * "burn fat" to a member, and no regular expression separates using a
-   * term from framing somebody with it.
+   * Every article scores 100, which took two passes and one decision.
+   * The editing pass closed the ordinary findings — titles without their
+   * own phrase, descriptions over the ceiling, ledes that never said what
+   * the article was about, two internal links where four is the floor,
+   * and on every one of the eight, zero occurrences of its target keyword
+   * anywhere in the prose.
    *
-   * Widening the lexicon's exemptions is a change to a safety control and
-   * belongs to a person, not to a passing test. So this asserts the part
-   * that is unambiguous — the questions and answers — and the rest is
-   * reported rather than quietly accommodated.
+   * What remained was the lexicon, on five essays that are *about* the
+   * rules: `a number labelled "body fat"` explaining what C6 forbids,
+   * `No "you lost your streak" message` quoting copy that will never be
+   * sent, and "safeguarding failure" three times over. Each is now a
+   * declared exemption with a written reason — see `LexiconExemption` for
+   * the four guards, and `lexicon-exemption.test.ts` for the attempts on
+   * them.
    */
   for (const article of ARTICLES) {
     const seed = SEED_POSTS.find((p) => p.slug === article.slug);
