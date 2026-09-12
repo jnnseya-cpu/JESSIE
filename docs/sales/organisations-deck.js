@@ -102,7 +102,7 @@ function notes(slide, text) {
     fontSize: 18, italic: true, color: LIME,
     fontFace: 'Calibri', isTextBox: true, margin: 0,
   });
-  s.addText('A workplace movement and food-intelligence platform for ages 10 to 100 — built so an employer can run a programme without ever seeing one employee.', {
+  s.addText('A movement and food-intelligence platform for your workforce — built so an employer can run a programme without ever seeing one employee.', {
     x: M, y: 5.35, w: 10.2, h: 0.9,
     fontSize: 14, color: 'B8C6D1', lineSpacing: 22,
     fontFace: 'Calibri', isTextBox: true, margin: 0,
@@ -271,12 +271,18 @@ function notes(slide, text) {
     x += 2.33;
   });
 
+  /*
+   * Reframed for a corporate cohort. The platform holds six bands; four
+   * of them are working age, and 40–64 is the band most wellbeing
+   * programmes quietly design past. Stated as the mechanics differing by
+   * band rather than as a demographic claim about anybody's payroll.
+   */
   card(s, M, 5.4, 11.7, 1.15, NAVY);
-  s.addText('Six age modes, ten to a hundred. Mode is derived from a verified age band, not chosen — it governs which mechanics are legal, what data may be collected, and which clinical guardrails apply.', {
-    x: M + 0.4, y: 5.62, w: 10.9, h: 0.75,
-    fontSize: 13.5, color: PAPER, lineSpacing: 20, fontFace: 'Calibri', isTextBox: true, margin: 0,
+  s.addText('Four of the six age bands are working age — 18–39, 40–64 and 65–79, plus apprentices under 18. The band is derived, not chosen, and it changes the mechanics, the daily prompt cap and the clinical guardrails. It is not one programme with the age swapped.', {
+    x: M + 0.4, y: 5.6, w: 10.9, h: 0.8,
+    fontSize: 13, color: PAPER, lineSpacing: 19, fontFace: 'Calibri', isTextBox: true, margin: 0,
   });
-  notes(s, 'For employers with an older or mixed workforce, and for care and local-government buyers, this is usually the differentiator that matters most.');
+  notes(s, 'For a workforce that spans apprentices to people working past 65, this is usually the differentiator that matters most. Most step-count programmes are designed for the 18-39 band; 40-64 is where sedentary risk actually bites and it is usually a large part of the payroll.');
 }
 
 /* ── 6 · when not to speak ───────────────────────────────────────── */
@@ -429,7 +435,63 @@ function notes(slide, text) {
   notes(s, 'Offer to run these live. It converts a trust conversation into a demonstration, and very few vendors can do it. GET /api/system is a fifth if they want the platform invariants — age modes, delivery tiers, required variants — in one response.');
 }
 
-/* ── 9 · pricing ─────────────────────────────────────────────────── */
+/* ── 9 · what legal and HR will ask ──────────────────────────────── */
+{
+  /*
+   * The slide a corporate deck cannot do without, and the one most
+   * vendors leave out. Both columns come from `GET /api/assurance`: the
+   * left from the enforced data-protection controls, the right from
+   * `assuranceGaps()` verbatim. Naming the four open items is not
+   * modesty — a procurement team that finds an unnamed gap in week six
+   * treats every other slide as marketing.
+   */
+  const s = lightSlide();
+  eyebrow(s, 'Your legal, HR and security teams', 0.7);
+  title(s, 'Four things enforced. Four things open.', 1.15, false, 36);
+
+  s.addText('Enforced in code and schema', {
+    x: M, y: 2.35, w: 5.65, h: 0.3,
+    fontSize: 12, bold: true, charSpacing: 2, color: TEAL,
+    fontFace: 'Arial', isTextBox: true, margin: 0,
+  });
+  s.addText('Open, and named before you ask', {
+    x: M + 6.05, y: 2.35, w: 5.65, h: 0.3,
+    fontSize: 12, bold: true, charSpacing: 2, color: CORAL,
+    fontFace: 'Arial', isTextBox: true, margin: 0,
+  });
+
+  card(s, M, 2.75, 5.65, 3.25);
+  s.addText([
+    { text: 'A declared condition is stored as a catalogue identifier. No severity, no dates, no medication, no free text.', options: { bullet: true, breakLine: true, paraSpaceAfter: 9 } },
+    { text: 'Deleting an account cascades in the database from the user row — a guarantee, not a callback somebody has to remember.', options: { bullet: true, breakLine: true, paraSpaceAfter: 9 } },
+    { text: 'Health data never reaches an organisation view at any cohort size. A test asserts that no module outside the conditions service touches that table.', options: { bullet: true, breakLine: true, paraSpaceAfter: 9 } },
+    { text: 'Analytics identifiers are hashed on arrival with a salt regenerated daily, and never outlive the request.', options: { bullet: true } },
+  ], {
+    x: M + 0.4, y: 3.0, w: 4.85, h: 2.8,
+    fontSize: 11.5, color: INK2, lineSpacing: 16, valign: 'top',
+    fontFace: 'Calibri', isTextBox: true, margin: 0,
+  });
+
+  card(s, M + 6.05, 2.75, 5.65, 3.25);
+  s.addText([
+    { text: 'No external WCAG 2.2 AA audit and no VPAT. Accessibility is designed for and tested in places, not certified.', options: { bullet: true, breakLine: true, paraSpaceAfter: 9 } },
+    { text: 'Age is self-declared. Ofcom’s position is that self-declaration is not highly effective age assurance.', options: { bullet: true, breakLine: true, paraSpaceAfter: 9 } },
+    { text: 'A member can read their whole record through their own endpoints, but there is no one-click export archive yet.', options: { bullet: true, breakLine: true, paraSpaceAfter: 9 } },
+    { text: 'The Clinical Safety Officer appointment record is incomplete against DCB0129, and the hazard log says so itself.', options: { bullet: true } },
+  ], {
+    x: M + 6.45, y: 3.0, w: 4.85, h: 2.8,
+    fontSize: 11.5, color: INK2, lineSpacing: 16, valign: 'top',
+    fontFace: 'Calibri', isTextBox: true, margin: 0,
+  });
+
+  s.addText('The right-hand column is not a list we were pushed into. It is what GET /api/assurance returns when anybody calls it, with the gaps lifted to the top of the response rather than left to be found area by area.', {
+    x: M, y: 6.25, w: 11.7, h: 0.7,
+    fontSize: 12.5, italic: true, color: INK2, lineSpacing: 18, fontFace: 'Calibri', isTextBox: true, margin: 0,
+  });
+  notes(s, 'Hand this slide to their security lead early rather than defending it late. If they ask which gap is closest to closing, the export archive — the data is already readable through the member endpoints, it needs an archive endpoint around them. If they ask about the age gap, say it bites a school far harder than an employer, and that it is listed rather than argued away for that reason.');
+}
+
+/* ── 10 · pricing ────────────────────────────────────────────────── */
 {
   const s = lightSlide();
   eyebrow(s, 'Commercials', 0.7);
@@ -483,7 +545,7 @@ function notes(slide, text) {
   notes(s, 'The design-partner discount buys feedback and a future reference. Do not promise a testimonial before there is a result to describe.');
 }
 
-/* ── 10 · what we are asking ─────────────────────────────────────── */
+/* ── 11 · what we are asking ─────────────────────────────────────── */
 {
   const s = lightSlide();
   eyebrow(s, 'The ask', 0.7);
@@ -521,7 +583,7 @@ function notes(slide, text) {
   notes(s, 'Twelve weeks is short enough to approve without a procurement cycle and long enough to see whether behaviour changed.');
 }
 
-/* ── 11 · close ──────────────────────────────────────────────────── */
+/* ── 12 · close ──────────────────────────────────────────────────── */
 {
   const s = darkSlide();
   s.addShape(pres.ShapeType.ellipse, { x: M, y: 2.05, w: 0.22, h: 0.22, fill: { color: TEAL } });
