@@ -112,7 +112,7 @@ is the point of the file.
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
-Test suite: **833 passing, 0 failing** — 784 backend, 27 body-command, 22 foodlens.
+Test suite: **942 passing, 0 failing** — 893 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
@@ -220,6 +220,28 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**One backend test failed once and has not failed again.** A recursive
+`pnpm test` reported `# fail 1` on a single run; eight subsequent full
+runs reported 942 passing and 0 failing, and the failing subtest's name
+was not captured. So there is a flaky test in `apps/backend/test` and its
+identity is unknown. That matters more than it looks: a suite that fails
+one run in nine teaches everybody to re-run it, and the habit of
+re-running a red suite is how a real regression gets shipped. Next time
+it appears, capture the output — `pnpm test 2>&1 | tee /tmp/t.log` and
+read the `not ok` line — rather than re-running to see if it clears.
+
+**The sales deck's figures are a snapshot, not a live read.**
+`docs/sales/` holds the corporate deck, its generator and a table mapping
+every claim on every slide to the file it came from. Slide 7 and slide 9
+name four things as *not built* — a trend series, sedentary-risk
+distribution, a return-on-investment model, and single sign-on with
+directory sync. Single sign-on is a contracted inclusion of the
+organisation plan that exists nowhere in the code, which is exactly why
+the slide says so. If one of the four gets built, move it across in the
+deck and in that table. If a figure changes and the deck does not, the
+deck is quoting an invented number with a provenance attached, which is
+worse than no deck.
 
 **The editorial pipeline now writes for being quoted, not only ranked.**
 The bar moved from 80 to 90 and three things were added that decide
