@@ -147,8 +147,23 @@ export function grantSourceLabel(sourceRef: string | undefined | null): string {
 
   const free = /^free:.*:m(\d+)$/.exec(ref);
   if (free) {
+    /*
+     * No amount in this label, deliberately.
+     *
+     * It used to interpolate `FREE_TIER.acusPerMonth`, which meant the
+     * sentence described today's constant rather than the grant it was
+     * labelling. A member holding a 50 ACU grant issued before the free
+     * tier moved to 150 read "month 1 of 2 — 150 ACU" above a row that
+     * said "49.099 of 50 left", and the two contradicted each other on
+     * the same line.
+     *
+     * The amount is a property of the grant row and it is already
+     * rendered beside this label, so restating it here can only ever
+     * duplicate or disagree. A label describes the source; the row
+     * carries the number.
+     */
     const month = Number(free[1]) + 1;
-    return `Free tier, month ${month} of ${FREE_TIER.months} — ${FREE_TIER.acusPerMonth} ACU, does not renew`;
+    return `Free tier, month ${month} of ${FREE_TIER.months} — does not renew`;
   }
 
   const topup = /^topup_([\d.]+)gbp$/.exec(ref);

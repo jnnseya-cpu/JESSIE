@@ -112,7 +112,7 @@ is the point of the file.
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
-Test suite: **942 passing, 0 failing** — 893 backend, 27 body-command, 22 foodlens.
+Test suite: **943 passing, 0 failing** — 894 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
@@ -220,6 +220,40 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**`acu_grants` is a dead table, and it is the one with the constraints.**
+Found while reading a screenshot of a real account. `0001_core.sql`
+defines `acu_grants` with `amount integer CHECK (amount > 0)`,
+`remaining integer CHECK (remaining >= 0)` and
+`CONSTRAINT remaining_within_amount CHECK (remaining <= amount)` — three
+database-level promises about allowance. Nothing reads or writes it. The
+live wallet is `app_wallets.data`, a whole-wallet jsonb snapshot guarded
+by `version` (0004, 0027), and jsonb enforces none of those three.
+
+So "nothing may mint ACU allowance" is currently a property of
+`WalletService` only. The comment at `wallet.service.ts:659` says
+`remaining` is capped at the grant amount, and it is — in JavaScript.
+That is exactly the arrangement this file's own rule warns against: a
+CHECK is a promise that survives a refactor of the service that makes
+it, and this one does not exist where it would survive.
+
+Two things to decide, and both are architecture rather than a patch, so
+neither was done while chasing the display bug above. Whether the wallet
+moves onto the relational table it was designed for, or whether the
+constraints move onto the jsonb it actually uses — a CHECK on
+`app_wallets` asserting no grant in `data` has `remaining > amount` is
+a few lines and would close the minting hole tomorrow. Either way, drop
+the dead table or start using it. Two ledger schemas where one is
+unreachable is the duplicate architecture the refusals list forbids.
+
+**ACU balances accumulate in floating point.** 49.099 + 50 evaluates to
+99.09899999999999. The account page renders through `toLocaleString`,
+which rounds to three fraction digits, so a member sees 99.099 and the
+display is not wrong. The residue is orders of magnitude below a penny —
+1 ACU is 1p — and it has no path into a Stripe charge, so this is
+recorded rather than fixed. It matters only if ACU ever become
+directly refundable in cash, at which point the wallet should hold
+integer thousandths rather than floats.
 
 **One backend test failed once and has not failed again.** A recursive
 `pnpm test` reported `# fail 1` on a single run; eight subsequent full

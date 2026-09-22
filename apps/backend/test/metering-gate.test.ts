@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { countedTotal, withExpiry } from '../src/acu/grants.logic.ts';
 import {
   DEFAULT_MODELS,
   PLAN_DEFINITIONS,
@@ -460,11 +461,29 @@ test('a balance says where it came from', async () => {
    * a platform budget all land in the same total and read identically —
    * which makes an ordinary increase indistinguishable from a fault.
    */
-  const { grantSourceLabel, FREE_TIER } = await import('@jessmove/shared');
+  const { grantSourceLabel } = await import('@jessmove/shared');
 
   assert.match(grantSourceLabel('free:u_abc:m0'), /month 1 of 2/);
-  assert.match(grantSourceLabel('free:u_abc:m0'), new RegExp(`${FREE_TIER.acusPerMonth} ACU`));
   assert.match(grantSourceLabel('free:u_abc:m0'), /does not renew/);
+
+  /*
+   * The label must not state an amount.
+   *
+   * This assertion replaces one that checked the label contained
+   * `FREE_TIER.acusPerMonth` — which compared the label against the very
+   * constant it interpolated, so it passed whatever the constant said and
+   * whatever the grant actually held. When the free tier moved from 50 to
+   * 150 ACU, every historical 50 ACU grant started describing itself as
+   * 150 and the test stayed green.
+   *
+   * The amount belongs to the grant row, which is rendered beside this
+   * label. A label that repeats it can only duplicate or contradict it.
+   */
+  assert.doesNotMatch(
+    grantSourceLabel('free:u_abc:m0'),
+    /\d+\s*ACU/,
+    'the free-tier label states an amount, which can disagree with the grant it labels',
+  );
   assert.match(grantSourceLabel('topup_5gbp'), /Top-up of £5/);
   assert.match(grantSourceLabel('monthly_subscription'), /plan’s monthly allowance/);
   assert.match(grantSourceLabel('admin_grant'), /platform staff/);
@@ -488,4 +507,69 @@ test('the account page can show the breakdown', () => {
   // spent is the thing somebody is actually asking about.
   assert.match(panel, /g\.remaining\.toLocaleString/);
   assert.match(panel, /g\.amount\.toLocaleString/);
+  // And it must distinguish a grant that still counts from one that does
+  // not, or the itemised list disagrees with the headline above it.
+  assert.match(panel, /g\.expired/);
+});
+
+test('the breakdown adds up to the balance, and an expired grant is marked', () => {
+  /*
+   * The defect this closes, with the figures from the account it was
+   * found on.
+   *
+   * One expired staff grant holding 485.095 of 500 unused, plus two live
+   * free-tier grants of 50. `WalletService.balance` answered 99.099 and
+   * was right — it filters on expiry. The breakdown filtered on
+   * `remaining > 0` alone, listed all three, and produced an itemised
+   * list totalling 584.194 under a headline of 99.099. Given those two
+   * numbers a member believes the itemised one, so the correct balance
+   * looked like the fault.
+   *
+   * The property is not "expired grants are hidden" — removing the row
+   * would leave the drop in the balance unexplained, which is the exact
+   * complaint the breakdown was built to answer. It is that every row a
+   * member can add up is either counted or visibly marked as not
+   * counted.
+   */
+  const day = 24 * 60 * 60 * 1000;
+  const now = new Date('2026-09-22T04:52:00Z');
+
+  const lines = withExpiry(
+    [
+      { remaining: 485.095, amount: 500, expiresAt: new Date('2026-09-01T00:00:00Z') },
+      { remaining: 49.099, amount: 50, expiresAt: new Date('2026-11-02T00:00:00Z') },
+      { remaining: 50, amount: 50, expiresAt: new Date('2026-12-19T00:00:00Z') },
+      // Fully spent, so it is not a row at all.
+      { remaining: 0, amount: 200, expiresAt: new Date(now.getTime() + 30 * day) },
+    ],
+    now,
+  );
+
+  assert.equal(lines.length, 3, 'a spent grant is still being listed');
+  assert.deepEqual(
+    lines.map((l) => l.expired),
+    [true, false, false],
+  );
+
+  /*
+   * Compared to three decimal places, not exactly. ACU are held as
+   * numbers in a jsonb wallet snapshot and priced fractionally, so
+   * 49.099 + 50 is 99.09899999999999 in IEEE-754. The account page
+   * renders through `toLocaleString`, which rounds to three fraction
+   * digits, so 99.099 is what a member sees and what this compares.
+   * The residue is far below a penny — 1 ACU is 1p — and is recorded in
+   * STATE-OF-PLAY rather than papered over here.
+   */
+  const to3 = (n: number) => Number(n.toFixed(3));
+
+  // The headline, and the only rows a member may add up to reach it.
+  assert.equal(to3(countedTotal(lines)), 99.099);
+
+  // And the trap: the unmarked sum a member would otherwise compute.
+  const naive = lines.reduce((sum, l) => sum + l.remaining, 0);
+  assert.equal(to3(naive), 584.194);
+  assert.ok(
+    naive > countedTotal(lines),
+    'nothing distinguishes the expired row, so the list still contradicts the headline',
+  );
 });

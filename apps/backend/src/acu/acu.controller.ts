@@ -23,6 +23,7 @@ import {
 } from '@jessmove/body-command';
 import { AdminOnly, SelfOnly } from '../auth/auth.guard';
 import { WalletService, type SpendControls, type SpendRequest } from './wallet.service';
+import { withExpiry } from './grants.logic';
 
 @Controller('acu')
 export class AcuController {
@@ -141,7 +142,7 @@ export class AcuController {
     return {
       walletId: wallet.id,
       balance: await this.wallets.balance(wallet.id),
-      grants: wallet.grants.filter((g) => g.remaining > 0),
+      grants: withExpiry(wallet.grants),
       freeTier: freeTierState(sourceRefs, userId),
     };
   }
@@ -154,7 +155,7 @@ export class AcuController {
     return {
       found: true,
       balance: await this.wallets.balance(id),
-      grants: wallet.grants.filter((g) => g.remaining > 0),
+      grants: withExpiry(wallet.grants),
       controls: wallet.controls,
       spentToday: wallet.spentToday,
       spentThisMonth: wallet.spentThisMonth,

@@ -268,7 +268,7 @@ export function AccountPanel() {
 
   const [wallet, setWallet] = useState<{
     balance: number;
-    grants?: { id: string; amount: number; remaining: number; sourceRef?: string; expiresAt: string }[];
+    grants?: { id: string; amount: number; remaining: number; sourceRef?: string; expiresAt: string; expired?: boolean }[];
   } | null>(null);
   const [showGrants, setShowGrants] = useState(false);
   const [grantTarget, setGrantTarget] = useState('');
@@ -383,7 +383,7 @@ export function AccountPanel() {
           setWallet(
             ((await res.json()).data as {
               balance: number;
-              grants?: { id: string; amount: number; remaining: number; sourceRef?: string; expiresAt: string }[];
+              grants?: { id: string; amount: number; remaining: number; sourceRef?: string; expiresAt: string; expired?: boolean }[];
             }) ?? null,
           );
         }
@@ -830,18 +830,32 @@ export function AccountPanel() {
                 {showGrants && (
                   <ul className="acct__grants">
                     {(wallet.grants ?? []).map((g) => (
-                      <li key={g.id}>
+                      /*
+                        An expired grant stays in this list because the
+                        balance dropping when it expired is the thing most
+                        worth explaining. But it must never read like a
+                        live one: the amount is struck through and the date
+                        says "Expired", so the itemised list can no longer
+                        be added up to a larger number than the headline.
+                      */
+                      <li key={g.id} className={g.expired ? 'acct__grant--spent' : undefined}>
                         <strong>
-                          {g.remaining.toLocaleString('en-GB')}
-                          <small> of {g.amount.toLocaleString('en-GB')} left</small>
+                          {g.expired ? (
+                            <s>{g.remaining.toLocaleString('en-GB')}</s>
+                          ) : (
+                            g.remaining.toLocaleString('en-GB')
+                          )}
+                          <small> of {g.amount.toLocaleString('en-GB')} {g.expired ? 'unused' : 'left'}</small>
                         </strong>
                         <em>{grantSourceLabel(g.sourceRef)}</em>
                         <span>
-                          Expires {new Date(g.expiresAt).toLocaleDateString('en-GB', {
+                          {g.expired ? 'Expired' : 'Expires'}{' '}
+                          {new Date(g.expiresAt).toLocaleDateString('en-GB', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
                           })}
+                          {g.expired && ' — no longer counted in the balance above'}
                         </span>
                       </li>
                     ))}
