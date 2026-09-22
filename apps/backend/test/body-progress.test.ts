@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -77,4 +78,82 @@ test('what you did is reported beside the trend, never as its cause', () => {
   assert.match(alongside.says, /not as its cause/);
   assert.match(alongside.says, /9 of 14/);
   assert.match(alongsideFrom({ daysMoved: 0, mealsChecked: 0, windowDays: 14 }).says, /Nothing recorded/);
+});
+
+test('a daily plan never invents a finding about the person reading it', () => {
+  /*
+   * `/body/plan` returned the same six actions to every adult, and five
+   * of them carried a sentence that read as something measured:
+   *
+   *   "Your evening meals are already balanced. Drinks are the bigger
+   *    opportunity."
+   *   "You have three real gaps in the calendar today."
+   *   "Short sleep predicts tomorrow's afternoon snacking for you."
+   *
+   * Nothing computed any of it. No meal was read, no calendar was
+   * consulted, no correlation was fitted — the Dynamic Adherence and
+   * Root-Cause agents that would produce such sentences are specified in
+   * `BC_AGENTS` and do not run. On a health surface an invented
+   * observation about somebody's diet or sleep is not a wording problem,
+   * and a member who checks their calendar and finds no three gaps has
+   * been given a reason to disbelieve everything else the platform says.
+   *
+   * The rule this holds: a rationale may state why an action is worth
+   * doing for anybody. It may not address the reader in the second
+   * person about what their own data shows, until something has actually
+   * looked.
+   */
+  const service = readFileSync(
+    new URL('../src/body/body.service.ts', import.meta.url),
+    'utf8',
+  );
+
+  const rationales = [...service.matchAll(/^\s+'([^']{20,})',\n\s+\),/gm)].map((m) => m[1]!);
+  assert.ok(rationales.length >= 8, 'the rationale sentences moved — this check is now blind');
+
+  /*
+   * Narrower than "no second person", because the second person is not
+   * the problem. "Building strong is about what your body can do" is a
+   * framing statement and is true for anybody. "Your evening meals are
+   * already balanced" is a finding. What separates them is the assertion
+   * of state — a possessive followed by a copula, a count of things the
+   * member supposedly has, or a prediction addressed to them.
+   */
+  const asserts = [
+    /\byour\s+[\w-]+(\s+[\w-]+)?\s+(is|are|was|were)\b/i,
+    /\byou have\b/i,
+    /\bfor you\b/i,
+    /\byour strongest\b/i,
+    /\bpredicts\b/i,
+  ];
+  for (const line of rationales) {
+    for (const pattern of asserts) {
+      assert.doesNotMatch(
+        line,
+        pattern,
+        `a hardcoded rationale states a finding about the reader: "${line}"`,
+      );
+    }
+  }
+
+  /*
+   * And the same for the completion probabilities, which were a decimal
+   * per action, hand-written, identical for every member, and typed as
+   * coming "from the Dynamic Adherence Agent". Nullable is the honest
+   * shape: it distinguishes "not modelled" from "modelled as unlikely".
+   */
+  const planType = readFileSync(
+    new URL('../../../packages/body-command/src/plan.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    planType,
+    /completionProbability: number \| null/,
+    'completionProbability is non-nullable again, so an unmodelled action must invent a number',
+  );
+  assert.doesNotMatch(
+    service,
+    /completionProbability:\s*0\.\d+/,
+    'a hardcoded completion probability is back in the plan builder',
+  );
 });

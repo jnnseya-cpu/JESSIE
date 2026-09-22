@@ -112,7 +112,7 @@ is the point of the file.
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
-Test suite: **943 passing, 0 failing** — 894 backend, 27 body-command, 22 foodlens.
+Test suite: **944 passing, 0 failing** — 895 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
@@ -220,6 +220,40 @@ this route is not behind one.
 ---
 
 ## Watch list
+
+**Nineteen body agents are specified and none of them runs.**
+`BC_AGENTS` in `packages/body-command` describes nineteen agents —
+orchestrator, adiposity interpreter, composition protection, plateau
+intelligence, root-cause investigator, dynamic adherence and the rest.
+The only code that touches it is `GET /api/body/agents`, which returns
+the list. Nothing executes, and the entire body subsystem never calls
+the AI gateway: `body.service.ts` imports no gateway and makes no model
+call. That is not a fault — deterministic first is the right order — but
+the catalogue reads as a running system and it is a published one.
+
+What *is* real, and it is the hard half: nine pathways, eight blocking
+signals, fourteen escalation signals, nine guardian powers, eight
+prohibited mechanics, `assessSafety` that can only narrow, and C6 —
+a minor gets `metrics: null` with consent set true, proven against the
+running service. Plus `interpretAdiposity`, which never reads BMI in
+isolation, and `trendFrom`/`warningsFor` for rate of change.
+
+The gap between those two lists is the whole body roadmap. The agents
+that need no model at all — minimum effective change, plateau
+classification, adherence ranking, micro-movement timing — are the ones
+to build first, because they are ranking and arithmetic over data the
+platform already holds.
+
+**A weight reading is stored and never read back.** `member_activity`
+carries `body_read` rows with a `value` (migration 0009), and
+`activityDashboard` already returns them as `weights`. Nothing renders
+`weights` — it is declared in the dashboard type in `dashboard.tsx` and
+used nowhere. The trend on the account page is computed from a separate
+copy of the same readings kept in the `/state` blob, so a member who
+changes device, or whose blob is lost, restarts their trajectory while
+the real history sits in the database. Two stores of one fact, and the
+product reads the weaker one. For anything that claims to track a
+trajectory over months, this is the first thing to fix.
 
 **`acu_grants` is a dead table, and it is the one with the constraints.**
 Found while reading a screenshot of a real account. `0001_core.sql`

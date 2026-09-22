@@ -14,9 +14,29 @@ export interface CommandAction {
   instruction: string;
   category: 'anchor' | 'food' | 'movement' | 'strength' | 'recovery' | 'power_up';
   estimatedMinutes: number;
-  /** 0–1, from the Dynamic Adherence Agent. */
-  completionProbability: number;
-  /** Why this action, in the user's terms. */
+  /**
+   * 0–1, from the Dynamic Adherence Agent — and `null` until that agent
+   * actually runs.
+   *
+   * It was a number, and the numbers were written by hand. Every adult
+   * received 0.71 for the walk and 0.66 for the drink swap whatever the
+   * platform knew about them, which is a prediction about a named person
+   * that nothing predicted. Nullable is the honest shape: a caller can
+   * tell "we have not modelled this" from "we think it is unlikely",
+   * which a hardcoded 0.52 cannot express.
+   */
+  completionProbability: number | null;
+  /**
+   * Why this action — a property of the action, never a finding about
+   * the member.
+   *
+   * "Protecting muscle matters more than the scale" is the first kind
+   * and is fine. "Your evening meals are already balanced" is the
+   * second: it reads as something measured, nothing measured it, and on
+   * a health surface an invented observation about somebody's diet is
+   * not a wording problem. Until an agent produces these from data, they
+   * say what is true of the action for anybody.
+   */
   rationale: string;
 }
 
