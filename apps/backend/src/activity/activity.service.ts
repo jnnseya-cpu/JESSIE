@@ -4,6 +4,7 @@ import { computeRewards, type Rewards } from './rewards.logic';
 import {
   buildDashboard,
   dayKey,
+  BODY_READING_DAYS,
   type ActivityKind,
   type ActivityRow,
   type Dashboard,
@@ -140,6 +141,64 @@ export class ActivityService implements OnModuleDestroy {
       deliveredToday: rows.filter((r) => r.kind === 'snap_offered' && r.onDay === today).length,
       minutesSinceLastNudge: last ? Math.max(0, Math.floor((Date.now() - last) / 60_000)) : FAR,
     };
+  }
+
+  /**
+   * A member's own weight readings, over a horizon long enough to be a
+   * trajectory.
+   *
+   * `dashboard()` reads a fourteen-day window, which is right for
+   * completion curves and useless for weight: two weeks of readings
+   * cannot distinguish a plateau from noise, and that distinction is the
+   * whole point of the trend. So this is a separate read with its own
+   * horizon rather than a widening of the dashboard's.
+   *
+   * It exists because the readings had two homes. Every reading was
+   * written here *and* kept in a `member_state` blob, and the account
+   * page computed its trend from the blob — which meant the warnings
+   * `warningsFor` produces, including a `stop`, were derived from an
+   * array the client had sent us rather than from what the member
+   * actually recorded. Both stores are durable; only one of them is a
+   * record.
+   *
+   * One reading per day, latest wins. Somebody who weighs themselves
+   * twice on a Tuesday has not created two days of trend.
+   */
+  async readings(userId: string, days = BODY_READING_DAYS): Promise<{ day: string; kg: number }[]> {
+    const horizon = Math.max(1, Math.min(Math.floor(days), 3650));
+    let rows: { day: string; kg: number; at: string }[] = [];
+
+    if (this.pool) {
+      try {
+        const result = await this.pool.query(
+          `SELECT on_day, value, at
+             FROM member_activity
+            WHERE user_id = $1
+              AND kind = 'body_read'
+              AND value IS NOT NULL
+              AND on_day >= current_date - make_interval(days => $2)
+            ORDER BY at ASC`,
+          [userId, horizon],
+        );
+        rows = result.rows.map((r) => ({
+          day: r.on_day instanceof Date ? r.on_day.toISOString().slice(0, 10) : String(r.on_day).slice(0, 10),
+          kg: Number(r.value),
+          at: r.at instanceof Date ? r.at.toISOString() : String(r.at),
+        }));
+      } catch (error) {
+        this.logger.warn(`reading history failed: ${(error as Error).message}`);
+        return [];
+      }
+    } else {
+      const cutoff = dayKey(new Date(Date.now() - horizon * 86_400_000));
+      rows = (this.memory.get(userId) ?? [])
+        .filter((r) => r.kind === 'body_read' && typeof r.value === 'number' && r.onDay >= cutoff)
+        .map((r) => ({ day: r.onDay, kg: r.value as number, at: r.at }));
+    }
+
+    const latestPerDay = new Map<string, { day: string; kg: number }>();
+    for (const row of rows) latestPerDay.set(row.day, { day: row.day, kg: row.kg });
+    return [...latestPerDay.values()].sort((a, b) => a.day.localeCompare(b.day));
   }
 
   async dashboard(userId: string): Promise<Dashboard & { rewards: Rewards }> {

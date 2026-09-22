@@ -1,6 +1,8 @@
 import { BodyAssessmentDto, ProgressDto } from './body.dto';
 import { alongsideFrom, trendFrom, warningsFor } from './progress.logic';
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { SelfOnly } from '../auth/auth.guard';
+import { ActivityService } from '../activity/activity.service';
 import {
   BC_AGENTS,
   BODY_PATHWAYS,
@@ -22,9 +24,67 @@ import {
 } from '@jessmove/shared';
 import { BodyService, type BodyAssessmentRequest } from './body.service';
 
+/** Said identically by the stateless calculator and the member's own read. */
+const HOW_PROGRESS_WORKS = [
+  'You give a reading whenever you like — nothing is measured behind your back.',
+  'Two readings make a direction; three make a trend worth reading.',
+  'The rate is checked against what is sustainable, not against other people.',
+  'What you did is shown beside the trend, never as its cause.',
+] as const;
+
 @Controller('body')
 export class BodyController {
-  constructor(private readonly body: BodyService) {}
+  constructor(
+    private readonly body: BodyService,
+    private readonly activity: ActivityService,
+  ) {}
+
+  /**
+   * A member's own trajectory, from the readings they actually recorded.
+   *
+   * `POST /body/progress` below is the same arithmetic over readings the
+   * caller supplies. That is the right shape for a public calculator and
+   * the wrong one for a member: it made `warningsFor` — which can return
+   * a `stop` — a function of an array the browser had been keeping in a
+   * `member_state` blob, so the same readings lived in two durable
+   * places and the product read the copy it could not vouch for.
+   *
+   * This reads `member_activity`, where every reading was already being
+   * written and then never read back. Same logic, same response shape,
+   * one source.
+   */
+  @SelfOnly('userId')
+  @Get('trajectory/:userId')
+  async trajectory(
+    @Param('userId') userId: string,
+    @Query('age') age?: string,
+    @Query('bmi') bmi?: string,
+    @Query('daysMoved') daysMoved?: string,
+    @Query('mealsChecked') mealsChecked?: string,
+  ) {
+    const readings = await this.activity.readings(userId);
+    const trend = trendFrom(readings);
+    const latest = readings[readings.length - 1];
+    const parsedAge = Number(age);
+    const parsedBmi = Number(bmi);
+
+    return {
+      readings,
+      trend,
+      warnings: warningsFor({
+        age: Number.isFinite(parsedAge) ? parsedAge : 0,
+        bmi: Number.isFinite(parsedBmi) ? parsedBmi : null,
+        trend,
+        latestKg: latest?.kg ?? null,
+      }),
+      alongside: alongsideFrom({
+        daysMoved: Number(daysMoved) || 0,
+        mealsChecked: Number(mealsChecked) || 0,
+        windowDays: 14,
+      }),
+      howItWorks: HOW_PROGRESS_WORKS,
+    };
+  }
 
   /** The nine pathways and what each is for. */
   @Get('pathways')
@@ -54,12 +114,7 @@ export class BodyController {
         mealsChecked: body.mealsChecked ?? 0,
         windowDays: body.windowDays ?? 14,
       }),
-      howItWorks: [
-        'You give a reading whenever you like — nothing is measured behind your back.',
-        'Two readings make a direction; three make a trend worth reading.',
-        'The rate is checked against what is sustainable, not against other people.',
-        'What you did is shown beside the trend, never as its cause.',
-      ],
+      howItWorks: HOW_PROGRESS_WORKS,
     };
   }
 

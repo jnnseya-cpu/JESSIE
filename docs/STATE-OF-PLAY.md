@@ -33,6 +33,7 @@ is the point of the file.
 | What | Proven by |
 |---|---|
 | A native shell exists, and the web build does not depend on it | `apps/mobile`. Proven: `window.JessMoveNative` is `undefined` in a browser, the device-calendar button is not rendered, and the Snap request sends the identical payload it sent before the shell existed |
+| A weight trajectory is read from the record, not from the caller | `GET /body/trajectory/:userId`, `@SelfOnly`. Proven against real Postgres on all 32 migrations: two readings on one day collapse to one with the later winning, a 400-day-old reading falls outside the 182-day horizon, five readings over 28 days give -0.72 kg/week, and a BMI of 17.4 raises the `stop` from the stored row rather than from a number the caller sent. 401 with no session, 403 for somebody else's id, 200 for your own |
 | A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 26 assertions, five of them reading the Swift and Kotlin source because no compiler here can. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
 | The calendar is read, and never seen | `packages/shared/src/calendar.ts` parses .ics in the browser. Proven at runtime: an event titled "Oncology follow-up with Dr Patel" produced 14 correct windows and the payload leaving the browser carried only weekdays and minutes |
 | A free trial buys thirty FoodLens analyses, not two | `LENS` moved to `mid_tier_llm` and `FREE_TIER` to 150 ACU. Asserted by what it buys rather than by the number, so a model or rate change fails the test rather than a member's first week |
@@ -112,7 +113,7 @@ is the point of the file.
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
-Test suite: **944 passing, 0 failing** — 895 backend, 27 body-command, 22 foodlens.
+Test suite: **947 passing, 0 failing** — 898 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
@@ -243,17 +244,6 @@ that need no model at all — minimum effective change, plateau
 classification, adherence ranking, micro-movement timing — are the ones
 to build first, because they are ranking and arithmetic over data the
 platform already holds.
-
-**A weight reading is stored and never read back.** `member_activity`
-carries `body_read` rows with a `value` (migration 0009), and
-`activityDashboard` already returns them as `weights`. Nothing renders
-`weights` — it is declared in the dashboard type in `dashboard.tsx` and
-used nowhere. The trend on the account page is computed from a separate
-copy of the same readings kept in the `/state` blob, so a member who
-changes device, or whose blob is lost, restarts their trajectory while
-the real history sits in the database. Two stores of one fact, and the
-product reads the weaker one. For anything that claims to track a
-trajectory over months, this is the first thing to fix.
 
 **`acu_grants` is a dead table, and it is the one with the constraints.**
 Found while reading a screenshot of a real account. `0001_core.sql`

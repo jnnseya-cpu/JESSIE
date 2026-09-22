@@ -108,7 +108,17 @@ const called = new Set();
 for (const file of walk(join(ROOT, 'apps/frontend/app')).filter((f) => /\.tsx?$/.test(f))) {
   const text = readFileSync(file, 'utf8');
   for (const m of text.matchAll(/apiBase\(\)\}([^`'"]*)/g)) called.add(shape(m[1]));
-  for (const m of text.matchAll(/[`'"](\/[A-Za-z0-9_${}().\/:-]*)[`'"]/g)) {
+  /*
+   * `?`, `&` and `=` belong in this class even though `shape` strips the
+   * query, because the class has to survive the whole literal to reach
+   * the closing quote. Without them a template literal carrying a query
+   * — `` `/body/trajectory/${id}?${params}` `` — failed to match at all,
+   * and the route it calls was reported as having no caller on the same
+   * commit that added the call. That is the fourth distinct way this
+   * matcher has cried wolf; each one is written down here because the
+   * second false positive is when somebody stops reading the report.
+   */
+  for (const m of text.matchAll(/[`'"](\/[A-Za-z0-9_${}().\/:&?=-]*)[`'"]/g)) {
     const path = m[1];
     const first = path.split('/').filter(Boolean)[0];
     if (first && bases.has(first)) called.add(shape(path));

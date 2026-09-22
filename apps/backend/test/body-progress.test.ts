@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { BODY_READING_DAYS, WINDOW_DAYS } from '../src/activity/activity.logic.ts';
 import {
   alongsideFrom,
   trendFrom,
@@ -155,5 +156,84 @@ test('a daily plan never invents a finding about the person reading it', () => {
     service,
     /completionProbability:\s*0\.\d+/,
     'a hardcoded completion probability is back in the plan builder',
+  );
+});
+
+test('the trajectory is one reading a day, latest winning', () => {
+  /*
+   * Readings had two durable homes: a row per reading in
+   * `member_activity`, and a copy in the autosaved `member_state` blob.
+   * The account page computed its trend from the blob and sent it up in
+   * the request body, so `warningsFor` — which can return a `stop` — was
+   * a function of an array the browser was holding rather than of what
+   * the member had recorded.
+   *
+   * Neither copy was being lost; both are Postgres tables. The defect
+   * was that the product treated the copy it could not vouch for as the
+   * record, while the one with a row per reading was written and never
+   * read back. This keeps the row.
+   *
+   * `ActivityService` is decorated, so it cannot be imported under the
+   * type-stripping runner. The collapsing rule is the part worth
+   * holding and it is pure, so it is asserted here and the SQL that
+   * implements the same rule is read from the source below.
+   */
+  const rows = [
+    { day: '2026-09-01', kg: 92.4, at: '2026-09-01T07:00:00Z' },
+    { day: '2026-09-01', kg: 92.1, at: '2026-09-01T19:00:00Z' },
+    { day: '2026-09-08', kg: 91.6, at: '2026-09-08T07:00:00Z' },
+  ];
+  const latestPerDay = new Map<string, { day: string; kg: number }>();
+  for (const row of rows) latestPerDay.set(row.day, { day: row.day, kg: row.kg });
+  const readings = [...latestPerDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+
+  assert.equal(readings.length, 2, 'a second reading on one day created a second day');
+  assert.equal(readings[0]!.kg, 92.1, 'the earlier reading of the day won');
+  assert.equal(trendFrom(readings).direction, 'down');
+
+  const service = readFileSync(
+    new URL('../src/activity/activity.service.ts', import.meta.url),
+    'utf8',
+  );
+  // Only readings, only this member, and ordered so "latest wins" means
+  // what it says.
+  assert.match(service, /kind = 'body_read'/);
+  assert.match(service, /value IS NOT NULL/);
+  assert.match(service, /WHERE user_id = \$1/);
+  assert.match(service, /ORDER BY at ASC/);
+});
+
+test('the trajectory horizon is not the dashboard window', () => {
+  /*
+   * A fortnight is the right frame for a completion curve and the wrong
+   * one for weight: a sustainable rate is fractions of a kilogram a
+   * week, so fourteen days of readings is mostly hydration and cannot
+   * separate a plateau from noise. If these two ever become the same
+   * number again, the trajectory has quietly been narrowed to a
+   * fortnight and every plateau will read as a stall.
+   */
+  assert.ok(
+    BODY_READING_DAYS > WINDOW_DAYS * 4,
+    'the reading horizon has collapsed towards the dashboard window',
+  );
+});
+
+test('another member’s trajectory is not readable', () => {
+  /*
+   * The route takes a user id in the path, which is the shape that
+   * invites reading somebody else's. `SelfOnly` compares it against the
+   * session; the repository's own `admin-guard.test.ts` sweeps every
+   * controller for unguarded routes, and this asserts the specific
+   * decorator on the specific route so a refactor cannot quietly widen
+   * it to the whole cohort.
+   */
+  const controller = readFileSync(
+    new URL('../src/body/body.controller.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    controller,
+    /@SelfOnly\('userId'\)\s*\n\s*@Get\('trajectory\/:userId'\)/,
+    'the trajectory route lost its SelfOnly guard',
   );
 });

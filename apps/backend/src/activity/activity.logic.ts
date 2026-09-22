@@ -304,3 +304,15 @@ function readingsFrom(
     },
   ];
 }
+
+/**
+ * How far back a weight trajectory reads.
+ *
+ * Not `WINDOW_DAYS`. Fourteen days is the right frame for a completion
+ * curve and the wrong one for weight: a sustainable rate of change is
+ * measured in fractions of a kilogram a week, so a fortnight of readings
+ * is mostly hydration and cannot separate a plateau from noise. Half a
+ * year is long enough for the distinction to exist and short enough that
+ * a reading from two products ago is not still shaping today's advice.
+ */
+export const BODY_READING_DAYS = 182;

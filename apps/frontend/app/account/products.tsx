@@ -39,6 +39,13 @@ async function post(path: string, body: unknown) {
   return json.data;
 }
 
+async function get(path: string) {
+  const res = await fetch(`${apiBase()}${path}`, { credentials: 'include' });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+  return json.data;
+}
+
 /* ------------------------------------------------------------------ *
  * MOVA — the coach you can ask
  * ------------------------------------------------------------------ */
@@ -172,8 +179,6 @@ export function BodyCommandModule({
           weightKg?: string;
           waistCm?: string;
           goal?: string;
-          history?: number[];
-          readings?: { day: string; kg: number }[];
         }
       | undefined;
     if (!saved) return;
@@ -181,8 +186,6 @@ export function BodyCommandModule({
     if (saved.weightKg) setWeightKg(saved.weightKg);
     if (saved.waistCm) setWaistCm(saved.waistCm);
     if (saved.goal) setGoal(saved.goal);
-    if (Array.isArray(saved.history)) setHistory(saved.history);
-    if (Array.isArray(saved.readings)) setReadings(saved.readings);
   }, [loaded, state]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -212,31 +215,35 @@ export function BodyCommandModule({
         optedIntoBodyMetrics: !minor,
       });
       setResult(data as Assessment);
-      // The reading becomes history, which is what lets a trajectory and
-      // a trend exist at all.
+      /*
+       * The reading is recorded, and then the trajectory is read back
+       * from the recording.
+       *
+       * It used to be kept a second time in this component's autosaved
+       * state and sent to `/body/progress` in the request body, which
+       * made the trend — and the warnings derived from it, up to a
+       * `stop` — a function of an array the browser was holding. Both
+       * copies were durable, so this was never about data loss; it was
+       * about which of two durable copies the product treated as the
+       * record. `member_activity` is the one with a row per reading.
+       */
       if (!minor && weightKg) {
-        void recordActivity({ kind: 'body_read', value: Number(weightKg) });
-        setHistory((h) => [...h, Number(weightKg)]);
-        const today = new Date().toISOString().slice(0, 10);
-        const nextReadings = [
-          ...readings.filter((r) => r.day !== today),
-          { day: today, kg: Number(weightKg) },
-        ];
-        setReadings(nextReadings);
+        await recordActivity({ kind: 'body_read', value: Number(weightKg) });
 
-        // The loop: what has changed, what to watch, what you were doing.
         const metrics = (data as Assessment).metrics;
         try {
-          setProgress(
-            (await post('/body/progress', {
-              age: me.age,
-              bmi: metrics?.bmi,
-              readings: nextReadings,
-              daysMoved: dashboard?.daysMovedInWindow ?? 0,
-              mealsChecked: dashboard?.foodChecks ?? 0,
-              windowDays: 14,
-            })) as typeof progress,
-          );
+          const query = new URLSearchParams({
+            age: String(me.age),
+            daysMoved: String(dashboard?.daysMovedInWindow ?? 0),
+            mealsChecked: String(dashboard?.foodChecks ?? 0),
+            ...(metrics?.bmi ? { bmi: String(metrics.bmi) } : {}),
+          });
+          const loop = (await get(
+            `/body/trajectory/${encodeURIComponent(me.userId)}?${query}`,
+          )) as typeof progress & { readings: { day: string; kg: number }[] };
+          setProgress(loop);
+          setReadings(loop.readings ?? []);
+          setHistory((loop.readings ?? []).map((r) => r.kg));
         } catch {
           /* the assessment still stands without the loop around it */
         }
@@ -251,7 +258,7 @@ export function BodyCommandModule({
   const metrics = result?.metrics;
   const saveState = useAutosave(
     'body.inputs',
-    { heightCm, weightKg, waistCm, goal, history, readings },
+    { heightCm, weightKg, waistCm, goal },
     restored,
   );
 
