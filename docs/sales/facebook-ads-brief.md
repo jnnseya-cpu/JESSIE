@@ -276,3 +276,191 @@ correctness problem rather than a funnel one.
 
 **Before any of this goes live**, a named human reviews the copy. Record
 who, and when.
+
+---
+
+# The copy, written
+
+The section above is the guardrail. This is the creative. Thirty lines,
+run through `bannedTermsIn` and through the personal-attributes test
+sentence by sentence.
+
+The punch does not come from adjectives, because the adjectives in this
+category are exhausted and nobody reads them. It comes from saying a
+specific, checkable, slightly uncomfortable thing that no competitor in
+the feed is able to say back. Every line below is a fact from the code.
+
+---
+
+## A — Nobody is excluded *(lead)*
+
+**Primary text, short**
+> Most movement apps assume everyone can stand up. This one ships five
+> versions of every move.
+
+**Primary text, long**
+> Five versions of every single movement: standing, seated,
+> chair-supported, bed or recliner, and one-limb adaptive.
+>
+> Not one version with things taken out — a good seated movement uses
+> the chair.
+>
+> If a movement doesn't have all five, it never gets published. There is
+> no override button, and no admin can press one.
+>
+> Free. £0. No card.
+
+**Headlines**
+> Five versions. No exceptions.
+> One of them is done sitting down.
+> Built for the people usually left out
+
+**Description** · `Free, and it takes no card`
+**Button** · Sign up
+
+---
+
+## B — Ninety seconds
+
+**Primary text, short**
+> A session is 90 seconds. Reading this ad takes longer.
+
+**Primary text, long**
+> Ninety seconds to five minutes. That's the whole session.
+>
+> It isn't a marketing round-down either — it's a rule in the database.
+> Anything longer than five minutes is not permitted to exist in the
+> library.
+>
+> Nobody skips 90 seconds because they ran out of time.
+>
+> Free. £0. No card.
+
+**Headlines**
+> 90 seconds. That is the session.
+> Shorter than this advert
+> No hour to find. There isn't one.
+
+**Description** · `Free, and it takes no card`
+**Button** · Sign up
+
+---
+
+## C — It knows when to say nothing
+
+**Primary text, short**
+> Most apps count the notifications they sent. This one counts the ones
+> it held back.
+
+**Primary text, long**
+> It stays quiet while someone is driving. On a call. In quiet hours.
+> Past the daily limit. Flagged to rest.
+>
+> And when it decides not to speak, that gets recorded as a success —
+> not as a delivery it missed.
+>
+> Which is the opposite of how every other app in your pocket is scored.
+>
+> Free. £0. No card.
+
+**Headlines**
+> It counts its silences
+> The one built to interrupt less
+> A prompt it holds back is a win
+
+**Description** · `Free, and it takes no card`
+**Button** · Learn more
+
+---
+
+## D — The calendar it never reads
+
+**Primary text, short**
+> It reads the gaps in a calendar. It never reads the titles. Not once.
+
+**Primary text, long**
+> Start time. End time. Busy or free. How many people. Whether it
+> repeats.
+>
+> That is the entire list. The title of a meeting is never transmitted,
+> never logged, and never sent to a model.
+>
+> A one-to-one and a board review look identical to us. That costs us
+> accuracy, and we take the worse suggestion instead.
+>
+> Free. £0. No card.
+
+**Headlines**
+> We read the gaps, not the titles
+> Your 3pm stays yours
+> Accuracy we gave up on purpose
+
+**Description** · `Free, and it takes no card`
+**Button** · Learn more
+
+---
+
+## E — Ten to a hundred, one household *(the paid ask)*
+
+**Primary text, short**
+> Six settings from ten to a hundred. A nine-year-old and an
+> eighty-year-old are not sent the same thing.
+
+**Primary text, long**
+> Six age settings, ten through to a hundred. Different mechanics,
+> different daily limits, different safety rules at each one — derived
+> from a verified age band, never chosen from a menu.
+>
+> A child is never shown a number about themselves. That isn't a setting
+> a parent switches on. It cannot be switched on.
+>
+> £12.99 a month, up to four people.
+
+**Headlines**
+> Ten to a hundred. One household.
+> £12.99 a month, for four people
+> One app the whole house can use
+
+**Description** · `£12.99 a month for four`
+**Button** · Get offer
+
+---
+
+## Why these lines and not warmer ones
+
+Four deliberate choices, so they survive the next person who edits them.
+
+**Every hook is a comparison the category loses.** "Most movement apps
+assume everyone can stand up" works because the reader has met those
+apps. Nothing is claimed about the reader — only about the competition,
+which the personal-attributes rule has no view on.
+
+**The uncomfortable detail is the proof.** "There is no override button,
+and no admin can press one" is more persuasive than any adjective,
+because it is the kind of thing a company only says when it is true.
+"Accuracy we gave up on purpose" works the same way: a cost admitted is
+the cheapest credibility available to a brand with no track record.
+
+**The price is in the copy, not hidden behind the click.** "£0. No card."
+does more work on a cold audience than any urgency device, and it is the
+only honest urgency available — there is no deadline, so inventing one
+would be the one thing that makes the rest unbelievable.
+
+**No second person about the reader's state.** Count them: "you" appears
+as possession of a diary and a pocket, never as a condition. That is the
+line Meta's semantic detection is actually watching, and it is also the
+line that separates this from every ad the reader has learned to scroll
+past.
+
+## What to do with the long and short versions
+
+Short goes in first. Facebook truncates mobile primary text at roughly
+125 characters, so the short version is the whole message and the long
+version is what somebody reads after tapping "see more" — which they only
+do if the first line earned it.
+
+Run A, B and C as the opening test. A is the hypothesis most likely to
+win and the only one a competitor cannot answer this quarter.
+
+**Still a draft.** A named human reviews this before it runs, and that
+review gets recorded. The constraint is a clinical safety control.
