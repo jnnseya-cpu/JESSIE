@@ -764,3 +764,210 @@ retarget.
 
 **Still a draft.** A named human reviews this and records the review.
 The `calories` decision above is theirs, not mine.
+
+---
+
+# FINAL SET — five images with their headlines, and one copy prompt
+
+Supersedes the running order in both campaigns above. Five prompts, each
+carrying the headline that goes on the picture, chosen across movement
+and the food record.
+
+**Correction to earlier guidance in this file.** It said to keep text out
+of the image because overlay hurts delivery. That was wrong: Meta removed
+the 20% text rule in 2020 and does not penalise overlay in auctions or
+delivery. Short text on the image is standard and fine. Ad policy still
+applies to what the text says.
+
+**Headlines are five words or fewer on purpose.** Image models garble
+long strings. If your generator renders the text badly, generate the
+photograph clean and set the headline in Canva — every prompt below says
+where the space for it is.
+
+**Logo**: `docs/brand/mark-mono-white.svg` over photography,
+`docs/brand/jess-move-logo.svg` on plain navy or white. Bottom left,
+small.
+
+---
+
+## 1 · A range. Not a guess. *(lead — the food record)*
+
+> **Headline on image:** A RANGE. NOT A GUESS.
+
+> Overhead photograph of an ordinary weeknight dinner on a plain white
+> plate — a burger, a scatter of chips, a small undressed salad. Honest
+> kitchen window light, slightly overcast, no gloss. Shot on 50mm at
+> f/4, flat and crisp, the food real and a little imperfect: a chip out
+> of place, a smear of sauce. Deep navy placemat. The plate sits in the
+> lower two thirds; the top third is clean empty navy for a headline.
+> Documentary food photography, not styled. Square 1:1.
+
+**Why this leads.** Every food app in the feed sells a precise number. A
+photograph cannot produce one, and this is the only product in the
+category that says so and shows 336–504 instead. Arguing against
+precision, in a category built on fake precision, is the cheapest
+attention available.
+
+**Sub-line, under the headline:** *A photo gets you a range. A barcode
+gets you a figure. We won't pretend they're the same.*
+
+---
+
+## 2 · Food is not a debt.
+
+> **Headline on image:** FOOD IS NOT A DEBT.
+
+> A plate of chips and a pair of trainers side by side on a wooden
+> kitchen floor, shot from directly above, deliberately absurd in their
+> pairing. Natural window light, soft shadows, muted palette with one
+> coral accent on the trainers. Clean, graphic, slightly wry. Wide empty
+> floor to the right for the headline. Editorial still life. Square 1:1.
+
+**Why it works.** "Walk for 20 minutes and work off the burger" is
+written into the codebase as an example of what the engine may not
+produce. Everyone recognises that logic and nobody enjoys it. This is
+the most shareable thing in the set, which makes it the cheapest reach.
+
+**Sub-line:** *It will never tell you to walk off your lunch. That
+sentence is on a list of things it cannot say.*
+
+---
+
+## 3 · Five versions. One sits down.
+
+> **Headline on image:** FIVE VERSIONS. ONE SITS DOWN.
+
+> A woman in her late sixties at a sunlit kitchen table in a comfortable
+> cardigan, mid-movement, both arms in a slow relaxed reach, eyes
+> closed, a small genuine smile. An ordinary lived-in kitchen behind
+> her: half-finished tea, a newspaper, a plant on the sill. 50mm at
+> f/2.0, soft morning light from the left, warm and unstyled, shallow
+> depth of field. She sits left of centre; clear wall space to the
+> right for the headline. Documentary photography, not stock.
+> Vertical 4:5.
+
+**Why it works.** Every competitor's creative assumes the viewer can
+stand up. The publishing gate here refuses any movement that does not
+ship a seated version, so this is the one claim nobody can answer this
+quarter. It also reaches 40–64 and 65–79, which the category ignores.
+
+**Sub-line:** *Standing, seated, chair-supported, bed, one-limb. No
+version, no publish.*
+
+---
+
+## 4 · 90 seconds. That's it.
+
+> **Headline on image:** 90 SECONDS. THAT'S IT.
+
+> Overhead flat-lay on a deep navy desk. A single analogue stopwatch
+> reading ninety seconds beside a closed laptop and a mug. One relaxed
+> hand reaching into frame mid-stretch. Hard directional light from the
+> upper right, one long clean shadow. Minimal and graphic, the left
+> third entirely empty for the headline. Teal and lime accents only.
+> Editorial product photography, high contrast. Vertical 4:5.
+
+**Why it works.** The whole proposition in one object. Ninety to three
+hundred seconds is a database rule, not a marketing round-down —
+anything longer is not permitted to exist in the library.
+
+**Sub-line:** *Not a rounded-down marketing number. A rule in the
+database.*
+
+---
+
+## 5 · 30 plates free. No card. *(the ask)*
+
+> **Headline on image:** 30 PLATES FREE. NO CARD.
+
+> A hand holding a phone over a bowl of pasta on a kitchen counter,
+> about to photograph it, seen from slightly behind the shoulder. The
+> phone screen is dark and not legible. Warm late-evening kitchen light,
+> everything soft except the bowl. 35mm at f/2.0. Navy and lime in the
+> background objects. Lower third clear for the headline. Candid,
+> unposed, documentary. Vertical 4:5.
+
+**Why it works.** The offer is the hook, and it is real: a free month
+buys thirty plate readings, two months, no card at all. Premium is 119 a
+month for £5.99 — roughly four a day. Thirty is a trial somebody can
+actually judge, which is the honest version of urgency.
+
+**Sub-line:** *Then £5.99 a month for 119, if you want it. Nothing
+charged without asking.*
+
+---
+
+## The one copy prompt
+
+```
+Write Facebook and Instagram ad copy for Jess Move (jessmove.com), a UK
+movement and food-intelligence platform. British English. Five ads, one
+per angle below, matching the headline already on each image.
+
+ANGLES AND THEIR IMAGE HEADLINES
+1. A RANGE. NOT A GUESS.        — a photo returns 336–504, a barcode returns 420
+2. FOOD IS NOT A DEBT.          — it will never tell anyone to walk off a meal
+3. FIVE VERSIONS. ONE SITS DOWN. — standing, seated, chair-supported, bed, one-limb
+4. 90 SECONDS. THAT'S IT.       — 90 to 300 seconds, enforced in the database
+5. 30 PLATES FREE. NO CARD.     — then £5.99 a month for 119 readings
+
+TRUE, AND THE ONLY THINGS YOU MAY CLAIM
+- A movement that does not ship all five versions is never published.
+  No override, no admin bypass.
+- Sessions are 90 to 300 seconds. A rule, not a guideline.
+- It reads calendar structure only — start, end, busy or free, attendee
+  count, whether it repeats. Titles are never transmitted, logged or
+  sent to a model.
+- It stays silent while someone is driving, on a call, in quiet hours,
+  past a daily limit, or flagged to rest. Silence is recorded as a
+  success.
+- Photograph a plate and it returns a range with its evidence and
+  confidence. Scan a barcode and the range collapses to one figure.
+- Twelve readings on a plate and deliberately no single score.
+- On allergens it says it cannot tell from a photograph. All 14 UK ones.
+- It cannot call food bad, junk, cheat, guilty, sinful, clean or toxic.
+- Nobody under 18 is shown an energy figure, whatever is switched on.
+- Free: 30 plate readings a month for two months, no card.
+  Premium: £5.99 a month, 119 readings. Family: £12.99 for four people.
+
+HARD RULES — breaking one makes the copy unusable
+1. Never use: workout, burn, calories, fat, weight loss, slim, toned,
+   bikini, guilt, cheat day, no excuses, lazy, failure, failed — or any
+   synonym or euphemism.
+2. Never assert or imply anything about the reader's health, appearance
+   or circumstances. No "struggling with", no "tired of", no "still".
+   Describe the service. Never diagnose the audience. If a sentence
+   could only be true if you knew something private about the reader,
+   rewrite it. Compare against other apps, never against the reader.
+3. No results, no outcomes, no user counts, no testimonials, no "join
+   thousands". There are no customers yet and nothing has been measured.
+4. No before-and-after, no idealised appearance.
+5. No medical claim.
+6. Never name an AI vendor or model.
+7. Do not mention a mobile app. It is not released.
+8. No shame, and no deadline that is not real.
+
+TONE
+Plain, specific, quietly confident. Short sentences, concrete nouns.
+Lead with a fact a competitor cannot copy, not with an adjective. Never
+cheerful at the reader. Assume an intelligent adult who has bought a
+wellbeing app before and stopped using it within a fortnight. A cost
+admitted — "that costs us accuracy, and we take the worse suggestion" —
+is more persuasive than any superlative.
+
+OUTPUT, per angle
+- Primary text, short: under 125 characters.
+- Primary text, long: 2 to 4 short sentences.
+- Two extra headlines, 40 characters or fewer, to test against the one
+  already on the image.
+- Description: 30 characters or fewer.
+- Button: Learn more, Sign up, or Get offer.
+```
+
+---
+
+**Order:** 1 and 2 first, cold, 30–55. 3 next for the 55+ audience. 4 as
+a cheap scroll-stopper. 5 only to people who have already seen another
+one — a price in front of a stranger is the most expensive click here.
+
+**Still a draft.** A named human reviews it before it runs.
