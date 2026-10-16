@@ -1,0 +1,8 @@
+<!-- Jess Move — single colour navy. For pale one-colour print and faxed-looking documents. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="512" height="512" role="img" aria-label="Jess Move">
+  <path d="M31.5 12.2A13 13 0 1 1 20 7" fill="none" stroke="#102A43" stroke-opacity="0.45" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M13.6 15.4v6.9a2.6 2.6 0 0 1-5.2 0" fill="none" stroke="#102A43" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M17.4 26.4v-11l4.3 5.2 4.3-5.2v11" fill="none" stroke="#102A43" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M26 26.4l3.2-5.4 2.9-5" fill="none" stroke="#102A43" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32.1" cy="16" r="2.4" fill="#102A43"/>
+</svg>
