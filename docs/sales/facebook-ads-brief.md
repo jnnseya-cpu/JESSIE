@@ -464,3 +464,303 @@ win and the only one a competitor cannot answer this quarter.
 
 **Still a draft.** A named human reviews this before it runs, and that
 review gets recorded. The constraint is a clinical safety control.
+
+---
+
+# Campaign two — the food record
+
+Asked for the plate side of the product, punchier, and aimed at the card
+rather than the free signup. Three things make that reasonable here, and
+one of them is a conflict that has to be settled before anything runs.
+
+## The conflict: `calories` is in the banned lexicon
+
+It is, and the product's own FoodLens page opens with it:
+
+> **A photograph cannot tell you the calories. So we stopped pretending.**
+
+That is not a slip. The lexicon is enforced on blog posts through
+`seoAudit`, and on agent-written drafts through `assertEditorialSafe`.
+Marketing pages are not gated by it, and the word there is doing the
+opposite of diet-culture work: it names the thing being refused.
+
+**Every line below that uses the word has a clean alternative beside it.**
+The reviewer picks. Using the word inside a refutation is defensible and
+matches the live site; using it to promise counting is not, and nothing
+here does.
+
+## Why these ads can ask for the card
+
+The movement ads sell the free tier because movement is free. Food is
+not: `core-concepts.ts` puts the AI features in Premium, and Free "runs
+on the pre-authored library". So the thing being advertised is the thing
+behind the paywall, which is the one honest reason to put a price in a
+cold ad.
+
+The allowance, computed through the same pricing path the gateway uses,
+not from a marketing round number:
+
+| | Analyses | Price |
+| --- | --- | --- |
+| Free tier | 30 a month, for 2 months, then it stops | £0, no card |
+| Premium | 119 a month | £5.99 a month |
+
+Sixty free plate reads is a trial somebody can actually judge. A hundred
+and nineteen a month is roughly four a day against about ninety meals.
+
+## The facts worth advertising
+
+Verified in `packages/foodlens` this session, not recalled:
+
+| Fact | Source |
+| --- | --- |
+| A photo returns a range. 420 likely becomes **336–504** | `estimate()` — `isExact` is false for a visual source |
+| A verified label collapses to a single figure | `evidenced()` returns 420/420/420, confidence `verified` |
+| Seven ranked evidence sources, five confidence levels | `EVIDENCE_SOURCES`, `CONFIDENCE_LEVELS` |
+| Twelve readings on a plate, and no composite score | `WHEEL_DIMENSIONS`; `a_single_composite_health_score` is in `NEVER_CLAIM` |
+| It will not say movement cancels food | `that_movement_cancels_out_food` in `NEVER_CLAIM`; the forbidden sentence is spelled out in `MOVEMENT_PAIRING_COPY` as "Walk for 20 minutes to burn off the burger" |
+| It cannot call food bad, junk, cheat, guilty, sinful, clean or toxic | `BANNED_FRAMINGS` |
+| On allergens it says it cannot tell | `ALLERGEN_UNKNOWN_COPY`, against all 14 UK allergens |
+| No energy figure to anyone under 18 | FoodLens page, and `bodySurfacePolicy` for the wider rule |
+
+**One claim I will not let you make.** `FalsePrecisionError` and
+`ForbiddenClaimError` are exported and nothing anywhere throws either.
+"It throws an error rather than guess" would be a lovely line and it is
+not true today. The behaviour underneath it is true — a photo gets a
+range, a label gets a number — so advertise the behaviour.
+
+---
+
+## Five image prompts — the plate set
+
+Same house palette and same shared negative prompt as campaign one, plus:
+**no calorie counters, no nutrition labels large enough to read, no
+scales, no portion-control containers, no "healthy vs unhealthy" split.**
+
+### Image 6 — one real plate *(lead)*
+
+> Overhead photograph of an ordinary weeknight dinner on a plain white
+> plate: a burger, a scattering of chips, a small undressed salad to one
+> side. Honest home lighting from a kitchen window, slightly overcast.
+> Shot on 50mm at f/4, crisp and flat, shallow vignette. The food looks
+> real and slightly imperfect, not styled — a chip out of place, a smear
+> of sauce. Deep navy placemat under the plate, generous empty space
+> above for a headline. Documentary food photography, no gloss.
+> Square 1:1.
+
+**Why it works.** Every food ad in the feed shows a perfect bowl of
+berries. This shows a burger and refuses to be ashamed of it, which is
+the product's actual position. The space above the plate is where the
+range goes as editable text.
+
+### Image 7 — the range
+
+> Two identical photographs of the same bowl of pasta side by side in one
+> frame, one very slightly sharper and one very slightly softer, almost
+> imperceptibly different. Overhead, cool even daylight, navy background.
+> Minimal and conceptual, like an editorial illustration of uncertainty.
+> Generous negative space to the right. Teal accent only. Square 1:1.
+
+**Why it works.** It is a picture of "we are not sure, and we will say
+so", which is the entire differentiator against every counter on the
+market. Pair with the range headline.
+
+### Image 8 — the barcode
+
+> A hand holding an ordinary supermarket food packet at arm's length,
+> the barcode facing the camera, kitchen counter blurred behind. Sharp
+> focus on the barcode strip, everything else soft. Warm overhead
+> kitchen light, late evening. 35mm, f/2.0. The packet is generic with
+> no readable brand. Navy and lime in the background objects.
+> Vertical 4:5.
+
+**Why it works.** The barcode is the moment the range collapses to a
+number. It carries "a label gets you a figure, a photo does not" in one
+object, and it photographs well.
+
+### Image 9 — what it will not say
+
+> A plate of chips and a pair of trainers side by side on a wooden
+> kitchen floor, shot from above, deliberately absurd in their pairing.
+> Natural window light, soft shadows, muted palette with a coral accent
+> on the trainers. Clean, graphic, a little wry. Editorial still life.
+> Square 1:1.
+
+**Why it works.** The image sets up the joke the copy lands: this is the
+pairing the product is built to refuse. Everyone recognises the logic of
+"walk it off" and nobody enjoys it.
+
+### Image 10 — the teenager's kitchen *(parent angle)*
+
+> A teenager of about fifteen eating cereal at a kitchen counter,
+> half-listening, phone face down beside the bowl. Morning light, school
+> bag on the floor, ordinary family clutter. Candid, unposed, the
+> teenager mid-sentence and not looking at the camera. 35mm, f/2.8, warm
+> natural tones with navy in the units. Documentary family photography.
+> Vertical 4:5.
+
+**Why it works.** The phone is face down and no screen is visible — the
+point being that a number is never shown to this person. Parents are the
+buyer here, not the teenager, and this is the only frame in the set that
+reaches them.
+
+---
+
+## The copy, written
+
+Where a line uses the word `calories`, the lexicon-clean alternative sits
+under it as **Clean**. Pick one per ad; do not run both.
+
+### F — A photograph cannot count *(lead)*
+
+**Primary text, short**
+> A photograph cannot tell you the calories. So we stopped pretending.
+>
+> **Clean** · A photograph cannot count your dinner. So we stopped
+> pretending it can.
+
+**Primary text, long**
+> Photograph a plate and you get a range: 336 to 504, the evidence it
+> used, and how sure it is.
+>
+> Scan the barcode on the packet and the range collapses to one figure,
+> because now there is a label behind it.
+>
+> It will not hand you the photograph's number as though it came from the
+> label. That is the whole product.
+>
+> Thirty plates a month, free, for two months. No card.
+
+**Headlines**
+> We show a range. On purpose.
+> 336–504, and why
+> The number nobody can actually see
+
+**Description** · `30 free plates a month`
+**Button** · Sign up
+
+### G — It will never tell you to walk it off
+
+**Primary text, short**
+> It will never tell you to walk off your lunch. That sentence is on a
+> list of things it is not allowed to say.
+
+**Primary text, long**
+> "Walk for 20 minutes and work off the burger."
+>
+> That exact sentence sits in the code as an example of what this engine
+> may not produce. Food is not a debt and movement is not a repayment.
+>
+> It also cannot call a meal bad, junk, cheat, guilty, sinful, clean or
+> toxic. Those seven words are blocked, not discouraged.
+>
+> Thirty plates a month, free, for two months. No card.
+
+**Headlines**
+> Food is not a debt
+> Seven words it cannot say
+> No punishment attached
+
+**Description** · `30 free plates a month`
+**Button** · Learn more
+
+### H — Twelve readings, no score
+
+**Primary text, short**
+> Twelve readings on a plate. No score out of ten, because a plate is not
+> one number.
+
+**Primary text, long**
+> Protein. Fibre. Plant variety. Sugar. Salt. Processing. Portion.
+> Personal fit. Allergen confidence. And three more.
+>
+> Twelve separate readings, each with its own confidence level — and
+> deliberately no single score, because collapsing twelve honest readings
+> into one tidy figure is how an app ends up lying to you politely.
+>
+> Thirty plates a month, free, for two months. No card.
+
+**Headlines**
+> Twelve readings. No score.
+> A plate is not one number
+> Twelve answers, not one verdict
+
+**Description** · `30 free plates a month`
+**Button** · Learn more
+
+### I — It says when it cannot tell
+
+**Primary text, short**
+> On allergens it will say: I cannot tell from a photograph. Check the
+> packet.
+
+**Primary text, long**
+> Fourteen allergens, and a photograph cannot confirm the absence of a
+> single one of them.
+>
+> So when the source is not verifiable it says exactly that — check the
+> packet, or ask, especially if a reaction would be serious.
+>
+> An app that is confident about everything is an app that has not
+> thought about this.
+>
+> Thirty plates a month, free, for two months. No card.
+
+**Headlines**
+> "I cannot tell from a photo"
+> Confident only where it should be
+> 14 allergens. No guessing.
+
+**Description** · `30 free plates a month`
+**Button** · Learn more
+
+### J — The paid ask
+
+**Primary text, short**
+> 119 plate readings a month for £5.99. About four a day, against roughly
+> ninety meals.
+
+**Primary text, long**
+> £5.99 a month. That buys 119 plate readings — comfortably more than
+> most people eat.
+>
+> Every one returns a range rather than a fake figure, twelve readings
+> rather than a score, and an honest "cannot tell" where a photograph
+> genuinely cannot.
+>
+> Nobody under 18 is ever shown an energy figure, whatever anybody
+> switches on.
+>
+> Start on the free tier if you would rather. Thirty a month, no card.
+
+**Headlines**
+> 119 plates a month, £5.99
+> £5.99. About four a day.
+> Less than two coffees a month
+
+**Description** · `£5.99 a month`
+**Button** · Get offer
+
+---
+
+## Running order
+
+F first, against a cold 30–55 audience. It is the only hook in the
+category that argues *against* precision, and arguing against the thing
+everyone else sells is the cheapest attention available.
+
+G is the one most likely to be shared, which makes it the cheapest
+reach. H and I are the retargeting pair — they answer the objection
+"another food app" after somebody has clicked once and not signed up.
+
+J runs last and only to people who have already seen F or G. A price in
+a cold ad for a feature nobody has experienced is the most expensive
+click in this set.
+
+Judge F, G, H and I on cost per free signup. Judge J on cost per paid
+conversion, and expect it to look bad in week one — it is a retargeting
+ad wearing a prospecting ad's clothes until there is an audience to
+retarget.
+
+**Still a draft.** A named human reviews this and records the review.
+The `calories` decision above is theirs, not mine.

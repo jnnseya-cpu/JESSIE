@@ -222,6 +222,17 @@ this route is not behind one.
 
 ## Watch list
 
+**Two FoodLens guard classes are declared and never thrown.**
+`FalsePrecisionError` and `ForbiddenClaimError` are exported from
+`packages/foodlens/src/confidence.ts` and nothing in the repository
+constructs either. The behaviour they describe is real — `estimate()`
+returns a range from a visual source and `evidenced()` collapses to a
+figure only for a verified one — so this is not a safety hole. It is a
+claim trap: the names invite "it throws rather than guess" into a
+marketing page or an ad, and that sentence would be untrue. Either make
+them throw at the boundary where a caller asks for an exact figure from
+an estimate source, or delete them and keep the behaviour.
+
 **Nineteen body agents are specified and none of them runs.**
 `BC_AGENTS` in `packages/body-command` describes nineteen agents —
 orchestrator, adiposity interpreter, composition protection, plateau
