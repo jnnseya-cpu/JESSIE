@@ -971,3 +971,211 @@ a cheap scroll-stopper. 5 only to people who have already seen another
 one — a price in front of a stranger is the most expensive click here.
 
 **Still a draft.** A named human reviews it before it runs.
+
+---
+
+# V3 — five prompts, each carrying headline, name and link
+
+Supersedes every earlier set in this file. Each prompt now specifies the
+three pieces of text that must appear in the picture: the headline,
+**JESS MOVE**, and **jessmove.com**.
+
+## Use Ideogram, and set the URL yourself
+
+Independent comparisons put Ideogram first on text rendering, at roughly
+90% accuracy and an OCR score of 0.97 on its current version. GPT Image
+is a close second. Midjourney is the weakest of the three on text —
+short words on signs sometimes work, longer strings do not — and is
+worth using only when the photograph matters more than the lettering.
+
+**Even at 90%, never let a model render the domain.** A garbled
+`jessmove.corn` in a paid ad is money spent sending people nowhere. Two
+reliable routes:
+
+1. **Best:** generate the photograph clean, then set headline, name and
+   URL in Canva or Ads Manager. Every prompt below names the empty region
+   each belongs in.
+2. **Acceptable:** let Ideogram render the headline, then overlay the
+   name and URL yourself. Check every single generation character by
+   character before it goes near a budget.
+
+Rendered versions of all five, with the text already correct, are in
+`docs/sales/creative/` at 1080×1350. The `.html` beside each PNG is
+editable — change a word and re-render.
+
+## The text block, identical on all five
+
+> Headline: as given per image
+> Brand line: **JESS MOVE** — bottom left, 28px equivalent, weight 600
+> Link: **jessmove.com** — directly beneath the brand line, smaller,
+> 70% opacity
+> Mark: `docs/brand/mark-mono-white.svg` on dark, `mark-mono-navy.svg`
+> on light, 66px, immediately left of the brand line
+
+Shared negative prompt for all five:
+
+> no weighing scales, no measuring tape, no calorie counters, no
+> before-and-after split, no gym equipment, no exposed midriff, no
+> idealised or athletic physique, no sweat, no grimacing, no watermark,
+> no stock-photo gloss, no distorted hands, no extra fingers, no
+> misspelled text, no invented logos
+
+---
+
+### 1 · The food record *(lead)*
+
+> **In the picture:** headline `A RANGE. NOT A GUESS.` · brand
+> `JESS MOVE` · link `jessmove.com`
+
+> Overhead photograph of an ordinary weeknight dinner on a plain white
+> plate — a burger, a scatter of chips, a small undressed salad. Honest
+> kitchen window light, slightly overcast. 50mm at f/4, flat and crisp,
+> the food real and a little imperfect: a chip out of place, a smear of
+> sauce. Deep navy placemat filling the frame edges. The plate sits in
+> the lower-middle third. Clean empty navy across the top third for the
+> headline, and a clear strip along the bottom left for the brand name
+> and link. Documentary food photography, not styled. Square 1:1 and
+> vertical 4:5.
+
+Under the headline, smaller: *336–504 from a photograph. 420 from a
+barcode. We won't pretend they're the same.*
+
+### 2 · What it refuses to say
+
+> **In the picture:** headline `FOOD IS NOT A DEBT.` · brand `JESS MOVE`
+> · link `jessmove.com`
+
+> A plate of chips and a pair of trainers side by side on a pale wooden
+> kitchen floor, shot from directly above, deliberately absurd in their
+> pairing. Natural window light, soft shadows, muted palette with one
+> coral accent on the trainers. Wide empty floor on the right half for
+> the headline, bottom-left corner left clear for brand and link.
+> Editorial still life, slightly wry. Square 1:1 and vertical 4:5.
+
+Under the headline: *It will never tell you to walk off a meal.*
+
+### 3 · Nobody is excluded
+
+> **In the picture:** headline `FIVE VERSIONS. ONE SITS DOWN.` · brand
+> `JESS MOVE` · link `jessmove.com`
+
+> A woman in her late sixties at a sunlit kitchen table in a comfortable
+> cardigan, mid-movement, both arms in a slow relaxed reach, eyes
+> closed, a small genuine smile. An ordinary lived-in kitchen behind
+> her: half-finished tea, a newspaper, a plant on the sill. 50mm at
+> f/2.0, soft morning light from the left, warm and unstyled. She sits
+> left of centre with clear wall space to her right for the headline,
+> and an uncluttered strip at the bottom for brand and link. Documentary
+> photography, not stock. Vertical 4:5.
+
+Under the headline: *Standing, seated, chair-supported, bed, one-limb.
+No version, no publish.*
+
+### 4 · The unit
+
+> **In the picture:** headline `90 SECONDS. THAT'S IT.` · brand
+> `JESS MOVE` · link `jessmove.com`
+
+> Overhead flat-lay on a deep navy desk. A single analogue stopwatch
+> reading ninety seconds beside a closed laptop and a mug. One relaxed
+> hand reaching into frame mid-stretch. Hard directional light from the
+> upper right casting one long clean shadow. Minimal and graphic, the
+> entire left third empty for the headline, bottom edge clear for brand
+> and link. Teal and lime accents only. Editorial product photography,
+> high contrast. Vertical 4:5.
+
+Under the headline: *A rule in the database, not a rounded-down
+marketing number.*
+
+### 5 · The offer *(the card ask)*
+
+> **In the picture:** headline `30 PLATES FREE. NO CARD.` · brand
+> `JESS MOVE` · link `jessmove.com`
+
+> A hand holding a phone over a bowl of pasta on a kitchen counter,
+> about to photograph it, seen from slightly behind the shoulder. The
+> phone screen is dark and not legible. Warm late-evening kitchen light,
+> everything soft except the bowl. 35mm at f/2.0. Navy and lime in the
+> background objects. The entire lower third is clean and uncluttered
+> for the headline above the brand and link. Candid, unposed,
+> documentary. Vertical 4:5.
+
+Under the headline: *Then £5.99 a month for 119 readings, if you want
+it.*
+
+---
+
+## The one copy prompt
+
+```
+Write Facebook and Instagram ad copy for Jess Move (jessmove.com), a UK
+movement and food-intelligence platform. British English. Five ads, one
+per angle, each matching the headline already on its image.
+
+ANGLES AND THE HEADLINE ALREADY IN EACH PICTURE
+1. A RANGE. NOT A GUESS.         — a photo returns 336–504, a barcode 420
+2. FOOD IS NOT A DEBT.           — it never tells anyone to walk off a meal
+3. FIVE VERSIONS. ONE SITS DOWN. — standing, seated, chair, bed, one-limb
+4. 90 SECONDS. THAT'S IT.        — 90 to 300 seconds, enforced in the database
+5. 30 PLATES FREE. NO CARD.      — then £5.99 a month for 119 readings
+
+TRUE, AND THE ONLY THINGS YOU MAY CLAIM
+- A movement that does not ship all five versions is never published.
+  No override, no admin bypass.
+- Sessions are 90 to 300 seconds. A database rule, not a guideline.
+- It reads calendar structure only — start, end, busy or free, attendee
+  count, whether it repeats. Titles are never transmitted, logged or
+  sent to a model.
+- It stays silent while someone is driving, on a call, in quiet hours,
+  past a daily limit, or flagged to rest, and records the silence as a
+  success.
+- Photograph a plate and it returns a range with its evidence and
+  confidence. Scan a barcode and the range collapses to one figure.
+- Twelve readings on a plate and deliberately no single score.
+- On allergens it says it cannot tell from a photograph. All 14 UK ones.
+- It cannot call food bad, junk, cheat, guilty, sinful, clean or toxic.
+- Nobody under 18 is shown an energy figure, whatever is switched on.
+- Free: 30 plate readings a month for two months, no card.
+  Premium: £5.99 a month, 119 readings. Family: £12.99 for four people.
+
+HARD RULES — breaking one makes the copy unusable
+1. Never use: workout, burn, calories, fat, weight loss, slim, toned,
+   bikini, guilt, cheat day, no excuses, lazy, failure, failed — or any
+   synonym or euphemism for them.
+2. Never assert or imply anything about the reader's health, appearance
+   or circumstances. No "struggling with", no "tired of", no "still".
+   Describe the service. Never diagnose the audience. Compare against
+   other apps, never against the reader. If a sentence could only be
+   true if you knew something private about the reader, rewrite it.
+3. No results, no outcomes, no user counts, no testimonials, no "join
+   thousands". There are no customers yet and nothing has been measured.
+4. No before-and-after, no idealised appearance.
+5. No medical claim.
+6. Never name an AI vendor or model.
+7. Do not mention a mobile app. It is not released.
+8. No shame, and no deadline that is not real.
+
+TONE
+Plain, specific, quietly confident. Short sentences, concrete nouns.
+Lead with a fact a competitor cannot copy, never with an adjective.
+Never cheerful at the reader. Assume an intelligent adult who has bought
+a wellbeing app before and stopped using it within a fortnight. A cost
+admitted — "that costs us accuracy, and we take the worse suggestion" —
+persuades more than any superlative.
+
+OUTPUT, per angle
+- Primary text, short: under 125 characters.
+- Primary text, long: 2 to 4 short sentences.
+- Two extra headlines, 40 characters or fewer, to test against the one
+  already in the picture.
+- Description: 30 characters or fewer.
+- Button: Learn more, Sign up, or Get offer.
+- Destination: jessmove.com
+```
+
+---
+
+**Order:** 1 and 2 cold at 30–55. 3 for 55+. 4 as a cheap scroll-stopper.
+5 only to people who have already seen one of the others.
+
+**Still a draft.** A named human reviews it before it runs.
