@@ -10,8 +10,7 @@
   ],
   "functions": {
     "api/index.js": {
-      "includeFiles": "dist/**",
-      "maxDuration": 60
+      "includeFiles": "dist/**"
     }
   },
   "crons": [

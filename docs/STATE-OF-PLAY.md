@@ -261,14 +261,49 @@ Stripe webhook verified over the raw bytes (a correctly signed event → 201,
 one tampered byte → 400, a replay → `duplicate`). Raw body survival was the
 real risk in the change and it is the thing most directly proven.
 
-**Not proven: that a Vercel deployment of it succeeds.** Nobody here can
-deploy or reach production. The owner can settle the rest in minutes:
-whether the next `jessie-backend` build goes green; whether
-api.jessmove.com is aliased to it (`curl -sI https://api.jessmove.com/api/health`
-— `x-vercel-id` says Vercel); whether jessmove.com is aliased to the latest
-successful `jessie-move` deployment; and whether the plan allows the
-`0,30 * * * *` cron in `vercel.json`, since Hobby permits daily only and
-refuses the deployment outright.
+**The entry point was necessary and is not sufficient. `jessie-backend`
+still failed on 668ac18, the commit that added it.**
+
+What that leaves, stated only as far as the evidence goes:
+
+- **The repository builds.** Vercel's own `installCommand` and
+  `buildCommand` were run verbatim from a clean shallow clone with the
+  working directory set to `apps/backend`, exactly as the platform runs
+  them. Both succeed and produce `dist/serverless.js` beside
+  `api/index.js`. Whatever is failing, it is not this build.
+- **The failure does not depend on the commit.** Every `jessie-backend`
+  deployment reaches its failure 36–40 seconds after the commit, across
+  eight weeks and wholly unrelated diffs, while `jessie-move` takes longer
+  and succeeds from the same push and the same monorepo. A code fault
+  would vary with the code.
+- **Nothing in the repository distinguishes the two projects** except that
+  the backend declares `crons` and no framework, and the frontend declares
+  a framework and no crons.
+
+That points at project configuration or the account, and **one line of the
+build log names it** — which nobody here can read, by policy. Reading it is
+the next step and the only one with evidence behind it:
+
+```
+npx vercel inspect dpl_ETqLGehFov6usF3NvQYMizpp9rAM --logs
+```
+
+Three candidates worth checking while that log is open, in order of how
+well they fit a failure that ignores the code:
+
+1. **Cron jobs against the plan.** Hobby allows daily schedules only and
+   refuses the deployment outright rather than degrading it. `vercel.json`
+   asks for `0,30 * * * *`. The frontend has no crons and is unaffected.
+2. **Root Directory.** If it is not `apps/backend`, then
+   `apps/backend/vercel.json` is never read — which would also mean none of
+   the wiring above has been tried yet, whatever this commit says.
+3. **"Include files outside the Root Directory"**, which a pnpm workspace
+   needs and which is per project.
+
+Still open and unrelated to the backend: whether jessmove.com is aliased to
+the latest successful `jessie-move` deployment, and which host answers
+api.jessmove.com (`curl -sI https://api.jessmove.com/api/health` —
+`x-vercel-id` says Vercel).
 
 **Two FoodLens guard classes are declared and never thrown.**
 `FalsePrecisionError` and `ForbiddenClaimError` are exported from
