@@ -1,8 +1,9 @@
 # Deploying JESS MOVE
 
 Three things ship: **shared** (and the two domain packages) as build inputs,
-**backend** as a container, **frontend** as a Next.js app. The packages are not
-published to a registry — they are workspace dependencies compiled into both apps.
+**backend** as a Vercel function (or a container, if you prefer one), **frontend**
+as a Next.js app. The packages are not published to a registry — they are
+workspace dependencies compiled into both apps.
 
 Everything below has been run end to end in this repository except the cloud steps,
 which need credentials this environment does not hold.
@@ -46,7 +47,47 @@ consent flag set to `true` must still receive `CHILD_GROWTH` and `metrics: null`
 
 ---
 
-## 3 · The backend, to Google Cloud Run
+## 3 · The backend, to Vercel
+
+This is how `api.jessmove.com` is meant to run, and the shape the code is
+written for — `DbService` applies the migrations on startup under a Postgres
+advisory lock precisely so that concurrent serverless instances take turns.
+
+```bash
+cd apps/backend
+vercel link                 # root directory: apps/backend
+vercel env add DATABASE_URL production
+vercel env add CORS_ORIGINS production      # https://jessmove.com,https://www.jessmove.com
+vercel --prod
+```
+
+The pieces that make it deployable, because the project spent eight weeks
+without them:
+
+- **`api/index.js`** is the only file Vercel looks for. It re-exports the
+  handler from the compiled `dist/serverless.js`.
+- **`src/serverless.ts`** builds the application through the same
+  `configureApp` as `main.ts`, calls `app.init()` rather than `app.listen()`,
+  and returns the Express request handler. Nothing on a serverless platform
+  ever calls `listen`, and Vercel has no NestJS preset that would.
+- **`vercel.json`** rewrites `/(.*)` to `/api`, so the whole API is one
+  function rather than one per route — Nest boots the entire module graph on
+  first touch, and splitting it would pay that cost per route instead of per
+  instance. `req.url` keeps the original path, so the `/api` global prefix
+  resolves normally.
+
+> **Cron jobs are plan-gated.** `vercel.json` schedules the blog autopilot
+> daily and the nudge sweep at `0,30 * * * *`. A Hobby project is limited to
+> daily cron jobs and the deployment is **refused**, not degraded. On Hobby,
+> either move to Pro or drop the half-hourly entry.
+
+Verify a deployment the same way the container is verified:
+
+```bash
+bash scripts/smoke.sh https://api.jessmove.com/api
+```
+
+## 4 · The backend, as a container instead
 
 The image is a plain container, so anything that runs OCI images will do — Cloud Run,
 Fly, Render, ECS, a VM with Docker.
@@ -78,7 +119,7 @@ Notes that matter:
   degrades.
 - Put the database behind Cloud SQL with a private IP, or use the Cloud SQL connector.
 
-## 4 · The frontend, to Vercel
+## 5 · The frontend, to Vercel
 
 ```bash
 vercel link
@@ -91,7 +132,7 @@ vercel --prod
 > `NEXT_PUBLIC_*` is **inlined at build time**, not read at runtime. Changing the API
 > URL means a rebuild, not a restart. Same for the Docker image — it is a build arg.
 
-## 5 · The frontend, as a container instead
+## 6 · The frontend, as a container instead
 
 ```bash
 docker build -f Dockerfile.frontend \

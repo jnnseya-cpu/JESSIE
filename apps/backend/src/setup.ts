@@ -14,10 +14,16 @@ interface ResponseLike {
  * Everything that makes the app the JESS MOVE API, independent of how it
  * is served.
  *
- * `main.ts` is the only entry point — locally it listens on :4000, and on
- * Vercel the platform's NestJS support finds `src/main.ts`, builds it, and
- * runs the same listening server as a function. One entry point, one
- * configuration, nothing to drift.
+ * There are two entry points and they share this function. `main.ts`
+ * listens on a port, which is what a container wants. `serverless.ts`
+ * returns the request handler without binding a socket, which is what
+ * Vercel wants. Both call `configureApp`, so the prefix, the validation
+ * pipe, the CORS rule and the headers below cannot differ between them.
+ *
+ * This used to say that Vercel's "NestJS support" found `src/main.ts`
+ * and ran it. It does not — Vercel has no NestJS preset — and acting on
+ * that sentence is why the backend project had nothing deployable in it
+ * for eight weeks.
  */
 export function configureApp(app: INestApplication): INestApplication {
   // Uploads arrive as base64 inside JSON; the 12mb ceiling covers the 10MB

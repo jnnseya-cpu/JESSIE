@@ -227,28 +227,48 @@ this route is not behind one.
 
 ## Watch list
 
-**The API has not deployed successfully in days, and the frontend has.**
+**The API has not deployed since 19 August 2026. Root cause found and
+fixed; the fix is unverified in production.**
+
 Read from the repository's own deployment records, since production is
-unreachable from here. Two Vercel projects fire on every push: `jessie-move`
-succeeds every single time, `jessie-backend` fails every single time, going
-back at least to 16 October and covering every commit in this session.
+unreachable from here. Every push fires two Vercel projects. `jessie-move`
+has succeeded every time. `jessie-backend` last succeeded on
+**2026-08-19 (218cc58)** and has failed on every one of the ~90 deployments
+since — eight weeks, including every commit of this session.
 
-That is the most likely reason new work does not appear on the site. Anything
-needing the API talks to whatever api.jessmove.com was last serving, which is
-not this code.
+The cause was not a bad commit. The first failure, `080256b` on 22 August,
+touched no build configuration at all. The backend project had nothing
+Vercel could deploy: no `framework`, no `outputDirectory`, no `public/`, and
+no function under `api/`. The build command compiled `dist/` and the
+platform then had nothing to serve.
 
-And the backend probably should not be on Vercel at all. `docs/DEPLOY.md`
-describes it as a plain OCI container with a `gcloud run deploy` command and
-says "anything that runs OCI images will do". `apps/backend/vercel.json` has no
-`framework` and no `outputDirectory`, which is the shape Vercel cannot serve.
-So `jessie-backend` looks like a project that has never worked rather than one
-that broke.
+The belief that made it look finished is written down in the repository.
+`apps/backend/src/setup.ts` said: *"on Vercel the platform's NestJS support
+finds `src/main.ts`, builds it, and runs the same listening server as a
+function."* Vercel has no NestJS preset, and nothing calls `listen` on a
+serverless platform. That sentence is corrected in the file.
 
-Three things the owner can settle in minutes and nobody here can settle at all:
-whether jessmove.com is aliased to the latest successful `jessie-move`
-deployment; what the `jessie-backend` build log actually says; and which host
-is really answering api.jessmove.com — `curl -sI https://api.jessmove.com/api/health`
-and look for `x-vercel-id` or a Cloud Run header.
+Fixed here by giving the project the entry point it never had:
+`apps/backend/src/serverless.ts` builds the same application through the
+same `configureApp`, calls `app.init()` instead of `app.listen()`, and
+returns the Express request handler; `apps/backend/api/index.js` is the one
+function Vercel looks for; `vercel.json` rewrites every path to it.
+
+Proven locally, served exactly as the platform serves it — the function
+required through `api/index.js`, handed `(req, res)`, never listening:
+**smoke 85/85**, security headers present, `X-Powered-By` gone, and the
+Stripe webhook verified over the raw bytes (a correctly signed event → 201,
+one tampered byte → 400, a replay → `duplicate`). Raw body survival was the
+real risk in the change and it is the thing most directly proven.
+
+**Not proven: that a Vercel deployment of it succeeds.** Nobody here can
+deploy or reach production. The owner can settle the rest in minutes:
+whether the next `jessie-backend` build goes green; whether
+api.jessmove.com is aliased to it (`curl -sI https://api.jessmove.com/api/health`
+— `x-vercel-id` says Vercel); whether jessmove.com is aliased to the latest
+successful `jessie-move` deployment; and whether the plan allows the
+`0,30 * * * *` cron in `vercel.json`, since Hobby permits daily only and
+refuses the deployment outright.
 
 **Two FoodLens guard classes are declared and never thrown.**
 `FalsePrecisionError` and `ForbiddenClaimError` are exported from
