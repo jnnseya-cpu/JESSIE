@@ -16,6 +16,7 @@ import { test } from 'node:test';
  */
 
 const root = join(import.meta.dirname, '..');
+const repo = join(root, '..', '..');
 const read = (p: string): string => readFileSync(join(root, p), 'utf8');
 
 test('the Vercel function exists and re-exports the compiled handler', () => {
@@ -68,5 +69,32 @@ test('every path is routed to that one function', () => {
     config.buildCommand ?? '',
     /@jessmove\/backend build/,
     'dist/ has to be built before the function is traced',
+  );
+});
+
+/**
+ * The site's build command has to run the site's build script.
+ *
+ * It did not. `apps/frontend/vercel.json` ended in `next build`, skipping
+ * `scripts/stamp-sw.mjs` — which is the only thing that writes
+ * `public/sw.js` from its template, and that file is generated, not
+ * committed. So every production build shipped a site whose service
+ * worker registration asked for a file that was not there.
+ */
+test('the site build runs the site build script, not next directly', () => {
+  const config = JSON.parse(
+    readFileSync(join(repo, 'apps/frontend/vercel.json'), 'utf8'),
+  ) as { buildCommand?: string };
+
+  const command = config.buildCommand ?? '';
+  assert.match(
+    command,
+    /@jessmove\/frontend build/,
+    'the generated service worker and build stamp come from the package script',
+  );
+  assert.doesNotMatch(
+    command,
+    /&&\s*next build\s*$/,
+    'ending in a bare next build is what skipped the stamp',
   );
 });

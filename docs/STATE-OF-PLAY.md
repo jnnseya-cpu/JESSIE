@@ -305,6 +305,29 @@ the latest successful `jessie-move` deployment, and which host answers
 api.jessmove.com (`curl -sI https://api.jessmove.com/api/health` —
 `x-vercel-id` says Vercel).
 
+**The live site has never had a service worker. Found and fixed here.**
+`apps/frontend/vercel.json` ended its build command in `next build` rather
+than the package's own `build` script, so `scripts/stamp-sw.mjs` never ran
+on Vercel. That script is the only thing that writes `public/sw.js` from
+its template, and `sw.js` is generated, not committed — confirmed by
+building from a clean checkout of tracked files, where the old command
+produces neither `sw.js` nor a build stamp and the corrected one produces
+both. `app/pwa.tsx` registers `/sw.js`, so on jessmove.com that
+registration has been asking for a file that is not there: no offline
+shell, no cached assets, and nothing for a push to wake.
+
+Covered by `deployable.test.ts`, which fails if the command ends in a bare
+`next build` again. Proven locally to the extent it can be: clean checkout
+→ corrected command → both files present → `next start` serves `/status`.
+Not proven on Vercel, like everything else on this list.
+
+**`/status` now says which build of the site is answering.** It reported
+the API's commit and not its own, so "is the new work live?" had no answer
+anybody could look up — which is the question that started this. The site
+stamps itself from the same script and the same commit as the service
+worker, and the first row of the status table is now the site's own build
+beside the API's.
+
 **Two FoodLens guard classes are declared and never thrown.**
 `FalsePrecisionError` and `ForbiddenClaimError` are exported from
 `packages/foodlens/src/confidence.ts` and nothing in the repository

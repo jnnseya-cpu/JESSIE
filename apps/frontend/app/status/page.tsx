@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BRAND } from '@jessmove/shared';
 import { Footer, Nav, PageHero, SkipLink, Tick } from '../ui';
+import { SITE_BUILT_AT, SITE_COMMIT } from '../build-info';
 import { readLiveStatus } from './live';
 
 /*
@@ -128,6 +129,18 @@ export default async function Status() {
             </div>
 
             <div className="status">
+              {/*
+               * First row on purpose. "Nothing new is live" is answered by
+               * comparing this line with the API's, and until the site
+               * stamped itself there was nothing to compare — the page
+               * could report the API's commit and not its own.
+               */}
+              <Row
+                name="This site"
+                sub="The build of jessmove.com serving this page"
+                state="ok"
+                detail={`Built from ${SITE_COMMIT} on ${new Date(SITE_BUILT_AT).toUTCString()}.`}
+              />
               <Row
                 name="API"
                 sub="Every request the site and the app make"

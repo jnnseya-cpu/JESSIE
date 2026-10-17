@@ -27,3 +27,6 @@ apps/frontend/public/sw.js
 
 # Generated at build time by scripts/stamp-build.mjs
 apps/backend/src/build-info.ts
+
+# Generated at build time by apps/frontend/scripts/stamp-sw.mjs
+apps/frontend/app/build-info.ts

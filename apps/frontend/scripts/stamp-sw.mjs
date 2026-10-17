@@ -1,6 +1,7 @@
 /*
  * Writes public/sw.js from public/sw.template.js with this build's identity
- * stamped into the cache version.
+ * stamped into the cache version, and app/build-info.ts with the same
+ * identity so a page can say which build is answering.
  *
  * Why this exists: a browser reinstalls a service worker only when the
  * worker's own bytes differ from the copy it already has. A hand-maintained
@@ -41,3 +42,31 @@ if (!source.includes('__JM_BUILD__')) {
 mkdirSync(dirname(output), { recursive: true });
 writeFileSync(output, source.replace(/__JM_BUILD__/g, `jm-${id}`));
 console.log(`service worker stamped jm-${id} -> ${output}`);
+
+/*
+ * The same identity, where a page can read it.
+ *
+ * `/status` already reports the commit the API answers on, because the
+ * backend stamps itself. The site did not stamp itself, so there was no
+ * way to tell whether jessmove.com was serving this week's build or one
+ * from two months ago — which is the exact question "nothing is live"
+ * asks, and it had no answer anybody could look up.
+ *
+ * Stamped into a file rather than read from the platform at runtime, for
+ * the reason the backend does the same: whether a host exposes its git
+ * metadata to a running process is the host's decision and it changes.
+ * A value compiled into the artefact is a fact about the artefact.
+ */
+const buildInfo = join(here, '..', 'app', 'build-info.ts');
+writeFileSync(
+  buildInfo,
+  `/**
+ * GENERATED FILE — do not edit. Written by scripts/stamp-sw.mjs on every
+ * build, so /status can say which build of the site is answering.
+ */
+
+export const SITE_COMMIT: string = ${JSON.stringify(id)};
+export const SITE_BUILT_AT: string = ${JSON.stringify(new Date().toISOString())};
+`,
+);
+console.log(`site stamped ${id} -> ${buildInfo}`);
