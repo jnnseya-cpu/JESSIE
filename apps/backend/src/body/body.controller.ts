@@ -2,7 +2,7 @@ import { BodyAssessmentDto, EnergyDto, ProgressDto } from './body.dto';
 import { alongsideFrom, trendFrom, warningsFor } from './progress.logic';
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { SelfOnly } from '../auth/auth.guard';
-import { energyBand } from '@jessmove/body-command';
+import { dayStanding, energyBand } from '@jessmove/body-command';
 import { CONDITIONS } from '@jessmove/shared';
 import { ActivityService } from '../activity/activity.service';
 import { FoodLogService } from '../foodlens/food-log.service';
@@ -161,8 +161,7 @@ export class BodyController {
      */
     const observed = log.daysRecorded > 0 ? energyTotal / log.daysRecorded : null;
 
-    return {
-      band: energyBand({
+    const band = energyBand({
         age: body.age,
         optedIntoBodyMetrics: body.optedIntoBodyMetrics ?? false,
         pathway: body.pathway,
@@ -174,7 +173,27 @@ export class BodyController {
         observedKcalPerDay: observed,
         recordedDays: log.daysRecorded,
         logConfirmedComplete: body.logConfirmedComplete ?? false,
-      }),
+    });
+
+    /*
+     * Today's running total, from the ledger's own per-day series. The
+     * colour is the day's, never a plate's — a single meal judged
+     * against a daily figure is unremarkable at noon and the whole
+     * budget at nine, and only the running total knows which.
+     */
+    const today = new Date().toISOString().slice(0, 10);
+    const kcalToday = log.series.find((d) => d.day === today)?.kcal ?? 0;
+
+    return {
+      band,
+      today: band.eligible
+        ? dayStanding({
+            band,
+            kcalSoFar: kcalToday,
+            // Before the evening a low day is just an unfinished one.
+            dayComplete: body.dayComplete ?? false,
+          })
+        : null,
       /*
        * Named so a member can see which gates were even considered. A
        * refusal that does not say what it checked reads as a refusal to

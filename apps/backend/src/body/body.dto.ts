@@ -185,5 +185,10 @@ export class EnergyDto {
   @IsBoolean()
   logConfirmedComplete?: boolean;
 
+  /** Whether today is finished. An unfinished day is never read as a low one. */
+  @IsOptional()
+  @IsBoolean()
+  dayComplete?: boolean;
+
 
 }

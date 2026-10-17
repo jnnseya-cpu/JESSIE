@@ -35,6 +35,7 @@ is the point of the file.
 | A native shell exists, and the web build does not depend on it | `apps/mobile`. Proven: `window.JessMoveNative` is `undefined` in a browser, the device-calendar button is not rendered, and the Snap request sends the identical payload it sent before the shell existed |
 | A weight trajectory is read from the record, not from the caller | `GET /body/trajectory/:userId`, `@SelfOnly`. Proven against real Postgres on all 32 migrations: two readings on one day collapse to one with the later winning, a 400-day-old reading falls outside the 182-day horizon, five readings over 28 days give -0.72 kg/week, and a BMI of 17.4 raises the `stop` from the stored row rather than from a number the caller sent. 401 with no session, 403 for somebody else's id, 200 for your own |
 | A daily energy band is anchored on the member's own ledger, and refuses more often than it answers | `energyBand` in `packages/body-command`, `POST /body/energy/:userId`, `@SelfOnly`. Proven against real Postgres: 14 days of ledger at 2,600 kcal returns 2,050–2,325 with a 1,500 floor; an unconfirmed log, a 15-year-old, a declared type 1 diabetes and a BMI of 17.4 are each refused with a different reason. Behind `ENERGY_BAND_RELEASED = false` until a named clinician signs off |
+| The day carries a colour; the plate never does | `dayStanding`. Four states and no red: grey while the day is unfinished, amber and loud under the floor, green inside the band, amber and quiet above it. Asserted that the under-floor signal is louder than the over-ceiling one, that an unfinished day is never read as a low one, and that no sentence it produces at any intake trips `bannedTermsIn` |
 | A confused shell makes the product quieter, never louder | `native-bridge.test.ts` — 26 assertions, five of them reading the Swift and Kotlin source because no compiler here can. Low-confidence motion, stale motion, future timestamps, unknown health scopes and a mismatched bridge version all resolve to `unknown`, refused, or no capabilities |
 | The calendar is read, and never seen | `packages/shared/src/calendar.ts` parses .ics in the browser. Proven at runtime: an event titled "Oncology follow-up with Dr Patel" produced 14 correct windows and the payload leaving the browser carried only weekdays and minutes |
 | A free trial buys thirty FoodLens analyses, not two | `LENS` moved to `mid_tier_llm` and `FREE_TIER` to 150 ACU. Asserted by what it buys rather than by the number, so a model or rate change fails the test rather than a member's first week |
@@ -114,7 +115,7 @@ is the point of the file.
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
-Test suite: **958 passing, 0 failing** — 909 backend, 27 body-command, 22 foodlens.
+Test suite: **962 passing, 0 failing** — 913 backend, 27 body-command, 22 foodlens.
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).

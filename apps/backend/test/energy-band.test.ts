@@ -208,3 +208,74 @@ test('the anchor is per recorded day, not per covered day', () => {
   assert.ok(heavier.ceilingKcal > lighter.ceilingKcal);
   assert.equal(heavier.observedKcalPerDay, 3200, 'the anchor is the recorded figure itself');
 });
+
+/* ── the day's colour ─────────────────────────────────────────────── */
+
+const bandOf = (over: Partial<EnergyBandInput> = {}) => {
+  const b = energyBand(adult(over));
+  assert.equal(b.eligible, true);
+  return b as Extract<typeof b, { eligible: true }>;
+};
+
+test('the colour belongs to the day, and there is no red', async () => {
+  const { dayStanding } = await import('@jessmove/body-command');
+  const band = bandOf();
+
+  const states = [
+    dayStanding({ band, kcalSoFar: band.floorKcal - 400, dayComplete: true }),
+    dayStanding({ band, kcalSoFar: (band.floorKcal + band.ceilingKcal) / 2, dayComplete: true }),
+    dayStanding({ band, kcalSoFar: band.ceilingKcal + 900, dayComplete: true }),
+    dayStanding({ band, kcalSoFar: 300, dayComplete: false }),
+  ];
+
+  // No colour in this module is ever red. Red belongs to the safety
+  // layer, and a red plate is a "bad food" signal by another name.
+  for (const s of states) assert.notEqual(s.colour as string, 'red');
+
+  assert.deepEqual(
+    states.map((s) => s.standing),
+    ['under_floor', 'in_band', 'above_band', 'early'],
+  );
+});
+
+test('the loud signal points downwards, which is the opposite of the category', async () => {
+  const { dayStanding } = await import('@jessmove/body-command');
+  const band = bandOf();
+
+  const under = dayStanding({ band, kcalSoFar: band.floorKcal - 500, dayComplete: true });
+  const over = dayStanding({ band, kcalSoFar: band.ceilingKcal + 1200, dayComplete: true });
+
+  assert.equal(under.emphasis, 'speak_up', 'eating under the floor must be the loud one');
+  assert.equal(over.emphasis, 'note', 'eating over must never shout');
+
+  // And being over is never framed as a debt to repay.
+  assert.match(over.says, /nothing here needs working off/);
+  assert.doesNotMatch(over.says, /burn|work off your|make up for/i);
+});
+
+test('an unfinished day is grey, so the floor never becomes a target to hit early', async () => {
+  const { dayStanding } = await import('@jessmove/body-command');
+  const band = bandOf();
+
+  const midday = dayStanding({ band, kcalSoFar: 400, dayComplete: false });
+  assert.equal(midday.standing, 'early');
+  assert.equal(midday.colour, 'grey');
+  assert.equal(midday.emphasis, 'none');
+  assert.match(midday.says, /not finished/);
+
+  // The same figure at the end of the day is a different answer.
+  assert.equal(dayStanding({ band, kcalSoFar: 400, dayComplete: true }).standing, 'under_floor');
+});
+
+test('no sentence the day verdict produces uses a banned word', async () => {
+  const { dayStanding } = await import('@jessmove/body-command');
+  const { bannedTermsIn } = await import('@jessmove/shared');
+  const band = bandOf();
+
+  for (let kcal = 0; kcal <= 5000; kcal += 250) {
+    for (const dayComplete of [true, false]) {
+      const v = dayStanding({ band, kcalSoFar: kcal, dayComplete });
+      assert.deepEqual(bannedTermsIn(v.says), [], `banned term at ${kcal}: "${v.says}"`);
+    }
+  }
+});

@@ -228,3 +228,101 @@ export function energyBand(input: EnergyBandInput): EnergyBand | EnergyNotOffere
       `Reviewed against what actually happens after ${TRAJECTORY_REVIEW_DAYS} days.`,
   };
 }
+
+/* ── where today stands against the band ──────────────────────────── */
+
+/**
+ * The colour of a *day*, never of a plate.
+ *
+ * Asked for as a light on each photographed meal: green under the daily
+ * figure, amber near it, red over. Three things in this product already
+ * forbid that, and they were put there deliberately.
+ *
+ * `a_single_composite_health_score` is on `NEVER_CLAIM`, and one colour
+ * standing for a whole plate is exactly that. `BANNED_FRAMINGS` blocks
+ * bad, junk, cheat, guilty, sinful, clean and toxic — a red light on a
+ * dinner says all seven without using a word. And a single meal judged
+ * against a *daily* number is not even meaningful: the same plate is
+ * unremarkable at noon and the whole budget at nine at night, and only
+ * the running total knows which.
+ *
+ * So the colour belongs to the day, and the plate keeps the per-nutrient
+ * lights it already has — `trafficLightsPer100g`, the UK front-of-pack
+ * scheme, which is evidence-based, per-nutrient, and says nothing about
+ * the person.
+ *
+ * ── Why there is no red ────────────────────────────────────────────
+ *
+ * The only direction worth a loud signal is downwards. Eating above the
+ * band for a day changes a weekly rate by a rounding error; eating under
+ * the floor is the thing that hurts people, and it is the thing every
+ * other app in this category silently rewards. So under-floor is the
+ * loudest state here, over-ceiling is a note, and red is left to the
+ * safety layer that already owns it.
+ */
+export type DayStanding = 'under_floor' | 'in_band' | 'above_band' | 'early';
+
+export interface DaySoFar {
+  band: EnergyBand;
+  /** Running total for today, from the ledger. */
+  kcalSoFar: number;
+  /** Whether the day is done. An unfinished day cannot be under anything. */
+  dayComplete: boolean;
+}
+
+export interface DayVerdict {
+  standing: DayStanding;
+  /** green · amber · grey. Never red — see the note above. */
+  colour: 'green' | 'amber' | 'grey';
+  /** Loud only when it points downwards. */
+  emphasis: 'none' | 'note' | 'speak_up';
+  says: string;
+}
+
+export function dayStanding(input: DaySoFar): DayVerdict {
+  const { floorKcal, ceilingKcal } = input.band;
+  const kcal = Math.round(input.kcalSoFar);
+
+  /*
+   * A day in progress is not a day under the floor. Colouring it before
+   * the evening meal would turn the floor into a target to hit early,
+   * which is the failure this whole module exists to avoid.
+   */
+  if (!input.dayComplete && kcal < floorKcal) {
+    return {
+      standing: 'early',
+      colour: 'grey',
+      emphasis: 'none',
+      says: `${kcal} kcal recorded so far. The day is not finished, so there is nothing to read into it yet.`,
+    };
+  }
+
+  if (kcal < floorKcal) {
+    return {
+      standing: 'under_floor',
+      colour: 'amber',
+      emphasis: 'speak_up',
+      says:
+        `${kcal} kcal recorded against a floor of ${floorKcal}. This is the direction worth paying attention to: ` +
+        `the floor is the number this system defends, and a day under it is worth a conversation rather than a tick.`,
+    };
+  }
+
+  if (kcal <= ceilingKcal) {
+    return {
+      standing: 'in_band',
+      colour: 'green',
+      emphasis: 'none',
+      says: `${kcal} kcal, inside the ${floorKcal} to ${ceilingKcal} band.`,
+    };
+  }
+
+  return {
+    standing: 'above_band',
+    colour: 'amber',
+    emphasis: 'note',
+    says:
+      `${kcal} kcal, above the band. The band is a weekly rate, so one day changes it very little — ` +
+      `and nothing here needs working off.`,
+  };
+}
