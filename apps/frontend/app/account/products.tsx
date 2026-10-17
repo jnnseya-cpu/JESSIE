@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   CHALLENGE_TEMPLATES,
+  ENERGY_BAND_RELEASED,
   DELIVERY_TIERS,
   DELIVERY_TIER_DEFINITIONS,
   modeForAge,
@@ -192,6 +193,11 @@ export function BodyCommandModule({
   const [result, setResult] = useState<Assessment | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const [readings, setReadings] = useState<{ day: string; kg: number }[]>([]);
+  const [band, setBand] = useState<
+    | { eligible: true; floorKcal: number; ceilingKcal: number; observedKcalPerDay: number; coveredDays: number; reviewAfterDays: number; says: string }
+    | { eligible: false; reason: string; says: string }
+    | null
+  >(null);
   const [progress, setProgress] = useState<{
     trend: { kgPerWeek: number | null; changeKg: number | null; spanDays: number; readings: number; direction: string; says: string };
     warnings: { level: string; says: string; action: string }[];
@@ -244,6 +250,24 @@ export function BodyCommandModule({
           setProgress(loop);
           setReadings(loop.readings ?? []);
           setHistory((loop.readings ?? []).map((r) => r.kg));
+
+          /*
+           * The energy band. Requested only when the surface is released
+           * — it is the one screen that tells somebody how much to eat,
+           * and it waits on a named clinical reviewer. The call site is
+           * here so the endpoint is wired rather than orphaned.
+           */
+          if (ENERGY_BAND_RELEASED) {
+            const energy = (await post(`/body/energy/${encodeURIComponent(me.userId)}`, {
+              age: me.age,
+              optedIntoBodyMetrics: true,
+              pathway: goal,
+              reductionPermitted: true,
+              weightKg: Number(weightKg),
+              bmi: metrics?.bmi,
+            })) as { band: NonNullable<typeof band> };
+            setBand(energy.band);
+          }
         } catch {
           /* the assessment still stands without the loop around it */
         }
@@ -407,6 +431,27 @@ export function BodyCommandModule({
                     .map((r) => `${r.day.slice(5)} ${r.kg}kg`)
                     .join(' · ')}
                 </p>
+              )}
+
+              {ENERGY_BAND_RELEASED && band && (
+                <>
+                  <h4 className="fl__h">Daily energy</h4>
+                  {band.eligible ? (
+                    <>
+                      <p className="fl__big">
+                        {band.floorKcal}–{band.ceilingKcal} <small>kcal</small>
+                      </p>
+                      {/*
+                        The floor is named before the ceiling and labelled
+                        as a floor. Somebody skimming must not read the
+                        lower number as the thing to aim at.
+                      */}
+                      <p className="chart__note">{band.says}</p>
+                    </>
+                  ) : (
+                    <p className="chart__note">{band.says}</p>
+                  )}
+                </>
               )}
             </>
           )}

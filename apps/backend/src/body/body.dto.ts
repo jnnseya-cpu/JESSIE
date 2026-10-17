@@ -140,3 +140,50 @@ export class ProgressDto {
   @Max(400)
   windowDays?: number;
 }
+
+/**
+ * What the energy band needs. Deliberately not a weight goal: the band
+ * governs a rate, and the destination is an outcome rather than an input.
+ */
+export class EnergyDto {
+  @IsInt()
+  @Min(10)
+  @Max(100)
+  age!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  optedIntoBodyMetrics?: boolean;
+
+  @IsString()
+  pathway!: BodyPathway;
+
+  @IsOptional()
+  @IsBoolean()
+  reductionPermitted?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  conditions?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  clinicianAgreed?: boolean;
+
+  @IsNumber()
+  @Min(20)
+  @Max(400)
+  weightKg!: number;
+
+  @IsOptional()
+  @IsNumber()
+  bmi?: number;
+
+  /** The member's own statement that the food log is most of what they ate. */
+  @IsOptional()
+  @IsBoolean()
+  logConfirmedComplete?: boolean;
+
+
+}

@@ -141,6 +141,33 @@ export type ForbiddenMechanic = (typeof FORBIDDEN_MECHANICS)[number];
  */
 export const BODY_COMPOSITION_MIN_AGE = 18;
 
+/**
+ * The adult healthy BMI range, and the only copy of it.
+ *
+ * It lived in `apps/backend/src/health/risk.logic.ts`, which no package
+ * can import, so `energyBand` had written 18.5 again. A clinical
+ * threshold with two homes is a threshold that will eventually disagree
+ * with itself, and the half that moves last will be the one deciding
+ * whether somebody is offered a deficit.
+ */
+export const HEALTHY_BMI = { min: 18.5, max: 24.9 } as const;
+
+/**
+ * Whether the daily energy band is shown to members yet.
+ *
+ * Built, tested and wired, and deliberately off. It is the one surface in
+ * this product that tells a person how much to eat, and nothing an agent
+ * writes about health reaches the public without a named human reviewer
+ * — a clinical safety control, not a workflow preference.
+ *
+ * A boolean rather than a feature flag service, matching
+ * `MOBILE_APP_RELEASED`: it is one fact, it changes once, and it changes
+ * on the day a named clinician signs off the band's arithmetic and its
+ * refusal copy. Flip it in the same commit as that sign-off, and record
+ * who and when in docs/STATE-OF-PLAY.md.
+ */
+export const ENERGY_BAND_RELEASED = false;
+
 export interface BodySurfacePolicy {
   /** Whether any weight/BMI/calorie value may be displayed to this user. */
   mayDisplay: boolean;

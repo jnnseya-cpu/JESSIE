@@ -41,6 +41,7 @@
  * on one screen leave the person to guess which applies to them.
  */
 
+import { HEALTHY_BMI } from '@jessmove/shared';
 import {
   CONDITIONS,
   MEDICATION_NOT_ADVICE,
@@ -52,7 +53,9 @@ import {
   type ConditionId,
 } from '@jessmove/shared';
 
-export const HEALTHY_BMI = { min: 18.5, max: 24.9 } as const;
+// Single source of truth in @jessmove/shared. Imported for use below and
+// re-exported so the backend's existing importers are unchanged.
+export { HEALTHY_BMI };
 
 /** UK adult reference intakes, per day — the same figures the labels use. */
 export const DAILY_REFERENCE = {

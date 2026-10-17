@@ -1,8 +1,11 @@
-import { BodyAssessmentDto, ProgressDto } from './body.dto';
+import { BodyAssessmentDto, EnergyDto, ProgressDto } from './body.dto';
 import { alongsideFrom, trendFrom, warningsFor } from './progress.logic';
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { SelfOnly } from '../auth/auth.guard';
+import { energyBand } from '@jessmove/body-command';
+import { CONDITIONS } from '@jessmove/shared';
 import { ActivityService } from '../activity/activity.service';
+import { FoodLogService } from '../foodlens/food-log.service';
 import {
   BC_AGENTS,
   BODY_PATHWAYS,
@@ -37,6 +40,7 @@ export class BodyController {
   constructor(
     private readonly body: BodyService,
     private readonly activity: ActivityService,
+    private readonly foodLog: FoodLogService,
   ) {}
 
   /**
@@ -115,6 +119,79 @@ export class BodyController {
         windowDays: body.windowDays ?? 14,
       }),
       howItWorks: HOW_PROGRESS_WORKS,
+    };
+  }
+
+  /**
+   * The daily energy band, or the reason there is not one.
+   *
+   * Guarded as the member's own, because it rests on their food ledger
+   * and their weight trend and is meaningless without both. The refusals
+   * matter more than the band: seven of the eight possible answers are a
+   * reason not to name a number, and each one says what would change it.
+   *
+   * `conditions` arrives as declared catalogue ids; which of them force a
+   * clinician is read from `CONDITIONS` here rather than trusted from the
+   * caller, so a client cannot clear its own gate by omitting one.
+   */
+  @SelfOnly('userId')
+  @Post('energy/:userId')
+  async energy(@Param('userId') userId: string, @Body() body: EnergyDto) {
+    const needingClinician = (body.conditions ?? []).filter(
+      (id) => CONDITIONS[id as keyof typeof CONDITIONS]?.effects?.deficitNeedsClinician === true,
+    );
+
+    const readings = await this.activity.readings(userId);
+    const latest = readings[readings.length - 1];
+
+    /*
+     * Read, never accepted. `observedKcalPerDay` is the anchor the whole
+     * band hangs off, so a client able to assert it could unlock a
+     * deficit by claiming an intake it never recorded. It comes from the
+     * member's own ledger, divided by days *covered* rather than calendar
+     * days — the same denominator the ledger itself uses.
+     */
+    const log = await this.foodLog.summary(userId, 'month');
+    const energyTotal = log.totals.find((t) => t.key === 'energyKcal')?.total ?? 0;
+    /*
+     * Divided by days *recorded*, never by `daysCovered`. Coverage is
+     * `max(daysRecorded, totalKcal / 2000)`, so dividing by it returns
+     * the reference intake exactly for anybody eating above it — an
+     * identity that would have handed every heavier eater the same band.
+     */
+    const observed = log.daysRecorded > 0 ? energyTotal / log.daysRecorded : null;
+
+    return {
+      band: energyBand({
+        age: body.age,
+        optedIntoBodyMetrics: body.optedIntoBodyMetrics ?? false,
+        pathway: body.pathway,
+        reductionPermitted: body.reductionPermitted ?? false,
+        conditionsNeedingClinician: needingClinician,
+        clinicianAgreed: body.clinicianAgreed,
+        weightKg: latest?.kg ?? body.weightKg,
+        bmi: body.bmi ?? null,
+        observedKcalPerDay: observed,
+        recordedDays: log.daysRecorded,
+        logConfirmedComplete: body.logConfirmedComplete ?? false,
+      }),
+      /*
+       * Named so a member can see which gates were even considered. A
+       * refusal that does not say what it checked reads as a refusal to
+       * engage.
+       */
+      gatesChecked: [
+        'age', 'consent', 'pathway', 'safety', 'declared conditions',
+        'BMI range', 'recorded food',
+      ],
+      clinicianRequiredFor: needingClinician,
+      /* Shown so the anchor is never a number the member cannot audit. */
+      anchoredOn: {
+        observedKcalPerDay: observed,
+        daysRecorded: log.daysRecorded,
+        daysCovered: log.daysCovered,
+        coverage: log.coverage,
+      },
     };
   }
 
