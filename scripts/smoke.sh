@@ -45,9 +45,13 @@ ta(){ want="$3"; [ "$AUTHED" = yes ] || want=401
   if [ "$c" = "$want" ]; then pass=$((pass+1)); printf "  ok    %-4s %-32s %s  %s\n" "$1" "$2" "$c" "${5:-privileged}";
   else fail=$((fail+1)); printf "  FAIL  %-4s %-32s got %s want %s\n" "$1" "$2" "$c" "$want"; head -c 200 /tmp/r.json; echo; fi }
 
-GOOD='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNormaliser":1,"permittedVariants":["seated","standing"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["calendar","motion","device_state"]}}'
-DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"driving","locationClass":"transit","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":0,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
-SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"snapsDeliveredToday":1,"dailyCap":6,"minutesSinceLastNudge":95,"consentedSignals":["motion"]}}'
+# `snapsDeliveredToday`, `dailyCap` and `minutesSinceLastNudge` are
+# deliberately absent. They were removed from the request DTO because a
+# ceiling the caller sets for itself is not a ceiling; the engine counts
+# them from `member_activity`. Sending them is now a 400.
+GOOD='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNormaliser":1,"permittedVariants":["seated","standing"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"consentedSignals":["calendar","motion","device_state"]}}'
+DRIVING='{"userId":"u_1","mode":"momentum","availableSeconds":900,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"driving","locationClass":"transit","onCall":false,"doNotDisturb":false,"localHour":14,"consentedSignals":["motion"]}}'
+SHORT='{"userId":"u_1","mode":"momentum","availableSeconds":5,"capabilityNormaliser":1,"permittedVariants":["seated"],"signals":{"userId":"u_1","motionState":"still","locationClass":"office","onCall":false,"doNotDisturb":false,"localHour":14,"consentedSignals":["motion"]}}'
 
 echo "reads"
 for p in /health /system /movements /movements/gate /body/pathways /body/scorecard /body/agents /acu/policy /blog/policy /blog/posts /blog/analytics /comms/policy /comms/catalogue /growth/programme /growth/ladder /stripe/status /stripe/plans /mail/status /accounts/kinds /accounts/media/rules /accounts/autosave/policy /auth/status /accounts/storage/status /db/status /wearables/providers /foodlens/policy /push/status; do t GET $p 200; done
