@@ -227,6 +227,29 @@ this route is not behind one.
 
 ## Watch list
 
+**The API has not deployed successfully in days, and the frontend has.**
+Read from the repository's own deployment records, since production is
+unreachable from here. Two Vercel projects fire on every push: `jessie-move`
+succeeds every single time, `jessie-backend` fails every single time, going
+back at least to 16 October and covering every commit in this session.
+
+That is the most likely reason new work does not appear on the site. Anything
+needing the API talks to whatever api.jessmove.com was last serving, which is
+not this code.
+
+And the backend probably should not be on Vercel at all. `docs/DEPLOY.md`
+describes it as a plain OCI container with a `gcloud run deploy` command and
+says "anything that runs OCI images will do". `apps/backend/vercel.json` has no
+`framework` and no `outputDirectory`, which is the shape Vercel cannot serve.
+So `jessie-backend` looks like a project that has never worked rather than one
+that broke.
+
+Three things the owner can settle in minutes and nobody here can settle at all:
+whether jessmove.com is aliased to the latest successful `jessie-move`
+deployment; what the `jessie-backend` build log actually says; and which host
+is really answering api.jessmove.com — `curl -sI https://api.jessmove.com/api/health`
+and look for `x-vercel-id` or a Cloud Run header.
+
 **Two FoodLens guard classes are declared and never thrown.**
 `FalsePrecisionError` and `ForbiddenClaimError` are exported from
 `packages/foodlens/src/confidence.ts` and nothing in the repository
