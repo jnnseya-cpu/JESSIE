@@ -810,6 +810,31 @@ export default function FoodLens() {
                     <li key={c}>{c.replace(/_/g, ' ')}</li>
                   ))}
                 </ul>
+                {/*
+                  How, specifically. This list sat here for a long time
+                  with nothing behind it, which made it the kind of claim
+                  that is technically a list and practically a promise.
+                  The mechanism is now real and worth stating, because it
+                  is more convincing than the list was: the ladder itself
+                  carries the constraint.
+                */}
+                <p className="prose" style={{ fontSize: 15, marginTop: 10 }}>
+                  The ladder is the mechanism. Levels one to three change the dish in front of
+                  you — less sauce, a different pan, another side — so they hold in any kitchen
+                  and are offered whether or not you have told us anything. Levels four and
+                  five rebuild or replace the meal, and those stay shut until you say what you
+                  cook, because replacing somebody’s dinner without knowing their food is
+                  exactly how this goes wrong. Allergens and religious restriction are absolute
+                  at every level. With nothing that fits, you get nothing — a suggestion that
+                  ignores what you told us is worse than none.{' '}
+                  <Link href="/developers">Check it yourself</Link> at{' '}
+                  <code>GET /api/foodlens/swaps/policy</code>.
+                </p>
+                <p className="prose" style={{ fontSize: 15, marginTop: 8 }}>
+                  What it is not: a library of every cuisine. We do not have one, and inventing
+                  it would be worse than saying so. What you declare narrows what we offer; it
+                  does not conjure dishes we do not hold.
+                </p>
               </article>
             </div>
           </div>
