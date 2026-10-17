@@ -29,3 +29,4 @@ export * from './plan';
 export * from './acu';
 export * from './agents';
 export * from './energy';
+export * from './programme';

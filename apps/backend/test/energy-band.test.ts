@@ -279,3 +279,90 @@ test('no sentence the day verdict produces uses a banned word', async () => {
     }
   }
 });
+
+/* ── the programme ────────────────────────────────────────────────── */
+
+test('the timeframe is real and the targets are never a weight', async () => {
+  const { programmeFor, WEEKLY_TARGETS } = await import('@jessmove/body-command');
+  const p = programmeFor(bandOf(), 12);
+
+  assert.equal(p.weeks, 12);
+  assert.equal(p.total.daysScanned, WEEKLY_TARGETS.daysScanned * 12);
+
+  // Every target is a count of days. Nothing in the structure is a kg.
+  const targetKeys = Object.keys(p.weekly).concat(Object.keys(p.total));
+  for (const k of targetKeys) assert.match(k, /^days/, `${k} is not a behaviour`);
+
+  // The weight outcome exists but as a consequence, with no date on it.
+  assert.ok(p.impliedChangeKg.fast > p.impliedChangeKg.slow);
+  assert.match(p.says, /consequence of the days, not a target/);
+  assert.match(p.says, /no date by which it has to be true/);
+});
+
+test('no weekly target is seven of seven', async () => {
+  const { WEEKLY_TARGETS } = await import('@jessmove/body-command');
+  /*
+   * A seven-of-seven target has one failure mode and it arrives on the
+   * first bad day. The next three months contain a weekend, an illness
+   * and a holiday.
+   */
+  for (const [k, v] of Object.entries(WEEKLY_TARGETS)) {
+    assert.ok(v < 7, `${k} demands a perfect week`);
+    assert.ok(v >= 4, `${k} is too slack to mean anything`);
+  }
+});
+
+test('a missed day never takes away progress already earned', async () => {
+  const { programmeFor, programmeProgress } = await import('@jessmove/body-command');
+  const p = programmeFor(bandOf(), 12);
+
+  const atWeek4 = programmeProgress(p, {
+    daysScanned: 20, daysMoved: 20, daysInBand: 16, weeksElapsed: 4,
+  });
+  // A fortnight with nothing recorded: the counts stand still, they do
+  // not fall. `punishment_for_missed_days` is on the prohibited list.
+  const atWeek6 = programmeProgress(p, {
+    daysScanned: 20, daysMoved: 20, daysInBand: 16, weeksElapsed: 6,
+  });
+
+  assert.equal(atWeek6.scanned, atWeek4.scanned, 'progress went backwards');
+  assert.equal(atWeek6.moved, atWeek4.moved);
+  assert.equal(atWeek6.inBand, atWeek4.inBand);
+
+  // And the message about slipping names the strand without blame.
+  assert.equal(atWeek6.onTrack, false);
+  assert.match(atWeek6.says, /Days already counted stay counted/);
+});
+
+test('overall is the weakest strand, not an average that hides one', async () => {
+  const { programmeFor, programmeProgress } = await import('@jessmove/body-command');
+  const p = programmeFor(bandOf(), 8);
+
+  // Perfect on two strands, nothing on the third.
+  const lopsided = programmeProgress(p, {
+    daysScanned: p.total.daysScanned, daysMoved: p.total.daysMoved, daysInBand: 0, weeksElapsed: 8,
+  });
+  assert.equal(lopsided.overall, 0, 'an average would have reported this as two-thirds done');
+  assert.match(lopsided.says, /days inside the band/);
+});
+
+test('nothing the programme says uses a banned word', async () => {
+  const { programmeFor, programmeProgress, PROGRAMME_WEEKS } = await import('@jessmove/body-command');
+  const { bannedTermsIn } = await import('@jessmove/shared');
+
+  for (const weeks of PROGRAMME_WEEKS) {
+    const p = programmeFor(bandOf(), weeks);
+    assert.deepEqual(bannedTermsIn(p.says), [], p.says);
+    for (let w = 0; w <= weeks; w++) {
+      for (const done of [0, 0.5, 1]) {
+        const prog = programmeProgress(p, {
+          daysScanned: Math.round(p.total.daysScanned * done),
+          daysMoved: Math.round(p.total.daysMoved * done),
+          daysInBand: Math.round(p.total.daysInBand * done),
+          weeksElapsed: w,
+        });
+        assert.deepEqual(bannedTermsIn(prog.says), [], prog.says);
+      }
+    }
+  }
+});

@@ -190,5 +190,10 @@ export class EnergyDto {
   @IsBoolean()
   dayComplete?: boolean;
 
+  /** Programme length in weeks. Anything not on the list falls back to 12. */
+  @IsOptional()
+  @IsInt()
+  weeks?: number;
+
 
 }

@@ -2,7 +2,14 @@ import { BodyAssessmentDto, EnergyDto, ProgressDto } from './body.dto';
 import { alongsideFrom, trendFrom, warningsFor } from './progress.logic';
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { SelfOnly } from '../auth/auth.guard';
-import { dayStanding, energyBand } from '@jessmove/body-command';
+import {
+  dayStanding,
+  energyBand,
+  programmeFor,
+  programmeProgress,
+  PROGRAMME_WEEKS,
+  type ProgrammeWeeks,
+} from '@jessmove/body-command';
 import { CONDITIONS } from '@jessmove/shared';
 import { ActivityService } from '../activity/activity.service';
 import { FoodLogService } from '../foodlens/food-log.service';
@@ -184,6 +191,34 @@ export class BodyController {
     const today = new Date().toISOString().slice(0, 10);
     const kcalToday = log.series.find((d) => d.day === today)?.kcal ?? 0;
 
+    /*
+     * The programme, and how far into it this member is. Counted from
+     * the ledger and the activity log rather than reported by the
+     * client: a progress figure a caller can assert is a progress figure
+     * that means nothing.
+     *
+     * `daysInBand` is computed per day from the ledger's own series
+     * against the band, which is the only place the two can be compared.
+     */
+    const weeks: ProgrammeWeeks = PROGRAMME_WEEKS.includes(body.weeks as ProgrammeWeeks)
+      ? (body.weeks as ProgrammeWeeks)
+      : 12;
+    const programme = band.eligible ? programmeFor(band, weeks) : null;
+
+    let progress = null;
+    if (band.eligible && programme) {
+      const daysInBand = log.series.filter(
+        (d) => d.kcal >= band.floorKcal && d.kcal <= band.ceilingKcal,
+      ).length;
+      const dashboard = await this.activity.dashboard(userId);
+      progress = programmeProgress(programme, {
+        daysScanned: log.daysRecorded,
+        daysMoved: dashboard.daysMovedInWindow ?? 0,
+        daysInBand,
+        weeksElapsed: Math.max(1, Math.ceil(log.daysRecorded / 7)),
+      });
+    }
+
     return {
       band,
       today: band.eligible
@@ -194,6 +229,8 @@ export class BodyController {
             dayComplete: body.dayComplete ?? false,
           })
         : null,
+      programme,
+      progress,
       /*
        * Named so a member can see which gates were even considered. A
        * refusal that does not say what it checked reads as a refusal to

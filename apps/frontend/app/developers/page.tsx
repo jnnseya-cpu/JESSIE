@@ -29,6 +29,7 @@ const ENDPOINTS: ReadonlyArray<{
   { verb: 'GET', path: '/body/pathways', what: 'The nine pathways and what each permits.' },
   { verb: 'GET', path: '/body/scorecard', what: 'The weighting behind the four readings.' },
   { verb: 'GET', path: '/body/agents', what: 'The nineteen BodyCommand agents and their supervisor.' },
+  { verb: 'GET', path: '/foodlens/swaps/policy', what: 'The ten food constraints, and which suggestion levels each one permits. Declare a cuisine and watch the ladder open.' },
   { verb: 'GET', path: '/acu/policy', what: 'ACU policy: what is metered, what never is, and how allowances work.' },
   { verb: 'POST', path: '/acu/quote', what: 'Price an action before running it.' },
   { verb: 'POST', path: '/acu/wallets/:id/spend', what: 'Cost Governor: bucket precedence, hard stop at zero.' },

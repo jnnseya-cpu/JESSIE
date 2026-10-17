@@ -18,6 +18,13 @@ import { FoodlensService } from './foodlens.service';
 import { FoodLogService } from './food-log.service';
 import { RETENTION_DAYS, WINDOW_DAYS, entryFromProduct, type LogWindow } from './food-log.logic';
 
+import {
+  SWAP_CONSTRAINTS,
+  SWAP_LEVELS,
+  permittedSwapLevels,
+  selectSwaps,
+} from '@jessmove/foodlens';
+
 @Controller('foodlens')
 export class FoodlensController {
   constructor(
@@ -62,6 +69,44 @@ export class FoodlensController {
    * right answer for a member and useless for fixing it; this names the
    * refusal, per provider, from the deployment serving the request.
    */
+  /**
+   * Which suggestions this member may be shown, and why.
+   *
+   * The ten constraints have been on the FoodLens page since it was
+   * written and honoured by nothing — a claim with no implementation.
+   * This is the implementation: declared, never inferred, and the ladder
+   * narrows when nothing has been declared rather than guessing.
+   */
+  @Get('swaps/policy')
+  swapPolicy(@Query('cuisine') cuisine?: string, @Query('excludes') excludes?: string) {
+    const constraints = {
+      declared: SWAP_CONSTRAINTS,
+      excludes: (excludes ?? '').split(',').map((e) => e.trim()).filter(Boolean),
+      cuisine: cuisine?.trim() || undefined,
+    };
+    const levels = permittedSwapLevels(constraints);
+    return {
+      constraints: SWAP_CONSTRAINTS,
+      permittedLevels: levels,
+      /*
+       * Run against the ladder itself so the answer is the real one
+       * rather than a description of it.
+       */
+      example: selectSwaps(
+        SWAP_LEVELS.map((l) => ({
+          level: l.level,
+          action: l.example,
+          expectedEffect: 'Directional only.',
+          respects: [],
+        })),
+        constraints,
+      ),
+      note:
+        'Declared by you, never inferred. Working out somebody’s cuisine from their shopping is ' +
+        'inferring ethnicity without asking, so this stays something you tell us.',
+    };
+  }
+
   @Get('probe')
   probe(): Promise<Record<string, unknown>> {
     return this.foodlens.probeVision();

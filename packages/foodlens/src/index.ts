@@ -19,3 +19,4 @@ export * from './confidence';
 export * from './twin';
 export * from './analysis';
 export * from './composition';
+export * from './constraints';
