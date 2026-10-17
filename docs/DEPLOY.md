@@ -76,31 +76,30 @@ without them:
   instance. `req.url` keeps the original path, so the `/api` global prefix
   resolves normally.
 
-### The two cron jobs are currently withheld
+### The nudge sweep is not scheduled here, and should be
 
-`vercel.json` used to schedule the blog autopilot at `0 7 * * *` and the
-nudge sweep at `0,30 * * * *`. Both have been **removed from the file**, and
-this is the only record of them — put them back as:
+`vercel.json` schedules one cron job, the blog autopilot at `0 7 * * *`.
+That is daily, so it is accepted on every plan including Hobby.
+
+The second one is missing on purpose:
 
 ```json
-  "crons": [
-    { "path": "/api/blog/agent/autopilot/cron", "schedule": "0 7 * * *" },
-    { "path": "/api/nudge/cron",                "schedule": "0,30 * * * *" }
-  ]
+    { "path": "/api/nudge/cron", "schedule": "0,30 * * * *" }
 ```
 
-Why they were removed: a cron schedule the plan does not allow makes Vercel
-**refuse the deployment** rather than deploy it with the cron ignored. Hobby
-permits daily schedules only. This project had failed every deployment for
-eight weeks while its build was proven to work from a clean clone, so the
-schedule was the cheapest remaining variable to eliminate — and nothing was
-lost by eliminating it, because a project that does not deploy is not
-running these jobs either.
+A cron schedule the plan does not permit makes Vercel **refuse the
+deployment** rather than deploy it with the cron ignored, and Hobby permits
+daily schedules only. Removing both was run as a deliberate experiment
+while this project was failing every deployment — it changed nothing, so
+the schedule is **not** the reason it fails. The daily one is therefore
+back. The half-hourly one stays out only because it is the single piece of
+this configuration that is unsafe under an unknown plan, and nothing is
+lost by waiting: this endpoint is not running today either.
 
-Restore them the moment the plan is known. On Pro the schedules go back
-exactly as written. On Hobby the nudge sweep has to become daily or be
-triggered from somewhere other than Vercel Cron — `GET /api/nudge/cron` is
-an ordinary guarded endpoint and anything holding `CRON_SECRET` can call it.
+Put it back as soon as the plan is known. On Pro it goes in as written. On
+Hobby it has to become daily, or be triggered from somewhere other than
+Vercel Cron — `GET /api/nudge/cron` is an ordinary guarded endpoint and
+anything holding `CRON_SECRET` can call it on any schedule.
 
 Verify a deployment the same way the container is verified:
 

@@ -282,7 +282,12 @@ What that leaves, stated only as far as the evidence goes:
 
 That points at project configuration or the account, and **one line of the
 build log names it** — which nobody here can read, by policy. Reading it is
-the next step and the only one with evidence behind it:
+the next step and the only one with evidence behind it. Two candidates were
+tested from this side and both are now ruled out: a missing serverless
+entry point (added in 668ac18, still refused) and the cron schedule
+(removed in 0c86b58, still refused). The entry point was a genuine defect
+and stays; the crons are restored as far as is safe. Neither was the cause
+of the refusal, so the remaining candidates are settings, not files:
 
 ```
 npx vercel inspect dpl_ETqLGehFov6usF3NvQYMizpp9rAM --logs
@@ -291,15 +296,14 @@ npx vercel inspect dpl_ETqLGehFov6usF3NvQYMizpp9rAM --logs
 Three candidates worth checking while that log is open, in order of how
 well they fit a failure that ignores the code:
 
-1. **Cron jobs against the plan.** Hobby allows daily schedules only and
-   refuses the deployment outright rather than degrading it. The frontend
-   has no crons and is unaffected. **Being tested now:** both crons have
-   been removed from `apps/backend/vercel.json`, which is the only variable
-   changed. `docs/DEPLOY.md` holds them and says how to restore them — they
-   must go back once the plan is known, and nothing is lost meanwhile
-   because a project that does not deploy is not running them either. If
-   this deployment is still refused, the schedule is not the cause and
-   candidates 2 and 3 are what remain.
+1. ~~**Cron jobs against the plan.**~~ **Ruled out.** Both crons were
+   removed from `apps/backend/vercel.json` as the only changed variable
+   (0c86b58) and the deployment was refused exactly as before. The daily
+   blog cron is back, since it is accepted on every plan. The half-hourly
+   nudge sweep stays out until the plan is known — not as a theory about
+   this failure, but because it is the one setting here that is unsafe
+   under an unknown plan, and the endpoint is not running today anyway.
+   `docs/DEPLOY.md` says how to restore it.
 2. **Root Directory.** If it is not `apps/backend`, then
    `apps/backend/vercel.json` is never read — which would also mean none of
    the wiring above has been tried yet, whatever this commit says.
