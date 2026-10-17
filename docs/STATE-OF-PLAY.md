@@ -292,8 +292,14 @@ Three candidates worth checking while that log is open, in order of how
 well they fit a failure that ignores the code:
 
 1. **Cron jobs against the plan.** Hobby allows daily schedules only and
-   refuses the deployment outright rather than degrading it. `vercel.json`
-   asks for `0,30 * * * *`. The frontend has no crons and is unaffected.
+   refuses the deployment outright rather than degrading it. The frontend
+   has no crons and is unaffected. **Being tested now:** both crons have
+   been removed from `apps/backend/vercel.json`, which is the only variable
+   changed. `docs/DEPLOY.md` holds them and says how to restore them — they
+   must go back once the plan is known, and nothing is lost meanwhile
+   because a project that does not deploy is not running them either. If
+   this deployment is still refused, the schedule is not the cause and
+   candidates 2 and 3 are what remain.
 2. **Root Directory.** If it is not `apps/backend`, then
    `apps/backend/vercel.json` is never read — which would also mean none of
    the wiring above has been tried yet, whatever this commit says.

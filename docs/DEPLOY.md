@@ -76,10 +76,31 @@ without them:
   instance. `req.url` keeps the original path, so the `/api` global prefix
   resolves normally.
 
-> **Cron jobs are plan-gated.** `vercel.json` schedules the blog autopilot
-> daily and the nudge sweep at `0,30 * * * *`. A Hobby project is limited to
-> daily cron jobs and the deployment is **refused**, not degraded. On Hobby,
-> either move to Pro or drop the half-hourly entry.
+### The two cron jobs are currently withheld
+
+`vercel.json` used to schedule the blog autopilot at `0 7 * * *` and the
+nudge sweep at `0,30 * * * *`. Both have been **removed from the file**, and
+this is the only record of them — put them back as:
+
+```json
+  "crons": [
+    { "path": "/api/blog/agent/autopilot/cron", "schedule": "0 7 * * *" },
+    { "path": "/api/nudge/cron",                "schedule": "0,30 * * * *" }
+  ]
+```
+
+Why they were removed: a cron schedule the plan does not allow makes Vercel
+**refuse the deployment** rather than deploy it with the cron ignored. Hobby
+permits daily schedules only. This project had failed every deployment for
+eight weeks while its build was proven to work from a clean clone, so the
+schedule was the cheapest remaining variable to eliminate — and nothing was
+lost by eliminating it, because a project that does not deploy is not
+running these jobs either.
+
+Restore them the moment the plan is known. On Pro the schedules go back
+exactly as written. On Hobby the nudge sweep has to become daily or be
+triggered from somewhere other than Vercel Cron — `GET /api/nudge/cron` is
+an ordinary guarded endpoint and anything holding `CRON_SECRET` can call it.
 
 Verify a deployment the same way the container is verified:
 

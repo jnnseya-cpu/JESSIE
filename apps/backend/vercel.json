@@ -12,15 +12,5 @@
     "api/index.js": {
       "includeFiles": "dist/**"
     }
-  },
-  "crons": [
-    {
-      "path": "/api/blog/agent/autopilot/cron",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/nudge/cron",
-      "schedule": "0,30 * * * *"
-    }
-  ]
+  }
 }
