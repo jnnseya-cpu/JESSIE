@@ -1,0 +1,75 @@
+name: Post-deploy
+
+# Asks the live API whether it is actually serving, every time a deployment
+# succeeds.
+#
+# This exists because "deployed" and "serving" turned out to be different
+# things for sixty days. Between 19 August and 18 October 2026 the site
+# deployed successfully on every push while the API had not deployed at all,
+# and nothing anywhere said so: CI proved the code, Vercel proved the build,
+# and nobody asked the running system a single question. The gap was found by
+# a person noticing the product had not changed.
+#
+# `deployment_status` fires when Vercel reports an outcome, and a GitHub
+# runner can reach api.jessmove.com, which the development container cannot.
+# So this is the one place in the repository where a claim about production
+# can actually be checked.
+
+on:
+  deployment_status:
+
+jobs:
+  verify:
+    # Only successful backend deployments. A failed one has nothing to ask,
+    # and the site's deployments are a different question.
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      contains(github.event.deployment.environment, 'backend')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is the live API serving this commit?
+        id: verify
+        continue-on-error: true
+        env:
+          DEPLOYED_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          # Truncated in the shell rather than with `git rev-parse`: on this
+          # event the checkout is not guaranteed to contain the deployed
+          # commit, and a verifier that falls over on its own expectation is
+          # no use. /api/health publishes the first seven characters, so
+          # compare like with like.
+          #
+          # A mismatch means the domain is not aliased to the project that
+          # just deployed — invisible in the deployment record, and
+          # indistinguishable from "my changes did nothing".
+          bash scripts/verify-live.sh \
+            https://api.jessmove.com/api \
+            "${DEPLOYED_SHA:0:7}" \
+            | tee /tmp/verify.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Say what it found
+        run: |
+          code='${{ steps.verify.outputs.code }}'
+          {
+            echo '### Live API after deploying `${{ github.event.deployment.sha }}`'
+            echo
+            echo '```'
+            cat /tmp/verify.txt 2>/dev/null || echo '(the check produced no output)'
+            echo '```'
+            echo
+            case "$code" in
+              0) echo 'Serving, and everything is configured.' ;;
+              2) echo 'Serving. Some capabilities are switched off — each line above names the variable that enables it. `AUTH_SECRET` is the one worth checking first: without it the API answers normally and registration and login are unavailable, which from outside is indistinguishable from nobody signing up.' ;;
+              *) echo 'Not serving correctly. The deployment succeeded, so this is about the domain, the environment variables or the database rather than the build.' ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Exit 2 is "serving but incomplete" — a human should look, and it
+          # is not a reason to mark a good deployment broken. Anything else
+          # non-zero is a real failure.
+          [ "$code" = "0" ] || [ "$code" = "2" ]
