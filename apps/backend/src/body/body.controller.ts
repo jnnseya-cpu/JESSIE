@@ -172,7 +172,12 @@ export class BodyController {
         age: body.age,
         optedIntoBodyMetrics: body.optedIntoBodyMetrics ?? false,
         pathway: body.pathway,
-        reductionPermitted: body.reductionPermitted ?? false,
+        /*
+         * Read from the pathway, never accepted from the caller. This is
+         * the gate on whether somebody may be told to eat less at all, and
+         * the browser was asserting `true` on every request.
+         */
+        reductionPermitted: PATHWAY_DEFINITIONS[body.pathway]?.reductionPermitted === true,
         conditionsNeedingClinician: needingClinician,
         clinicianAgreed: body.clinicianAgreed,
         weightKg: latest?.kg ?? body.weightKg,

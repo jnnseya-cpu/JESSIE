@@ -262,7 +262,8 @@ export function BodyCommandModule({
               age: me.age,
               optedIntoBodyMetrics: true,
               pathway: goal,
-              reductionPermitted: true,
+              // No `reductionPermitted`. The server reads it from the
+              // pathway; sending it is now a 400.
               weightKg: Number(weightKg),
               bmi: metrics?.bmi,
             })) as { band: NonNullable<typeof band> };

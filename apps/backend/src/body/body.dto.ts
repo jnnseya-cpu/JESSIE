@@ -158,9 +158,18 @@ export class EnergyDto {
   @IsString()
   pathway!: BodyPathway;
 
-  @IsOptional()
-  @IsBoolean()
-  reductionPermitted?: boolean;
+  /*
+   * `reductionPermitted` used to be here and is deliberately gone.
+   *
+   * It is the gate that decides whether this member may be told to eat
+   * less at all, and the browser sent `true` on every request. A safety
+   * verdict the caller supplies is not a safety verdict — the same fault
+   * as `dailyCap` in the prescription DTO, in a place where the answer is
+   * a calorie ceiling.
+   *
+   * It is now read from `PATHWAY_DEFINITIONS[pathway].reductionPermitted`
+   * in the controller, which is where it was authoritative all along.
+   */
 
   @IsOptional()
   @IsArray()
