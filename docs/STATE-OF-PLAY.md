@@ -313,6 +313,50 @@ works is worse than one that fails, and only running the builder found it.
 The same technique confirmed the site: its build completes and `sw.js` is
 now present in `.vercel/output/static`, where it has never been before.
 
+**7372465 was refused too, and that now says something definite: the
+project is not reading `apps/backend/vercel.json`.**
+
+The local probe passes on exactly the tree that was pushed — build
+completes, function produced, artefact serves 85/85. The platform refuses
+the same tree. Those two facts together mean the platform is not using that
+configuration, which is a project setting and not a file.
+
+Narrowed as far as evidence allows, and no further:
+
+- A build run at the **repository root** fails with the identical error,
+  `STATIC_BUILD_NO_OUT_DIR`. So "Root Directory is the repository root"
+  produces exactly the signature observed.
+- But the timing argues against it. The root `build` script builds the
+  packages, the backend **and** the frontend; the site alone takes ~78
+  seconds from commit to a success record, while every backend failure
+  lands in 36–40 seconds. Too fast to have built the frontend first.
+- Which fits a project that fails **before building anything** — a Root
+  Directory pointing at a path that does not exist being the obvious way
+  to do that, and one that also explains eight weeks of identical failures
+  and every file-level fix being a no-op.
+
+**A root `vercel.json` shim was considered and rejected.** It would fix the
+"root is the repository root" case, and the repository root is read by any
+project pointed at it — including the site, if it were ever pointed there.
+`vercel.json` overrides dashboard build settings, so that shim could take
+the one deployment that works and make it serve the API's static page
+instead. The evidence says the site is rooted at `apps/frontend`; it does
+not say so strongly enough to risk the only thing that is live.
+
+So this one cannot be closed from inside the repository, and saying
+otherwise would be the fourth guess in a row. Two ways to finish it:
+
+1. **Set the `jessie-backend` project's Root Directory to `apps/backend`**
+   (Settings → Build and Deployment → Root Directory), with "Include files
+   outside the Root Directory" on, which a pnpm workspace needs. Everything
+   else is already proven correct against the platform's own builder.
+2. **Put a Vercel token in the environment** and this becomes finishable
+   here rather than described: `vercel pull` prints the project's actual
+   Root Directory — ending the guessing outright — and `vercel deploy
+   --prebuilt` ships the artefact that has already passed 85/85, after
+   which `scripts/smoke.sh https://api.jessmove.com/api` proves it from
+   outside.
+
 **What is still not proven, and what would disprove it.** The deployment
 itself. Everything above was verified against the platform's own builder
 and its own output artefact, which is as close as this machine gets; it
