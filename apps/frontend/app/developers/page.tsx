@@ -15,6 +15,7 @@ const ENDPOINTS: ReadonlyArray<{
   path: string;
   what: string;
 }> = [
+  { verb: 'GET', path: '/', what: 'The endpoints that need no credentials, and which commit is serving.' },
   { verb: 'GET', path: '/health', what: 'Liveness plus AI-gateway status.' },
   { verb: 'GET', path: '/system', what: 'The operating system’s invariants, machine-readable.' },
   { verb: 'GET', path: '/ai/providers', what: 'Provider configuration. Staff session required.' },

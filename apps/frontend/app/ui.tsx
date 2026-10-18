@@ -265,9 +265,24 @@ export function Footer() {
             <p className="foot__pitch">
               Movement, engineered into the gaps. Ten to a hundred. Every body qualifies.
             </p>
-            <Link className="foot__status" href="/status">
-              <i aria-hidden="true" />
-              All systems operational
+            {/*
+              A link, not a claim.
+
+              This said "All systems operational" beside a green dot, on
+              every page of the site, hardcoded. Nothing checked it. For the
+              sixty days the API was not deploying, every page on
+              jessmove.com asserted that everything was fine — and the
+              status page one click away argues, in its own copy, that "a
+              green tick nobody is checking is worse than no tick at all".
+              The footer was the tick nobody was checking.
+
+              The honest version is a link to the page that measures it.
+              Reading the live state here instead would mean a per-request
+              API call on every page, including the statically rendered
+              ones, to repeat something the destination already says.
+            */}
+            <Link className="foot__status foot__status--plain" href="/status">
+              Platform status
             </Link>
           </div>
 

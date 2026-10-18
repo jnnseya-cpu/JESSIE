@@ -49,6 +49,30 @@ export class HealthController {
     private readonly db: DbService,
   ) {}
 
+  /**
+   * The root of the API prefix.
+   *
+   * Nothing was mounted here, so `GET /api` answered `Cannot GET /api` —
+   * correct, and a poor signpost for somebody who has typed the API host
+   * into a browser to see whether it is alive. This is not a health claim;
+   * it is a directory. The three endpoints it names are the ones that need
+   * no credentials and say something true about the running system.
+   */
+  @Get()
+  index() {
+    return {
+      platform: BRAND.platform,
+      note: 'This host serves JSON only. The site is at https://jessmove.com.',
+      build: buildInfo(),
+      openWithoutCredentials: {
+        '/api/health': 'Whether the database and the gateway answer, and which commit is serving',
+        '/api/db/status': 'The schema, and every migration applied to it',
+        '/api/assurance': 'The safeguarding and data commitments this platform holds itself to',
+        '/api/system': 'The invariants the platform publishes about itself',
+      },
+    };
+  }
+
   @Get('health')
   async health(): Promise<HealthReport> {
     const providers = this.gateway.health();
