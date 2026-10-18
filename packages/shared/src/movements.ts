@@ -107,6 +107,14 @@ export interface MovementVariantRecord {
   environments: Environment[];
   durationSeconds: number;
   cueSets: CueSet[];
+  /**
+   * The variant's own instruction, independent of age mode.
+   *
+   * `movement_variants.instruction_text` has been NOT NULL since
+   * migration 0001 and this type had no field for it, which is half of
+   * why the library service never used the table it was given.
+   */
+  instructionText?: string;
   screeningPassed: boolean;
   /** Named reviewer who signed the safety screening. §23. */
   screenedBy?: string;

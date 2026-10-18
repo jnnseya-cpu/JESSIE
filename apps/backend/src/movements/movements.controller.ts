@@ -9,15 +9,30 @@ import {
   type Movement,
 } from '@jessmove/shared';
 import { MovementsService } from './movements.service';
+import { PublishReviewDto } from './movements.dto';
 import { AdminOnly } from '../auth/auth.guard';
 
 @Controller('movements')
 export class MovementsController {
   constructor(private readonly movements: MovementsService) {}
 
+  /**
+   * The published library. Published only.
+   *
+   * This returned every movement in every state from an unguarded route.
+   * It leaked nothing because the library was empty, and would have
+   * published unreviewed health content the moment one was authored.
+   */
   @Get()
   list() {
-    return this.movements.list();
+    return this.movements.published();
+  }
+
+  /** The whole library, drafts included, for the people authoring it. */
+  @AdminOnly()
+  @Get('all')
+  all() {
+    return this.movements.all();
   }
 
   /** The publishing contract, exposed so Studio authors can see the gate. */
@@ -56,15 +71,23 @@ export class MovementsController {
   }
 
   @Post(':id/check')
-  check(@Param('id') id: string) {
-    const movement = this.movements.get(id);
+  async check(@Param('id') id: string) {
+    const movement = await this.movements.get(id);
     if (!movement) return { found: false };
     return { found: true, failures: this.movements.checkGate(movement) };
   }
 
+  /**
+   * Publishing takes a named reviewer, because the database does.
+   *
+   * `published_requires_review` in migration 0001 refuses a published row
+   * without `physio_reviewer_id` and `review_date`. The route used to send
+   * neither, so every publish would have been refused by the constraint —
+   * had anything ever reached it.
+   */
   @AdminOnly()
   @Post(':id/publish')
-  publish(@Param('id') id: string) {
-    return this.movements.publish(id);
+  publish(@Param('id') id: string, @Body() review: PublishReviewDto) {
+    return this.movements.publish(id, review);
   }
 }

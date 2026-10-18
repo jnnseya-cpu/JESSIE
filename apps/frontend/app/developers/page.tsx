@@ -17,6 +17,7 @@ const ENDPOINTS: ReadonlyArray<{
 }> = [
   { verb: 'GET', path: '/', what: 'The endpoints that need no credentials, and which commit is serving.' },
   { verb: 'GET', path: '/health', what: 'Liveness plus AI-gateway status.' },
+  { verb: 'GET', path: '/movements/all', what: 'The library in every state, drafts included. Staff session required — a draft has not been through clinical review.' },
   { verb: 'GET', path: '/system', what: 'The operating system’s invariants, machine-readable.' },
   { verb: 'GET', path: '/ai/providers', what: 'Provider configuration. Staff session required.' },
   { verb: 'POST', path: '/ai/complete', what: 'Raw gateway completion. Staff session required, and metered.' },
