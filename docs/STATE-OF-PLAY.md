@@ -261,8 +261,34 @@ Stripe webhook verified over the raw bytes (a correctly signed event → 201,
 one tampered byte → 400, a replay → `duplicate`). Raw body survival was the
 real risk in the change and it is the thing most directly proven.
 
-**Root cause found, from the owner's build log. One line of `vercel.json`,
-and nothing in the application.**
+**The API deployed on 06e3779, 18 October 2026 — the first successful
+`jessie-backend` deployment since 218cc58 on 19 August.** Sixty days, and
+~90 consecutive refusals in between.
+
+That is Vercel's own deployment record, not a claim about behaviour.
+**Deployed is not yet proven serving:** outbound HTTPS to api.jessmove.com
+is refused by this environment's network policy, so three things remain
+unverified from here and each is one request from anywhere else:
+
+```bash
+curl -s https://api.jessmove.com/api/health | grep -o '"shortCommit":"[^"]*"'   # expect 06e3779
+bash scripts/smoke.sh https://api.jessmove.com/api                              # expect pass=85 fail=0
+curl -s https://api.jessmove.com/api/auth/status                                 # expect configured: true
+```
+
+The third is the one that bites. Without `AUTH_SECRET` in the project's
+environment the API answers perfectly and registration and login are off,
+which from outside is indistinguishable from nobody signing up. The other
+five capability reports — `push`, `mail`, `stripe`,
+`accounts/storage`, `db` — each name their own missing variable the same
+way; `docs/DEPLOY.md` has the loop that reads all six.
+
+Also unverified and separate: whether jessmove.com is aliased to the
+`jessie-move` project's production deployments. `/status` answers that from
+a browser now, naming the site's build beside the API's.
+
+**Root cause, from the owner's build log. One line of `vercel.json`, and
+nothing in the application.**
 
 The project uses Vercel's **backend framework preset** for Nest. It wants
 neither a serverless handler nor a static directory: it searches the output
