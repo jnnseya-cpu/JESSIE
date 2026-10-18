@@ -390,6 +390,27 @@ host answers api.jessmove.com. `/status` now answers the first from a
 browser — it names the site's own build beside the API's, so a stale site
 is visible rather than inferred.
 
+**The deployment is not the only reason the newest work is invisible. The
+energy band is deliberately switched off, and fixing Vercel will not show
+it.** `ENERGY_BAND_RELEASED = false` gates both call sites in
+`apps/frontend/app/account/products.tsx`, so once the API is live the
+weight-loss programme still will not appear on the account page.
+
+That is a clinical safety control, not an oversight: nothing this platform
+writes about health reaches a member without a named human reviewer, and a
+daily calorie ceiling is the most consequential number in the product. It
+is built and proven — 14 days of ledger at 2,600 kcal returns 2,050–2,325
+against a 1,500 floor, and an unconfirmed log, a 15-year-old, a declared
+type 1 diabetes and a BMI of 17.4 are each refused with a different reason —
+and it stays off until somebody qualified reads the arithmetic **and the
+refusal copy**, because seven of its eight possible answers are a refusal
+and those are the words a member actually receives.
+
+Unblocking it is a person, not a commit: a named clinician signs off, the
+flag flips in the same commit as that sign-off, and who and when is
+recorded here. No agent in this repository may flip it, including the one
+that wrote it.
+
 **The live site has never had a service worker. Found and fixed here.**
 `apps/frontend/vercel.json` ended its build command in `next build` rather
 than the package's own `build` script, so `scripts/stamp-sw.mjs` never ran
