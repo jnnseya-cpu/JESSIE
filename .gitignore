@@ -30,3 +30,6 @@ apps/backend/src/build-info.ts
 
 # Generated at build time by apps/frontend/scripts/stamp-sw.mjs
 apps/frontend/app/build-info.ts
+
+# Vercel CLI scratch, written by a local `vercel build` probe
+.vercel/

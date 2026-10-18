@@ -73,6 +73,33 @@ test('every path is routed to that one function', () => {
 });
 
 /**
+ * The one line that caused eight weeks of refused deployments.
+ *
+ * With a build command and no framework, Vercel treats the project as a
+ * static build and refuses it with `STATIC_BUILD_NO_OUT_DIR` when no
+ * output directory is found — it never reaches the function under `api/`.
+ * Confirmed by running the platform's own builder locally: without this
+ * key the build errors, with it the build completes and the function is
+ * produced.
+ *
+ * Asserted as a pair. The key alone is not enough, because an output
+ * directory Vercel cannot find is the same refusal, and the directory
+ * alone does nothing.
+ */
+test('the output directory is declared and exists', () => {
+  const config = JSON.parse(read('vercel.json')) as { outputDirectory?: string };
+  const declared = config.outputDirectory;
+  assert.ok(declared, 'vercel.json#outputDirectory must be set or the deployment is refused');
+
+  const landing = readFileSync(join(root, declared, 'index.html'), 'utf8');
+  assert.match(
+    landing,
+    /<html/i,
+    'the declared directory must actually contain a page at deploy time',
+  );
+});
+
+/**
  * The site's build command has to run the site's build script.
  *
  * It did not. `apps/frontend/vercel.json` ended in `next build`, skipping

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>JESS MOVE API</title>
+    <!--
+      This directory exists because Vercel requires it.
+
+      With a build command and no framework, the platform treats the
+      project as a static build and refuses the deployment with
+      STATIC_BUILD_NO_OUT_DIR when no output directory is found — before
+      it builds the function under api/. That one missing directory is
+      why this project deployed nothing for eight weeks.
+
+      So the page is real rather than a placeholder: the root of an API
+      host is a thing people land on, and a 404 there reads as an outage.
+      Styles are inline and minimal because this host serves JSON and
+      cannot reach the site's design system; adding a stylesheet to one
+      explanatory page is not worth a second place for styles to live.
+    -->
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        padding: 3rem 1.5rem;
+        font: 16px/1.6 system-ui, sans-serif;
+        display: grid;
+        place-content: start center;
+      }
+      main { max-width: 34rem; }
+      h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+      code { font-family: ui-monospace, monospace; }
+      li { margin-bottom: 0.35rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>JESS MOVE API</h1>
+      <p>
+        This host serves the Jess Move API. Every response is JSON under
+        <code>/api</code>. There is nothing to use here directly — the
+        site is at <a href="https://jessmove.com">jessmove.com</a>.
+      </p>
+      <p>Three endpoints answer without any credentials, and say something useful:</p>
+      <ul>
+        <li><a href="/api/health">/api/health</a> — whether the database and the gateway are answering, and which commit is serving this</li>
+        <li><a href="/api/db/status">/api/db/status</a> — the schema, and every migration applied to it</li>
+        <li><a href="/api/assurance">/api/assurance</a> — the safeguarding and data commitments this platform holds itself to</li>
+      </ul>
+    </main>
+  </body>
+</html>

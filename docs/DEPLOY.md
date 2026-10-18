@@ -76,6 +76,50 @@ without them:
   instance. `req.url` keeps the original path, so the `/api` global prefix
   resolves normally.
 
+  Do **not** replace the rewrite with a `api/[...path].js` catch-all. It
+  looks tidier and it is wrong: the builder compiles that filename to
+  `^/api/([^/]+)$`, one path segment, so `/api/health` works and
+  `/api/body/pathways` returns 404. Half the API, silently.
+- **`outputDirectory: "public"`**, with a real page in it. This is the line
+  whose absence refused every deployment for eight weeks. With a build
+  command and no framework, Vercel treats the project as a *static* build:
+  it runs the build, looks for a static output directory, and refuses with
+  `STATIC_BUILD_NO_OUT_DIR` **before building the function under `api/`**.
+  Deleting either the key or the directory brings the whole outage back.
+
+### Checking a deployment before pushing it
+
+The platform's own build and detection pipeline runs locally, offline, with
+no account and no token. This is the fastest way to find out what Vercel
+will actually do, and it is the thing that ended an eight-week outage that
+four commits of reasoning had not:
+
+```bash
+cd apps/backend
+mkdir -p .vercel
+cat > .vercel/project.json <<'JSON'
+{ "projectId": "prj_local_probe", "orgId": "team_local_probe",
+  "settings": { "createdAt": 0, "framework": null, "devCommand": null,
+    "installCommand": null, "buildCommand": null, "outputDirectory": null,
+    "rootDirectory": null, "directoryListing": false, "nodeVersion": "22.x" } }
+JSON
+npx vercel build --prod
+```
+
+It prints the real error with the real error code, and on success writes
+`.vercel/output` — `config.json` holds the compiled routes and headers, and
+`functions/api/index.func` is the artefact that would be uploaded. Run that
+artefact directly to test the deployment rather than your source:
+
+```bash
+cd .vercel/output/functions/api/index.func
+# serve apps/backend/api/index.js over http, then:
+bash ../../../../../../scripts/smoke.sh http://localhost:4400/api
+```
+
+`vercel dev` is **not** an alternative — it starts a login flow and fails
+without credentials. `vercel build` does not.
+
 ### The nudge sweep is not scheduled here, and should be
 
 `vercel.json` schedules one cron job, the blog autopilot at `0 7 * * *`.

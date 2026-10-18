@@ -261,59 +261,90 @@ Stripe webhook verified over the raw bytes (a correctly signed event → 201,
 one tampered byte → 400, a replay → `duplicate`). Raw body survival was the
 real risk in the change and it is the thing most directly proven.
 
-**The entry point was necessary and is not sufficient. `jessie-backend`
-still failed on 668ac18, the commit that added it.**
+**Root cause found, in the platform's own words. Two defects, both fixed.**
 
-What that leaves, stated only as far as the evidence goes:
-
-- **The repository builds.** Vercel's own `installCommand` and
-  `buildCommand` were run verbatim from a clean shallow clone with the
-  working directory set to `apps/backend`, exactly as the platform runs
-  them. Both succeed and produce `dist/serverless.js` beside
-  `api/index.js`. Whatever is failing, it is not this build.
-- **The failure does not depend on the commit.** Every `jessie-backend`
-  deployment reaches its failure 36–40 seconds after the commit, across
-  eight weeks and wholly unrelated diffs, while `jessie-move` takes longer
-  and succeeds from the same push and the same monorepo. A code fault
-  would vary with the code.
-- **Nothing in the repository distinguishes the two projects** except that
-  the backend declares `crons` and no framework, and the frontend declares
-  a framework and no crons.
-
-That points at project configuration or the account, and **one line of the
-build log names it** — which nobody here can read, by policy. Reading it is
-the next step and the only one with evidence behind it. Two candidates were
-tested from this side and both are now ruled out: a missing serverless
-entry point (added in 668ac18, still refused) and the cron schedule
-(removed in 0c86b58, still refused). The entry point was a genuine defect
-and stays; the crons are restored as far as is safe. Neither was the cause
-of the refusal, so the remaining candidates are settings, not files:
+The deadlock was that nobody here could read the build log. It turns out
+nobody needed to: `npx vercel build --prod` runs the platform's real build
+and detection pipeline locally, offline, with no account and no token — it
+only wants a `.vercel/project.json`, and a stub with null settings is
+enough to make it reason exactly as the platform does. Run from a clean
+checkout in `apps/backend`, it said:
 
 ```
-npx vercel inspect dpl_ETqLGehFov6usF3NvQYMizpp9rAM --logs
+Error: [STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public" found
+after the Build completed. Update vercel.json#outputDirectory to ensure
+the correct output directory is generated.
 ```
 
-Three candidates worth checking while that log is open, in order of how
-well they fit a failure that ignores the code:
+With a build command and no framework, Vercel treats the project as a
+**static** build. It compiles `dist/`, looks for a static output directory,
+finds none, and refuses the deployment — **before it ever builds the
+function under `api/`**. That is why eight weeks of commits made no
+difference, and why both earlier fixes were no-ops against it: the first
+never got to run, and the second was never the problem.
 
-1. ~~**Cron jobs against the plan.**~~ **Ruled out.** Both crons were
-   removed from `apps/backend/vercel.json` as the only changed variable
-   (0c86b58) and the deployment was refused exactly as before. The daily
-   blog cron is back, since it is accepted on every plan. The half-hourly
-   nudge sweep stays out until the plan is known — not as a theory about
-   this failure, but because it is the one setting here that is unsafe
-   under an unknown plan, and the endpoint is not running today anyway.
-   `docs/DEPLOY.md` says how to restore it.
-2. **Root Directory.** If it is not `apps/backend`, then
-   `apps/backend/vercel.json` is never read — which would also mean none of
-   the wiring above has been tried yet, whatever this commit says.
-3. **"Include files outside the Root Directory"**, which a pnpm workspace
-   needs and which is per project.
+So two things were wrong, and both had to be fixed:
 
-Still open and unrelated to the backend: whether jessmove.com is aliased to
-the latest successful `jessie-move` deployment, and which host answers
-api.jessmove.com (`curl -sI https://api.jessmove.com/api/health` —
-`x-vercel-id` says Vercel).
+1. **No serverless entry point** (668ac18). Real, and necessary — without
+   it there is nothing for the platform to serve even once it gets that
+   far.
+2. **No output directory.** `vercel.json` now declares
+   `"outputDirectory": "public"`, and `apps/backend/public/index.html` is a
+   real page rather than a placeholder: the root of an API host is
+   somewhere people land, and a 404 there reads as an outage. It links the
+   three endpoints that answer without credentials.
+
+Proven with the platform's own builder, from a clean checkout of tracked
+files: **build completes**, the function is produced at
+`.vercel/output/functions/api/index.func` (22 MB, well inside the limit)
+with `dist/serverless.js` and the whole module graph traced into it, the
+catch-all route compiles to `^(?:/(.*))$ → /api`, and the static page's
+security headers compile to exactly `/` and `/index.html` and not to any
+API path.
+
+Then proven end to end against **that built artefact** — the handler named
+in `.vc-config.json`, loaded from inside the `.func` directory, which is
+the bytes Vercel uploads: **smoke 85/85**, including a two-segment route.
+That last check matters: `api/[...path].js` was tried first and the builder
+compiled it to `^/api/([^/]+)$`, a single segment, which would have 404'd
+`/api/body/pathways` while passing `/api/health`. A deployment that half
+works is worse than one that fails, and only running the builder found it.
+
+The same technique confirmed the site: its build completes and `sw.js` is
+now present in `.vercel/output/static`, where it has never been before.
+
+**What is still not proven, and what would disprove it.** The deployment
+itself. Everything above was verified against the platform's own builder
+and its own output artefact, which is as close as this machine gets; it
+does not prove that the upload, the alias and the runtime environment then
+behave. Two things remain conditional on the project's settings, both
+visible in one screen of the dashboard and neither inspectable from here:
+
+- **Root Directory must be `apps/backend`.** If it is not, that
+  `vercel.json` is never read and none of this applies. The equivalent
+  holds for the site: its Root Directory must be `apps/frontend`, and the
+  evidence says it is, because a zero-config build at the repository root
+  would find no framework and fail the same way the backend did — and the
+  site has been succeeding.
+- **"Include files outside the Root Directory" must be on**, as any pnpm
+  workspace needs. `scripts/embed-sql.mjs` reads `db/migrations` at the
+  repository root, so if it is off the build fails loudly rather than
+  quietly shipping a backend with no migrations. That is the right way
+  round, and it is worth knowing it is the failure to expect.
+
+Two earlier candidates are closed. ~~Cron jobs against the plan~~ — ruled
+out by experiment: both crons were removed as the only changed variable
+(0c86b58) and the deployment was refused identically. The daily blog cron
+is back, since a daily schedule is accepted on every plan; the half-hourly
+nudge sweep stays out until the plan is known, not as a theory about this
+failure but because it is the one setting here that is unsafe under an
+unknown plan, and `docs/DEPLOY.md` says how to restore it.
+
+Still open and independent of all of the above: whether jessmove.com is
+aliased to the `jessie-move` project's production deployments, and which
+host answers api.jessmove.com. `/status` now answers the first from a
+browser — it names the site's own build beside the API's, so a stale site
+is visible rather than inferred.
 
 **The live site has never had a service worker. Found and fixed here.**
 `apps/frontend/vercel.json` ended its build command in `next build` rather
