@@ -14,16 +14,22 @@ interface ResponseLike {
  * Everything that makes the app the JESS MOVE API, independent of how it
  * is served.
  *
- * There are two entry points and they share this function. `main.ts`
- * listens on a port, which is what a container wants. `serverless.ts`
- * returns the request handler without binding a socket, which is what
- * Vercel wants. Both call `configureApp`, so the prefix, the validation
- * pipe, the CORS rule and the headers below cannot differ between them.
+ * `main.ts` is the only entry point — locally it listens on :4000, and on
+ * Vercel the backend framework preset finds the compiled `main.js` in the
+ * output directory and runs the same listening server. One entry point,
+ * one configuration, nothing to drift.
  *
- * This used to say that Vercel's "NestJS support" found `src/main.ts`
- * and ran it. It does not — Vercel has no NestJS preset — and acting on
- * that sentence is why the backend project had nothing deployable in it
- * for eight weeks.
+ * That sentence was deleted from this file on the theory that no such
+ * preset existed, and a serverless handler was added beside `main.ts` to
+ * replace it. Both were wrong. The preset does exist and searches the
+ * output directory for `src/main.*`, `main.*`, `app.*` or `server.*`; the
+ * project was pointing it at a directory with none of those in it. Worse,
+ * the handler sat in `api/`, whose mere presence makes the builder emit
+ * `^/api(/.*)?$ -> 404` ahead of the catch-all — a 404 over the whole API,
+ * since every route here is under the `api` prefix.
+ *
+ * So: nothing in this application needed changing to deploy. One line of
+ * `vercel.json` did.
  */
 export function configureApp(app: INestApplication): INestApplication {
   // Uploads arrive as base64 inside JSON; the 12mb ceiling covers the 10MB

@@ -261,7 +261,55 @@ Stripe webhook verified over the raw bytes (a correctly signed event → 201,
 one tampered byte → 400, a replay → `duplicate`). Raw body survival was the
 real risk in the change and it is the thing most directly proven.
 
-**Root cause found, in the platform's own words. Two defects, both fixed.**
+**Root cause found, from the owner's build log. One line of `vercel.json`,
+and nothing in the application.**
+
+The project uses Vercel's **backend framework preset** for Nest. It wants
+neither a serverless handler nor a static directory: it searches the output
+directory for `src/main.*`, `main.*`, `app.*` or `server.*` and runs it as
+a listening server. `nest build` emits `dist/main.js`, and the project was
+pointing the preset at a directory with none of those in it:
+
+```
+Error: [BUILD_FAILED] No entrypoint found in output directory: "public"
+```
+
+`"outputDirectory": "dist"` is the fix, and the whole of it. Reproduced
+byte for byte locally by running `npx vercel build --prod` with
+`framework: "nestjs"` in the project stub, then fixed and verified the same
+way: build completes, one function at `functions/index.func` whose handler
+is `apps/backend/dist/main.js`, the catch-all routes every path to it with
+the path preserved by a `request.path` transform, and that artefact — run
+as the platform runs it — serves **smoke 85/85** including multi-segment
+routes.
+
+**Three things were wrong that I added while guessing, now removed.**
+
+- `api/index.js`. Its presence alone makes the builder emit
+  `{"src": "^/api(/.*)?$", "status": 404}` **ahead of** the catch-all — a
+  404 over the entire API, since every route sits under the `api` prefix —
+  and builds a second 22 MB copy of the application. Build green,
+  deployment serving nothing.
+- The catch-all `rewrites`. The build log says why: *"Internal rewrites in
+  backend framework projects now route requests using the rewritten
+  destination path."* Every request would have arrived at the literal path
+  `/api`, which this application 404s.
+- `src/serverless.ts`, and the comment in `setup.ts` that justified it.
+  **That comment was right and I was wrong.** It said Vercel's NestJS
+  support finds `src/main.ts` and runs the listening server; I deleted it
+  as a false belief and wrote the opposite into the file, a commit message
+  and the state of play. The preset exists. `main.ts` is the only entry
+  point, as it always was.
+
+Worth keeping from the wreckage: `npx vercel build --prod` needs no account
+and no token, and the `framework` field of the `.vercel/project.json` stub
+**must match the project's real preset** or it answers a different
+question — with `null` it reported `STATIC_BUILD_NO_OUT_DIR`, which is a
+genuine error for a contract this project does not use. Four commits were
+spent fixing that error. The log was always the shorter path.
+
+**Superseded below. Kept because being wrong in a recorded way is the point
+of this file.**
 
 The deadlock was that nobody here could read the build log. It turns out
 nobody needed to: `npx vercel build --prod` runs the platform's real build

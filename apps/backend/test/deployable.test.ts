@@ -1,101 +1,117 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
 /**
- * The backend deployed nothing for eight weeks because the Vercel project
- * had no entry point and nothing said so. Every check here is a file that
- * has to exist for a deployment to serve anything at all; none of them
- * would have been noticed by a build, a typecheck or any other test,
- * because the application itself was always fine.
+ * The backend deployed nothing between 19 August and 18 October 2026, and
+ * no test, build or typecheck noticed, because the application was always
+ * fine. Only its deployment configuration was wrong.
  *
- * Read as text rather than imported. Requiring the compiled handler would
- * make these assertions depend on `dist/`, and the point is to fail in the
- * one state where `dist/` is beside the point: the wiring is wrong.
+ * Every assertion here is one of the ways that configuration was wrong, or
+ * was made wrong while guessing at it. They are written from the
+ * platform's own build output — `npx vercel build --prod` with a
+ * `.vercel/project.json` stub, which needs no account and no token — and
+ * not from documentation.
+ *
+ * Read as text rather than imported. These are facts about files, and the
+ * point is to fail in the one state where `dist/` is beside the point.
  */
 
 const root = join(import.meta.dirname, '..');
 const repo = join(root, '..', '..');
 const read = (p: string): string => readFileSync(join(root, p), 'utf8');
 
-test('the Vercel function exists and re-exports the compiled handler', () => {
-  const entry = read('api/index.js');
-  assert.match(
-    entry,
-    /require\(['"]\.\.\/dist\/serverless['"]\)/,
-    'api/index.js must require the compiled ../dist/serverless',
-  );
-  assert.match(entry, /\.handler\b/, 'it must take the handler export, not the module');
-});
-
-test('serverless.ts initialises without listening', () => {
-  const source = read('src/serverless.ts');
-  assert.match(source, /app\.init\(\)/, 'a serverless entry point must call init');
-  assert.doesNotMatch(
-    source,
-    /app\.listen\(/,
-    'nothing calls listen on a platform that never binds a socket',
-  );
-  assert.match(
-    source,
-    /configureApp\(app\)/,
-    'both entry points must configure the app identically, or production drifts from local',
-  );
-  assert.match(
-    source,
-    /rawBody:\s*true/,
-    'the Stripe signature is computed over the exact bytes Stripe sent',
-  );
-});
-
-test('every path is routed to that one function', () => {
+/**
+ * The project uses Vercel's backend framework preset for Nest, which
+ * searches the **output directory** for `src/main.*`, `main.*`, `app.*` or
+ * `server.*` and runs it as a listening server.
+ *
+ * `nest build` emits `dist/main.js`, so the output directory has to be
+ * `dist`. Pointing it anywhere else is the whole outage:
+ *
+ *   [BUILD_FAILED] No entrypoint found in output directory: "public"
+ *
+ * Asserted as a pair, because the key naming a directory the compiler does
+ * not write to fails exactly the same way.
+ */
+test('the output directory is where the compiler puts the server', () => {
   const config = JSON.parse(read('vercel.json')) as {
-    rewrites?: { source: string; destination: string }[];
-    functions?: Record<string, unknown>;
+    outputDirectory?: string;
     buildCommand?: string;
   };
 
-  assert.ok(config.rewrites?.length, 'vercel.json must rewrite requests to the function');
-  const catchAll = config.rewrites.find((r) => r.source === '/(.*)');
-  assert.ok(catchAll, 'a catch-all rewrite is what carries /api/health to the function');
-  assert.equal(catchAll.destination, '/api');
-
-  assert.ok(
-    config.functions && 'api/index.js' in config.functions,
-    'the function Vercel builds must be the one api/index.js names',
+  assert.equal(
+    config.outputDirectory,
+    'dist',
+    'the preset looks for the server entrypoint inside outputDirectory',
   );
   assert.match(
     config.buildCommand ?? '',
     /@jessmove\/backend build/,
-    'dist/ has to be built before the function is traced',
+    'and something has to compile dist/main.js before it looks',
+  );
+  assert.equal(
+    JSON.parse(read('tsconfig.json')).compilerOptions.outDir,
+    './dist',
+    'if the compiler ever emits elsewhere, outputDirectory has to follow',
+  );
+});
+
+/** The entrypoint the preset runs has to be a server that listens. */
+test('main.ts listens, and on the port the platform gives it', () => {
+  const source = read('src/main.ts');
+  assert.match(source, /app\.listen\(/, 'the backend preset runs a listening server');
+  assert.match(
+    source,
+    /process\.env\.PORT/,
+    'the platform injects PORT; a hard-coded 4000 would never be reached',
+  );
+  assert.match(
+    source,
+    /configureApp\(app\)/,
+    'the one entry point must apply the one configuration',
   );
 });
 
 /**
- * The one line that caused eight weeks of refused deployments.
+ * No `api/` directory, ever, in this project.
  *
- * With a build command and no framework, Vercel treats the project as a
- * static build and refuses it with `STATIC_BUILD_NO_OUT_DIR` when no
- * output directory is found — it never reaches the function under `api/`.
- * Confirmed by running the platform's own builder locally: without this
- * key the build errors, with it the build completes and the function is
- * produced.
+ * A serverless handler was put there while the real fault was being hunted.
+ * Its presence alone makes the builder emit
  *
- * Asserted as a pair. The key alone is not enough, because an output
- * directory Vercel cannot find is the same refusal, and the directory
- * alone does nothing.
+ *   { "src": "^/api(/.*)?$", "status": 404 }
+ *
+ * **ahead of** the catch-all that reaches the server — a 404 over the
+ * entire API, because every route here sits under the `api` global prefix.
+ * It also builds a second 22 MB copy of the whole application.
+ *
+ * This is the most expensive kind of mistake available: the build goes
+ * green and the deployment serves nothing.
  */
-test('the output directory is declared and exists', () => {
-  const config = JSON.parse(read('vercel.json')) as { outputDirectory?: string };
-  const declared = config.outputDirectory;
-  assert.ok(declared, 'vercel.json#outputDirectory must be set or the deployment is refused');
+test('nothing lives in api/, which would 404 the whole API', () => {
+  assert.equal(
+    existsSync(join(root, 'api')),
+    false,
+    'an api/ directory makes the builder shadow every /api path with a 404',
+  );
+});
 
-  const landing = readFileSync(join(root, declared, 'index.html'), 'utf8');
-  assert.match(
-    landing,
-    /<html/i,
-    'the declared directory must actually contain a page at deploy time',
+/**
+ * No rewrites either, for a reason the build log states itself:
+ *
+ *   WARNING! Internal rewrites in backend framework projects now route
+ *   requests using the rewritten destination path.
+ *
+ * A catch-all rewrite to `/api` therefore delivers every request to the
+ * path `/api`, which this application answers with a 404.
+ */
+test('no rewrites, because this preset routes by the destination path', () => {
+  const config = JSON.parse(read('vercel.json')) as { rewrites?: unknown[] };
+  assert.equal(
+    config.rewrites,
+    undefined,
+    'the preset already routes every path to the server, with the path preserved',
   );
 });
 

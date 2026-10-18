@@ -61,20 +61,58 @@ vercel env add CORS_ORIGINS production      # https://jessmove.com,https://www.j
 vercel --prod
 ```
 
-> **Two project settings decide whether any of this is read at all**, and
-> neither lives in a file. In Vercel → the project → Settings → Build and
-> Deployment:
+### How the preset runs it, and the one line that has to be right
+
+The project uses Vercel's **backend framework preset** for Nest. It does not
+want a serverless handler and it does not want a static directory: it
+searches the **output directory** for a server entrypoint and runs it,
+proxying to the port the server binds.
+
+It searches, in order: `src/main.*`, `src/app.*`, `src/index.*`,
+`src/server.*`, then `main.*`, `app.*`, `index.*`, `server.*`.
+
+`nest build` emits `dist/main.js`, so:
+
+```json
+  "outputDirectory": "dist"
+```
+
+**That single line is the whole of the 19 August – 18 October 2026 outage.**
+Point it anywhere without one of those filenames in it and every deployment
+is refused, identically, regardless of the code:
+
+```
+Error: [BUILD_FAILED] No entrypoint found in output directory: "public"
+```
+
+Three things follow from the preset, each of which cost a commit to learn:
+
+- **There must be no `api/` directory.** Its presence alone makes the
+  builder emit `{"src": "^/api(/.*)?$", "status": 404}` *ahead of* the
+  catch-all that reaches the server — a 404 over the entire API, since every
+  route sits under the `api` global prefix. It also builds a second 22 MB
+  copy of the application. The build goes green and the deployment serves
+  nothing, which is the most expensive failure mode on offer.
+- **There must be no `rewrites`.** The build log says why itself: *"Internal
+  rewrites in backend framework projects now route requests using the
+  rewritten destination path."* A catch-all rewrite to `/api` delivers every
+  request to the literal path `/api`, which this application 404s.
+- **`main.ts` must keep listening on `process.env.PORT`.** The preset starts
+  it as a server. There is no serverless handler in this project and there
+  should not be one: `main.ts` is the only entry point.
+
+> **Two project settings** decide whether any of the above is even read, and
+> neither lives in a file. Settings → Build and Deployment:
 >
-> - **Root Directory must be `apps/backend`.** Anything else and
->   `apps/backend/vercel.json` is never opened, so the build command, the
->   output directory, the function and the rewrite below all do nothing.
->   That is not hypothetical: it is the shape that refused ~90 consecutive
->   deployments between 19 August and 18 October 2026 while four separate
->   file-level fixes made no difference whatsoever.
-> - **"Include files outside the Root Directory in the Build Step" must be
->   on.** A pnpm workspace needs it, and `scripts/embed-sql.mjs` reads
->   `db/migrations` at the repository root. With it off the build stops and
->   says so in words — it will not ship a backend that has no migrations.
+> - **Framework Preset** — the Nest backend preset, which is what the
+>   behaviour above describes. "Other" is a different contract entirely
+>   (static output plus functions under `api/`), and the two configurations
+>   are mutually exclusive.
+> - **Root Directory `apps/backend`**, with **"Include files outside the
+>   Root Directory"** on. A pnpm workspace needs the latter, and
+>   `scripts/embed-sql.mjs` reads `db/migrations` at the repository root —
+>   with it off the build stops and says which checkbox to change rather
+>   than shipping a backend with no migrations.
 >
 > Verify from outside once it deploys, which takes one request:
 >
@@ -82,32 +120,6 @@ vercel --prod
 > curl -s https://api.jessmove.com/api/health | grep -o '"shortCommit":"[^"]*"'
 > bash scripts/smoke.sh https://api.jessmove.com/api
 > ```
-
-The pieces that make it deployable, because the project spent eight weeks
-without them:
-
-- **`api/index.js`** is the only file Vercel looks for. It re-exports the
-  handler from the compiled `dist/serverless.js`.
-- **`src/serverless.ts`** builds the application through the same
-  `configureApp` as `main.ts`, calls `app.init()` rather than `app.listen()`,
-  and returns the Express request handler. Nothing on a serverless platform
-  ever calls `listen`, and Vercel has no NestJS preset that would.
-- **`vercel.json`** rewrites `/(.*)` to `/api`, so the whole API is one
-  function rather than one per route — Nest boots the entire module graph on
-  first touch, and splitting it would pay that cost per route instead of per
-  instance. `req.url` keeps the original path, so the `/api` global prefix
-  resolves normally.
-
-  Do **not** replace the rewrite with a `api/[...path].js` catch-all. It
-  looks tidier and it is wrong: the builder compiles that filename to
-  `^/api/([^/]+)$`, one path segment, so `/api/health` works and
-  `/api/body/pathways` returns 404. Half the API, silently.
-- **`outputDirectory: "public"`**, with a real page in it. This is the line
-  whose absence refused every deployment for eight weeks. With a build
-  command and no framework, Vercel treats the project as a *static* build:
-  it runs the build, looks for a static output directory, and refuses with
-  `STATIC_BUILD_NO_OUT_DIR` **before building the function under `api/`**.
-  Deleting either the key or the directory brings the whole outage back.
 
 ### Checking a deployment before pushing it
 
@@ -121,22 +133,29 @@ cd apps/backend
 mkdir -p .vercel
 cat > .vercel/project.json <<'JSON'
 { "projectId": "prj_local_probe", "orgId": "team_local_probe",
-  "settings": { "createdAt": 0, "framework": null, "devCommand": null,
+  "settings": { "createdAt": 0, "framework": "nestjs", "devCommand": null,
     "installCommand": null, "buildCommand": null, "outputDirectory": null,
     "rootDirectory": null, "directoryListing": false, "nodeVersion": "22.x" } }
 JSON
 npx vercel build --prod
 ```
 
-It prints the real error with the real error code, and on success writes
-`.vercel/output` — `config.json` holds the compiled routes and headers, and
-`functions/api/index.func` is the artefact that would be uploaded. Run that
-artefact directly to test the deployment rather than your source:
+**`framework` in that stub must match the project's Framework Preset**, or
+the probe answers a question nobody asked. Set to `null` it exercises the
+static-plus-functions contract and reports `STATIC_BUILD_NO_OUT_DIR`; set to
+`"nestjs"` it exercises the one this project actually uses and reports the
+missing entrypoint. Those are different outages, and a probe on the wrong
+one is worse than no probe, because it is confidently wrong.
+
+On success it writes `.vercel/output`: `config.json` holds the compiled
+routes, and `functions/index.func` is the artefact that would be uploaded.
+Run that artefact rather than your source — it is the bytes the platform
+gets:
 
 ```bash
-cd .vercel/output/functions/api/index.func
-# serve apps/backend/api/index.js over http, then:
-bash ../../../../../../scripts/smoke.sh http://localhost:4400/api
+cd .vercel/output/functions/index.func
+PORT=4500 DATABASE_URL=... node apps/backend/dist/main.js &
+bash /path/to/repo/scripts/smoke.sh http://localhost:4500/api
 ```
 
 `vercel dev` is **not** an alternative — it starts a login flow and fails
