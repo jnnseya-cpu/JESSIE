@@ -255,6 +255,23 @@ box, and press *Run all checks*. It is `noindex`, and it is the fastest way to p
 CORS is right — a CORS failure surfaces there as a readable message rather than a
 silent console error.
 
+**What still needs an environment variable**, in one command. Every module
+reports its own configuration and names the variable that switches it on, so
+there is nothing to look up — a fresh deployment answers this itself:
+
+```bash
+API=https://api.jessmove.com/api
+for p in auth/status push/status mail/status stripe/status \
+         accounts/storage/status db/status; do
+  echo "== $p"; curl -s "$API/$p" | python3 -m json.tool | head -8
+done
+```
+
+`auth/status` is the one to read first. Without `AUTH_SECRET` it reports
+`configured: false`, and registration and login are unavailable — which from
+the outside looks exactly like nobody signing up, with nothing in any log to
+say otherwise.
+
 Two checks are worth watching on every deploy, because they are the ones that would
 be embarrassing to get wrong:
 
