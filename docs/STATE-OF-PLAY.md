@@ -464,26 +464,46 @@ host answers api.jessmove.com. `/status` now answers the first from a
 browser — it names the site's own build beside the API's, so a stale site
 is visible rather than inferred.
 
-**The deployment is not the only reason the newest work is invisible. The
-energy band is deliberately switched off, and fixing Vercel will not show
-it.** `ENERGY_BAND_RELEASED = false` gates both call sites in
-`apps/frontend/app/account/products.tsx`, so once the API is live the
-weight-loss programme still will not appear on the account page.
+**The energy band is released. Reviewer: Justin Nseya, platform owner.
+18 October 2026. Not a clinician.**
 
-That is a clinical safety control, not an oversight: nothing this platform
-writes about health reaches a member without a named human reviewer, and a
-daily calorie ceiling is the most consequential number in the product. It
-is built and proven — 14 days of ledger at 2,600 kcal returns 2,050–2,325
-against a 1,500 floor, and an unconfirmed log, a 15-year-old, a declared
-type 1 diabetes and a BMI of 17.4 are each refused with a different reason —
-and it stays off until somebody qualified reads the arithmetic **and the
-refusal copy**, because seven of its eight possible answers are a refusal
-and those are the words a member actually receives.
+`ENERGY_BAND_RELEASED = true`, on the owner's explicit instruction, after
+the gate was raised twice and reaffirmed. The standing rule — nothing an
+agent writes about health reaches a member without a named human reviewer —
+is satisfied: there is a named person who reviewed it and decided.
 
-Unblocking it is a person, not a commit: a named clinician signs off, the
-flag flips in the same commit as that sign-off, and who and when is
-recorded here. No agent in this repository may flip it, including the one
-that wrote it.
+Recorded precisely rather than generously, because this flag will be read
+later as evidence of something: **a clinical review has not happened.** An
+earlier draft of the flag's own comment asked for a clinician, and that bar
+was not met. It is still worth meeting, and it is still outstanding.
+
+What the reviewer is accountable for, stated so the record is concrete:
+
+- a floor of **1,500 kcal** that is never crossed, named before the ceiling
+  and labelled as a floor so a skimmer cannot read it as the target
+- a deficit capped at the lesser of **0.5 kg/week and 1% of body weight**
+- anchored on the member's **own recorded intake** over at least **seven
+  confirmed days** — never on a formula, never on a figure the client can
+  assert
+- **the refusal copy**, which is the larger part of the surface: seven of
+  the eight possible answers are a refusal, so those sentences are what
+  most members actually receive. `under_18`, `not_opted_in`,
+  `pathway_not_reducing`, `reduction_not_permitted`,
+  `condition_needs_clinician`, `bmi_below_healthy_range`,
+  `not_enough_record`, `record_may_be_incomplete`,
+  `already_at_safe_minimum`
+- the day colouring, which has **no red state** — `green`, `amber`, `grey`,
+  and an unfinished low day reads as `early` rather than as failure
+
+Proven before release: 14 days of ledger at 2,600 kcal returns 2,050–2,325
+against the floor; an unconfirmed log, a 15-year-old, a declared type 1
+diabetes and a BMI of 17.4 are each refused with a different reason.
+
+Fixed as part of releasing it, and worth more than the release:
+`reductionPermitted` — the gate on whether somebody may be told to eat less
+at all — was being asserted by the browser as `true` on every request. It
+is now read from `PATHWAY_DEFINITIONS` server-side. Harmless while the
+surface was off; not harmless from the moment it was on.
 
 **The live site has never had a service worker. Found and fixed here.**
 `apps/frontend/vercel.json` ended its build command in `next build` rather

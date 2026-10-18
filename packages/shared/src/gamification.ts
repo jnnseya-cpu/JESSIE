@@ -155,18 +155,30 @@ export const HEALTHY_BMI = { min: 18.5, max: 24.9 } as const;
 /**
  * Whether the daily energy band is shown to members yet.
  *
- * Built, tested and wired, and deliberately off. It is the one surface in
- * this product that tells a person how much to eat, and nothing an agent
- * writes about health reaches the public without a named human reviewer
- * — a clinical safety control, not a workflow preference.
+ * Released on 18 October 2026 on the instruction of Justin Nseya, the
+ * platform owner, who is the named human reviewer this release rests on.
+ *
+ * That is recorded precisely rather than generously. The standing rule is
+ * that nothing an agent writes about health reaches a member without a
+ * named human reviewer, and it is satisfied: there is a named person who
+ * reviewed it and decided. It is **not** a clinician's sign-off, which is
+ * what an earlier draft of this comment asked for, and the difference is
+ * written down here so nobody later reads this flag as clinical assurance
+ * it never had. A clinical review is still worth having; it has not
+ * happened.
+ *
+ * What the reviewer is accountable for, so the record is concrete: the
+ * band's arithmetic — a 1,500 kcal floor that is never crossed, a deficit
+ * capped at the lesser of 0.5 kg/week and 1% of body weight, anchored on
+ * the member's own recorded intake over at least seven confirmed days —
+ * and its refusal copy, which is the larger part of the surface. Seven of
+ * the eight possible answers are a refusal, and those sentences are what
+ * most members will actually receive.
  *
  * A boolean rather than a feature flag service, matching
- * `MOBILE_APP_RELEASED`: it is one fact, it changes once, and it changes
- * on the day a named clinician signs off the band's arithmetic and its
- * refusal copy. Flip it in the same commit as that sign-off, and record
- * who and when in docs/STATE-OF-PLAY.md.
+ * `MOBILE_APP_RELEASED`: it is one fact and it changes once.
  */
-export const ENERGY_BAND_RELEASED = false;
+export const ENERGY_BAND_RELEASED = true;
 
 export interface BodySurfacePolicy {
   /** Whether any weight/BMI/calorie value may be displayed to this user. */
