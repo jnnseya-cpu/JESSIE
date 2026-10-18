@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +19,39 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
 const migrationsDir = join(repoRoot, 'db', 'migrations');
+
+/*
+ * This script reads from the repository root, two levels above the app it
+ * builds. On Vercel that only exists in the build when the project's
+ * "Include files outside the Root Directory" setting is on, which every
+ * pnpm workspace needs anyway.
+ *
+ * When it is off, the failure is a bare ENOENT stack trace in a build log,
+ * pointing at `readdirSync` and naming no cause — which is a long way from
+ * the one checkbox that fixes it. So the trace is replaced by the
+ * sentence. The same reasoning as `adviceFor` in db.service.ts: an error
+ * that only a person who already knows the answer can read is not an
+ * error message.
+ */
+if (!existsSync(migrationsDir)) {
+  console.error(
+    [
+      `Cannot read ${migrationsDir}.`,
+      '',
+      'The schema lives at the repository root, two levels above this app,',
+      'so the build needs the whole workspace and not just apps/backend.',
+      '',
+      'On Vercel: Settings -> Build and Deployment -> turn on "Include files',
+      'outside the Root Directory in the Build Step". A pnpm workspace needs',
+      'it regardless of this script.',
+      '',
+      'Failing here on purpose. A backend built without its migrations would',
+      'start, find a schema it has no record of, and be wrong about the',
+      'database rather than unable to reach it.',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
 
 const migrations = readdirSync(migrationsDir)
   .filter((f) => f.endsWith('.sql'))

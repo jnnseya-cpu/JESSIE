@@ -61,6 +61,28 @@ vercel env add CORS_ORIGINS production      # https://jessmove.com,https://www.j
 vercel --prod
 ```
 
+> **Two project settings decide whether any of this is read at all**, and
+> neither lives in a file. In Vercel → the project → Settings → Build and
+> Deployment:
+>
+> - **Root Directory must be `apps/backend`.** Anything else and
+>   `apps/backend/vercel.json` is never opened, so the build command, the
+>   output directory, the function and the rewrite below all do nothing.
+>   That is not hypothetical: it is the shape that refused ~90 consecutive
+>   deployments between 19 August and 18 October 2026 while four separate
+>   file-level fixes made no difference whatsoever.
+> - **"Include files outside the Root Directory in the Build Step" must be
+>   on.** A pnpm workspace needs it, and `scripts/embed-sql.mjs` reads
+>   `db/migrations` at the repository root. With it off the build stops and
+>   says so in words — it will not ship a backend that has no migrations.
+>
+> Verify from outside once it deploys, which takes one request:
+>
+> ```bash
+> curl -s https://api.jessmove.com/api/health | grep -o '"shortCommit":"[^"]*"'
+> bash scripts/smoke.sh https://api.jessmove.com/api
+> ```
+
 The pieces that make it deployable, because the project spent eight weeks
 without them:
 
