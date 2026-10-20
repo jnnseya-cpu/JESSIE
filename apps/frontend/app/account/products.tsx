@@ -204,6 +204,41 @@ export function BodyCommandModule({
     alongside: { daysMoved: number; mealsChecked: number; windowDays: number; says: string };
     howItWorks: string[];
   } | null>(null);
+
+  /**
+   * The member's own statement that their food record is complete.
+   *
+   * `energyBand` refuses with `record_may_be_incomplete` unless this is
+   * true, because a half-kept log makes the observed intake look lower
+   * than it is and would hand back a deficit off an anchor that is already
+   * too low. This checkbox was missing, so the request never carried the
+   * field, it defaulted to false, and **the band refused every single
+   * time** — a gate no member could ever satisfy from the interface.
+   *
+   * It is a declaration rather than something inferred from the number of
+   * entries, because only the member knows whether the meals they did not
+   * log were meals they did not eat.
+   */
+  const [logComplete, setLogComplete] = useState(false);
+
+  /** The timeframe, and how far into it this member is. */
+  const [programme, setProgramme] = useState<{
+    weeks: number;
+    weekly: { daysScanned: number; daysMoved: number; daysInBand: number };
+    total: { daysScanned: number; daysMoved: number; daysInBand: number };
+    impliedChangeKg: { slow: number; fast: number };
+    reviewEvery: number;
+    says: string;
+  } | null>(null);
+  const [programmeProgress, setProgrammeProgress] = useState<{
+    scanned: number;
+    moved: number;
+    inBand: number;
+    overall: number;
+    onTrack: boolean;
+    says: string;
+  } | null>(null);
+  const [weeks, setWeeks] = useState(12);
   const minor = me.age < 18;
 
   const assess = async () => {
@@ -266,8 +301,26 @@ export function BodyCommandModule({
               // pathway; sending it is now a 400.
               weightKg: Number(weightKg),
               bmi: metrics?.bmi,
-            })) as { band: NonNullable<typeof band> };
+              /*
+               * These three were absent, and their absence made the whole
+               * surface unreachable. `logConfirmedComplete` defaulted to
+               * false, so every request was refused with
+               * `record_may_be_incomplete` — a gate no member could pass.
+               * `weeks` chose the programme length server-side and was
+               * never offered. `dayComplete` decides whether a low day
+               * reads as under the floor or simply unfinished.
+               */
+              logConfirmedComplete: logComplete,
+              weeks,
+              dayComplete: new Date().getHours() >= 20,
+            })) as {
+              band: NonNullable<typeof band>;
+              programme: typeof programme;
+              progress: typeof programmeProgress;
+            };
             setBand(energy.band);
+            setProgramme(energy.programme ?? null);
+            setProgrammeProgress(energy.progress ?? null);
           }
         } catch {
           /* the assessment still stands without the loop around it */
@@ -310,6 +363,37 @@ export function BodyCommandModule({
             ))}
           </select>
         </label>
+      )}
+
+      {/*
+        The two inputs the daily energy band needs and never had a control
+        for. Without the first the band refused every request, so the
+        feature was unreachable however it was deployed.
+      */}
+      {!minor && ENERGY_BAND_RELEASED && (
+        <>
+          <label className="tdv__field">
+            <span>How long a run?</span>
+            <select value={weeks} onChange={(e) => setWeeks(Number(e.target.value))}>
+              <option value={8}>8 weeks</option>
+              <option value={12}>12 weeks</option>
+              <option value={16}>16 weeks</option>
+            </select>
+          </label>
+          {/* `str__ask` is the platform's checkbox row — see strength.tsx. */}
+          <label className="str__ask">
+            <input
+              type="checkbox"
+              checked={logComplete}
+              onChange={(e) => setLogComplete(e.target.checked)}
+            />
+            <span>
+              My food record is complete for the last week — I have not skipped meals I ate.
+              Without this the daily range is not offered, because a half-kept record makes your
+              intake look lower than it is and the range would be built on it.
+            </span>
+          </label>
+        </>
       )}
 
       <div className="tdv__askrow">
@@ -451,6 +535,35 @@ export function BodyCommandModule({
                     </>
                   ) : (
                     <p className="chart__note">{band.says}</p>
+                  )}
+
+                  {/*
+                    The programme was returned by the API from the day it
+                    was built and rendered by nothing, so the timeframe
+                    existed only inside a JSON response.
+                  */}
+                  {programme && (
+                    <>
+                      <h4 className="fl__h">Your {programme.weeks}-week run</h4>
+                      <p className="chart__note">{programme.says}</p>
+                      <p className="chart__note">
+                        Each week: {programme.weekly.daysScanned} days with your food recorded,{' '}
+                        {programme.weekly.daysMoved} days moved, {programme.weekly.daysInBand} days
+                        finishing inside the band. Reviewed every {programme.reviewEvery} days.
+                      </p>
+                      {programmeProgress && (
+                        <>
+                          <WeightedBars
+                            items={[
+                              { label: 'Days recorded', value: Math.round(programmeProgress.scanned * 100) },
+                              { label: 'Days moved', value: Math.round(programmeProgress.moved * 100) },
+                              { label: 'Days inside the band', value: Math.round(programmeProgress.inBand * 100) },
+                            ]}
+                          />
+                          <p className="chart__note">{programmeProgress.says}</p>
+                        </>
+                      )}
+                    </>
                   )}
                 </>
               )}
