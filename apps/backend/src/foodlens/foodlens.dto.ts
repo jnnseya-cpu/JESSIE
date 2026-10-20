@@ -13,7 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { EVIDENCE_SOURCES, UK_ALLERGENS } from '@jessmove/foodlens';
+import { EVIDENCE_SOURCES, SWAP_CONSTRAINTS, UK_ALLERGENS } from '@jessmove/foodlens';
 
 export class DeclaredItemDto {
   @IsString()
@@ -192,4 +192,32 @@ export class LogEntryDto {
   @ValidateNested()
   @Type(() => Per100gDto)
   per100g?: Per100gDto;
+}
+
+/**
+ * What a member declares about their food.
+ *
+ * `excludes` is the safety field: an allergen or a religious restriction,
+ * absolute at every rung of the swap ladder. Capped in length and count
+ * because it is matched against suggestion text, and an unbounded list of
+ * long strings is a filter that costs more than the thing it filters.
+ */
+export class FoodConstraintsDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  cuisine?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  @ArrayMaxSize(40)
+  excludes?: string[];
+
+  /** Which of `SWAP_CONSTRAINTS` the member says apply to them. */
+  @IsOptional()
+  @IsArray()
+  @IsIn(SWAP_CONSTRAINTS, { each: true })
+  declared?: string[];
 }

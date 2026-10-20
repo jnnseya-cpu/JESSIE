@@ -33,6 +33,7 @@ import {
   REPROFILE_CADENCE_DAYS,
 } from '@jessmove/shared';
 import { BodyService, type BodyAssessmentRequest } from './body.service';
+import { BandStoreService } from './band-store.service';
 
 /** Said identically by the stateless calculator and the member's own read. */
 const HOW_PROGRESS_WORKS = [
@@ -48,6 +49,7 @@ export class BodyController {
     private readonly body: BodyService,
     private readonly activity: ActivityService,
     private readonly foodLog: FoodLogService,
+    private readonly bands: BandStoreService,
   ) {}
 
   /**
@@ -186,6 +188,33 @@ export class BodyController {
         recordedDays: log.daysRecorded,
         logConfirmedComplete: body.logConfirmedComplete ?? false,
     });
+
+    /*
+     * Held, so the food scan can colour the day.
+     *
+     * `dayStanding` needs a band, and a photograph upload carries none of
+     * the eight inputs a band is derived from. Storing it here is what
+     * makes the colour reachable from the camera — and is the truer model
+     * anyway, since the band is reviewed every fortnight rather than
+     * recomputed per request.
+     *
+     * Cleared when the member is no longer eligible, so a band never
+     * outlives the conditions that justified it: a BMI that has come back
+     * into range, or a condition newly declared, must stop colouring days
+     * rather than keep answering from a stale row.
+     */
+    if (band.eligible) {
+      await this.bands.put(userId, {
+        floorKcal: band.floorKcal,
+        ceilingKcal: band.ceilingKcal,
+        observedKcalPerDay: band.observedKcalPerDay,
+        recordedDays: band.recordedDays,
+        reviewAfterDays: band.reviewAfterDays,
+        computedAt: new Date().toISOString(),
+      });
+    } else {
+      await this.bands.clear(userId);
+    }
 
     /*
      * Today's running total, from the ledger's own per-day series. The

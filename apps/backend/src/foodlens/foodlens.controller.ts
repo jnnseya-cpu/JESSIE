@@ -24,6 +24,10 @@ import {
   permittedSwapLevels,
   selectSwaps,
 } from '@jessmove/foodlens';
+import { dayStanding } from '@jessmove/body-command';
+import { BandStoreService } from '../body/band-store.service';
+import { FoodConstraintsService } from './constraints.service';
+import { FoodConstraintsDto } from './foodlens.dto';
 
 @Controller('foodlens')
 export class FoodlensController {
@@ -31,6 +35,8 @@ export class FoodlensController {
     private readonly foodlens: FoodlensService,
     private readonly foodLog: FoodLogService,
     private readonly auth: AuthService,
+    private readonly bands: BandStoreService,
+    private readonly constraints: FoodConstraintsService,
   ) {}
 
   /** Whose ledger a scan lands in. Undefined for somebody with no account. */
@@ -253,7 +259,20 @@ export class FoodlensController {
        */
       const macros = result.plateMacros as { proteinG: number; carbohydrateG: number } | null;
 
-      void this.foodLog.record(uid, {
+      /*
+       * Awaited, where it used to be fire-and-forget.
+       *
+       * The day's colour is read from the ledger immediately below, so an
+       * unawaited write is a race the member loses: scan a meal, and the
+       * running total it is measured against does not include the meal
+       * just scanned. A fresh member saw `0 kcal` after photographing
+       * 1,100 — the one reading guaranteed to look broken.
+       *
+       * `record` is still best-effort internally: it swallows its own
+       * failures and returns null rather than throwing, so awaiting costs
+       * one INSERT of latency and cannot fail the analysis.
+       */
+      await this.foodLog.record(uid, {
         kind: body.mimeType ? 'photo' : 'declared',
         name: items.map((i) => i.name).slice(0, 3).join(', ') || 'Meal',
         barcode: body.barcode ?? null,
@@ -272,6 +291,149 @@ export class FoodlensController {
       });
     }
 
-    return result;
+    /*
+     * The two things this endpoint was asked for and did not do.
+     *
+     * The colour of the day, and suggestions that respect what the member
+     * eats. Both existed — `dayStanding` and `selectSwaps` — and neither
+     * was within reach of a photograph: the colour was computed only on
+     * the account page, and the swap filter was called only by a policy
+     * endpoint returning a worked example.
+     *
+     * Added after the ledger write, deliberately, so the running total
+     * includes the meal just scanned. Asking "where does this leave my
+     * day" before recording the meal answers about a different day.
+     */
+    return { ...result, ...(uid ? await this.afterScan(uid, result) : {}) };
+  }
+
+  /**
+   * Where this meal leaves the day, and what might be done differently.
+   *
+   * Best-effort throughout: a member waiting on a photograph must not get
+   * an error because a band could not be read. A missing colour is a
+   * missing colour, not a failed scan.
+   */
+  private async afterScan(
+    uid: string,
+    result: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const out: Record<string, unknown> = {};
+
+    try {
+      /*
+       * The day's running total comes from the ledger, never from summing
+       * what the client has seen. The colour is the day's and never a
+       * plate's — one meal judged against a daily figure is unremarkable
+       * at noon and the whole budget at nine, and only the running total
+       * knows which.
+       */
+      const log = await this.foodLog.summary(uid, 'week');
+      const today = new Date().toISOString().slice(0, 10);
+      const kcalToday = log.series.find((d) => d.day === today)?.kcal ?? 0;
+      out.today = { kcal: Math.round(kcalToday) };
+
+      const band = await this.bands.get(uid);
+      if (band) {
+        const standing = dayStanding({
+          band: {
+            eligible: true,
+            floorKcal: band.floorKcal,
+            ceilingKcal: band.ceilingKcal,
+            observedKcalPerDay: band.observedKcalPerDay,
+            recordedDays: band.recordedDays,
+            reviewAfterDays: band.reviewAfterDays,
+            impliedRateKgWeek: { atCeiling: 0, atFloor: 0 },
+            says: '',
+          },
+          kcalSoFar: kcalToday,
+          // Before the evening a low day is an unfinished one, not a
+          // failed one. 20:00 is the same threshold the account page uses.
+          dayComplete: new Date().getHours() >= 20,
+        });
+        out.today = {
+          kcal: Math.round(kcalToday),
+          floorKcal: band.floorKcal,
+          ceilingKcal: band.ceilingKcal,
+          standing: standing.standing,
+          colour: standing.colour,
+          emphasis: standing.emphasis,
+          says: standing.says,
+        };
+      }
+    } catch {
+      /* a colour is worth having and never worth failing a scan for */
+    }
+
+    try {
+      /*
+       * The ladder `swapLadderFor` already produced, filtered by what the
+       * member has told us about their food.
+       *
+       * Not a second generator. The analysis has keyed a five-rung ladder
+       * off the real figures since FoodLens was written, and the UI renders
+       * that array — what was missing was the filter, because
+       * `selectSwaps` had never been given a member's constraints.
+       *
+       * `swaps` stays an array of the same shape for exactly that reason:
+       * the display is not the thing that was broken.
+       */
+      const ladder =
+        (result.swaps as { level: number; action: string; effect: string; keeps: string }[] | undefined) ??
+        [];
+
+      const declared = await this.constraints.get(uid);
+      const selection = selectSwaps(
+        ladder.map((s) => ({
+          level: s.level as 1 | 2 | 3 | 4 | 5,
+          action: s.action,
+          expectedEffect: s.effect,
+          respects: SWAP_CONSTRAINTS,
+        })),
+        declared,
+      );
+
+      const kept = new Set(selection.offered.map((s) => s.action));
+      out.swaps = ladder.filter((s) => kept.has(s.action));
+      out.swapPolicy = {
+        withheld: selection.withheld,
+        says: selection.says,
+        /* So thin suggestions read as "we do not know enough yet" rather
+         * than as the product having little to say. */
+        levelsOpen: permittedSwapLevels(declared),
+        cuisine: declared.cuisine ?? null,
+        excludesApplied: declared.excludes.length,
+      };
+    } catch {
+      /* same again: the filter is an addition, not the analysis */
+    }
+
+    return out;
+  }
+
+  /**
+   * What the member eats, declared by them and never inferred.
+   *
+   * Guessing a cuisine from a shopping pattern is inferring ethnicity
+   * without asking. `excludes` is the safety half — an allergen or a
+   * religious restriction — and is absolute at every rung of the ladder.
+   */
+  @Get('constraints')
+  async readConstraints(@Req() req: Request) {
+    const uid = this.who(req);
+    if (!uid) throw new UnauthorizedException('Sign in to see what you have told us about food.');
+    return { constraints: await this.constraints.get(uid), options: SWAP_CONSTRAINTS };
+  }
+
+  @Post('constraints')
+  async writeConstraints(@Req() req: Request, @Body() body: FoodConstraintsDto) {
+    const uid = this.who(req);
+    if (!uid) throw new UnauthorizedException('Sign in to tell us about your food.');
+    const saved = await this.constraints.put(uid, {
+      declared: (body.declared ?? []) as never,
+      excludes: body.excludes ?? [],
+      ...(body.cuisine ? { cuisine: body.cuisine } : {}),
+    });
+    return { constraints: saved, levelsOpen: permittedSwapLevels(saved) };
   }
 }

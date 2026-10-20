@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AGENT_REGISTRY,
   AGE_MODE_DEFINITIONS,
@@ -71,6 +71,29 @@ interface FoodLensResult {
   wheel: Record<string, number | null>;
   capture: { checks: { check: string; passed: boolean; detail: string }[]; passRate: number };
   swaps: { level: number; action: string; effect: string; keeps: string }[];
+  /**
+   * Where this meal leaves the day, against the member's stored energy
+   * band. Absent when they have no band — which is most people, and is
+   * why the colour has to degrade to a plain running total rather than
+   * disappear.
+   */
+  today?: {
+    kcal: number;
+    floorKcal?: number;
+    ceilingKcal?: number;
+    standing?: 'under_floor' | 'in_band' | 'above_band' | 'early';
+    colour?: 'green' | 'amber' | 'grey';
+    emphasis?: 'none' | 'note' | 'speak_up';
+    says?: string;
+  };
+  /** Why the ladder is as long as it is. */
+  swapPolicy?: {
+    withheld: number;
+    says: string;
+    levelsOpen: number[];
+    cuisine: string | null;
+    excludesApplied: number;
+  };
   plants: { distinct: string[]; count: number };
   allergens: { allergen: string; status: string; note?: string }[];
   underEighteen: boolean;
@@ -90,6 +113,61 @@ export function FoodLensModule({
   const [photos, setPhotos] = useState<{ mimeType: string; dataBase64: string }[]>([]);
   const [barcode, setBarcode] = useState('');
   const [knownKcal, setKnownKcal] = useState('');
+
+  /**
+   * What the member eats, and what must never be suggested to them.
+   *
+   * Loaded on mount so the fields show what was declared last time rather
+   * than looking empty and inviting a second declaration.
+   */
+  const [cuisine, setCuisine] = useState('');
+  const [excludes, setExcludes] = useState('');
+  const [foodNote, setFoodNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch(`${apiBase()}/foodlens/constraints`, {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data: { constraints: { cuisine?: string; excludes: string[] } };
+        };
+        setCuisine(json.data.constraints.cuisine ?? '');
+        setExcludes((json.data.constraints.excludes ?? []).join(', '));
+      } catch {
+        /* nothing declared yet, or no session — the fields start empty */
+      }
+    })();
+  }, []);
+
+  const saveFood = async () => {
+    setFoodNote(null);
+    try {
+      const res = await fetch(`${apiBase()}/foodlens/constraints`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...(cuisine.trim() ? { cuisine: cuisine.trim() } : {}),
+          excludes: excludes
+            .split(',')
+            .map((e) => e.trim())
+            .filter(Boolean),
+          declared: cuisine.trim() ? ['culture'] : [],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      const open = (json.data as { levelsOpen: number[] }).levelsOpen;
+      setFoodNote(
+        `Saved. Suggestions now run to level ${Math.max(...open)} of five. Scan a meal to see it.`,
+      );
+    } catch (e) {
+      setFoodNote(`could not save that: ${(e as Error).message}`);
+    }
+  };
 
   /** Adds a photograph. Up to three of the same meal, from any angle. */
   const addPhoto = () => {
@@ -203,6 +281,43 @@ export function FoodLensModule({
           A barcode beats any estimate, and what you tell us outranks everything — including a
           manufacturer&rsquo;s label. You know what went on the plate; the model is guessing.
         </p>
+
+        {/*
+          The ten swap constraints, finally askable.
+
+          `SWAP_CONSTRAINTS` — culture, religion, allergies and seven more —
+          has been on the public FoodLens page since it was written, and no
+          member had ever been asked for any of them. Two fields, because
+          these are the two that change what may be suggested: a cuisine
+          opens the rungs that rebuild or replace a dish, and an exclusion
+          is absolute at every rung.
+
+          Declared, never inferred. Guessing somebody's cuisine from their
+          shopping is inferring ethnicity without asking.
+        */}
+        <div className="tdv__askrow">
+          <input
+            value={cuisine}
+            onChange={(e) => setCuisine(e.target.value)}
+            placeholder="What do you cook? e.g. Nigerian, Punjabi, Polish"
+            aria-label="The cuisine you cook"
+            maxLength={80}
+          />
+          <input
+            value={excludes}
+            onChange={(e) => setExcludes(e.target.value)}
+            placeholder="Never suggest… e.g. pork, peanuts, dairy"
+            aria-label="Foods never to suggest"
+            maxLength={400}
+          />
+        </div>
+        <p className="fl__note">
+          {foodNote ??
+            'Telling us what you cook opens the suggestions that rebuild a plate rather than just trim it. Anything you list as never-suggest is excluded at every level — not offered more carefully, not offered.'}
+        </p>
+        <button className="btn btn--ghost" type="button" onClick={saveFood} disabled={busy}>
+          Save what I eat
+        </button>
 
         <button
           className="btn btn--primary"
@@ -329,6 +444,55 @@ export function FoodLensModule({
             </>
           )}
 
+          {/*
+            Where this meal leaves the day.
+
+            Asked for from the start — scan a meal, see whether the day is
+            still inside the range — and computed only on the account page,
+            where a camera never looks. The colour is the *day's*, never
+            this plate's: a single meal against a daily figure is
+            unremarkable at noon and the whole budget at nine, and only the
+            running total knows which.
+
+            Degrades to a plain total when there is no band, because most
+            members have none and a disappearing figure reads as a fault.
+          */}
+          {result.today && (
+            <>
+              <h4 className="fl__h">Your day so far</h4>
+              <p className="fl__big">
+                {result.today.kcal} <small>kcal today</small>
+              </p>
+              {result.today.floorKcal && result.today.ceilingKcal ? (
+                <>
+                  <p className="fl__note">
+                    <span
+                      className={`badge ${
+                        result.today.colour === 'green' ? 'badge--ok' : 'badge--warn'
+                      }`}
+                    >
+                      {result.today.standing === 'in_band'
+                        ? 'Inside your range'
+                        : result.today.standing === 'above_band'
+                          ? 'Above your range'
+                          : result.today.standing === 'under_floor'
+                            ? 'Below your floor'
+                            : 'Still early'}
+                    </span>{' '}
+                    Your range today is {result.today.floorKcal}–{result.today.ceilingKcal} kcal.
+                  </p>
+                  {result.today.says && <p className="fl__note">{result.today.says}</p>}
+                </>
+              ) : (
+                <p className="fl__note">
+                  This is your running total for today. Set a goal and your measurements in
+                  BodyCommand, with a week of food recorded, and it will be measured against a
+                  daily range instead of standing on its own.
+                </p>
+              )}
+            </>
+          )}
+
           <h4 className="fl__h">The Food Intelligence Wheel</h4>
           <FoodWheel wheel={result.wheel ?? {}} />
 
@@ -344,6 +508,28 @@ export function FoodLensModule({
                   </li>
                 ))}
               </ol>
+              {/*
+                Why the ladder is as long as it is. The ten constraints
+                have been advertised on the FoodLens page since it was
+                written and honoured by nothing — `selectSwaps` was called
+                only by a policy endpoint returning a worked example. This
+                line is the member's half of that: it says what was
+                withheld and what would open it.
+              */}
+              {result.swapPolicy && (
+                <p className="fl__note">
+                  {result.swapPolicy.says}
+                  {result.swapPolicy.excludesApplied > 0 && (
+                    <>
+                      {' '}
+                      {result.swapPolicy.excludesApplied} thing
+                      {result.swapPolicy.excludesApplied === 1 ? '' : 's'} you do not eat
+                      {result.swapPolicy.excludesApplied === 1 ? ' is' : ' are'} never suggested,
+                      at any level.
+                    </>
+                  )}
+                </p>
+              )}
               <p className="fl__note">
                 &ldquo;Choose something else&rdquo; is level five, because a suggestion that
                 ignores what you actually feel like eating is a suggestion nobody takes. A
