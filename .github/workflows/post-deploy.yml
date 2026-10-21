@@ -18,6 +18,14 @@ name: Post-deploy
 on:
   deployment_status:
 
+# `statuses: write` so the outcome can be posted as a commit status. The
+# job summary is served from a host the GitHub API will not redirect to,
+# so a summary is readable in a browser and nowhere else — which made
+# "which capability is off" a question only a person could answer.
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   verify:
     # Only successful backend deployments. A failed one has nothing to ask,
@@ -70,6 +78,38 @@ jobs:
         if: steps.verify.outputs.code != '0' && steps.verify.outputs.code != '2'
         run: |
           echo "verify-live reported ${{ steps.verify.outputs.code }}"
+
+      # The one line worth reading, somewhere a tool can read it.
+      # `gh api repos/{owner}/{repo}/commits/<sha>/statuses` returns the
+      # description, so "which capability is off" is answerable without
+      # opening the run.
+      - name: Publish the result as a commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOYED_SHA: ${{ github.event.deployment.sha }}
+          CODE: ${{ steps.verify.outputs.code }}
+        run: |
+          export LINE
+          LINE=$(grep -m1 '^RESULT ' /tmp/verify.txt 2>/dev/null || echo 'RESULT unavailable')
+          export STATE
+          case "$CODE" in
+            # A capability being off means serving-with-gaps, not a broken
+            # deployment, so it must not mark the commit red.
+            0|2) STATE=success ;;
+            *)   STATE=failure ;;
+          esac
+          # 140 characters is the API's limit for a status description.
+          # One line of Python: a block scalar cannot carry a script whose
+          # own lines start at column 1 without breaking the YAML, which
+          # is how the first version of this step was invalid.
+          python3 -c "import json,os;print(json.dumps({'state':os.environ['STATE'],'context':'live-api','description':os.environ['LINE'][:139]}))" > /tmp/status.json
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/statuses/$DEPLOYED_SHA" \
+            -d @/tmp/status.json >/dev/null
+        shell: bash
 
       - name: Say what it found
         run: |

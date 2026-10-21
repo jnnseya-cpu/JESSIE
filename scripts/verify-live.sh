@@ -36,6 +36,7 @@ API="${API%/}"
 
 hard_fail=0
 soft_fail=0
+off_list=""   # capabilities reporting themselves off, for the RESULT line
 
 say() { printf '%s\n' "$*"; }
 hr() { printf '%s\n' "────────────────────────────────────────────────────────"; }
@@ -126,7 +127,12 @@ print("%s|%s" % (state, note[:110]))
   printf '  %-28s %-9s %s\n' "$p" "$state" "$note"
 
   case "$state" in
-    OFF) soft_fail=1 ;;
+    OFF)
+      soft_fail=1
+      # Named in the RESULT line so the caller learns which one without
+      # reading the report. `${p%%/*}` is the module, not the path.
+      off_list="${off_list:+$off_list,}${p%%/*}"
+      ;;
     # A check that could not run is a hard failure, never a pass. A verifier
     # that reports green because its own parsing broke is worse than no
     # verifier, because somebody believes it.
@@ -135,6 +141,13 @@ print("%s|%s" % (state, note[:110]))
 done
 
 hr
+
+# One machine-readable line, last, so a caller does not have to parse the
+# report above. The exit code says whether something is off; this says
+# which, and that distinction is the whole difference between "go and
+# look" and "go and set VAPID_PUBLIC_KEY".
+say "RESULT commit=$commit off=${off_list:-none}"
+
 if [ "$hard_fail" -ne 0 ]; then
   say "NOT SERVING CORRECTLY — see the failures above"
   exit 1
