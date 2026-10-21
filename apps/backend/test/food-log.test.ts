@@ -154,9 +154,26 @@ test('the windows and the retention period are the published ones', () => {
  * you must not say to somebody with reduced kidney function.
  */
 
+/**
+ * Midday today, computed once.
+ *
+ * `new Date()` per entry is a fixture that is correct for 86,399 seconds
+ * a day: `summarise` buckets by day, so a run crossing midnight UTC puts
+ * entries from one test on two different days and changes the denominator
+ * the per-day figures divide by. Anchoring to midday keeps every entry
+ * inside the window for ever — a fixed past date would eventually fall
+ * out of it — and puts twelve hours between the fixture and either
+ * boundary.
+ */
+const AT = (() => {
+  const d = new Date();
+  d.setUTCHours(12, 0, 0, 0);
+  return d.toISOString();
+})();
+
 const macroEntry = (over: Partial<FoodLogEntry>): FoodLogEntry => ({
   id: `m_${Math.random().toString(36).slice(2, 8)}`,
-  at: new Date().toISOString(),
+  at: AT,
   kind: 'photo',
   name: 'Meal',
   grams: 400,

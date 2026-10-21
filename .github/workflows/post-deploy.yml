@@ -52,6 +52,25 @@ jobs:
             | tee /tmp/verify.txt
           echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
+      # Named steps rather than only a job summary, because the summary is
+      # served from a host the GitHub API will not redirect to — so the
+      # outcome was readable in a browser and nowhere else. A step name is
+      # in `/actions/runs/<id>/jobs`, which means the result can be read
+      # without opening one.
+      - name: Serving, everything configured
+        if: steps.verify.outputs.code == '0'
+        run: echo "verify-live reported 0"
+
+      - name: Serving, but something is switched off
+        if: steps.verify.outputs.code == '2'
+        run: |
+          echo "verify-live reported 2 — a capability is off; the summary names the variable"
+
+      - name: Not serving correctly
+        if: steps.verify.outputs.code != '0' && steps.verify.outputs.code != '2'
+        run: |
+          echo "verify-live reported ${{ steps.verify.outputs.code }}"
+
       - name: Say what it found
         run: |
           code='${{ steps.verify.outputs.code }}'
