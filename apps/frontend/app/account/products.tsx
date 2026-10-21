@@ -202,6 +202,21 @@ export function BodyCommandModule({
     trend: { kgPerWeek: number | null; changeKg: number | null; spanDays: number; readings: number; direction: string; says: string };
     warnings: { level: string; says: string; action: string }[];
     alongside: { daysMoved: number; mealsChecked: number; windowDays: number; says: string };
+    weekly?: {
+      weeks: {
+        weekStart: string;
+        kg: number;
+        takenOn: string;
+        readings: number;
+        changeKg: number | null;
+        weeksSincePrevious: number | null;
+        kgPerWeek: number | null;
+      }[];
+      current: { kg: number; weekStart: string; changeKg: number | null } | null;
+      previous: { kg: number; weekStart: string } | null;
+      advice: { level: string; says: string; action: string }[];
+      says: string;
+    };
     howItWorks: string[];
   } | null>(null);
 
@@ -478,16 +493,89 @@ export function BodyCommandModule({
                 </p>
               )}
 
-              {progress.warnings.length > 0 && (
+              {/*
+                Last week against this week.
+
+                `trend` is one rate across the whole span, which answers
+                where things are going and not what happened this week —
+                and the second is the question somebody losing weight
+                actually asks. A span average also hides a fortnight of
+                nothing followed by a sudden drop.
+
+                The gap is printed whenever it is more than a week,
+                because "3kg down" over three weeks is 1kg a week, and
+                reading it as one week's loss would be alarming and wrong.
+              */}
+              {progress.weekly && progress.weekly.weeks.length > 0 && (
+                <>
+                  <h4 className="fl__h">Your weekly record</h4>
+                  <p className="tdv__line">{progress.weekly.says}</p>
+
+                  {progress.weekly.previous && progress.weekly.current && (
+                    <p className="fl__big">
+                      {progress.weekly.previous.kg}
+                      <span className="fl__unit">kg → </span>
+                      {progress.weekly.current.kg}
+                      <span className="fl__unit">kg</span>
+                    </p>
+                  )}
+
+                  <ul className="fl__ladder">
+                    {[...progress.weekly.weeks]
+                      .reverse()
+                      .slice(0, 8)
+                      .map((w) => (
+                        <li key={w.weekStart}>
+                          <strong>
+                            Week of {w.weekStart} — {w.kg}kg
+                          </strong>
+                          <em>
+                            {w.changeKg === null
+                              ? 'First week recorded — nothing to compare it with yet.'
+                              : `${w.changeKg > 0 ? '+' : ''}${w.changeKg}kg on the previous recorded week` +
+                                (w.weeksSincePrevious && w.weeksSincePrevious > 1
+                                  ? `, ${w.weeksSincePrevious} weeks apart, so ${w.kgPerWeek}kg a week`
+                                  : '')}
+                          </em>
+                          <span>
+                            {w.readings === 1
+                              ? 'One reading, taken ' + w.takenOn
+                              : `${w.readings} readings, latest ${w.takenOn}`}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </>
+              )}
+
+              {/*
+                Advice, from the weekly rate where there is one and the
+                whole-span warnings otherwise. Both come from
+                `warningsFor`, so there is one set of thresholds rather
+                than two that could disagree about the same person.
+              */}
+              {(progress.weekly?.advice?.length ?? 0) > 0 ? (
                 <>
                   <h4 className="fl__h">Worth knowing</h4>
-                  {progress.warnings.map((w) => (
+                  {progress.weekly!.advice.map((w) => (
                     <div key={w.says} className={`warn warn--${w.level}`}>
                       <strong>{w.says}</strong>
                       <em>{w.action}</em>
                     </div>
                   ))}
                 </>
+              ) : (
+                progress.warnings.length > 0 && (
+                  <>
+                    <h4 className="fl__h">Worth knowing</h4>
+                    {progress.warnings.map((w) => (
+                      <div key={w.says} className={`warn warn--${w.level}`}>
+                        <strong>{w.says}</strong>
+                        <em>{w.action}</em>
+                      </div>
+                    ))}
+                  </>
+                )
               )}
 
               <h4 className="fl__h">What you were doing alongside</h4>

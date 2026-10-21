@@ -161,3 +161,195 @@ export function alongsideFrom(input: {
       : `Movement on ${daysMoved} of ${windowDays} days and ${mealsChecked} meal${mealsChecked === 1 ? '' : 's'} looked at. Shown beside your trend, not as its cause — nobody can honestly separate one walk from a fortnight.`;
   return { daysMoved, mealsChecked, windowDays, says };
 }
+
+/** One week of the record, and how it compares with the week before it. */
+export interface WeekRow {
+  /** The Monday the week starts on, as YYYY-MM-DD. */
+  weekStart: string;
+  /** The weight that represents the week. */
+  kg: number;
+  /** The day it was actually taken — rarely the Monday. */
+  takenOn: string;
+  /** How many readings were given that week. */
+  readings: number;
+  /** Against the previous *recorded* week. Null for the first week. */
+  changeKg: number | null;
+  /** 1 normally; more when weeks were skipped. */
+  weeksSincePrevious: number | null;
+  /**
+   * The change spread across the gap.
+   *
+   * This is the number that matters and the one that is easy to get
+   * wrong. Somebody who weighs, misses a fortnight, then weighs 3kg
+   * lighter has lost 1kg a week, not 3 — and the safety threshold is a
+   * rate, so reading the gap as a single week would raise a caution that
+   * is simply false. Division by `weeksSincePrevious` is the whole reason
+   * the gap is tracked at all.
+   */
+  kgPerWeek: number | null;
+}
+
+export interface WeeklyRecord {
+  /** Oldest first, so the member reads it the way it happened. */
+  weeks: WeekRow[];
+  /** The latest recorded week — "the new one". */
+  current: WeekRow | null;
+  /** The recorded week before it — "the current one", to compare against. */
+  previous: WeekRow | null;
+  /** Advice, and only when it is warranted. */
+  advice: Warning[];
+  says: string;
+}
+
+/** The Monday of the week a day falls in, in UTC. */
+function weekStartOf(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  // getUTCDay: 0 = Sunday. Shift so Monday is the start of the week,
+  // because a week that begins on Sunday is not how anybody keeps a
+  // weekly record in the UK.
+  const shift = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - shift);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * The weekly weight record: each week, and the week before it.
+ *
+ * `trendFrom` gives one rate across the whole span, which answers "where
+ * is this going" and not "what happened this week against last week" —
+ * and the second question is the one somebody losing weight actually
+ * asks. A single span rate also hides a fortnight of nothing followed by
+ * a sudden drop, which is exactly the pattern worth noticing.
+ *
+ * One reading per week, and it is the **last** one given in that week,
+ * matching the latest-wins-per-day rule the readings themselves follow.
+ * Weighing three times in a week is not three weeks of data.
+ *
+ * Advice comes from `warningsFor` rather than a second set of thresholds.
+ * The 1%-of-body-weight rule, the BMI floor that stops a reduction plan
+ * outright, and the one-reading note are already written there, and a
+ * weekly view with its own numbers would be two rules that could disagree
+ * about the same person.
+ */
+export function weeklyRecord(input: {
+  readings: Reading[];
+  age: number;
+  bmi?: number | null;
+}): WeeklyRecord {
+  // Under 18 there is no weight framing at all, so there is no record to
+  // show — the same rule `warningsFor` applies, applied before anything
+  // is computed rather than after.
+  if (input.age < 18) {
+    return {
+      weeks: [],
+      current: null,
+      previous: null,
+      advice: [],
+      says: 'Weight is not tracked under 18. Strength, movement and how you feel are.',
+    };
+  }
+
+  const sorted = [...input.readings].sort((a, b) => a.day.localeCompare(b.day));
+
+  const byWeek = new Map<string, { kg: number; takenOn: string; readings: number }>();
+  for (const reading of sorted) {
+    const start = weekStartOf(reading.day);
+    const existing = byWeek.get(start);
+    byWeek.set(start, {
+      // Last one wins: `sorted` is ascending, so each later reading in the
+      // same week replaces the earlier one.
+      kg: reading.kg,
+      takenOn: reading.day,
+      readings: (existing?.readings ?? 0) + 1,
+    });
+  }
+
+  const starts = [...byWeek.keys()].sort();
+  const weeks: WeekRow[] = starts.map((start, i) => {
+    const week = byWeek.get(start)!;
+    const prevStart = i > 0 ? starts[i - 1]! : null;
+    const prev = prevStart ? byWeek.get(prevStart)! : null;
+
+    const weeksSincePrevious = prevStart
+      ? Math.max(
+          1,
+          Math.round(
+            (Date.parse(`${start}T00:00:00Z`) - Date.parse(`${prevStart}T00:00:00Z`)) /
+              (7 * DAY_MS),
+          ),
+        )
+      : null;
+
+    const changeKg = prev ? Number((week.kg - prev.kg).toFixed(1)) : null;
+
+    return {
+      weekStart: start,
+      kg: week.kg,
+      takenOn: week.takenOn,
+      readings: week.readings,
+      changeKg,
+      weeksSincePrevious,
+      kgPerWeek:
+        changeKg !== null && weeksSincePrevious
+          ? Number((changeKg / weeksSincePrevious).toFixed(2))
+          : null,
+    };
+  });
+
+  const current = weeks.length > 0 ? weeks[weeks.length - 1]! : null;
+  const previous = weeks.length > 1 ? weeks[weeks.length - 2]! : null;
+
+  /*
+   * Advice is judged on the latest week's own rate, not the whole span.
+   * A member who lost slowly for a month and then dropped 2kg in a week
+   * needs to hear about this week — the span average would bury it.
+   */
+  const advice =
+    current && current.kgPerWeek !== null
+      ? warningsFor({
+          age: input.age,
+          bmi: input.bmi ?? null,
+          latestKg: current.kg,
+          trend: {
+            kgPerWeek: current.kgPerWeek,
+            changeKg: current.changeKg,
+            spanDays: (current.weeksSincePrevious ?? 1) * 7,
+            readings: weeks.length,
+            direction:
+              Math.abs(current.kgPerWeek) < 0.1 ? 'steady' : current.kgPerWeek < 0 ? 'down' : 'up',
+            says: '',
+          },
+        })
+      : warningsFor({
+          age: input.age,
+          bmi: input.bmi ?? null,
+          latestKg: current?.kg ?? null,
+          trend: {
+            kgPerWeek: null,
+            changeKg: null,
+            spanDays: 0,
+            readings: weeks.length,
+            direction: 'unknown',
+            says: '',
+          },
+        });
+
+  const says = ((): string => {
+    if (!current) return 'No weekly record yet. One reading a week, at the same time of day, is enough.';
+    if (!previous) {
+      return `First week recorded at ${current.kg}kg. Next week gives you something to compare it with.`;
+    }
+    const gap = current.weeksSincePrevious ?? 1;
+    const gapNote =
+      gap > 1
+        ? ` That is ${gap} weeks apart, so it is ${Math.abs(current.kgPerWeek ?? 0).toFixed(1)}kg a week rather than ${Math.abs(current.changeKg ?? 0).toFixed(1)}.`
+        : '';
+    if (current.changeKg === null || Math.abs(current.changeKg) < 0.1) {
+      return `${previous.kg}kg then ${current.kg}kg — level.${gapNote} A week that holds is not a week lost.`;
+    }
+    const dir = current.changeKg < 0 ? 'down' : 'up';
+    return `${previous.kg}kg then ${current.kg}kg — ${Math.abs(current.changeKg).toFixed(1)}kg ${dir}.${gapNote}`;
+  })();
+
+  return { weeks, current, previous, advice, says };
+}

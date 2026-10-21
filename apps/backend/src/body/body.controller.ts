@@ -1,5 +1,5 @@
 import { BodyAssessmentDto, EnergyDto, ProgressDto } from './body.dto';
-import { alongsideFrom, trendFrom, warningsFor } from './progress.logic';
+import { alongsideFrom, trendFrom, warningsFor, weeklyRecord } from './progress.logic';
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { SelfOnly } from '../auth/auth.guard';
 import {
@@ -94,6 +94,20 @@ export class BodyController {
         daysMoved: Number(daysMoved) || 0,
         mealsChecked: Number(mealsChecked) || 0,
         windowDays: 14,
+      }),
+      /*
+       * The weekly record: each week beside the week before it.
+       *
+       * `trend` answers "where is this going" across the whole span, which
+       * is a different question from "what happened this week against
+       * last" — and the second is the one somebody losing weight asks. A
+       * span average also hides a fortnight of nothing followed by a
+       * sudden drop, which is the pattern most worth noticing.
+       */
+      weekly: weeklyRecord({
+        readings,
+        age: Number.isFinite(parsedAge) ? parsedAge : 0,
+        bmi: Number.isFinite(parsedBmi) ? parsedBmi : null,
       }),
       howItWorks: HOW_PROGRESS_WORKS,
     };
