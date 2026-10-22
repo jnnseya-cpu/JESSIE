@@ -48,3 +48,4 @@ export * from './newsletter';
 export * from './tracking';
 export * from './blog-corpus';
 export * from './ai-costs';
+export * from './blog-drafts';
