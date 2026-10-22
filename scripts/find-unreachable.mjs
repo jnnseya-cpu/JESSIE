@@ -29,13 +29,15 @@
  * is left to a person. The list is the point; the verdict is not.
  *
  *   node scripts/find-unreachable.mjs          # human
- *   node scripts/find-unreachable.mjs --json   # machine
+ *   node scripts/find-unreachable.mjs --json       # machine, for the test
+ *   node scripts/find-unreachable.mjs --baseline   # rewrite the baseline file
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const asJson = process.argv.includes('--json');
+const asBaseline = process.argv.includes('--baseline');
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -170,7 +172,34 @@ const unreachable = routes.filter(
 const byGuard = { open: [], self: [], admin: [], cron: [] };
 for (const r of unreachable) byGuard[r.guard].push(r);
 
-if (asJson) {
+if (asBaseline) {
+  /*
+   * The baseline file's shape, which is not the same as `--json`.
+   *
+   * `--json` is read by `unreachable.test.ts` as
+   * `JSON.parse(out).byGuard`, with whole route objects. The baseline it
+   * compares against is a flat map of guard to sorted "METHOD /path"
+   * strings. Two consumers, two shapes.
+   *
+   * They were conflated, and the cost was specific: the test told you to
+   * regenerate the baseline with `--json`, that wrote the wrong shape,
+   * and the next run reported the routes you had just made reachable as
+   * having "grown from 0" — a passing fix presented as a regression.
+   */
+  const asKeys = (list) => list.map((r) => `${r.method} ${r.path}`).sort();
+  console.log(
+    JSON.stringify(
+      {
+        open: asKeys(byGuard.open),
+        self: asKeys(byGuard.self),
+        admin: asKeys(byGuard.admin),
+        cron: asKeys(byGuard.cron),
+      },
+      null,
+      2,
+    ),
+  );
+} else if (asJson) {
   console.log(JSON.stringify({ total: routes.length, unreachable, byGuard }, null, 2));
 } else {
   console.log(

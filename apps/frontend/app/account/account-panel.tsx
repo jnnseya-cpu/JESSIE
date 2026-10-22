@@ -14,6 +14,7 @@ import { MIN_TRANSACTION_GBP, PLAN_DEFINITIONS, grantSourceLabel } from '@jessmo
 import { apiBase, mediaUrl } from '../api-base';
 import { enableNativePush, isNative } from '../native';
 import { FoodLensModule, SnapModule } from './test-drive';
+import { DeviceConnectionsModule } from './wearables';
 import { DashboardModule, useDashboard, type Dashboard } from './dashboard';
 import { ScannerModule } from './scanner';
 import { LedgerModule } from './ledger';
@@ -960,6 +961,7 @@ export function AccountPanel() {
               <DashboardModule data={dash} onActivity={onActivity} />
               <SnapModule me={me} onActivity={onActivity} />
               <WindowsModule userId={me.userId} />
+              <DeviceConnectionsModule me={me} />
               <MovaModule me={me} />
             </>
           )}

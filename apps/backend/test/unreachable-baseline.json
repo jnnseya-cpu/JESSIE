@@ -1,7 +1,6 @@
 {
   "open": [
     "DELETE /growth/engine/results/:id",
-    "GET /accounts/autosave/policy",
     "GET /accounts/kinds",
     "GET /accounts/media/local/:key",
     "GET /accounts/media/rules",
@@ -35,19 +34,10 @@
     "POST /stripe/webhook"
   ],
   "self": [
-    "GET /accounts/profiles/:userId/as/:viewer",
-    "GET /wearables/status/:userId",
-    "POST /accounts/profiles/:userId/autosave",
-    "POST /accounts/profiles/:userId/commit",
-    "POST /accounts/profiles/:userId/media",
-    "POST /wearables/callback",
-    "POST /wearables/connect",
-    "POST /wearables/revoke",
-    "POST /wearables/scopes"
+    "POST /wearables/callback"
   ],
   "admin": [
     "GET /acu/wallets/:id",
-    "GET /auth/admin/users",
     "GET /comms/deliveries",
     "GET /comms/stats",
     "GET /db/verify",

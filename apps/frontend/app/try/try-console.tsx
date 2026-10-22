@@ -7,10 +7,9 @@ import {
   PROFILE_VISIBILITY,
   profilePolicy,
   resolveDelivery,
-  visibleTo,
   type AccountKind,
-  type Profile,
   type ProfileVisibility,
+  type VisibleProfile,
   type ViewerRelationship,
 } from '@jessmove/shared';
 
@@ -129,43 +128,162 @@ export function TryConsole() {
     }
   };
 
+  /*
+   * The autosave contract, demonstrated rather than described.
+   *
+   * `/accounts/autosave/policy` publishes which fields may save themselves
+   * and which require a confirmed submit — "a consent toggle that saves
+   * itself 800ms after a mis-tap is not consent". `splitPatch` enforces it
+   * inside `POST /accounts/profiles/:userId/autosave`, and that route was
+   * reachable by nothing, so the one rule most worth showing a buyer ran
+   * nowhere.
+   *
+   * Two buttons: save a field that may autosave, and try one that may not.
+   * The second is expected to be refused, and the refusal is the feature.
+   */
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+
+  /*
+   * The upload rules, demonstrated on a generated image.
+   *
+   * A file picker would demonstrate the same route and make the
+   * interesting case hard to reach: the rule worth seeing is that an
+   * under-18 persona is refused photographic media outright, and that an
+   * adult's picture arrives `moderation: 'pending'` rather than approved.
+   * One click against a known 8x8 PNG shows both, and nothing here
+   * depends on what happens to be in somebody's camera roll.
+   */
+  const uploadDemo = async () => {
+    if (!active) return;
+    setBusy('upload');
+    setSaveNote(null);
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 8;
+      canvas.height = 8;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('this browser would not give us a canvas');
+      ctx.fillStyle = '#0f7d7d';
+      ctx.fillRect(0, 0, 8, 8);
+      const dataBase64 = canvas.toDataURL('image/png').split(',')[1] ?? '';
+
+      const res = await fetch(url(`/accounts/profiles/${encodeURIComponent(active)}/media`), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          slot: 'avatar',
+          age: current?.age ?? 30,
+          mimeType: 'image/png',
+          dataBase64,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      const d = json.data as {
+        media: { moderation: string };
+        sniffed: { widthPx: number; heightPx: number; format: string };
+      };
+      setSaveNote(
+        `accepted as ${d.sniffed.widthPx}x${d.sniffed.heightPx} ${d.sniffed.format}, ` +
+          `stored ${d.media.moderation} — dimensions read from the bytes, not the request`,
+      );
+      await load();
+    } catch (e) {
+      // For an under-18 persona this is the expected answer, and it is the
+      // rule the demonstration exists to show.
+      setSaveNote((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const patch = async (label: string, body: Record<string, unknown>, commit = false) => {
+    if (!active) return;
+    setBusy(label);
+    setSaveNote(null);
+    try {
+      const route = commit ? 'commit' : 'autosave';
+      const res = await fetch(
+        url(`/accounts/profiles/${encodeURIComponent(active)}/${route}`),
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            age: current?.age ?? 30,
+            patch: body,
+            basedOnVersion: current?.version ?? 0,
+          }),
+        },
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+      setSaveNote(
+        commit
+          ? `committed at version ${(json.data as { version?: number }).version ?? '?'}`
+          : `autosaved at version ${(json.data as { version?: number }).version ?? '?'}`,
+      );
+      await load();
+    } catch (e) {
+      // A refusal is the expected outcome for an explicit field, so it is
+      // reported as the result rather than as a fault.
+      setSaveNote((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const current = personas.find((p) => p.userId === active) ?? null;
   const policy = current?.age != null ? profilePolicy(current.age) : null;
   const definition = current ? ACCOUNT_KIND_DEFINITIONS[current.accountKind] : null;
 
-  /* A profile shaped from the persona, so `visibleTo` can be run for real. */
-  const asProfile: Profile | null = current
-    ? {
-        userId: current.userId,
-        accountKind: current.accountKind,
-        displayName: current.displayName,
-        handle: current.handle,
-        pronouns: 'they/them',
-        realName: policy?.realNameAllowed ? 'A Real Name' : null,
-        bio: policy?.bioAllowed ? 'A short bio.' : null,
-        locale: 'en-GB',
-        timezone: 'Europe/London',
-        avatar: {
-          kind: current.avatar as never,
-          assetId: null,
-          preset: 'heron',
-          moderation: 'approved',
-          updatedAt: '',
-        },
-        cover: {
-          kind: current.cover as never,
-          assetId: null,
-          preset: 'tide',
-          moderation: 'approved',
-          updatedAt: '',
-        },
-        visibility: current.visibility,
-        updatedAt: '',
-        version: current.version,
-      }
-    : null;
+  /*
+   * What a viewer sees, answered by the server.
+   *
+   * This used to call `visibleTo` here, against an `asProfile` object
+   * rebuilt in the browser from partial persona data with empty strings
+   * standing in for the fields the list endpoint does not return. So the
+   * console showed an approximation of the visibility model and
+   * `GET /accounts/profiles/:userId/as/:viewer` — which answers exactly
+   * this question, authoritatively, from the stored profile — was
+   * reachable by nothing.
+   *
+   * A demonstration of a privacy model has one job: to be the same answer
+   * the product would give. Recomputing it client-side guarantees it
+   * eventually is not.
+   */
+  const [seen, setSeen] = useState<VisibleProfile | null>(null);
+  const [seenError, setSeenError] = useState<string | null>(null);
 
-  const seen = asProfile ? visibleTo(asProfile, viewer) : null;
+  useEffect(() => {
+    if (!active) {
+      setSeen(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setSeenError(null);
+      try {
+        const res = await fetch(
+          url(`/accounts/profiles/${encodeURIComponent(active)}/as/${viewer}`),
+          { credentials: 'include' },
+        );
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok) throw new Error(json.message ?? `${res.status}`);
+        setSeen((json.data as { profile: VisibleProfile | null }).profile);
+      } catch (e) {
+        if (!cancelled) {
+          setSeen(null);
+          setSeenError((e as Error).message);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, viewer, url]);
 
   return (
     <div>
@@ -339,6 +457,57 @@ export function TryConsole() {
             </div>
           </article>
 
+          {/* ---------- the autosave contract, run for real ---------- */}
+          <article className="card card--6 card--light">
+            <div className="card__head">
+              <h3 className="card__t">Autosave</h3>
+              <span className="card__tag">version {current.version}</span>
+            </div>
+            <p className="card__note">
+              Some fields save themselves. Some refuse to, and the refusal is the point: a
+              consent toggle that saves itself 800ms after a mis-tap is not consent.
+            </p>
+            <div className="pwa__row" style={{ marginTop: 6 }}>
+              <button
+                className="btn btn--primary"
+                type="button"
+                disabled={!!busy}
+                onClick={() => void patch('autosave', { pronouns: 'they/them' })}
+              >
+                {busy === 'autosave' ? 'Saving…' : 'Autosave a pronoun'}
+              </button>
+              <button
+                className="btn btn--ghost"
+                type="button"
+                disabled={!!busy}
+                onClick={() => void patch('refuse', { dateOfBirth: '1990-01-01' })}
+              >
+                {busy === 'refuse' ? 'Trying…' : 'Try to autosave a date of birth'}
+              </button>
+              <button
+                className="btn btn--dark"
+                type="button"
+                disabled={!!busy}
+                onClick={() => void patch('commit', { pronouns: 'she/her' }, true)}
+              >
+                {busy === 'commit' ? 'Committing…' : 'Commit instead'}
+              </button>
+              <button
+                className="btn btn--ghost"
+                type="button"
+                disabled={!!busy}
+                onClick={() => void uploadDemo()}
+              >
+                {busy === 'upload' ? 'Uploading…' : 'Try a picture'}
+              </button>
+            </div>
+            {saveNote && (
+              <p className="card__note" style={{ marginTop: 10 }}>
+                {saveNote}
+              </p>
+            )}
+          </article>
+
           {/* ---------- who can see them ---------- */}
           <article className="card card--6 card--light">
             <div className="card__head">
@@ -363,7 +532,13 @@ export function TryConsole() {
                 </li>
               ))}
             </div>
-            {seen === null ? (
+            {seenError ? (
+              /* A read that failed must not read as "a stranger sees nothing",
+                 which is the same screen for an opposite reason. */
+              <p className="probe__err" style={{ margin: 0 }}>
+                Could not ask the API what a {viewer} sees: {seenError}
+              </p>
+            ) : seen === null ? (
               <p className="probe__err" style={{ margin: 0 }}>
                 Nothing. A <strong>{viewer}</strong> cannot see this profile at all.
               </p>

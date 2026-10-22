@@ -84,7 +84,7 @@ test('the member-facing list shrinks and is never quietly regrown', () => {
     assert.fail(
       `${was.length - now.length} member-facing route(s) became reachable — good. Now ` +
         'regenerate apps/backend/test/unreachable-baseline.json so the ceiling comes ' +
-        'down with them:\n  node scripts/find-unreachable.mjs --json',
+        'down with them:\n  node scripts/find-unreachable.mjs --baseline > apps/backend/test/unreachable-baseline.json',
     );
   }
 });

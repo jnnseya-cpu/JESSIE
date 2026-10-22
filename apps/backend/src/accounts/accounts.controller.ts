@@ -239,8 +239,22 @@ export class AccountsController {
   }
 
   /**
-   * The real upload. Dimensions come from the bytes, not the request;
-   * metadata is stripped before storage; the result is pending moderation.
+   * The upload for a demo persona, and the rules it proves.
+   *
+   * Not a duplicate of `POST /auth/me/media`, which it first looked like.
+   * That one writes a real account's picture to `app_users`; this writes a
+   * persona's to the in-memory profile store behind `/try`. Different
+   * store, different subject.
+   *
+   * It is also the stricter of the two in the places the live path is
+   * silent: `checkUpload` applies the dimension and size rules for the
+   * slot *and the age*, and the result is stored `moderation: 'pending'`
+   * rather than approved on arrival. Deleting it would have thrown those
+   * away, which is what nearly happened — it reads as redundant until you
+   * read both.
+   *
+   * Dimensions come from the bytes, never the request. A declared mime
+   * that disagrees with the bytes is refused as a disguised file.
    */
   @SelfOnly('userId')
   @Post('profiles/:userId/media')
