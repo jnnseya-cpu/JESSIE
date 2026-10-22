@@ -265,6 +265,49 @@ docker run -p 3000:3000 jessmove-site
 
 ---
 
+## After a Node security release
+
+October 2026: Node fixed several high-severity faults, the worst allowing
+code execution on the server. Fixed releases are **22.23.4**, **24.22.1**
+and **26.12.1**. **Node 20 and earlier are end of life and will not be
+fixed.** `engines.node` is `>=22.23.4`, so a tool that reads it refuses the
+unsupported lines.
+
+Where this platform runs, and who patches it:
+
+| Surface | Runtime | Who updates it |
+|---|---|---|
+| `jessie-move`, `jessie-backend` on Vercel | the project's Node version setting | Vercel ships the patch; confirm the major is 22, 24 or 26 in project settings |
+| `Dockerfile.backend` / `Dockerfile.frontend` | `node:22-alpine` | you, by rebuilding — see below |
+| GitHub Actions | `node-version: 22` in `ci.yml` | resolves to the newest 22.x on every run |
+
+**A built image never updates itself.** The tag floats, the image does not:
+whatever 22.x it was built against is what it carries for ever. So after a
+release, rebuild rather than restart:
+
+```bash
+docker compose pull
+docker compose build --pull
+docker compose up -d
+```
+
+`--pull` is the part that matters. Without it the build reuses the cached
+base layer and produces a new image on the old runtime.
+
+**Checking what is actually running.** `/api/health` reports the runtime
+under `checks.runtime` — but deliberately without the exact version. A
+precise patch number on an unauthenticated endpoint is what somebody
+probing for a code-execution fault wants, so the endpoint publishes the
+verdict and the deployment log carries the number:
+
+```bash
+curl -s https://api.jessmove.com/api/health | python3 -m json.tool | grep -A 2 runtime
+```
+
+`ok` means the line is on or above its patched release. `degraded` means
+it is not, or the line is end of life, and the boot log says which version
+and what to do about it.
+
 ## Verifying a deployment
 
 **From a terminal:** `bash scripts/smoke.sh https://your-api/api`

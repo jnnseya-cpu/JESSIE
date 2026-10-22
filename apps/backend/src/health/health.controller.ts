@@ -18,6 +18,7 @@ import {
 import { AiGatewayService } from '../ai/ai-gateway.service';
 import { DbService } from '../db/db.service';
 import { BUILD_BRANCH, BUILD_COMMIT, BUILT_AT } from '../build-info';
+import { runtimeReport } from './runtime.logic';
 
 /**
  * Which commit is live, from the platform's own environment.
@@ -122,6 +123,33 @@ export class HealthController {
       uptimeSeconds: Math.round((Date.now() - this.startedAt) / 1000),
       build: buildInfo(),
       checks: {
+        /*
+         * The runtime, reported rather than enforced — and reported
+         * without its exact version.
+         *
+         * October 2026 brought high-severity Node fixes, the worst
+         * allowing code execution on the server. On Vercel the version is
+         * the platform's to patch and on a container it is the owner's, so
+         * refusing to boot would trade a vulnerability for a certain
+         * outage.
+         *
+         * But this endpoint is public, and a precise patch version is
+         * exactly what somebody probing for that fault wants: it turns
+         * "is this worth attacking" into a single unauthenticated
+         * request. The owner needs the verdict, an attacker needs the
+         * number, so only the verdict is published. The number goes to
+         * the log at boot, where the owner can see it and nobody else
+         * can.
+         */
+        runtime: (() => {
+          const r = runtimeReport(process.version);
+          return {
+            status: (r.patched ? 'ok' : 'degraded') as 'ok' | 'degraded',
+            detail: r.patched
+              ? `Node ${r.major}, carrying the October 2026 security fixes.`
+              : `Node ${r.major} is not on a patched release. The deployment log says which, and what to do.`,
+          };
+        })(),
         ai_gateway: {
           status: anyConfigured ? 'ok' : 'degraded',
           detail: anyConfigured

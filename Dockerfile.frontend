@@ -5,6 +5,27 @@
 # Uses Next.js standalone output so the runtime layer is the server, the
 # built pages and only the node_modules Next actually traced.
 
+# ---------- on the Node tag ----------
+#
+# `node:22-alpine` is deliberately the major tag and not an exact patch.
+#
+# A rebuild with `--pull` resolves it to the newest 22.x, so a security
+# release arrives by rebuilding and keeps arriving. Pinning
+# `node:22.23.4-alpine` looks more rigorous and is worse: it freezes the
+# runtime at one patch level, and the next fix has to be noticed by a
+# person editing this line.
+#
+# What the tag does not do is update an image that already exists. A built
+# image carries whatever 22.x it was built against for ever. After a Node
+# security release the images have to be rebuilt:
+#
+#   docker compose pull && docker compose build --pull && docker compose up -d
+#
+# October 2026: the fixed releases are 22.23.4, 24.22.1 and 26.12.1, and
+# the worst of the faults they fix allows code execution on the server.
+# Node 20 and earlier are end of life and will not be fixed —
+# `engines.node` is set above them so a tool reading it says so.
+
 FROM node:22-alpine AS deps
 RUN corepack enable
 WORKDIR /repo

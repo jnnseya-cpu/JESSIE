@@ -82,6 +82,17 @@ export default async function Status() {
   const api: State = report ? 'ok' : 'down';
   const db = report?.checks?.database;
   const gateway = report?.checks?.ai_gateway;
+  /*
+   * The runtime. Added to this page because a check that exists and is
+   * rendered nowhere is the pattern this page was rebuilt to remove — and
+   * because an unpatched runtime is exactly the thing a status page
+   * should not quietly know.
+   *
+   * The API reports the verdict without the exact version on purpose; a
+   * precise patch number on an unauthenticated endpoint is what somebody
+   * probing for a code-execution fault wants.
+   */
+  const runtime = report?.checks?.runtime;
 
   const upFor = (seconds: number) => {
     const minutes = Math.max(1, Math.round(seconds / 60));
@@ -156,6 +167,12 @@ export default async function Status() {
                 sub="Accounts, wallets, schedules and the movement ledger"
                 state={report ? toState(db?.status) : 'unknown'}
                 detail={report ? db?.detail : undefined}
+              />
+              <Row
+                name="Server runtime"
+                sub="Whether the Node release carries the current security fixes"
+                state={report ? toState(runtime?.status) : 'unknown'}
+                detail={report ? runtime?.detail : undefined}
               />
               <Row
                 name="AI gateway"
