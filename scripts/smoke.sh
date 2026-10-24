@@ -76,6 +76,13 @@ t POST /acu/quote 400 '{"providerCostGbp":-5}' "negative cost"
 t POST /acu/quote 400 '{"providerCostGbp":0.01,"junkField":1}' "unknown field"
 ta POST /wearables/ingest 400 '{"userId":"u_1","provider":"apple_health","age":34,"samples":[{"scope":"blood_glucose","value":5.4,"ageMinutes":1}]}' "never-ingested scope refused"
 t POST /foodlens/analyze 400 '{"age":34,"mimeType":"image/jpeg","dataBase64":"bm90LWFuLWltYWdl"}' "non-image bytes refused"
+# The trolley, which had no DTO and so no validation. A string is
+# iterable, so basketFrom walked its characters and answered that the
+# shopping held 200 items. Found by fuzzing all fifty write endpoints;
+# this is the live half of the check.
+t POST /foodlens/basket 400 '{"products":"AAAA"}' "a string is not a trolley"
+t POST /foodlens/basket 201 '{"products":[{"barcode":"5000112637922","name":"Beans","quantity":"400g","kcalPer100g":78}]}' "a scanned product still totals"
+t POST /foodlens/basket 201 '{}' "an empty trolley is a valid question"
 echo "editorial gate"
 t POST /blog/views 201 '{"slug":"the-nudge-we-did-not-send","dwellSeconds":90,"scrollPercent":80,"device":"desktop"}' "record a view"
 t POST /blog/views 400 '{"slug":"x","dwellSeconds":99999,"scrollPercent":80}' "absurd dwell rejected"

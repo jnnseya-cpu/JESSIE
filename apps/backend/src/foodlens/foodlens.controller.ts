@@ -12,7 +12,7 @@ import {
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { tokenFrom } from '../auth/auth.guard';
-import { AnalyzeDto, LogEntryDto, ReadBarcodeDto } from './foodlens.dto';
+import { AnalyzeDto, BasketDto, LogEntryDto, ReadBarcodeDto } from './foodlens.dto';
 import { basketFrom, packGrams, type BasketProduct } from './basket.logic';
 import { FoodlensService } from './foodlens.service';
 import { FoodLogService } from './food-log.service';
@@ -225,10 +225,17 @@ export class FoodlensController {
     return this.foodlens.readBarcode(body.mimeType, body.dataBase64, uid);
   }
 
-  /** The trolley, added up: totals, days of food, and what to swap. */
+  /**
+   * The trolley, added up: totals, days of food, and what to swap.
+   *
+   * `BasketDto` rather than an inline type. An inline
+   * `{ products?: BasketProduct[] }` is erased at compile time, so the
+   * global ValidationPipe had nothing to check and a string arrived
+   * where an array belonged — see the note on `BasketProductDto`.
+   */
   @Post('basket')
-  basket(@Body() body: { products?: BasketProduct[] }) {
-    return basketFrom(body?.products ?? []);
+  basket(@Body() body: BasketDto) {
+    return basketFrom((body?.products ?? []) as BasketProduct[]);
   }
 
   @Post('analyze')

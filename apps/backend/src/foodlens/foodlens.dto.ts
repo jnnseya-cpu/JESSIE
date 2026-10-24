@@ -202,6 +202,66 @@ export class LogEntryDto {
  * because it is matched against suggestion text, and an unbounded list of
  * long strings is a filter that costs more than the thing it filters.
  */
+/**
+ * One product in the trolley.
+ *
+ * `POST /foodlens/basket` was the only write endpoint on the API with no
+ * DTO at all — its signature was an inline
+ * `{ products?: BasketProduct[] }`, which TypeScript erases and the
+ * global ValidationPipe therefore has nothing to validate against. An
+ * adversarial sweep of all fifty write endpoints found exactly one
+ * payload that got past the pipe, and this was it:
+ *
+ *   {"products": "AAAA…200 chars"}  ->  {"products": 200, …}
+ *
+ * A string is iterable, so `basketFrom` walked its characters and
+ * answered that the member's trolley held two hundred items. Nothing was
+ * written and no money was involved — it is a stateless calculator — but
+ * it returned a confidently wrong number to somebody who asked what was
+ * in their shopping, which is the kind of answer this product exists not
+ * to give.
+ *
+ * Bounded as well as typed: a trolley is a trolley, and an unbounded
+ * array of nested objects on an unauthenticated endpoint is a cost
+ * somebody else can choose for you.
+ */
+export class BasketProductDto {
+  @IsString()
+  @MaxLength(20)
+  barcode!: string;
+
+  @IsString()
+  @MaxLength(120)
+  name!: string;
+
+  /** As printed on the pack: "400g", "1.5 l", "4 x 125 g". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  quantity?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(2000)
+  kcalPer100g?: number | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => Per100gDto)
+  per100g?: Per100gDto;
+}
+
+export class BasketDto {
+  /** A weekly shop, not a warehouse. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => BasketProductDto)
+  products?: BasketProductDto[];
+}
+
 export class FoodConstraintsDto {
   @IsOptional()
   @IsString()

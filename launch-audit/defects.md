@@ -425,3 +425,92 @@ figure in `TARGET_SIZE_PX`, and **above** the WCAG 2.2 AA floor of 24px
 that `wcagMinimum` names and `accessibility-promises.test.ts` enforces. A
 deviation from an internal standard on one non-essential target, not an
 accessibility violation. **P4**, not fixed.
+
+---
+
+## D-006 — A string arrived where a trolley belonged
+
+| | |
+|---|---|
+| **Severity** | **P3 (medium)** |
+| **Blocker** | No |
+| **Area** | API input handling |
+| **Phase** | 6.9 adversarial API testing |
+| **Status** | **FIXED and retested** |
+
+### Steps
+```
+POST /foodlens/basket  {"products": "AAAA…200 chars"}
+```
+
+### Actual
+```json
+{"products": 200, "weighed": 0, "totals": [],
+ "note": "200 items had no readable pack size and are left out rather than guessed at."}
+```
+
+A string is iterable, so `basketFrom` walked its characters and reported
+that the member's shopping held two hundred items.
+
+### Impact
+Low in consequence, specific in kind. Nothing is written, no money is
+involved and no data leaks — it is a stateless calculator. What it did was
+answer a question about somebody's food with a confident wrong number,
+which is the one thing this product's own copy says it will not do.
+
+### Root cause
+The handler's body was an **inline type**:
+`basket(@Body() body: { products?: BasketProduct[] })`. TypeScript erases
+that at compile time, and `class-validator` needs a class to validate
+against, so the global `ValidationPipe` — `whitelist`,
+`forbidNonWhitelisted`, `transform` — had nothing to check.
+
+This was the **only** endpoint of the fifty with no DTO, and it was the
+only payload of 750 that got past the pipe. The two facts are the same
+fact.
+
+### Fix
+`BasketProductDto` and `BasketDto` in `foodlens.dto.ts`, matching the
+file's existing conventions (`@ValidateNested`, `@Type`, bounded strings).
+`@ArrayMaxSize(200)` as well as typed, because an unbounded array of
+nested objects on an unauthenticated endpoint is a cost somebody else
+chooses for you.
+
+### Retest
+```
+{"products":"AAAA"}                      -> 400  "products must be an array"
+{"products":[{barcode,name,quantity,…}]} -> 201  312 kcal for 400g at 78/100g
+{}                                       -> 201  empty trolley
+```
+
+Covered two ways, because the DTO has decorators and so cannot be
+imported under `--experimental-strip-types`: a source assertion in
+`foodlens-api.test.ts` that the handler takes a class and the DTO still
+declares its array, nesting and bound; and three live cases in
+`scripts/smoke.sh` that send the string and expect the 400.
+
+---
+
+## Phase 6.9 — adversarial API testing: PASS
+
+750 hostile requests across 50 write endpoints — 15 payload classes each:
+empty, null, array-for-object, string-for-object, SQL injection, XSS,
+prototype pollution, mass assignment (`kind: platform_staff`, `isAdmin`,
+`balance`), type confusion, a 200KB string, 120-level nesting, negative
+and `MAX_SAFE_INTEGER` numbers, null bytes and RTL override characters,
+path traversal, and `NaN`/`Infinity` as strings.
+
+Checked for: a 500, a stack frame, a `node_modules` or `/home/` path, a
+connection string, SQL in the response, `sk_live`/`whsec_`, ORM internals,
+`ECONNREFUSED`, a 2xx for an impossible operation, and a hang.
+
+**Result after D-006: 0 failures, 0 warnings.** No 500s, nothing leaked,
+no invalid payload accepted, nothing slower than 8s.
+
+Two endpoints are body-independent and excluded from the
+"accepted-an-invalid-payload" rule rather than counted as failures:
+`POST /auth/logout` clears a cookie, needs no input, and must stay
+idempotent — a browser that has lost its session still has to be able to
+sign out; and `POST /foodlens/basket` with `{}` is a valid question about
+an empty trolley. Both are asserted positively in `scripts/smoke.sh`
+instead, so the exclusion is not a gap.

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import { NEVER_CLAIM, UK_ALLERGENS } from '@jessmove/foodlens';
 import { analyse } from '../src/foodlens/foodlens.logic.ts';
 
@@ -491,4 +492,63 @@ test('a legitimate zero survives when the set as a whole is real', async () => {
   );
   assert.equal(salad.value?.per100g?.saltG, 0);
   assert.equal(salad.value?.per100g?.fatG, 2.1);
+});
+
+/**
+ * The trolley endpoint had no DTO, so the pipe had nothing to validate.
+ *
+ * An adversarial sweep of all fifty write endpoints found exactly one
+ * payload that got past the global ValidationPipe, and it was here:
+ * `{"products": "AAAA..."}`. A string is iterable, so `basketFrom` walked
+ * its characters and reported that the member's shopping held two
+ * hundred items. Nothing was written and no money was involved, but it
+ * answered a question about somebody's food with a confident wrong
+ * number.
+ *
+ * The cause was an inline `{ products?: BasketProduct[] }` on the
+ * handler: TypeScript erases that, and class-validator needs a class.
+ *
+ * Asserted against the source rather than by importing the DTO, because
+ * decorators do not survive `--experimental-strip-types` — the
+ * constraint `.logic.ts` files exist for. The live refusal is covered by
+ * `scripts/smoke.sh`, which sends the string and expects a 400.
+ */
+test('the basket endpoint validates its body like every other write route', () => {
+  const dto = readFileSync(new URL('../src/foodlens/foodlens.dto.ts', import.meta.url), 'utf8');
+  const controller = readFileSync(
+    new URL('../src/foodlens/foodlens.controller.ts', import.meta.url),
+    'utf8',
+  );
+
+  // The handler takes a class, not an erased inline type.
+  assert.match(
+    controller,
+    /basket\(@Body\(\) body: BasketDto\)/,
+    'the basket handler does not validate its body',
+  );
+  assert.doesNotMatch(
+    controller,
+    /basket\(@Body\(\) body: \{/,
+    'an inline body type is erased at compile time and validates nothing',
+  );
+
+  const basketDto = dto.slice(dto.indexOf('export class BasketDto'));
+  const productDto = dto.slice(
+    dto.indexOf('export class BasketProductDto'),
+    dto.indexOf('export class BasketDto'),
+  );
+
+  // An array, each element a validated object, and bounded.
+  for (const required of ['@IsArray()', '@ValidateNested({ each: true })', '@Type(() => BasketProductDto)']) {
+    assert.ok(basketDto.includes(required), `BasketDto no longer declares ${required}`);
+  }
+  assert.match(
+    basketDto,
+    /@ArrayMaxSize\(\d+\)/,
+    'an unbounded array on an unauthenticated endpoint is a cost somebody else chooses',
+  );
+
+  // A product is identified and named, with bounded strings.
+  assert.match(productDto, /@IsString\(\)[\s\S]{0,60}barcode!/, 'a product needs a barcode');
+  assert.match(productDto, /@IsString\(\)[\s\S]{0,60}name!/, 'a product needs a name');
 });
