@@ -108,6 +108,7 @@ is the point of the file.
 | **Losing the database no longer kills the API** | Postgres stopped under a running API: before, `[exited with code 1]` and every route dead including `/health`; after, five read routes still 200 and the pool reconnects with no restart |
 | The login rate limit survives an instance restart | 8 attempts, restart, limit engages at 14 total — a fresh instance used to allow 12 more |
 | The API sends security headers | Eight headers on every response, and `X-Powered-By: Express` removed |
+| The site sends a Content-Security-Policy, and it does not break the site | It had none — five headers in `vercel.json` and no CSP in either place. Now in `next.config.mjs`, with hosts derived from `NEXT_PUBLIC_API_BASE_URL` so the policy cannot drift from the API the bundle calls. In the Next config rather than `vercel.json` on purpose: a platform header exists on a deployment and nowhere else, and a CSP's failure mode is silently refusing something a page needs. Proven by `pnpm check:csp` — 9 routes in Chromium, 0 refusals, `script-src` exercised by accepting consent on the 6 routes that offer it and observing both measurement hosts requested and allowed; then by deleting those two hosts from the policy and watching the audit report the exact refusals and exit 1. `'unsafe-inline'` on `script-src` is accepted and documented, so the value is `connect-src`, `object-src`, `base-uri` and `form-action` |
 | A quote can never say an action is free | `providerCostGbp: 0` is a 400, not "0 ACU" |
 | The build is reproducible from a clean clone | `pnpm build`, `typecheck` and `test` all pass with every `dist/` deleted |
 | Zero known dependency vulnerabilities | `pnpm audit` clean at every severity. Held there twice: Next 14 → 15, React 18 → 19 first; then 33 advisories including **two critical** — an unauthenticated RCE in Next's image optimiser (≤15.5.27) and IP spoofing in `proxy-addr` — closed by Next 15.5.28 and eleven major-qualified overrides. The two pins that had gone stale, `fast-uri` and `brace-expansion`, are why the override list now says to re-audit after any dependency change |
@@ -135,6 +136,9 @@ Browser journeys: **43/43** in Chromium (`pnpm verify:journeys`), including
 1.66MB of client bundle scanned for provider keys and `AUTH_SECRET`.
 Contrast: **7,376 text nodes across 28 routes**, none below its AA threshold.
 Layout: **no problems at 1440px or 390px**.
+CSP: **served on 9/9 routes, nothing refused** (`pnpm check:csp`), with
+`script-src` genuinely exercised — consent accepted on the six routes that
+offer it, and both measurement hosts observed being requested and allowed.
 Load: p99 11ms alone and 51ms at 20-way, a 200-way spike with **0% errors**,
 and no drift under soak.
 Schema constraints: **21/21** (`pnpm db:test`).

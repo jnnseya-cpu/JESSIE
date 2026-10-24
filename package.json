@@ -40,7 +40,8 @@
     "check:unwired": "node scripts/find-unwired.mjs",
     "check:contrast": "pnpm --filter @jessmove/frontend exec node scripts/audit-contrast.mjs",
     "check:layout": "pnpm --filter @jessmove/frontend exec node scripts/audit-layout.mjs",
-    "check:reachable": "node scripts/find-unreachable.mjs"
+    "check:reachable": "node scripts/find-unreachable.mjs",
+    "check:csp": "pnpm --filter @jessmove/frontend exec node scripts/audit-csp.mjs"
   },
   "devDependencies": {
     "@jessmove/shared": "workspace:*",
