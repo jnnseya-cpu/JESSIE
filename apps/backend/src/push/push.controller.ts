@@ -10,7 +10,8 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { AdminOnly, SelfOnly } from '../auth/auth.guard';
+import { AdminOnly, CurrentSession, SelfOnly } from '../auth/auth.guard';
+import type { SessionPayload } from '../auth/token';
 import { NativePushService, type PushTransport } from './native-push.service';
 import { PushService } from './push.service';
 
@@ -21,6 +22,14 @@ export class SubscribeDto {
   @IsString() @MaxLength(256) p256dh!: string;
   @IsString() @MaxLength(64) auth!: string;
 
+  /**
+   * Accepted and ignored.
+   *
+   * The owner of a subscription is taken from the session, never from
+   * here — see `subscribe` below. The field stays declared because the
+   * global pipe runs with `forbidNonWhitelisted`, so removing it would
+   * make the site's own call a 400 rather than making it safe.
+   */
   @IsOptional() @IsString() @MaxLength(64) userId?: string;
 
   /* Minutes east of UTC. -720..+840 covers every real zone including the
@@ -89,13 +98,35 @@ export class PushController {
     return this.push.status();
   }
 
+  /**
+   * A browser's push endpoint, owned by whoever is signed in.
+   *
+   * The owner comes from the verified session and not from the body. It
+   * used to come from the body, unguarded, and `subscribe` writes that
+   * value straight into `push_subscriptions.user_id` — so a request
+   * naming somebody else's id registered an attacker-controlled endpoint
+   * against that member, and the scheduler then delivered their Snaps to
+   * it. `ON CONFLICT (endpoint) DO UPDATE` made it reassignable too.
+   *
+   * `@SelfOnly('userId')` is the wrong instrument here: it refuses a
+   * request with no session, and a visitor who has not signed in may
+   * still subscribe — they simply get a row owned by nobody, which is
+   * what omitting the field already did. Taking the id from the session
+   * closes the hole without removing that case.
+   *
+   * The native sibling below has always been `@SelfOnly` because its
+   * token arrives from a shell that is already signed in.
+   */
   @Post('subscribe')
-  subscribe(@Body() body: SubscribeDto): Promise<{ stored: true }> {
+  subscribe(
+    @Body() body: SubscribeDto,
+    @CurrentSession() session: SessionPayload | null,
+  ): Promise<{ stored: true }> {
     return this.push.subscribe({
       endpoint: body.endpoint,
       p256dh: body.p256dh,
       auth: body.auth,
-      userId: body.userId ?? null,
+      userId: session?.uid ?? null,
       utcOffsetMinutes: body.utcOffsetMinutes ?? null,
     });
   }

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  /* The tests, type-checked. See apps/backend/tsconfig.test.json for why
+     this is separate: `tsconfig.json` builds only `src`, and the suite
+     runs under type-stripping, which never reads a type. */
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["test/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

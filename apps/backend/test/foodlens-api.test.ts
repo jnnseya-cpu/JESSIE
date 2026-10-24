@@ -156,7 +156,7 @@ test('invented keys are ignored and out-of-range numbers are clamped', async () 
   assert.equal(out.value?.likelyKcal, 6000);
   assert.equal(out.value?.portionCertainty, 1);
   assert.equal(out.value?.preparationCertainty, 0);
-  assert.equal((out.value as Record<string, unknown>).moodOfTheChef, undefined);
+  assert.equal((out.value as unknown as Record<string, unknown>).moodOfTheChef, undefined);
 });
 
 test('an empty answer with no reason is a parse failure that says why', async () => {

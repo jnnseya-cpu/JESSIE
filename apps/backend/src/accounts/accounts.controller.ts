@@ -129,6 +129,22 @@ export class AccountsController {
     };
   }
 
+  /**
+   * Create a profile record directly. The developer door, not the product's.
+   *
+   * Registration is `POST /auth/register`, which takes a credential,
+   * confirms a guardian where one is required, and calls
+   * `createAccount` itself. This route reached the same function with no
+   * credential at all, which made it a second way in that skipped the
+   * first one's checks — and because `createAccount` refuses an id that
+   * already exists, an unauthenticated caller could take a member's
+   * chosen id and block them from ever registering it.
+   *
+   * `@AdminOnly` for the same reason its sibling `DELETE profiles/:userId`
+   * is: both are resets for the people running the platform, and neither
+   * is how a member's account comes into being.
+   */
+  @AdminOnly()
   @Post()
   create(@Body() body: CreateAccountDto) {
     return this.profiles.createAccount(body.userId, body.kind, body.age, body.guardianId);

@@ -83,7 +83,7 @@ test('the card says nothing whatever about the medication itself', () => {
 });
 
 test('it never congratulates a falling weight', () => {
-  const card = CONDITIONS.appetite_suppressing_command ?? CONDITIONS.appetite_suppressing_medication;
+  const card = CONDITIONS.appetite_suppressing_medication;
   const text = [...card.helps, ...card.watches, card.inShort].join(' ');
   assert.ok(!/well done|great|congratul|on track|keep it up/i.test(text), text.slice(0, 120));
   // The number going down needs no encouragement; what needs saying is

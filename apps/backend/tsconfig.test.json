@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  /*
+   * The tests, type-checked.
+   *
+   * `tsconfig.json` excludes `test/`, and the suite runs under
+   * `node --test --experimental-strip-types`, which removes types without
+   * reading them. Between the two, 943 tests were never type-checked at
+   * all — and the defect that hides there is a test that silently asserts
+   * against `undefined`:
+   *
+   *   CONDITIONS.appetite_suppressing_command   // a typo; no such card
+   *   BRAND_COLOURS.status ?? {}                // no such key; loop never ran
+   *   { coveredDays: 2 }                        // not an input; spread did nothing
+   *
+   * Each of those passed. A green suite that checks nothing is the one
+   * failure mode a test suite cannot report on itself, so this project
+   * exists to report it.
+   *
+   * Separate from `tsconfig.json` rather than merged into it because the
+   * two have genuinely different module semantics: `src` compiles to
+   * CommonJS for Nest, and the tests are ESM with `.ts` import specifiers
+   * that only the stripping loader resolves.
+   */
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "preserve",
+    /* Several tests import frontend modules directly, which need the DOM
+       and Next's own `RequestInit` augmentation. */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["test/**/*.ts", "../frontend/next-env.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

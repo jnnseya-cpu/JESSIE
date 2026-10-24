@@ -155,7 +155,7 @@ test('no refusal and no band ever says a word from the banned lexicon', async ()
   const cases: Partial<EnergyBandInput>[] = [
     {}, { age: 15 }, { optedIntoBodyMetrics: false }, { pathway: 'MAINTAIN' },
     { reductionPermitted: false }, { conditionsNeedingClinician: ['gout'] },
-    { bmi: 17 }, { coveredDays: 2 }, { observedKcalPerDay: 1550, weightKg: 70, bmi: 26 },
+    { bmi: 17 }, { recordedDays: 2 }, { observedKcalPerDay: 1550, weightKg: 70, bmi: 26 },
   ];
   for (const over of cases) sentences.push(energyBand(adult(over)).says);
 

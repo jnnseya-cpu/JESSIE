@@ -48,12 +48,39 @@
     "playwright": "1.55.1"
   },
   "pnpm": {
+    "//overrides": [
+      "Transitive packages this project does not depend on directly, held at",
+      "the release that carries the fix. Each is pinned with a major-version",
+      "selector (name@N) because the tree contains two Express generations:",
+      "an unqualified override would force v4's body-parser and qs up a major",
+      "and break the dependents that pin them.",
+      "",
+      "The ones that serve a request are the ones that matter. proxy-addr",
+      "decides which client IP Express trusts, multer parses every FoodLens",
+      "upload, qs parses every query string, and undici is the HTTP client",
+      "behind blob storage. The rest (fast-uri, brace-expansion, uuid) reach",
+      "only the build toolchain and are raised for tidiness, not exposure.",
+      "",
+      "Re-run `pnpm audit` after any dependency change. A stale floor here is",
+      "indistinguishable from no floor at all: brace-expansion and fast-uri",
+      "were already listed when this was last checked, and both were pinned",
+      "below the release that fixed them."
+    ],
     "overrides": {
       "postcss": "^8.5.18",
       "nanoid": "^3.3.18",
-      "brace-expansion": "^2.0.2",
-      "fast-uri": "^3.1.5",
-      "js-yaml": "^4.3.1"
+      "js-yaml": "^4.3.1",
+      "proxy-addr@2": "^2.0.8",
+      "multer@2": "^2.5.0",
+      "body-parser@2": "^2.4.0",
+      "qs@6": "^6.16.1",
+      "undici@6": "^6.29.1",
+      "sharp": "^0.35.5",
+      "source-map-js": "^1.2.2",
+      "zod@4": "^4.6.7",
+      "brace-expansion@2": "^2.1.7",
+      "fast-uri@3": "^3.1.9",
+      "uuid": "^11.1.1"
     }
   }
 }

@@ -12,6 +12,7 @@ import {
   MOTION_MS,
   RADII,
   SPACING,
+  STATUS_COLOURS,
   STATUS_LABELS,
   TARGET_SIZE_PX,
   TYPEFACES,
@@ -278,8 +279,15 @@ test('every status colour has words to go with it', () => {
     }
   }
 
-  // A palette entry with no label set at all is the failure mode.
-  for (const status of Object.keys(BRAND_COLOURS.status ?? {})) {
+  /*
+   * A palette entry with no label set at all is the failure mode.
+   *
+   * The health-state palette is `STATUS_COLOURS`, not a `status` key on
+   * `BRAND_COLOURS` — which does not exist. With `?? {}` behind it this
+   * loop iterated an empty object, so the one check that would catch a
+   * colour shipped without words ran zero times.
+   */
+  for (const status of Object.keys(STATUS_COLOURS)) {
     assert.ok(
       status in STATUS_LABELS,
       `the ${status} colour exists with no words defined for it`,

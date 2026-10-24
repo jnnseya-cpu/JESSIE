@@ -43,6 +43,8 @@ const audit = (over: Partial<SeoAudit> = {}): SeoAudit => ({
     internalLinks: 5,
     keywordDensity: 0.008,
     readingMinutes: 4,
+    answerWords: 48,
+    faqPairs: 3,
   },
   ...over,
 });

@@ -110,15 +110,17 @@ is the point of the file.
 | The API sends security headers | Eight headers on every response, and `X-Powered-By: Express` removed |
 | A quote can never say an action is free | `providerCostGbp: 0` is a 400, not "0 ACU" |
 | The build is reproducible from a clean clone | `pnpm build`, `typecheck` and `test` all pass with every `dist/` deleted |
-
-| Zero known dependency vulnerabilities | Next 14 → 15.5.24, React 18 → 19, plus overrides on five build-time leaves. Was 31 advisories, 16 of them high |
+| Zero known dependency vulnerabilities | `pnpm audit` clean at every severity. Held there twice: Next 14 → 15, React 18 → 19 first; then 33 advisories including **two critical** — an unauthenticated RCE in Next's image optimiser (≤15.5.27) and IP spoofing in `proxy-addr` — closed by Next 15.5.28 and eleven major-qualified overrides. The two pins that had gone stale, `fast-uri` and `brace-expansion`, are why the override list now says to re-audit after any dependency change |
+| The tests are type-checked, not only type-stripped | `tsconfig.test.json` in the backend and both logic packages, wired into `pnpm typecheck`. The suite runs under `--experimental-strip-types`, which removes types without reading them, so 943 tests had never been checked. Five defects were hiding there, every one a test that passed while asserting against `undefined`: a condition card misspelt `appetite_suppressing_command`, a WCAG colour-and-label loop iterating `BRAND_COLOURS.status ?? {}` (no such key, so it ran zero times), an `EnergyBandInput` spread of `coveredDays` that did nothing, and an SEO fixture missing the two fields the FAQ thresholds read |
+| No route takes an account identifier from the caller unguarded | `test/identity-boundary.test.ts` parses every decorator block in all 31 controllers. Two were open: `POST /push/subscribe` wrote `user_id` straight from the body into `push_subscriptions`, so a request naming another member registered an attacker's endpoint against them and the scheduler delivered that member's Snaps to it — `ON CONFLICT (endpoint) DO UPDATE` made it reassignable too; and `POST /accounts` reached `createAccount` with no credential, the function `POST /auth/register` calls after taking one, which let a stranger squat a member's chosen id and block them from registering it. Proven by reverting each fix and watching the test fail |
 | The restore procedure works | 53 tables, 387 rows, 29 migrations and 177 constraints rebuilt from a dump into an empty database, and compared |
 | Deletion removes the member | Searched every text, uuid and jsonb column in the schema afterwards — no trace |
 | The product works in a real browser | 21 routes render, registration completes, the view beacon fires, no sideways scroll at 360px, focus visible on 25/25 elements |
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
-Test suite: **973 passing, 0 failing** — 918 backend, 27 body-command, 28 foodlens.
+Test suite: **1,001 passing, 0 failing** — 946 backend, 27 body-command, 28 foodlens.
+Type check: **clean, including the test suites** (`pnpm typecheck`).
 Smoke suite: **85/85**, signed out.
 Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
@@ -1109,10 +1111,34 @@ suite — nothing in the toolchain reports an unused import.
 
 It is not fixed here because adding ESLint across four packages is an
 architectural change that would touch far more than the audit it came from,
-and it is the owner's call rather than a cleanup. Two structural tests in
+and it is the owner's call rather than a cleanup. Four structural tests in
 `admin-guard.test.ts` now cover the specific class of bug that actually bit —
-a route naming a user without a guard, and a guard imported without being
-applied. A linter would still be worth having.
+a route naming a user without a guard, a guard imported without being
+applied, an exemption that has outlived its route, and the two specific
+routes that were open. A linter would still be worth having.
+
+**Eleven controllers verify the session a second time.** `SessionGuard` is
+a global `APP_GUARD`: it verifies the token and attaches `req.session` on
+every request before any handler runs. Eleven controllers then call
+`tokenFrom(req)` and `auth.verify(...)` again through a local `who()` or
+`requireWho()` helper, and one — `push` — uses the `@CurrentSession`
+decorator the guard exists to feed. That is three mechanisms for the one
+question of who is asking, and a second signature verification per
+request on those routes.
+
+It is duplication rather than a defect: both paths call the same
+`auth.verify` and reach the same answer, and `requireWho` throws 401
+correctly. The cost is that a route's decorators stop describing its real
+protection, which is exactly why the two holes above were invisible to a
+decorator audit and had to be found by reading fifteen handlers by hand.
+
+Not fixed here because it is eleven working controllers on live request
+paths, and rewriting them is the sweep that the directive's "scope creep
+is how regressions arrive" is about. The right time is when one of those
+files is being changed for its own reasons. `@CurrentSession` is the
+mechanism to converge on: it needs no injection, so it cannot reintroduce
+the `AuthModule` → `PushModule` cycle that rules out injecting
+`AuthService` into `push`.
 
 **The 4× rule is now true, and it was not true anywhere before.** The two
 halves both failed, independently, and each hid the other.
