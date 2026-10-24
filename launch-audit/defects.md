@@ -622,3 +622,98 @@ Model behaviour under a fenced payload is **not tested** — no AI provider
 is configured in this environment. The matcher and the fence are proven;
 whether a given model obeys an instruction it was handed as data is not,
 and cannot be from here. Listed in `human-actions.md`.
+
+---
+
+## D-008 — My own CSP blocked the API on any build without the env var
+
+| | |
+|---|---|
+| **Severity** | **P2 (high)** |
+| **Blocker** | For a preview deployment: **yes** |
+| **Area** | Security configuration / deployability |
+| **Phase** | 6.9 regression run |
+| **Status** | **FIXED and retested** |
+| **Introduced by** | this audit, commit `074ebef` |
+
+### Actual
+A browser run against a frontend built **without**
+`NEXT_PUBLIC_API_BASE_URL` failed **23 of 43 journeys**:
+
+```
+FAIL  GET /       console: Refused to connect to 'http://localhost:4000/api/funnel'
+                           because it violates the following Content Security Policy
+FAIL  GET /account  (same)
+FAIL  GET /blog     (same)
+```
+
+### Root cause
+`apiBase()` resolves the API **at runtime from the browser's hostname**,
+and does so deliberately — its own comment says *"the deployed site needs
+no build-time variable to find its own API — the bug this file replaces
+was three components quietly defaulting to localhost in production."*
+
+The CSP I added derived **one** origin, at build time, from
+`NEXT_PUBLIC_API_BASE_URL` alone. The two agree only by coincidence:
+
+| Case | `apiBase()` returns | CSP allowed | |
+|---|---|---|---|
+| variable set | the configured URL | that origin | agree |
+| unset, on jessmove.com | `https://api.jessmove.com/api` | `https://api.jessmove.com` | agree, by luck of matching defaults |
+| **unset, anywhere else** | `http://localhost:4000/api` | `https://api.jessmove.com` | **policy refuses every call** |
+
+The third row is a **Vercel preview deployment**, and it is the case my
+own comment on that code claimed to prevent: *"a hardcoded host would
+break every signed-in screen with a console error nobody outside the
+browser sees."* The comment was right and the code did not implement it.
+
+### Fix
+`apiOrigins` now enumerates **every** origin `apiBase()` can produce: the
+configured one when set, `https://api.jessmove.com` always, and
+`http://localhost:4000` when nothing is configured — which is exactly the
+branch `apiBase()` takes then.
+
+### The guard, and two defects in the guard itself
+`headers.test.ts` now reads the literal hosts out of `api-base.ts` and
+fails if any is missing from the config. Writing it reproduced this
+session's recurring failure twice:
+
+1. **The config explains the defect in a comment that names
+   `http://localhost:4000`.** Removing the line that actually allows the
+   host left the test passing on the prose describing why it is needed —
+   the same shape as a guard scanner silenced by a decorator mentioned in
+   a comment. Comments are now stripped from both files first.
+2. **The comment-stripper then ate every URL**, because the `//` in
+   `https://` reads as the start of a line comment. It now requires the
+   `//` not be preceded by a colon. Without that, the scan found zero
+   hosts and its own sanity check caught it.
+
+A third, in the neighbouring test: `indexOf('].join(')` from the start of
+the file used to find the CSP array's terminator. `apiOrigins` ends
+`[...origins].join(' ')` **above** it, so the slice ran backwards, the
+host list came back `[]`, and the assertion that the policy permits
+exactly five third parties was comparing an empty array. It now searches
+forward from the array and asserts it parsed at least four.
+
+### Retest
+```
+build WITHOUT the variable:
+  connect-src 'self' https://api.jessmove.com http://localhost:4000 …
+  journeys: the CSP refusal is gone — the remaining failures are
+            ERR_CONNECTION_REFUSED, i.e. the harness running the API on
+            :4100 against apiBase()'s :4000 default
+
+build WITH the variable:
+  connect-src 'self' https://api.jessmove.com http://127.0.0.1:4100 …
+  journeys: 43 passed, 0 failed
+```
+Guard proven: removing `origins.add('http://localhost:4000')` produces
+*"apiBase() can return http://localhost:4000 and the CSP does not allow
+it — the browser will refuse the API call on policy grounds."*
+
+### What this says about the audit
+The CSP was added in this audit with a browser run that reported
+*"9/9 routes, 0 refusals"*. That run used a build **with** the variable
+set, so it exercised the one configuration in which the bug is invisible.
+A control added and verified under a single configuration was verified
+less than it appeared to be.

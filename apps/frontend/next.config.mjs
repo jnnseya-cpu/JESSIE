@@ -23,12 +23,43 @@
  * actually calls — which is the failure that would break every signed-in
  * screen with a console error nobody outside the browser sees.
  */
-const apiOrigin = (() => {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.jessmove.com/api').origin;
-  } catch {
-    return 'https://api.jessmove.com';
+/*
+ * Every origin `apiBase()` can resolve to — not just the configured one.
+ *
+ * This policy first derived a single origin from
+ * `NEXT_PUBLIC_API_BASE_URL`, and that was wrong, because `apiBase()`
+ * resolves the API *at runtime from the browser's hostname* and
+ * deliberately so: "the deployed site needs no build-time variable to
+ * find its own API". The two disagreed exactly when the variable was
+ * unset and the page was not served from jessmove.com — `apiBase()`
+ * returned `http://localhost:4000/api` while the policy allowed only
+ * `https://api.jessmove.com`, so every API call was refused by the
+ * policy rather than merely pointed at the wrong host.
+ *
+ * It was found by a browser run against a build made without the
+ * variable: 23 of 43 journeys failed with "Refused to connect to
+ * 'http://localhost:4000/api/funnel'". A Vercel preview deployment is
+ * that same case. The comment above warned about precisely this drift
+ * and the first version of the code did not prevent it, so the fix is to
+ * enumerate what `apiBase()` can actually produce and keep the two in
+ * step with a test.
+ */
+const apiOrigins = (() => {
+  const origins = new Set(['https://api.jessmove.com']);
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (configured) {
+    try {
+      origins.add(new URL(configured).origin);
+    } catch {
+      /* an unparseable value is a deployment error, not a reason to ship
+         a policy that blocks the real API as well */
+    }
+  } else {
+    /* The branch `apiBase()` takes when nothing is configured and the
+       page is not on jessmove.com. */
+    origins.add('http://localhost:4000');
   }
+  return [...origins].join(' ');
 })();
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -42,8 +73,8 @@ const csp = [
   "font-src 'self'",
   // `data:` for canvas and generated marks; Vercel Blob and the API host
   // for uploaded avatars and meal photographs.
-  `img-src 'self' data: blob: ${apiOrigin} https://*.public.blob.vercel-storage.com`,
-  `connect-src 'self' ${apiOrigin} https://www.google-analytics.com https://connect.facebook.net https://www.facebook.com`,
+  `img-src 'self' data: blob: ${apiOrigins} https://*.public.blob.vercel-storage.com`,
+  `connect-src 'self' ${apiOrigins} https://www.google-analytics.com https://connect.facebook.net https://www.facebook.com`,
   "worker-src 'self'",
   "manifest-src 'self'",
   "media-src 'self' blob:",

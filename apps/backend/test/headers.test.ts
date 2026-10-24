@@ -94,6 +94,62 @@ test('the site sends a Content-Security-Policy', () => {
   }
 });
 
+test('the CSP allows every origin apiBase() can resolve to', () => {
+  /*
+   * These two have to agree, and they did not.
+   *
+   * `apiBase()` resolves the API at runtime from the browser's hostname,
+   * deliberately — "the deployed site needs no build-time variable to
+   * find its own API". The policy derived one origin from
+   * `NEXT_PUBLIC_API_BASE_URL`. When that variable is unset and the page
+   * is not on jessmove.com, `apiBase()` returns `http://localhost:4000`
+   * and the policy allowed only `https://api.jessmove.com`, so the
+   * browser refused every API call on policy grounds. A Vercel preview
+   * deployment is exactly that case.
+   *
+   * Found by a browser run against a build made without the variable:
+   * 23 of 43 journeys failed with "Refused to connect to
+   * 'http://localhost:4000/api/funnel'". So this asserts the set, not
+   * the single value: every literal host `apiBase()` can return must
+   * appear in the config that builds the policy.
+   */
+  /*
+   * Comments stripped from both sides.
+   *
+   * The first version of this test read the config as written, and the
+   * config *explains* the defect in a comment that names
+   * `http://localhost:4000`. So removing the line that actually allows
+   * the host left the test passing on the prose describing why it is
+   * needed — the same way a guard scanner was once silenced by a
+   * decorator mentioned in a comment. A check satisfied by its own
+   * explanation is not a check.
+   */
+  /* The `(?<!:)` matters: without it, the `//` in `https://` reads as the
+     start of a line comment and the stripper eats every URL it was
+     supposed to be looking for. */
+  const withoutComments = (text: string): string =>
+    text.replace(/(?<!:)\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  const base = withoutComments(
+    readFileSync(new URL('../../frontend/app/api-base.ts', import.meta.url), 'utf8'),
+  );
+  const config = withoutComments(cspSource());
+
+  const hosts = [...base.matchAll(/'(https?:\/\/[^']+)'/g)].map((m) => {
+    const url = m[1] ?? '';
+    return url.replace(/\/api\/?$/, '');
+  });
+
+  assert.ok(hosts.length >= 2, `only ${hosts.length} hosts found in api-base.ts — the scan has broken`);
+  for (const host of new Set(hosts)) {
+    assert.ok(
+      config.includes(host),
+      `apiBase() can return ${host} and the CSP does not allow it — ` +
+        'the browser will refuse the API call on policy grounds',
+    );
+  }
+});
+
 test('the CSP names the API it actually calls, rather than a literal host', () => {
   /*
    * The hosts come from `NEXT_PUBLIC_API_BASE_URL`, the variable
@@ -104,7 +160,7 @@ test('the CSP names the API it actually calls, rather than a literal host', () =
    */
   const source = cspSource();
   assert.match(source, /NEXT_PUBLIC_API_BASE_URL/, 'the CSP no longer derives the API origin');
-  assert.match(source, /connect-src[^`]*\$\{apiOrigin\}/, 'connect-src must name the derived origin');
+  assert.match(source, /connect-src[^`]*\$\{apiOrigins\}/, 'connect-src must name the derived origin set');
 });
 
 test("'unsafe-eval' never reaches a production policy", () => {
@@ -128,8 +184,21 @@ test('the two measurement hosts are the only third parties the CSP permits', () 
    * so it fails here and gets made on purpose.
    */
   const source = cspSource();
-  const csp = source.slice(source.indexOf('const csp = ['), source.indexOf('].join('));
+  /*
+   * The directive array, found by searching forward from it.
+   *
+   * `indexOf('].join(')` from the start of the file used to be enough.
+   * It stopped being enough when `apiOrigins` was introduced above the
+   * array and ended `[...origins].join(' ')`: the slice then ran
+   * backwards and produced an empty string, so the host list came back
+   * `[]` and this assertion was about nothing. The `assert.ok` below
+   * exists because of that.
+   */
+  const start = source.indexOf('const csp = [');
+  assert.ok(start > 0, 'the CSP array is no longer where this test looks for it');
+  const csp = source.slice(start, source.indexOf('].join(', start));
   const hosts = [...new Set([...csp.matchAll(/https:\/\/([a-z0-9.*-]+)/g)].map((m) => m[1]))].sort();
+  assert.ok(hosts.length >= 4, `only ${hosts.length} hosts parsed from the policy — the scan has broken`);
 
   assert.deepEqual(hosts, [
     '*.public.blob.vercel-storage.com',
