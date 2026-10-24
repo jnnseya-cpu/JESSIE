@@ -111,6 +111,17 @@ except Exception as exc:
 # Each module names its own flag rather than sharing one, so take whichever
 # it publishes: `configured`, or anything ending in `Configured`.
 flags = [k for k in d if k == "configured" or k.endswith("Configured")]
+
+# Storage publishes neither. It reports `durable`, and that is the one
+# flag here whose false state loses member data rather than switching a
+# feature off: with no database and no blob token, uploaded avatars and
+# meal photographs live in the memory of one instance and go when it
+# recycles. Reported as `-`, it was the only capability this checker
+# could not see. (No apostrophes in here: this block is inside a
+# single-quoted shell string, and one ends it early.)
+if "durable" in d:
+    flags = flags + ["durable"]
+
 if not flags:
     state = "-"
 elif all(bool(d[k]) for k in flags):
