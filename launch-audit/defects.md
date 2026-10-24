@@ -717,3 +717,92 @@ The CSP was added in this audit with a browser run that reported
 set, so it exercised the one configuration in which the bug is invisible.
 A control added and verified under a single configuration was verified
 less than it appeared to be.
+
+---
+
+## D-009 — The consent banner hid its own decline button
+
+| | |
+|---|---|
+| **Severity** | **P2 (high)** |
+| **Blocker** | For a UK public launch: **yes** — this is a consent-validity problem, not only an accessibility one |
+| **Area** | Accessibility / privacy / PECR |
+| **Phase** | 6.17, on a build with the measurement IDs set |
+| **Status** | **FIXED and retested** |
+
+### Actual
+Three distinct contrast failures, **39 occurrences across 13 of 28
+routes**:
+
+| Ratio | Needs | Element | What it is |
+|---|---|---|---|
+| **1.05:1** | 4.5 | `button.btn.btn--ghost` 16px `rgb(16, 42, 67)` | **"No thanks"** |
+| 1.85:1 | 4.5 | `.mcb p` 13px `rgb(71, 86, 99)` | the consent explanation itself |
+| 4.48:1 | 4.5 | `.mcb__detail` 12px `rgba(244,250,249,0.5)` | the detail line |
+
+### Impact
+At **1.05:1** the decline button's text is all but the same colour as the
+banner behind it. "No thanks" was invisible next to a "Yes, that's fine"
+that was not.
+
+That is a WCAG 2.2 AA failure (1.4.3) and it is also a **consent
+problem**. Consent is only valid if it is freely given, and the ICO reads
+that as reject being as easy and as prominent as accept. A banner that
+visually suppresses the refusal is a dark pattern whether or not anybody
+intended one — and this platform's entire public argument is that it
+publishes what others hide.
+
+The explanation text at 1.85:1 compounds it: the sentence telling somebody
+what they are agreeing to was the second least readable thing on the
+screen.
+
+### Root cause
+`.mcb` sets a near-navy background and then let its text inherit the
+**light-mode** ink tokens. `--ink-2` is `rgb(71,86,99)`, a dark grey for
+light surfaces; `.btn--ghost` is `color: var(--ink)`, which was navy.
+
+Every other dark surface in `globals.css` — `.tile--ink`,
+`.section--ink .panel--never`, `.section--ink .panel--always` — redefines
+`--ink`, `--ink-2` and `--ink-3` in scope and sets `color`. `.mcb` is a
+dark surface that never joined that pattern.
+
+### Fix
+`.mcb` now redefines the three ink tokens the way every other dark
+surface does, and sets `color: var(--ink)`. Because `.btn--ghost` is
+already `color: var(--ink)`, the decline button corrects itself — **no new
+button variant and no new colour**, which matters on a platform whose
+directive is that the product must look like one product.
+`.mcb__detail` moves from a hardcoded `0.5` alpha to `--ink-3` (0.62),
+since 0.5 measured 4.48:1 — under the floor by two hundredths, the kind
+of miss only a measurement finds.
+
+### Why it was never caught
+The contrast audit had **only ever run against builds with no
+`NEXT_PUBLIC_META_PIXEL_ID`**, and without that variable the banner never
+renders. Thirteen routes of failures sat behind one unset variable, and
+every previous "7,376 text nodes, none below threshold" was true and
+silent about the component it had not drawn.
+
+This is the same shape as D-008, found twenty minutes earlier: a control
+verified under exactly one configuration, in which the defect is
+invisible.
+
+### Recurrence guard
+`audit-contrast.mjs` now reports whether it saw the banner at all, and
+says what to set if it did not:
+
+```
+NOTE: the measurement consent banner never rendered, so its contrast was
+not checked. Rebuild with NEXT_PUBLIC_META_PIXEL_ID and
+NEXT_PUBLIC_GOOGLE_TAG_ID set to cover it — it is a dark surface and the
+only one on the site whose text is not checked by a default build.
+```
+
+A sweep reporting "no text below its threshold" while never having
+rendered a component is not a pass for that component, and the only way
+to know which it was is to be told.
+
+### Retest
+With the banner rendering: **7,431–7,451 text nodes across 28 routes,
+none below its AA threshold.** Without it: the same pass plus the note.
+1,017 tests passing, typecheck and build clean.

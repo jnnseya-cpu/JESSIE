@@ -43,6 +43,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 
 const failures = [];
 const unmeasurable = [];
+let sawBanner = false;
 let checked = 0;
 
 for (const route of ROUTES) {
@@ -157,7 +158,7 @@ for (const route of ROUTES) {
         return out;
       };
 
-      const out = { fails: [], vague: [], count: 0 };
+      const out = { fails: [], vague: [], count: 0, sawBanner: !!document.querySelector('.mcb') };
       for (const el of document.querySelectorAll('body *')) {
         // Only elements that render text of their own.
         const own = [...el.childNodes]
@@ -229,6 +230,7 @@ for (const route of ROUTES) {
   );
 
   checked += found.count;
+  if (found.sawBanner) sawBanner = true;
   for (const f of found.fails) failures.push({ route, ...f });
   for (const v of found.vague) unmeasurable.push({ route, ...v });
   const mark = found.fails.length ? `${found.fails.length} FAIL` : 'ok';
@@ -260,6 +262,30 @@ if (asJson) {
     }
     console.log(`\n(${failures.length} occurrences, ${seen.size} distinct.)`);
   }
+}
+
+/*
+ * Did the consent banner render at all?
+ *
+ * It did not, for the whole life of this audit, because it only appears
+ * when NEXT_PUBLIC_META_PIXEL_ID or NEXT_PUBLIC_GOOGLE_TAG_ID is set at
+ * build time — and every run until now used a build with neither. Behind
+ * that one unset variable sat three contrast failures on thirteen
+ * routes, the worst of them the "No thanks" button at 1.05:1: navy text
+ * on a navy banner, invisible beside an accept button that was not.
+ *
+ * So the run now says whether it measured the banner. A sweep that
+ * reports "no text below its threshold" while never having rendered a
+ * component is not a pass for that component, and the only way to know
+ * which it was is to be told.
+ */
+if (!sawBanner) {
+  console.log(
+    '\nNOTE: the measurement consent banner never rendered, so its contrast was\n' +
+      'not checked. Rebuild with NEXT_PUBLIC_META_PIXEL_ID and\n' +
+      'NEXT_PUBLIC_GOOGLE_TAG_ID set to cover it — it is a dark surface and the\n' +
+      'only one on the site whose text is not checked by a default build.',
+  );
 }
 
 process.exit(failures.length ? 1 : 0);

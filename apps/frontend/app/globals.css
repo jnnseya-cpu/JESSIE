@@ -8458,6 +8458,34 @@ textarea:focus-visible {
  * product it is one an NHS buyer will notice.
  * ------------------------------------------------------------------ */
 
+/*
+ * The measurement consent banner — a dark surface that was not declaring
+ * itself one.
+ *
+ * It set a near-navy background and then let its text inherit the
+ * light-mode ink tokens, which produced three failures across thirteen
+ * routes:
+ *
+ *   1.85:1  .mcb p            the consent explanation itself
+ *   4.48:1  .mcb__detail      marginally under
+ *   1.05:1  .btn--ghost       "No thanks", navy text on a navy banner
+ *
+ * The last one is the one that matters most and is not only an
+ * accessibility failure. At 1.05:1 the decline button is invisible
+ * beside an "Yes, that's fine" that is not — and consent is only valid
+ * if it is freely given, which the ICO reads as reject being as
+ * prominent as accept. A banner that hides the refusal is a dark
+ * pattern whether or not anybody intended one.
+ *
+ * The fix is to join the pattern every other dark surface here already
+ * uses: redefine the ink tokens in scope and set `color`. `.btn--ghost`
+ * is already `color: var(--ink)`, so the decline button corrects itself
+ * once the token is right — no new button variant, and no new colour.
+ *
+ * It went unseen because the contrast audit only ever ran against builds
+ * with no NEXT_PUBLIC_META_PIXEL_ID, and without that the banner never
+ * renders. Thirteen routes of failures sat behind one unset variable.
+ */
 .mcb {
   position: fixed;
   left: 0; right: 0; bottom: 0;
@@ -8466,6 +8494,11 @@ textarea:focus-visible {
   background: color-mix(in srgb, #0b2136 94%, transparent);
   border-top: 1px solid rgba(244, 250, 249, 0.16);
   backdrop-filter: blur(8px);
+
+  --ink: var(--jm-text-d);
+  --ink-2: rgba(244, 250, 249, 0.78);
+  --ink-3: rgba(244, 250, 249, 0.62);
+  color: var(--ink);
 }
 .mcb__inner {
   max-width: 1080px; margin: 0 auto;
@@ -8475,7 +8508,11 @@ textarea:focus-visible {
 .mcb__inner > div:first-child { flex: 1 1 420px; }
 .mcb strong { display: block; font-size: 15px; color: #f4faf9; }
 .mcb p { margin: 5px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
-.mcb__detail { font-size: 12px !important; color: rgba(244, 250, 249, 0.5) !important; }
+/* The token, not a hardcoded alpha. 0.5 measured 4.48:1 against this
+   background — under the 4.5 floor by two hundredths, which is the kind
+   of miss only a measurement finds. `--ink-3` is 0.62 and is the value
+   every other dark surface uses for its quietest text. */
+.mcb__detail { font-size: 12px !important; color: var(--ink-3) !important; }
 .mcb__actions { display: flex; gap: 10px; flex: 0 0 auto; }
 
 @media (max-width: 560px) {
