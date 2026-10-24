@@ -136,9 +136,11 @@ Browser journeys: **43/43** in Chromium (`pnpm verify:journeys`), including
 1.66MB of client bundle scanned for provider keys and `AUTH_SECRET`.
 Contrast: **7,376 text nodes across 28 routes**, none below its AA threshold.
 Layout: **no problems at 1440px or 390px**.
-CSP: **served on 9/9 routes, nothing refused** (`pnpm check:csp`), with
-`script-src` genuinely exercised — consent accepted on the six routes that
-offer it, and both measurement hosts observed being requested and allowed.
+CSP: **served on 9/9 routes, nothing refused** (`pnpm check:csp`).
+`script-src` exercised on a build with the measurement IDs set — consent
+accepted on the six routes that offer it, both vendor hosts observed
+requested and allowed. Without those IDs no banner can render, and the
+audit reports `script-src NOT exercised` rather than a clean pass.
 Load: p99 11ms alone and 51ms at 20-way, a 200-way spike with **0% errors**,
 and no drift under soak.
 Schema constraints: **21/21** (`pnpm db:test`).
