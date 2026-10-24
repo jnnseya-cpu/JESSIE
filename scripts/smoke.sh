@@ -103,9 +103,15 @@ ta POST /growth/trust 400 '{"signals":["not_a_signal"]}' "unknown trust signal r
 ta POST /growth/commission 400 '{"paymentReceivedGbp":-5,"kind":"normal","verifiedPaidReferrals":0,"lifetimeAlreadyPaidGbp":0}' "negative revenue rejected"
 
 echo "accounts, autosave and payments"
-t POST /accounts 201 '{"userId":"rb_teen_'"$RUN"'","kind":"minor","age":15,"guardianId":"g1"}' "minor with a guardian"
-t POST /accounts 400 '{"userId":"rb_solo","kind":"minor","age":15}' "minor without a guardian refused"
-t POST /accounts 400 '{"userId":"rb_x","kind":"adult","age":15}' "under-18 cannot hold an adult account"
+# `ta`, not `t`: POST /accounts is @AdminOnly now. It reached
+# `createAccount` with no credential — the function /auth/register calls
+# after taking one — and since that function refuses an id already in use,
+# a stranger could squat a member's chosen id. These three cases were
+# asserting the open door, so signed out they are 401 and the age and
+# guardian rules below are checked on a signed-in run.
+ta POST /accounts 201 '{"userId":"rb_teen_'"$RUN"'","kind":"minor","age":15,"guardianId":"g1"}' "minor with a guardian"
+ta POST /accounts 400 '{"userId":"rb_solo","kind":"minor","age":15}' "minor without a guardian refused"
+ta POST /accounts 400 '{"userId":"rb_x","kind":"adult","age":15}' "under-18 cannot hold an adult account"
 ta POST /accounts/profiles/rb_teen_$RUN/autosave 201 '{"age":15,"basedOnVersion":1,"patch":{"displayName":"Robin"}}' "autosave a safe field"
 ta POST /accounts/profiles/rb_teen_$RUN/autosave 400 '{"age":15,"basedOnVersion":2,"patch":{"optedIntoBodyMetrics":true}}' "consent will not autosave"
 ta POST /accounts/profiles/rb_teen_$RUN/autosave 400 '{"age":15,"basedOnVersion":2,"patch":{"dateOfBirth":"2011-01-01"}}' "date of birth is not editable here"

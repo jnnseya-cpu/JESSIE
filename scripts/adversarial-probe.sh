@@ -74,6 +74,44 @@ for body in '{"userId":["victim"],"returnUrl":"http://x.test/a"}' \
 done
 
 echo
+echo "SUBSCRIPTION HIJACK — a caller must not be able to name whose Snaps go to its endpoint"
+# POST /push/subscribe is open on purpose: a visitor who has not signed in
+# may still turn notifications on, and gets a row owned by nobody. What it
+# must never do is accept the owner from the body. `subscribe` writes
+# `user_id` into `push_subscriptions`, and the scheduler reads that column
+# to decide whose Snaps go to an endpoint — so a request naming a member
+# used to register an attacker's endpoint against them, and
+# `ON CONFLICT (endpoint) DO UPDATE` made an existing one reassignable.
+#
+# Checked here rather than only in the source test because the question is
+# what lands in the row, and only a running database answers that. The
+# endpoint is read back through the platform's own admin surface, which
+# refuses anonymously — so the assertion is on the stored owner as the
+# platform reports it, not on the 201.
+# Nothing unauthenticated reports who owns a subscription — /push/status
+# returns configuration and counts, and the owner is staff-visible only.
+# That is the right design and it means this one check cannot be made over
+# HTTP alone, so it reads the row. Without DATABASE_URL it says it did not
+# run; a check that cannot fail must never report a pass.
+HIJACK="https://probe.invalid/push/$RUN"
+c=$(code POST /push/subscribe "{\"endpoint\":\"$HIJACK\",\"p256dh\":\"BKd0000000000000000000000000000000000000000\",\"auth\":\"0000000000000000000000\",\"userId\":\"victim_$RUN\"}")
+if [ "$c" != "201" ] && [ "$c" != "200" ]; then
+  note "POST /push/subscribe did not store" "$c — anonymous subscription is meant to work, so the hijack check did not run"
+elif [ -z "$DATABASE_URL" ] || ! command -v psql >/dev/null 2>&1; then
+  note "push hijack not checked" "needs DATABASE_URL and psql — the owner of a row is not visible over HTTP, by design"
+else
+  owner=$(psql "$DATABASE_URL" -tAc "select coalesce(user_id,'') from push_subscriptions where endpoint = '$HIJACK'" 2>/dev/null)
+  if [ "$owner" = "victim_$RUN" ]; then
+    bad "POST /push/subscribe took its owner from the body" "the row belongs to victim_$RUN — the scheduler would send that member's Snaps here"
+  elif [ -z "$owner" ]; then
+    ok "POST /push/subscribe ignores the owner in the body" "row stored unowned; the session decides, not the caller"
+  else
+    bad "POST /push/subscribe stored an unexpected owner" "$owner"
+  fi
+  psql "$DATABASE_URL" -qc "delete from push_subscriptions where endpoint = '$HIJACK'" >/dev/null 2>&1
+fi
+
+echo
 echo "METERING — there must be no unbilled path to a provider"
 c=$(code POST /ai/complete '{"agent":"JESS","messages":[{"role":"user","content":"hello"}]}')
 case "$c" in 401|403|400|402) ok "POST /ai/complete refuses a call with no payer" "$c" ;;

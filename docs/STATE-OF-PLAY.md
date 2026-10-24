@@ -119,15 +119,31 @@ is the point of the file.
 | No secret reaches the browser | 1.4MB of client bundle scanned for Stripe keys, webhook secrets, Postgres URLs, AI provider keys and AUTH_SECRET |
 | It holds under concurrency | 6,300 requests, **0 errors**, including a 200-way spike; recovers cleanly and does not drift under soak |
 
+All of the following were re-run end to end against the committed build,
+a real Postgres 16 on all 34 migrations, and a real Chromium:
+
 Test suite: **1,001 passing, 0 failing** — 946 backend, 27 body-command, 28 foodlens.
 Type check: **clean, including the test suites** (`pnpm typecheck`).
+Build: **clean** on Next 15.5.28 (`pnpm build`).
 Smoke suite: **85/85**, signed out.
-Adversarial probe: **37/37**, 2 warnings (`pnpm verify:adversarial`).
+Adversarial probe: **38/38**, 2 warnings (`pnpm verify:adversarial`).
 Money integrity: **16/16** against real Postgres (`pnpm verify:money`).
-Recovery and deletion: **9/9** (`pnpm verify:recovery`).
-Browser journeys: **43/43** in Chromium (`pnpm verify:journeys`).
-Dependency audit: **no known vulnerabilities**.
-Migrations **0001–0029 verified applying to an empty database** on a real boot.
+Recovery and deletion: **9/9** — 58 tables, 349 rows, 34 migrations and 195
+constraints rebuilt from a dump and compared; then a deletion, and every
+text, uuid and jsonb column in the schema searched for a trace.
+Browser journeys: **43/43** in Chromium (`pnpm verify:journeys`), including
+1.66MB of client bundle scanned for provider keys and `AUTH_SECRET`.
+Contrast: **7,376 text nodes across 28 routes**, none below its AA threshold.
+Layout: **no problems at 1440px or 390px**.
+Load: p99 11ms alone and 51ms at 20-way, a 200-way spike with **0% errors**,
+and no drift under soak.
+Schema constraints: **21/21** (`pnpm db:test`).
+Dependency audit: **no known vulnerabilities at any severity**.
+Migrations **0001–0034 verified applying to an empty database** on a real boot.
+
+Routes: **188 scanned**, 130 reached by the site or published on
+`/developers`. The single member-facing route with no caller is still
+`POST /wearables/callback`.
 
 ---
 
