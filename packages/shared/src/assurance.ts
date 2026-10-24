@@ -107,9 +107,27 @@ export const ASSURANCE_CONTROLS: readonly AssuranceControl[] = [
   },
   {
     area: 'data_protection',
-    claim: 'Deleting an account deletes everything derived from it.',
+    /*
+     * This claim used to read "deletes everything derived from it", and
+     * it was not true. `deleteAccount` removed the account, two push
+     * tables and whatever had a foreign key — five tables. Sixteen more
+     * held the member by `user_id` with no constraint, so a confirmed
+     * deletion left a kcal floor derived from their weight, a declared
+     * cuisine that can reveal religion, and a record of what they did
+     * and when. Migration 0035 made the cascade structural; this is the
+     * wording that matches what the database now actually does.
+     *
+     * The financial exception is stated rather than omitted. UK company
+     * and tax law requires transaction records after a relationship
+     * ends, and UK GDPR Article 17(3)(b) permits keeping them for that
+     * reason — but a page that claims total deletion while keeping four
+     * tables is making a promise the product does not keep, which is
+     * worse than the exception it was hiding.
+     */
+    claim:
+      'Deleting an account deletes the member and everything the platform derived about their body, their day and their activity.',
     evidence:
-      'Foreign keys with ON DELETE CASCADE from app_users cover conditions, the food ledger, growth results and strength checks, so deletion is a database guarantee rather than a callback somebody has to remember.',
+      'Seventeen foreign keys with ON DELETE CASCADE from app_users carry the conditions, the food ledger, the energy band, the declared cuisine, capability and activity, the reachable windows, group and challenge membership, push endpoints and device tokens — so deletion is a database guarantee rather than a callback somebody has to remember. Four tables are kept on purpose and named here: the wallet, the annual deposits and the two Stripe records, because UK company and tax law requires a record of money that actually moved. Security events are kept with the member removed from them, since an audit trail a deletion can erase is not an audit trail.',
     status: 'enforced',
   },
   {

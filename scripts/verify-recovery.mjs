@@ -181,22 +181,111 @@ async function main() {
 
   /* ---------------------------------------------------------------- *
    * 2. Deletion actually deletes
+   *
+   * This section used to seed three rows, delete them with its own three
+   * DELETE statements, then search the schema and find nothing. It proved
+   * that its own SQL worked. It never called the product's deletion path,
+   * and because the rows it chose were the financial ones that are kept
+   * on purpose, it would not have found the real gap even if it had.
+   *
+   * What it was missing: a member registered through the real API, rows
+   * written into the tables a member's *body* fills, and
+   * `POST /auth/me/delete` doing the deleting. Run that way, deletion
+   * answered {"deleted":true} and left the member in every table — the
+   * energy band derived from their weight, the declared cuisine, the
+   * activity log. Migration 0035 fixed it; this now checks it.
    * ---------------------------------------------------------------- */
   console.log('\n2. A deletion request removes the member');
 
-  const before = await pool.query(
-    `SELECT
-       (SELECT count(*)::int FROM app_wallets WHERE subject_id = $1) AS wallets,
-       (SELECT count(*)::int FROM stripe_customers WHERE user_id = $1) AS customers,
-       (SELECT count(*)::int FROM annual_deposits WHERE user_id = $1) AS deposits`,
-    [userId],
-  );
-  const b = before.rows[0];
-  check('the member is present before deletion', b.wallets + b.customers + b.deposits === 3, JSON.stringify(b));
+  const api = process.env.API ?? 'http://localhost:4000/api';
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const readBody = async (r) => {
+    const text = await r.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text.slice(0, 200) };
+    }
+  };
 
+  /*
+   * A real registration. `minTokenAgeSeconds` is 3 on this door: the form
+   * token must be old enough that a script could not have filled it in,
+   * so the check waits the way a person would.
+   */
+  const email = `recovery.check.${Date.now()}@example.test`;
+  const password = 'a-long-enough-password-1';
+  let deletionUserId = null;
+  let cookie = '';
+
+  try {
+    const challenge = (await readBody(await fetch(`${api}/auth/challenge`))).data.token;
+    await wait(4000);
+    const reg = await fetch(`${api}/auth/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ challenge, email, password, displayName: 'Recovery Check', age: 34 }),
+    });
+    const regBody = await readBody(reg);
+    if (reg.ok) {
+      deletionUserId = regBody.data.userId;
+      cookie = (reg.headers.get('set-cookie') ?? '').split(';')[0];
+    } else {
+      check('a member could be registered for the deletion check', false, `${reg.status} ${JSON.stringify(regBody).slice(0, 140)}`);
+    }
+  } catch (error) {
+    check('the API is reachable for the deletion check', false, String(error).slice(0, 160));
+  }
+
+  if (deletionUserId && cookie.startsWith('jm_session=')) {
+    /*
+     * The tables a member's body and day fill. These are the ones that
+     * survived deletion before 0035, so they are the ones worth writing.
+     */
+    const seeds = [
+      ['member_energy_band', `INSERT INTO member_energy_band (user_id, floor_kcal, ceiling_kcal, observed_kcal_per_day, recorded_days, review_after_days) VALUES ($1, 1800, 2200, 2600, 14, 28) ON CONFLICT (user_id) DO NOTHING`],
+      ['member_food_constraints', `INSERT INTO member_food_constraints (user_id, cuisine) VALUES ($1, 'west_african') ON CONFLICT (user_id) DO NOTHING`],
+      ['member_state', `INSERT INTO member_state (user_id, key, value) VALUES ($1, 'onboarding', '{"step":3}'::jsonb) ON CONFLICT DO NOTHING`],
+      ['member_activity', `INSERT INTO member_activity (user_id, kind, seconds, at) VALUES ($1, 'body_read', 90, now())`],
+      ['member_windows', `INSERT INTO member_windows (user_id, weekday, start_minute, end_minute) VALUES ($1, 1, 540, 1020) ON CONFLICT DO NOTHING`],
+    ];
+    const seeded = [];
+    for (const [table, sql] of seeds) {
+      try {
+        await pool.query(sql, [deletionUserId]);
+        seeded.push(table);
+      } catch {
+        /* a schema change moved a column; the count below reports it */
+      }
+    }
+    check(
+      'the member has body and activity data before deletion',
+      seeded.length === seeds.length,
+      `${seeded.length}/${seeds.length} tables seeded: ${seeded.join(', ')}`,
+    );
+
+    const delChallenge = (await readBody(await fetch(`${api}/auth/challenge`))).data.token;
+    await wait(4000);
+    const del = await fetch(`${api}/auth/me/delete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ challenge: delChallenge, password }),
+    });
+    check('the platform accepted the deletion request', del.ok, `${del.status}`);
+  }
+
+  /*
+   * The restore fixture above seeded the financial tables, which are kept
+   * on purpose when an account is deleted. Those rows are this script's
+   * own, not a member's, so they are removed here rather than left to
+   * look like a deletion failure in the search below.
+   */
   await pool.query('DELETE FROM annual_deposits WHERE user_id = $1', [userId]);
   await pool.query('DELETE FROM stripe_customers WHERE user_id = $1', [userId]);
   await pool.query('DELETE FROM app_wallets WHERE subject_id = $1', [userId]);
+
+  /* What the search below looks for: the member the product deleted. */
+  const searchFor = deletionUserId ?? userId;
 
   // Then go looking for the id anywhere at all. A table nobody remembered
   // is exactly how personal data survives a deletion.
@@ -212,7 +301,7 @@ async function main() {
     try {
       const { rows } = await pool.query(
         `SELECT count(*)::int AS n FROM "${table}" WHERE "${column}"::text LIKE $1`,
-        [`%${userId}%`],
+        [`%${searchFor}%`],
       );
       if (rows[0].n > 0) survivors.push(`${table}.${column} (${rows[0].n})`);
     } catch {
@@ -221,9 +310,28 @@ async function main() {
   }
 
   check(
-    'no trace of the member survives anywhere in the schema',
+    'no trace of the deleted member survives anywhere in the schema',
     survivors.length === 0,
-    survivors.length ? survivors.join(', ') : 'searched every text, uuid and jsonb column',
+    survivors.length
+      ? survivors.join(', ')
+      : `searched every text, uuid and jsonb column for ${searchFor}`,
+  );
+
+  /*
+   * And the check that the check is checking something.
+   *
+   * The previous version of this section searched for a member whose rows
+   * it had already deleted itself, so "no trace survives" was true
+   * however deletion behaved. If no member was ever registered, or none
+   * of the body tables could be seeded, the search above is looking for
+   * an id that was never written and will pass on an empty database.
+   */
+  check(
+    'the deletion check actually exercised the product',
+    deletionUserId !== null,
+    deletionUserId
+      ? `registered, seeded and deleted ${deletionUserId} through the API`
+      : 'NO member was registered — the search above proves nothing',
   );
 
   /* ---------------------------------------------------------------- *
