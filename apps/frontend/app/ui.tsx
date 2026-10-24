@@ -390,7 +390,7 @@ export function JoinCta({
         <h2>{heading}</h2>
         <p>{says}</p>
         <div className="cta__row">
-          <Link className="btn btn--primary" href="/account">
+          <Link className="btn btn--primary" href="/account?new=1">
             {action}
           </Link>
           {talkTo && (

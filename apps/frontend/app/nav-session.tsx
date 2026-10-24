@@ -32,7 +32,7 @@ export function NavSession() {
   const me = useMe();
   if (me) {
     return (
-      <Link className="btn btn--primary nav__cta" href="/account">
+      <Link className="btn btn--primary nav__cta" href="/account?new=1">
         {me.displayName.split(' ')[0]}’s account
       </Link>
     );
@@ -49,7 +49,7 @@ export function NavSession() {
         mailto: form — so the most-clicked control on the site led away
         from the working registration endpoint rather than to it.
       */}
-      <Link className="btn btn--primary nav__cta" href="/account">
+      <Link className="btn btn--primary nav__cta" href="/account?new=1">
         Start free
       </Link>
     </>
@@ -71,7 +71,7 @@ export function MobileSession({ onNavigate }: { onNavigate: () => void }) {
       <Link href="/account" className="mnav__signin" onClick={onNavigate}>
         Sign in / Create account
       </Link>
-      <Link className="btn btn--primary" href="/account" onClick={onNavigate}>
+      <Link className="btn btn--primary" href="/account?new=1" onClick={onNavigate}>
         Start free
       </Link>
     </>

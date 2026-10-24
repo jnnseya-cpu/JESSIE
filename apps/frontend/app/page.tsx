@@ -264,7 +264,7 @@ export default function Home() {
                 already been a good day.
               </p>
               <div className="hero__cta">
-                <Link className="btn btn--primary" href="/account">
+                <Link className="btn btn--primary" href="/account?new=1">
                   Start free
                 </Link>
                 <Link className="btn btn--ghost" href="/how-it-works">
@@ -981,9 +981,22 @@ export default function Home() {
                       <li key={x}>{x}</li>
                     ))}
                   </ul>
+                  {/*
+                    `/account`, not `/get-started`.
+
+                    These buttons sat on `/get-started` while every other
+                    "Start free" on the site went to `/account` — and a
+                    visitor reading the plans is the one furthest down the
+                    funnel, so they were the people being sent to a page
+                    that describes onboarding instead of to onboarding.
+                    `JoinCta` had already written the rule this broke: "A
+                    page describing onboarding is not onboarding, and
+                    putting one in front of the other is how a funnel
+                    acquires a step that only loses people."
+                  */}
                   <Link
                     className={`btn ${p.featured ? 'btn--primary' : 'btn--dark'}`}
-                    href={p.key === 'organisation' ? '/contact' : '/get-started'}
+                    href={p.key === 'organisation' ? '/contact' : '/account?new=1'}
                     style={{ marginTop: 'auto' }}
                   >
                     {p.key === 'organisation' ? 'Talk to us' : 'Start free'}

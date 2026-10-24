@@ -60,6 +60,59 @@ function primaryCta(source: string): string | null {
   return match?.[1] ?? null;
 }
 
+/**
+ * Every button that offers to start, wherever it sits on the page.
+ *
+ * `primaryCta` returns early on `<JoinCta`, which is correct for "can
+ * this page be joined from" and is also a blind spot: a page carrying
+ * JoinCta is declared sound and its other buttons are never read. The
+ * landing page's plan cards sat on `/get-started` that way — and a
+ * visitor reading the plans is the one furthest down the funnel, so the
+ * people closest to converting were the ones being sent to a page about
+ * onboarding instead of to onboarding.
+ */
+function joinButtons(source: string): { label: string; href: string }[] {
+  const found: { label: string; href: string }[] = [];
+
+  /*
+   * Two shapes, because the site uses both and counting only one is how
+   * this scan reported "2 buttons" across eighteen pages on its first
+   * run — its own sanity check caught that before it could pass.
+   *
+   * 1. `<JoinCta action="Start free">`. The component hardcodes
+   *    href="/account", so these are correct by construction. They are
+   *    still counted, because the threshold below has to reflect how
+   *    many asks the site really makes.
+   */
+  for (const m of source.matchAll(/<JoinCta\b[\s\S]{0,400}?action="([^"]*)"/g)) {
+    found.push({ label: m[1] ?? 'Create your account', href: '/account' });
+  }
+  for (const m of source.matchAll(/<JoinCta\b(?![\s\S]{0,400}?action=)/g)) {
+    void m;
+    found.push({ label: 'Create your account', href: '/account' });
+  }
+
+  /*
+   * 2. A hand-written `<Link>`. The href may be a literal or a ternary,
+   *    so the whole expression is captured and every path inside it is
+   *    checked — a button that is correct for one branch and wrong for
+   *    the other is exactly the plan-card defect.
+   */
+  const linkRe = /<Link\b([^>]*?)>([\s\S]{0,240}?)<\/Link>/g;
+  for (const m of source.matchAll(linkRe)) {
+    const attrs = m[1] ?? '';
+    const label = (m[2] ?? '').replace(/\s+/g, ' ').trim();
+    const joinish =
+      /start free|create (your )?account|sign ?up|join free/i.test(label) ||
+      /'Start free'|"Start free"/.test(attrs + label);
+    if (!joinish) continue;
+    for (const href of attrs.matchAll(/["'`](\/[^"'`\s]*)["'`]/g)) {
+      found.push({ label: label.slice(0, 60) || 'Start free', href: href[1] ?? '' });
+    }
+  }
+  return found;
+}
+
 test('every public page can be joined from', () => {
   const dead: string[] = [];
   for (const page of marketingPages()) {
@@ -73,6 +126,34 @@ test('every public page can be joined from', () => {
     [],
     'these pages ask somebody to act and send them somewhere other than the account:\n' +
       dead.join('\n'),
+  );
+});
+
+test('every button offering to start goes to the account, not to a page about it', () => {
+  const wrong: string[] = [];
+  let checked = 0;
+
+  for (const page of marketingPages()) {
+    for (const button of joinButtons(read(page))) {
+      checked += 1;
+      /*
+       * A ternary is read as its whole expression, so an organisation
+       * card sending its own button to /contact does not fail here —
+       * what fails is a button whose destination contains a marketing
+       * page where the account should be.
+       */
+      if (/get-started|how-it-works|about|industries/.test(button.href)) {
+        wrong.push(`${page}: "${button.label}" -> ${button.href}`);
+      }
+    }
+  }
+
+  // The scan has to have found buttons, or it is asserting about nothing.
+  assert.ok(checked >= 6, `only ${checked} join buttons found across the marketing pages — the scan has broken`);
+  assert.deepEqual(
+    wrong,
+    [],
+    'these offer to start and then ask somebody to read a page first:\n  ' + wrong.join('\n  '),
   );
 });
 
@@ -98,12 +179,49 @@ test('the site’s most-clicked button goes to the account, not to a page about 
   const primary = nav.match(/className="btn btn--primary[^"]*"\s+href="([^"]+)"/g) ?? [];
   assert.ok(primary.length > 0, 'the nav has no primary action at all');
   for (const link of primary) {
+    /*
+     * `/account`, optionally carrying the register intent.
+     *
+     * `?new=1` opens the panel on the register form rather than on sign
+     * in. It matters that this is allowed rather than merely tolerated:
+     * the panel defaulted to sign in, so a visitor who had just been
+     * promised they could start free was asked for a password to an
+     * account they did not have. What must still fail is a CTA pointing
+     * at a *different page*.
+     */
     assert.match(
       link,
-      /href="\/account"/,
+      /href="\/account(\?[^"]*)?"/,
       'the nav CTA points somewhere other than the account — that is one more step and it only loses people',
     );
   }
+});
+
+test('a button that offers to start opens the register form, not the sign-in form', () => {
+  /*
+   * Found by walking the product as a first-time user on a 360px phone.
+   * Every "Start free" on the site leads to /account, and the panel
+   * opened in sign-in mode — email, password, "Sign in" — with the
+   * register form behind a secondary "I need an account". A novice does
+   * not have a password. No automated test would catch it, because a
+   * test knows which button to press.
+   */
+  const panel = read('account/account-panel.tsx');
+  assert.match(
+    panel,
+    /params\.get\('new'\) === '1'/,
+    'the account panel no longer honours a register intent from the URL',
+  );
+  assert.match(panel, /setMode\('register'\)/, 'nothing switches the panel to the register form');
+
+  // And the offer has to actually carry the intent.
+  const landing = read('page.tsx');
+  const hero = landing.slice(landing.indexOf('hero__cta'), landing.indexOf('hero__cta') + 400);
+  assert.match(
+    hero,
+    /href="\/account\?new=1"/,
+    'the hero CTA sends a first-time visitor to the sign-in form',
+  );
 });
 
 test('an article a stranger reads offers them a way in', () => {

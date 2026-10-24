@@ -261,3 +261,167 @@ purchase. Whether this is a missing page or a deliberate
 invite-only/sales-led model is a product decision; either way the current
 state is a product that charges with no published price. Carried into the
 final report pending the pricing surfaces check.
+
+---
+
+## D-004 — The plan cards sent converting visitors to a brochure
+
+| | |
+|---|---|
+| **Severity** | **P2 (high)** |
+| **Blocker** | No — but it is a direct conversion loss |
+| **Area** | Fitness for purpose / funnel |
+| **Phase** | 6.6 novice walkthrough |
+| **Status** | **FIXED and retested** |
+
+### Actual
+`apps/frontend/app/page.tsx` — every non-organisation plan card carried a
+button reading **"Start free"** pointing at `/get-started`, a marketing
+page describing onboarding. Every other "Start free" on the site pointed
+at `/account`, where registration is.
+
+A visitor reading the plan cards is the one furthest down the funnel — they
+have the price in front of them. They were the people being sent to read a
+page instead of to sign up.
+
+### Root cause
+`JoinCta` in `apps/frontend/app/ui.tsx` had already written the rule:
+
+> `/account` rather than `/get-started`, deliberately. A page describing
+> onboarding is not onboarding, and putting one in front of the other is
+> how a funnel acquires a step that only loses people.
+
+The rule was right and one call site did not follow it. The existing
+`funnel.test.ts` could not see it: `primaryCta()` returns `/account`
+immediately when a page contains `<JoinCta`, so the landing page was
+declared sound and its other buttons were never read.
+
+### Fix
+Plan-card CTA now points at `/account?new=1`. A new test,
+*"every button offering to start goes to the account, not to a page about
+it"*, scans **every** join button on every marketing page rather than only
+the primary one, and handles both shapes the site uses — `<JoinCta
+action="...">` and a hand-written `<Link>` whose `href` is a ternary, with
+every branch of the ternary checked.
+
+Its own sanity check caught the first version of it: counting only literal
+`<Link>` text found **2 buttons across eighteen pages** and would have
+passed while testing almost nothing. It now asserts at least 6 before
+asserting anything about them.
+
+### Retest
+Guard proven to fail on the defect: reverting the href to `/get-started`
+produced
+`page.tsx: "{p.key === 'organisation' ? 'Talk to us' : 'Start free'}" -> /get-started`.
+Restored; 25/25 funnel tests pass.
+
+---
+
+## D-005 — "Start free" opened a password prompt
+
+| | |
+|---|---|
+| **Severity** | **P2 (high)** |
+| **Blocker** | No — but it is friction on the one screen the whole funnel converges on |
+| **Area** | Novice usability |
+| **Phase** | 6.6 novice walkthrough, Mind 2 |
+| **Status** | **FIXED and retested** |
+
+### Steps
+1. On a 360×760 Android over slow 3G, load `/`.
+2. Tap the hero's primary button, labelled **"Start free"**.
+3. Read what the screen asks for.
+
+### Actual
+`/account` rendered the **sign-in** form: email, password, a "Sign in"
+submit, and "I need an account" as a secondary button below it. A person
+who has never used the product, who was just promised they could start
+free, was asked for a password to an account they did not have.
+
+```
+/account
+   fields: email, password
+   submit: "Sign in"
+   toggle: ["I need an account"]
+```
+
+### Impact
+Not a dead end — "I need an account" is visible and 50px tall, so a
+determined person finds it in one tap. It is friction at the single point
+where every CTA on the site converges, and the kind a first-time user on a
+patchy connection abandons rather than investigates. Mind 1 would never
+find it: an automated test knows which button to press.
+
+### Root cause
+`const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')`
+— hardcoded, with no way for a caller to say which form it wanted.
+
+### Fix
+The panel now reads a register intent from the URL — `?new=1`,
+`?mode=register` or `#register` — and every button that *offers to start*
+carries it: the hero, the plan cards, `JoinCta`, the header CTA, the mobile
+menu's primary button and the invite landing page. Links that say
+**"Sign in"** still point at the sign-in form, because that is what they
+promise.
+
+Read after mount rather than through `useSearchParams`, because `/account`
+is statically prerendered: reading the query during render would force the
+route dynamic or need a Suspense boundary, and reading `window` in the
+state initialiser would render sign-in on the server and register on the
+client — a hydration mismatch.
+
+### Retest
+```
+/account          submit: "Sign in"        toggle: ["I need an account"]
+/account?new=1    submit: "Create account" fields: email, password, name, age
+```
+Verified in Chromium at 360px. Regression: 1,011 tests passing,
+typecheck clean, build clean, 43/43 browser journeys, 7,376 text nodes
+within AA, no layout problems at 1440px or 390px.
+
+---
+
+## D-003 — superseded: prices are published
+
+Downgraded to **P4**. The original record assumed no published price
+because `/pricing` returns 404. It was wrong: the prices are on the
+landing page, rendered from `PLANS` in `packages/shared` — the same source
+that drives Stripe checkout — and read **Free £0 · Premium £5.99/month ·
+Family £12.99/month · Organisation from £2 per employee/month**, under a
+heading that says *"Published, not quoted"* and beside the
+`MIN_TRANSACTION_GBP` floor.
+
+What remains is navigational, not legal: there is no `/pricing` route, so a
+visitor who looks for one, or follows a link to one, gets a 404.
+`/safety`, `/careers` and `/press` likewise. Recorded, not fixed — whether
+those pages should exist is a product decision.
+
+---
+
+## Discounted after investigation — recorded so they are not re-found
+
+**A 400 on a JavaScript chunk.** A cold load reported
+`400 GET /_next/static/chunks/3748-e2ef9af4476ec160.js` while the build on
+disk held `3748-038eafb852ff60ec.js`. This was **my own stale `.next`
+directory** across repeated local rebuilds, not a product defect: a clean
+`rm -rf .next && pnpm build:frontend` cleared it, and Vercel deployments
+are immutable and atomic so the skew cannot arise there. Not a finding.
+
+**The header CTA is 0×0 on mobile.** `.nav__cta`, `.nav__signin` and
+`.nav__links` are `display: none` under 860px **by design** — mobile gets a
+48×48 menu toggle instead. The menu was tested and is sound: 9 links at
+61px, `aria-expanded` maintained, Escape closes it, and two clear routes to
+register. The first novice script reported a dead end because it clicked a
+hidden element; that was the script, not the product.
+
+**"Get started" leads to a brochure.** True, and it is a *footer* link
+under "Product", not a primary CTA. `/get-started` carries `JoinCta` at the
+bottom, so it does lead onward. The first novice script found it by
+scanning the whole page bottom-up rather than tapping the primary button a
+person would.
+
+**The logo link is 26px tall.** Below the platform's own `standard: 48`
+figure in `TARGET_SIZE_PX`, and **above** the WCAG 2.2 AA floor of 24px
+that `wcagMinimum` names and `accessibility-promises.test.ts` enforces. A
+deviation from an internal standard on one non-essential target, not an
+accessibility violation. **P4**, not fixed.

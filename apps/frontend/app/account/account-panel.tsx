@@ -101,6 +101,34 @@ function PasswordInput(props: {
 
 export function AccountPanel() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+
+  /*
+   * Which form a first-time visitor is shown.
+   *
+   * Every "Start free" on the site leads here, and this panel opened in
+   * sign-in mode — so somebody who had just been promised they could
+   * start free was asked for a password to an account they did not have.
+   * The register form was one tap away behind "I need an account", which
+   * makes it friction rather than a dead end, and friction on the single
+   * screen the whole funnel converges on is the expensive kind. A
+   * novice walkthrough on a 360px phone found it; no automated test
+   * would have, because a test knows which button to press.
+   *
+   * Read after mount rather than from `useSearchParams`, because
+   * `/account` is statically prerendered: reading the query during
+   * render would either force the route dynamic or need a Suspense
+   * boundary, and reading `window` in the initialiser would render
+   * sign-in on the server and register on the client — a hydration
+   * mismatch. So the first paint matches the server and the switch
+   * happens immediately after.
+   */
+  useEffect(() => {
+    const { search, hash } = window.location;
+    const params = new URLSearchParams(search);
+    const wantsRegister =
+      params.get('new') === '1' || params.get('mode') === 'register' || hash === '#register';
+    if (wantsRegister) setMode('register');
+  }, []);
   const [notice, setNotice] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [status, setStatus] = useState<{ configured: boolean; userStore: string } | null>(null);

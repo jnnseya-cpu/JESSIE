@@ -132,7 +132,7 @@ export function JoinLanding({ code }: { code: string }) {
                   anything opens.
                 </p>
                 <div className="cta__row" style={{ justifyContent: 'flex-start' }}>
-                  <Link className="btn btn--primary" href="/account">
+                  <Link className="btn btn--primary" href="/account?new=1">
                     Create your account
                   </Link>
                   <Link className="btn btn--ghost" href="/how-it-works">
