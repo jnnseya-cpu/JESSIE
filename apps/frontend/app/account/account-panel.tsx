@@ -99,8 +99,15 @@ function PasswordInput(props: {
   );
 }
 
-export function AccountPanel() {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+export function AccountPanel({ startOn = 'login' }: { startOn?: 'login' | 'register' }) {
+  /*
+   * The server decided this, from `?new=1` — see the comment on the page
+   * component. It arrives as a prop rather than being read here so that
+   * the first byte already carries the right form: reading the URL after
+   * mount left a visitor on slow 3G looking at a sign-in form for eight
+   * seconds after tapping "Start free".
+   */
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(startOn);
 
   /*
    * Which form a first-time visitor is shown.
@@ -122,12 +129,16 @@ export function AccountPanel() {
    * mismatch. So the first paint matches the server and the switch
    * happens immediately after.
    */
+  /*
+   * The hash, which the server never sees.
+   *
+   * `?new=1` is handled before render. `#register` is not sent to the
+   * server at all, so a link using it still needs this — and it is the
+   * one case where a brief sign-in form is unavoidable rather than
+   * chosen.
+   */
   useEffect(() => {
-    const { search, hash } = window.location;
-    const params = new URLSearchParams(search);
-    const wantsRegister =
-      params.get('new') === '1' || params.get('mode') === 'register' || hash === '#register';
-    if (wantsRegister) setMode('register');
+    if (window.location.hash === '#register') setMode('register');
   }, []);
   const [notice, setNotice] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);

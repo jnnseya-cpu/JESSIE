@@ -200,21 +200,36 @@ test('the site’s most-clicked button goes to the account, not to a page about 
 test('a button that offers to start opens the register form, not the sign-in form', () => {
   /*
    * Found by walking the product as a first-time user on a 360px phone.
-   * Every "Start free" on the site leads to /account, and the panel
-   * opened in sign-in mode — email, password, "Sign in" — with the
-   * register form behind a secondary "I need an account". A novice does
-   * not have a password. No automated test would catch it, because a
-   * test knows which button to press.
+   * Every "Start free" leads to /account, and the panel opened in
+   * sign-in mode — email, password, "Sign in" — with the register form
+   * behind a secondary "I need an account". A novice does not have a
+   * password. No automated test would catch it, because a test knows
+   * which button to press.
+   *
+   * The first fix read the intent from the URL after mount, and that was
+   * not enough: on slow 3G hydration took eight seconds, and for all
+   * eight the person who had just tapped "Start free" was looking at a
+   * sign-in form. So the decision moved to the server, which is why this
+   * asserts a prop and not a `window.location` read — the right form has
+   * to be in the first byte.
    */
+  const page = read('account/page.tsx');
+  assert.match(page, /searchParams/, 'the page no longer reads the register intent');
+  assert.match(
+    page,
+    /params\.new === '1'/,
+    'the page no longer recognises ?new=1',
+  );
+  assert.match(page, /<AccountPanel startOn=\{startOn\}/, 'the decision is not passed to the panel');
+
   const panel = read('account/account-panel.tsx');
   assert.match(
     panel,
-    /params\.get\('new'\) === '1'/,
-    'the account panel no longer honours a register intent from the URL',
+    /useState<'login' \| 'register' \| 'forgot'>\(startOn\)/,
+    'the panel ignores what the server decided',
   );
-  assert.match(panel, /setMode\('register'\)/, 'nothing switches the panel to the register form');
 
-  // And the offer has to actually carry the intent.
+  // And the offer has to carry the intent.
   const landing = read('page.tsx');
   const hero = landing.slice(landing.indexOf('hero__cta'), landing.indexOf('hero__cta') + 400);
   assert.match(

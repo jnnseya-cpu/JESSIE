@@ -806,3 +806,64 @@ to know which it was is to be told.
 With the banner rendering: **7,431–7,451 text nodes across 28 routes,
 none below its AA threshold.** Without it: the same pass plus the note.
 1,017 tests passing, typecheck and build clean.
+
+---
+
+## D-005b — The register form arrived eight seconds late
+
+| | |
+|---|---|
+| **Severity** | **P3 (medium)** |
+| **Area** | Novice usability |
+| **Phase** | 6.6, Gate 2 measurement |
+| **Status** | **FIXED and retested** |
+| **Introduced by** | the D-005 fix, commit `aac3a3b` |
+
+### Actual
+Timing the whole novice journey on a 360px Android over slow 3G:
+
+```
+[5.5s]  arrived at /account?new=1
+[5.5s]  the form asks to — "Sign in"          ← before hydration
+[13.7s] the form asks to — "Create account"   ← after hydration
+```
+
+For **eight seconds**, somebody who had just tapped "Start free" was
+looking at a form headed "Sign in", asking for a password they do not
+have.
+
+### Root cause
+The D-005 fix read the register intent from `window.location` in a
+`useEffect`, chosen deliberately because `/account` was statically
+prerendered: reading the query during render would force the route
+dynamic, and reading `window` in the state initialiser would render
+sign-in on the server and register on the client — a hydration mismatch.
+
+Both of those reasons were sound. What they produced was a fix that is
+correct and arrives after hydration, and on a slow connection hydration
+is where the eight seconds live. It was invisible on a fast connection,
+which is where it was verified.
+
+### Fix
+The decision moved to the server. The page component reads `searchParams`
+and passes `startOn` to the panel, which uses it as its initial state, so
+the correct form is in the **first byte**. `/account` becomes
+`ƒ (Dynamic)`, which costs nothing it had: it is `robots: noindex`, every
+visitor sees different content, and it already fetched `/auth/me` on
+mount. The `useEffect` remains for `#register` alone, since a hash is
+never sent to the server.
+
+### Retest
+```
+[5.5s]  the form asks to (BEFORE hydration) — "Create account"
+[13.7s] the form asks to (after hydration)  — "Create account"
+[20.6s] SIGNED IN
+```
+
+### Gate 2, measured
+**A first-time user reaches a usable signed-in account in 20.6 seconds**,
+on a 360×760 Android over 400kbps/400ms, unaided, from a cold start —
+against a ten-minute bar. The first screen then offers 51 actions
+including "Today", "Turn on" and "Add cover", five of them about the
+member's own body or food. LCP 3,976ms against a 4,000ms target on 3G:
+inside it, with nothing to spare.
