@@ -9,6 +9,7 @@ import {
   assertStripeChargeable,
   fromMinorUnits,
   isEntitled,
+  HANDLED_WEBHOOK_EVENTS,
   isHandled,
   toMinorUnits,
   topUpAcus,
@@ -230,6 +231,24 @@ export class StripeService {
       pricesManagedIn:
         'Stripe. Set metadata plan=<key> on each price (Products → price → Edit metadata); ' +
         'discovery refreshes within five minutes. STRIPE_PRICE_* env variables remain as optional overrides.',
+      /*
+       * Which of Stripe's event types to tick, published rather than left
+       * to be guessed.
+       *
+       * Stripe's endpoint form offers 238 of them behind an "All events"
+       * button, and this endpoint already says where to post and that a
+       * secret is needed — and then left the hardest question of the
+       * three unanswered. Selecting all 238 does not break anything: an
+       * unmodelled type is acknowledged with `ignored`, because a 4xx on
+       * one makes Stripe retry it for three days and then disable the
+       * endpoint. It does mean every dashboard page of deliveries is
+       * noise, which is how a real failure goes unnoticed.
+       */
+      subscribeToEvents: HANDLED_WEBHOOK_EVENTS,
+      subscribeNote:
+        `Select exactly these ${HANDLED_WEBHOOK_EVENTS.length} in the Stripe endpoint form. ` +
+        'Any other type is acknowledged and ignored, so "All events" is safe but noisy — ' +
+        'and reacting to a type this platform has not modelled is how a double grant happens.',
       eventsProcessed: this.seenEvents.size,
       subscriptions: this.subscriptions.size,
       note: this.configured()

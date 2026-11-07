@@ -47,8 +47,44 @@ It ends with a line like `RESULT commit=abc1234 off=push,mail,stripe`.
 | Variable | What it is | Without it |
 |---|---|---|
 | **`STRIPE_SECRET_KEY`** | `sk_live_…` from the Stripe dashboard | No payment can be taken. Checkout returns 400 with an explanation and everything else keeps working — and, by design, **nothing can grant allowance either**, so this is a safe state, not a broken one. |
-| **`STRIPE_WEBHOOK_SECRET`** | The `whsec_…` of the **dashboard endpoint** | Payments complete at Stripe and the platform never hears. **Not** the secret `stripe listen` prints — those are different values for different environments, and using the CLI one in production means every real webhook fails its signature check. |
+| **`STRIPE_WEBHOOK_SECRET`** | The `whsec_…` of the **dashboard endpoint** | Payments complete at Stripe and the platform never hears: **every delivery is refused with `400 stripe webhook rejected: STRIPE_WEBHOOK_SECRET is not configured`**, whatever the event type. **Not** the secret `stripe listen` prints — those are different values for different environments, and using the CLI one in production means every real webhook fails its signature check. `/api/stripe/status` reports `webhookSecretConfigured` only when the value starts with `whsec_`. |
 | `STRIPE_PRICE_PREMIUM_MONTHLY` / `_ANNUAL` / `STRIPE_PRICE_FAMILY_MONTHLY` / `_ANNUAL` / `STRIPE_PRICE_ORG_SEAT` | One price id per plan | Set `metadata.plan` on each price **in Stripe**, or `invoice.paid` records the payment and grants no allowance. |
+
+### The Stripe webhook endpoint
+
+**URL** — `https://api.jessmove.com/api/stripe/webhook`. The **API** host,
+not the site: `jessmove.com` and `www.jessmove.com` are the Next.js
+frontend and have no such route, so pointing Stripe at either gives a 404
+on every delivery. `/api/stripe/status` publishes this URL under
+`webhookUrl` so the two cannot disagree.
+
+**Events** — select exactly these ten, published live under
+`subscribeToEvents` on the same endpoint:
+
+```
+checkout.session.completed
+customer.subscription.created
+customer.subscription.updated
+customer.subscription.deleted
+invoice.paid
+invoice.payment_failed
+charge.refunded
+charge.dispute.created
+payment_intent.succeeded
+payment_intent.payment_failed
+```
+
+Stripe's form offers 238 types behind an "All events" button. Selecting
+all of them **does not break the endpoint** — an unmodelled type is
+acknowledged with `outcome: "ignored"` and a 200, deliberately, because a
+4xx on one makes Stripe retry it for three days and then disable the
+endpoint. What it does is bury a real failure in pages of noise, and the
+only reason to react to a type the platform has not modelled is to create
+a double grant.
+
+A delivery that arrives twice answers `outcome: "duplicate"` and does no
+work: the event id is claimed before anything happens, so a repeated
+webhook can never repeat money.
 | **One of** `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` | A provider key | Every AI surface serves cached prescriptions only. The gateway walks `AI_FALLBACK_ORDER`, so one key is enough to work and two or three are what make the fallback chain real. |
 | **`VAPID_PUBLIC_KEY`**, **`VAPID_PRIVATE_KEY`**, **`VAPID_SUBJECT`** | Your own keys — no vendor, no account: `npx web-push generate-vapid-keys`. Subject is a `mailto:` or `https:` URL the push service can contact you at | The platform cannot speak first. `/push/status` reports unconfigured rather than offering a button that fails. **Generate once and keep them** — changing them invalidates every existing subscription. |
 | **`SMTP_HOST`**, **`SMTP_PORT`**, **`SMTP_USER`**, **`SMTP_PASS`**, **`SMTP_FROM`** | Your mailbox | No verification email, no password reset, no guardian confirmation — so **an under-18 account can never activate**. Messages still render and are recorded as sandbox, so the flow stays testable. Port 587 negotiates STARTTLS, 465 is implicit TLS; on Hostinger the user is the full mailbox address. |
