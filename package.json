@@ -21,6 +21,7 @@
     "db:test": "node scripts/db-apply.mjs test",
     "verify:money": "node scripts/verify-money.mjs",
     "verify:adversarial": "bash scripts/adversarial-probe.sh",
+    "verify:fuzz": "node scripts/fuzz-api.mjs",
     "dev": "pnpm --parallel --filter @jessmove/backend --filter @jessmove/frontend dev",
     "dev:backend": "pnpm --filter @jessmove/backend dev",
     "dev:frontend": "pnpm --filter @jessmove/frontend dev",
