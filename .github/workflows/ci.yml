@@ -5,10 +5,33 @@ on:
     branches: ['**']
   pull_request:
 
+# Two checks are deliberately NOT here, and saying which is the point —
+# a suite missing from CI without a reason is the same as a suite that
+# was quietly dropped.
+#
+#   pnpm verify:novice — the Gate 2 walkthrough. It currently FAILS on
+#     D-010: largest contentful paint measures 4,032–4,108ms against a
+#     4,000ms budget, consistently, on every run. The budget is not being
+#     lowered to make it green, and the fix is a product decision
+#     (defects.md D-010 lists the three options). Adding a permanently
+#     red step is how a red CI stops being read, so it is run by hand
+#     until that decision is made. It is not optional work that got
+#     forgotten.
+#
+#   pnpm verify:load — a load test. It measures a machine as much as it
+#     measures the code, and a shared runner is the wrong machine to
+#     draw a conclusion from.
+#
+# Nothing here uses continue-on-error, and nothing skips on a missing
+# input. A step that cannot run must fail, because a step that passes
+# without running is worse than one that fails.
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Raised from 15. The browser audits, the payload sweep and the
+    # restore check are new, and a timeout kill reads as an infra blip
+    # rather than as the real result.
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -40,7 +63,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The frontend reads the API origin at BUILD time. Without this the
+      # built bundle points at api.jessmove.com, every journey in CI fails
+      # to reach an API, and the CSP audit checks a connect-src that does
+      # not match what the bundle calls.
       - name: Build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api
         run: pnpm build
 
       - name: Typecheck
@@ -57,11 +86,109 @@ jobs:
           pnpm db:migrate
           pnpm db:test
 
-      - name: Smoke test the API
+      # Chromium for the browser-driven checks. PLAYWRIGHT_BROWSERS_PATH
+      # puts it where scripts/chromium.mjs looks: that resolver tries a
+      # CHROMIUM override, then the stable symlink the dev image keeps,
+      # then any chromium-<rev> directory under either layout Playwright
+      # has used. Playwright's installer does not create the symlink, so
+      # it is the versioned fallback that makes this work — which is the
+      # reason the fallback exists.
+      - name: Install Chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+        run: sudo -E pnpm exec playwright install --with-deps chromium
+
+      # One server for every check below it. Started with AUTH_ENFORCE so
+      # the guards are real, and with a secret generated here — never a
+      # committed one, and never echoed.
+      # One server for every check below it. Started with AUTH_ENFORCE so
+      # the guards are real, and with a secret generated here — never a
+      # committed one, and never echoed.
+      #
+      # `setsid` detaches it from this step's shell so it survives into
+      # the next one. That survival is the one thing in this workflow that
+      # could not be tested from the development container, so each
+      # dependent step re-checks /api/health first and fails naming the
+      # reason. A dead server must not read as fifty connection errors.
+      - name: Start the API
+        env:
+          DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
         run: |
-          node apps/backend/dist/main.js &
-          for i in $(seq 1 30); do
+          AUTH_SECRET="$(openssl rand -hex 32)" \
+          AUTH_ENFORCE=true \
+          setsid node apps/backend/dist/main.js > /tmp/api.log 2>&1 < /dev/null &
+          for i in $(seq 1 60); do
             curl -sf http://localhost:4000/api/health >/dev/null && break
             sleep 1
           done
+          curl -sf http://localhost:4000/api/health >/dev/null \
+            || { echo 'the API never came up'; tail -50 /tmp/api.log; exit 1; }
+
+      - name: Smoke test the API
+        run: |
+          curl -sf http://localhost:4000/api/health >/dev/null || {
+            echo 'The API is not listening. It was started in a previous step'
+            echo 'and did not survive into this one.'
+            tail -50 /tmp/api.log
+            exit 1
+          }
           bash scripts/smoke.sh
+
+      - name: Payload sweep
+        run: pnpm verify:fuzz
+
+      - name: Adversarial probe
+        run: pnpm verify:adversarial
+
+      - name: Money integrity
+        env:
+          DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
+        run: pnpm verify:money
+
+      - name: Backup, restore and deletion
+        env:
+          DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
+        run: pnpm verify:recovery
+
+      - name: Nothing unwired, nothing unreachable
+        run: |
+          pnpm check:unwired
+          pnpm check:reachable
+
+      - name: Start the frontend
+        run: |
+          setsid pnpm --filter @jessmove/frontend exec next start -p 3000 \
+            > /tmp/frontend.log 2>&1 < /dev/null &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/ >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3000/ >/dev/null \
+            || { echo 'the frontend never came up'; tail -50 /tmp/frontend.log; exit 1; }
+
+      - name: Critical journeys
+        env:
+          FRONTEND: http://localhost:3000
+          API: http://localhost:4000/api
+        run: |
+          curl -sf http://localhost:3000/ >/dev/null || {
+            echo 'The frontend is not listening. It was started in a previous'
+            echo 'step and did not survive into this one.'
+            tail -50 /tmp/frontend.log
+            exit 1
+          }
+          pnpm verify:journeys
+
+      - name: Layout, contrast and CSP
+        env:
+          FRONTEND: http://localhost:3000
+        run: |
+          pnpm check:layout
+          pnpm check:contrast
+          pnpm check:csp
+
+      - name: Server logs on failure
+        if: failure()
+        run: |
+          echo '--- api ---'; tail -100 /tmp/api.log || true
+          echo '--- frontend ---'; tail -100 /tmp/frontend.log || true

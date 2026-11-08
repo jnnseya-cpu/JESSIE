@@ -154,6 +154,43 @@ be confirmed by somebody who can be held to it. And this platform
 processes **children's health data from age 10**, which engages the ICO
 Children's Code; nothing in this audit assessed conformance with it.
 
+### H-9 — Measure largest contentful paint on production, before anybody optimises
+
+**Owner:** whoever can load jessmove.com on a throttled connection
+**Blocks:** nothing. It prevents wasted work.
+
+`pnpm verify:novice` measures the Gate 2 walkthrough on a mid-range
+Android over 400 Kbps. Time to a signed-in account is 15.4–16.0 seconds
+against Mind 2's thirty, which is comfortable. Largest contentful paint
+is 4,032–4,108ms against a 4,000ms budget, on every run — **D-010**, a
+measured FAIL by 32 to 108 milliseconds.
+
+The whole of that figure is transfer time. 4x CPU throttling alone puts
+LCP at 480ms; slow 3G alone puts it at 3,868ms. The critical path is the
+landing document at 38.8 KB gzipped and then `globals.css` at 25.4 KB
+gzipped, downloaded serially. Fonts were the first hypothesis and are
+not the cause — blocking all 177 KB of them moved LCP by 192ms. That
+hypothesis is disproved; please do not retry it.
+
+What is needed, and why it is first: the measurement above is against a
+local `next start`, which serves **gzip**. Production is served from
+Vercel's edge, which serves **brotli** — typically 15 to 20 per cent
+smaller on HTML and CSS. Since the figure is entirely transfer time,
+production is faster by some amount that cannot be measured from here,
+because the network policy refuses `jessmove.com` by design. **It may
+already be inside 4,000ms.**
+
+So: load the landing page on a throttled connection against production
+and record the number. If it is under 4,000ms, the only action is to
+write that figure down. If it is over, the three options are in
+`defects.md` under D-010, in increasing cost, and the cheapest of them
+is not free.
+
+What I will do when the figure arrives: if production is inside budget,
+add `verify:novice` to CI with the production figure recorded beside the
+budget. If it is over, implement whichever of the three options you
+choose.
+
 ---
 
 ## Not blocking, recorded for a decision
@@ -178,7 +215,14 @@ Children's Code; nothing in this audit assessed conformance with it.
   Four structural tests now cover the class of bug that actually bit.
 - **The half-hourly nudge cron** is withheld pending the Vercel plan;
   Hobby allows daily only.
-- **CI does not run** the browser audits, the adversarial probe, money,
-  recovery or load — they need a built frontend, a running server and
-  Chromium. Worth adding; not done here because a workflow change cannot
-  be tested from this machine.
+- **CI now runs** the payload sweep, the adversarial probe, money,
+  backup/restore/deletion, the unwired and unreachable checks, the
+  critical journeys and the layout, contrast and CSP audits, alongside
+  build, typecheck, tests, the database invariants and the smoke test.
+  No step uses `continue-on-error` and no step skips on a missing input.
+  Two are deliberately out and named in the workflow: `verify:novice`
+  (fails on D-010, below) and `verify:load` (a shared runner is the
+  wrong machine to conclude from). One thing in that workflow could not
+  be tested from this machine — whether a server started in one step
+  survives into the next — so each dependent step re-checks the server
+  first and fails naming the reason.

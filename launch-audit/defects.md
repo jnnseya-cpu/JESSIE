@@ -867,3 +867,90 @@ against a ten-minute bar. The first screen then offers 51 actions
 including "Today", "Turn on" and "Add cover", five of them about the
 member's own body or food. LCP 3,976ms against a 4,000ms target on 3G:
 inside it, with nothing to spare.
+
+---
+
+## D-010 — Largest contentful paint is over its budget on slow 3G
+
+| | |
+|---|---|
+| **Severity** | **P3 (medium)** |
+| **Blocker** | No — but it is a measured FAIL against a published target, not a note |
+| **Area** | Landing page critical path |
+| **Phase** | Gate 2, re-measured once the walkthrough became reproducible |
+| **Status** | **OPEN — recorded, not fixed. The fix is a product decision.** |
+
+### How it was found
+The Gate 2 figure of LCP 3,976ms was produced by a script that lived in a
+scratchpad directory on a container that no longer exists. Nobody could
+re-run it. Promoting it into the repository as `scripts/novice-walkthrough.mjs`
+(`pnpm verify:novice`) made it reproducible, and the reproducible version
+is over the line.
+
+### Measured
+Five runs, local `next start`, 360×740 at DPR 2, 4× CPU throttling, 400
+Kbps / 400ms RTT:
+
+```
+LCP   4108ms   4100ms   4032ms   4032ms   4036ms
+time to a signed-in account   15.4s  15.4s  16.0s  15.4s  16.0s
+```
+
+The budget is 4,000ms — the upper bound of Google's "needs improvement"
+band. It is exceeded on every run by 32 to 108ms. The previous
+measurement of 3,976ms was inside it by twenty-four milliseconds, so
+nothing has regressed; the line was always this close, and a single
+figure recorded once could not show that.
+
+Time to a signed-in account **improved**, from 20.6s to 15.4–16.0s. That
+is D-005b's fix — the register form now arrives in the first byte rather
+than eight seconds after it.
+
+### Root cause
+Entirely network-bound. Isolated by removing one throttle at a time:
+
+```
+4x cpu + slow 3G (the gate)      ttfb   12ms   html end 2573ms   lcp 3992ms
+slow 3G only, no cpu throttle    ttfb    7ms   html end 2665ms   lcp 3868ms
+4x cpu only, full network        ttfb    9ms   html end   12ms   lcp  480ms
+no throttling at all             ttfb    8ms   html end   11ms   lcp  204ms
+```
+
+CPU is not the constraint: 4× throttling alone puts LCP at 480ms. The
+critical path is two serial downloads — the landing document at 38.8 KB
+gzipped (199 KB decoded) and then `globals.css` at 25.4 KB gzipped (137.7
+KB raw). 64 KB serialised at 400 Kbps is the whole of the 3.8 seconds.
+
+Fonts were the first hypothesis and are **not** the cause. `font-display:
+swap` is already set with measured `size-adjust` fallback metrics.
+Blocking the 79.7 KB italic face moved LCP by −60ms; blocking all 177 KB
+of fonts moved it by 192ms. The hypothesis is disproved and should not be
+retried.
+
+### Why it is not fixed here
+The two levers are the size of the landing document and the size of the
+global stylesheet. `globals.css` is the design system, and CLAUDE.md
+requires its classes to be reused rather than replaced — splitting it per
+route is an architecture change. Reducing the landing document means
+removing content from the page. Both are product decisions, and this was
+raised during a stabilisation pass whose instruction was that nothing
+silently change.
+
+### Caveat on the number
+Measured against a local `next start`, which serves **gzip**. Production
+is served from Vercel's edge, which serves **brotli** — typically 15 to
+20 per cent smaller on HTML and CSS. Since the whole of this figure is
+transfer time, the production number will be lower, by an amount nobody
+on this machine can measure: the environment's network policy refuses
+`jessmove.com` and `api.jessmove.com` by design. It may already be inside
+4,000ms in production. **That is unverified, and whoever can reach
+production should measure it there before anybody spends effort on the
+levers above.**
+
+### Owner decision required
+Three options, in increasing cost:
+1. Measure production first. If brotli at the edge brings it under
+   4,000ms, there is nothing to do but record the production figure.
+2. Reduce the landing document. It is 199 KB decoded for one page.
+3. Split the stylesheet per route. Largest win, largest risk, and it
+   touches the design system.

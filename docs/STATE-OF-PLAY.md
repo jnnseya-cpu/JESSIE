@@ -1124,6 +1124,83 @@ name before doing anything else.
 
 ---
 
+## What guards what
+
+A fix with no check behind it is a fix waiting to be undone, usually by
+somebody who had a good reason and no way to know. This table says, for
+each defect the audit closed, the thing that now fails if it comes back,
+and whether CI runs that thing.
+
+Every entry in the "proved by reverting" column means exactly that: the
+fix was undone, the check was watched failing, and the fix was restored.
+A check nobody has seen fail is a check nobody should trust.
+
+| Defect | What it was | Guard | In CI | Proved by reverting |
+|---|---|---|---|---|
+| D-001 | A confirmed deletion left a child's health data | `deletion-coverage.test.ts` — every member-keyed text column must cascade or be named in `RETAINED` with a reason | yes | yes |
+| D-002 | Ten tables declare `user_id uuid` and cannot hold a member id | none — recorded, not fixed | — | — |
+| D-004 | Plan cards sent converting visitors to a brochure | `funnel.test.ts` — counts `<JoinCta>` as well as literal links | yes | yes |
+| D-005 | "Start free" opened a password prompt | `funnel.test.ts` | yes | yes |
+| D-005b | The register form arrived eight seconds late | `verify:novice` — form must be present on first paint | **no** (see D-010) | yes |
+| D-006 | A string arrived where a trolley belonged | `body-validation.test.ts` — every `@Body()` binds to a validating class; `verify:fuzz` — a count matching the injected string's length is a failure | yes / yes | yes |
+| D-007 | Nine of thirteen injection payloads reached the model | `humanity.test.ts` — an 11-payload must-block and a 9-string must-not-block corpus; `sweeps-not-shrunk.test.ts` holds both floors | yes | yes |
+| D-008 | My own CSP blocked the API on builds without the env var | `headers.test.ts` — the CSP must allow every origin `apiBase()` can return | yes | yes |
+| D-009 | The consent banner hid its own decline button | `accessibility-promises.test.ts` — the banner's three text colours computed from `globals.css`, plus a refusal of any off-token colour | yes | yes |
+| D-010 | LCP over budget on slow 3G | `verify:novice` | **no** — a known open FAIL; see below | n/a |
+| — | Eight scripts hard-coded a Chromium path the image no longer ships | `browser-checks-runnable.test.ts` | yes | yes |
+| — | `POST /accounts` was a second open door past registration | `admin-guard.test.ts` | yes | yes |
+| — | `push/subscribe` took its owner from the request body | `admin-guard.test.ts` | yes | yes |
+| — | 943 tests were never type-checked, hiding five defects | `tsconfig.test.json` in three packages, wired into `pnpm typecheck` | yes | yes |
+
+### What CI runs, and what it does not
+
+CI runs build, typecheck, the full test suite, the database invariants,
+the smoke test, the payload sweep, the adversarial probe, money
+integrity, backup/restore/deletion, the unwired and unreachable checks,
+the critical journeys, and the layout, contrast and CSP audits. No step
+uses `continue-on-error`, and no step skips on a missing input: a check
+that cannot run fails, because a check that passes without running is
+worse than one that fails.
+
+Two are deliberately out, and both are named in the workflow itself so
+their absence cannot be mistaken for an oversight:
+
+- **`verify:novice`** fails today on D-010. The budget is not being
+  lowered to make it green. A permanently red step is how a red CI stops
+  being read, so this one is run by hand until the owner decides between
+  the three options in `launch-audit/defects.md`.
+- **`verify:load`** measures a machine as much as it measures the code,
+  and a shared runner is the wrong machine to conclude from.
+
+One thing in that workflow is unverified: a server started in one step
+has to survive into the next. That could not be tested from the
+development container, so every dependent step re-checks `/api/health`
+or the frontend root first and fails naming the reason, rather than
+producing fifty connection errors that look like a product fault.
+
+### Two habits, both bought with real failures
+
+Five of the nine defects the audit closed were controls that passed
+while testing nothing, and four more of the same shape were introduced
+while fixing them. So:
+
+1. **Assert the scan found something before asserting it found nothing
+   wrong.** Every structural check in `apps/backend/test` now begins by
+   asserting a floor on what it matched. Three of the four
+   self-inflicted defects were caught by a sanity check added minutes
+   earlier.
+2. **Revert the fix and watch the check fail.** The fourth was caught by
+   the repository's own member corpus. The "proved by reverting" column
+   above is this habit, written down.
+
+The payload sweep is the clearest case of why both are needed. It was
+written to find D-006, and when D-006 was reverted it reported the
+defect as handled safely — it read status codes and never read the
+answer. It failed that run on an unrelated symptom, which is luck. It
+now checks what the response says.
+
+---
+
 ## Known and deliberately not done
 
 **This repository has no linter.** Not in the root, not in any of the four

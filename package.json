@@ -22,6 +22,7 @@
     "verify:money": "node scripts/verify-money.mjs",
     "verify:adversarial": "bash scripts/adversarial-probe.sh",
     "verify:fuzz": "node scripts/fuzz-api.mjs",
+    "verify:novice": "node scripts/novice-walkthrough.mjs",
     "dev": "pnpm --parallel --filter @jessmove/backend --filter @jessmove/frontend dev",
     "dev:backend": "pnpm --filter @jessmove/backend dev",
     "dev:frontend": "pnpm --filter @jessmove/frontend dev",
