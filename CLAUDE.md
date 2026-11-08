@@ -101,10 +101,51 @@ design system. Reuse its classes. Do not invent a new button, card,
 modal or colour — the platform must look like one product.
 
 **Local verification.** Postgres 16 runs on port 5433
-(`postgres://jess@127.0.0.1:5433/jessmove`) and must be restarted after a
-container restart. Playwright uses `executablePath: '/opt/pw-browsers/chromium'`.
+(`postgres://jess@127.0.0.1:5433/jessmove`). A replaced container resets
+the cluster to the packaged defaults — port 5432 and `scram-sha-256` on
+loopback — and the connection string above then fails asking for a
+password it does not have. This has cost two sessions already, so the
+recovery is written out rather than rediscovered:
+
+```bash
+sed -i 's/^port = 5432/port = 5433/' /etc/postgresql/16/main/postgresql.conf
+sed -i 's/127.0.0.1\/32            scram-sha-256/127.0.0.1\/32            trust/;
+        s/::1\/128                 scram-sha-256/::1\/128                 trust/' \
+  /etc/postgresql/16/main/pg_hba.conf
+pg_ctlcluster 16 main restart
+su postgres -c "psql -p 5433 -c 'create role jess login superuser'"
+su postgres -c "createdb -p 5433 -O jess jessmove"
+pg_isready -h 127.0.0.1 -p 5433   # must say "accepting connections"
+```
+
+`trust` on loopback is correct for this container and nowhere else.
+
+Browser-driven checks resolve Chromium through `scripts/chromium.mjs`.
+Call `chromiumPath()`; never write a path into a script. Eight scripts
+each carried `/opt/pw-browsers/chromium-1194/...`, the image shipped
+chromium-1243 under a different layout, and every browser check silently
+stopped being able to launch — they reported nothing wrong because they
+could not run. `browser-checks-runnable.test.ts` now fails if a second
+copy of a path appears.
+
 The frontend needs `NEXT_PUBLIC_API_BASE_URL` at **build** time — under
 `next start`, production mode points `apiBase()` at api.jessmove.com.
+
+The verification suites, and what each needs running:
+
+| Command | Needs |
+|---|---|
+| `pnpm test`, `pnpm typecheck` | nothing |
+| `pnpm db:migrate`, `pnpm db:test` | Postgres |
+| `pnpm smoke`, `pnpm verify:fuzz`, `pnpm verify:adversarial` | the API |
+| `pnpm verify:money`, `pnpm verify:recovery` | the API **with `AUTH_SECRET`** and Postgres |
+| `pnpm verify:journeys`, `check:layout`, `check:contrast`, `check:csp` | the API and a built frontend on :3000 |
+| `pnpm verify:novice` | both; **fails today on D-010** |
+
+Start the API with `AUTH_ENFORCE=true` and an `AUTH_SECRET` of 32+
+characters. Without the secret, `verify:recovery` cannot register a
+member and says so rather than reporting a pass on a search that proves
+nothing.
 
 **What you cannot verify from here.** Outbound HTTPS to `jessmove.com` and
 `api.jessmove.com` is refused by the environment's network policy
