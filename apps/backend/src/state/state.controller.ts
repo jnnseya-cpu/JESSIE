@@ -11,6 +11,7 @@ import {
   shouldWarnOnLeave,
 } from '@jessmove/shared';
 import { STATE_KEYS } from './state.logic';
+import { SaveStateDto } from './state.dto';
 
 @Controller('state')
 export class StateController {
@@ -53,8 +54,8 @@ export class StateController {
   }
 
   @Put(':key')
-  async save(@Req() req: Request, @Param('key') key: string, @Body() body: { value: unknown }) {
-    return this.state.save(this.session(req).uid, key, body?.value);
+  async save(@Req() req: Request, @Param('key') key: string, @Body() body: SaveStateDto) {
+    return this.state.save(this.session(req).uid, key, body.value);
   }
 
   @Delete(':key')

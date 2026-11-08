@@ -9,7 +9,7 @@ import {
   type Movement,
 } from '@jessmove/shared';
 import { MovementsService } from './movements.service';
-import { PublishReviewDto } from './movements.dto';
+import { MovementUpsertDto, PublishReviewDto } from './movements.dto';
 import { AdminOnly } from '../auth/auth.guard';
 
 @Controller('movements')
@@ -66,7 +66,7 @@ export class MovementsController {
 
   @AdminOnly()
   @Post()
-  upsert(@Body() movement: Movement) {
+  upsert(@Body() movement: MovementUpsertDto) {
     return this.movements.upsert(movement);
   }
 
