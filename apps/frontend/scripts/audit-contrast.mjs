@@ -22,6 +22,7 @@
  * a gradient deserves an eye as well as a number.
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 
 const ROUTES = [
   '/', '/get-started', '/how-it-works', '/micro-movement', '/foodlens', '/mova',
@@ -37,7 +38,7 @@ const base = process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000';
 const asJson = process.argv.includes('--json');
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: chromiumPath(),
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 

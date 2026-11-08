@@ -1,10 +1,11 @@
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 import { mkdirSync } from 'node:fs';
 const route = process.argv[2] ?? '/';
 const out = process.argv[3] ?? '/tmp/slices';
 const width = Number(process.argv[4] ?? 1440);
 mkdirSync(out, { recursive: true });
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: chromiumPath() });
 const p = await b.newPage({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
 await p.goto('http://127.0.0.1:3000' + route, { waitUntil: 'load', timeout: 45000 });
 await p.evaluate(() => document.fonts.ready);

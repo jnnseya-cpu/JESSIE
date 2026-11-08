@@ -17,11 +17,12 @@
  * "* Fallback" @font-face blocks at the top of globals.css.
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 
 const BASE = process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000';
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: chromiumPath(),
 });
 const page = await browser.newPage();
 await page.goto(BASE, { waitUntil: 'load', timeout: 45_000 });

@@ -9,6 +9,7 @@
  *   node scripts/shoot.mjs [outDir] [width] [route ...]
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -27,7 +28,7 @@ const base = process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000';
 
 mkdirSync(outDir, { recursive: true });
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const browser = await chromium.launch({ executablePath: chromiumPath() });
 const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 2 });
 
 for (const route of routes) {

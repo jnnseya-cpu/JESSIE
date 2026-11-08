@@ -1,9 +1,10 @@
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 import { mkdirSync } from 'node:fs';
 const route = process.argv[2] ?? '/';
 const out = process.argv[3] ?? '/tmp/mob';
 mkdirSync(out, { recursive: true });
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const b = await chromium.launch({ executablePath: chromiumPath() });
 const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
 await p.goto('http://127.0.0.1:3000' + route, { waitUntil: 'load', timeout: 45000 });
 await p.evaluate(() => document.fonts.ready);

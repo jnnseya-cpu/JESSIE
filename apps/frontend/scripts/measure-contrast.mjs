@@ -14,6 +14,7 @@
  * readers actually get, not a re-implementation of the conversion.
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 
 const HUES = {
   teal: '#00a99d',
@@ -42,7 +43,7 @@ const CAPS = [0.62, 0.58, 0.55, 0.52, 0.5, 0.48, 0.45];
 const FLOORS = [0.66, 0.7, 0.74, 0.78, 0.82, 0.86];
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: chromiumPath(),
 });
 const page = await browser.newPage();
 await page.goto(process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000', {

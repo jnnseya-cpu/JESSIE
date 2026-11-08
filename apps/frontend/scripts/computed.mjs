@@ -5,12 +5,13 @@
  *   node scripts/computed.mjs /  ".hero .btn--primary"  color background-image
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 
 const [route, selector, ...props] = process.argv.slice(2);
 const base = process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000';
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: chromiumPath(),
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await page.goto(base + route, { waitUntil: 'load', timeout: 45_000 });

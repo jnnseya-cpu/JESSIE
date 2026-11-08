@@ -390,3 +390,116 @@ test('the product still knows what it must never look like', () => {
       'is the one that keeps the rest of the copy honest',
   );
 });
+
+/* ------------------------------------------------------------------ *
+ * The consent banner, measured from the stylesheet
+ * ------------------------------------------------------------------ */
+
+/**
+ * Composite a translucent colour over an opaque one, in sRGB.
+ *
+ * Needed because the banner is a translucent dark surface carrying
+ * translucent text. A ratio computed from the raw hex values ignores the
+ * alpha and reports a contrast nobody will ever see.
+ */
+function over(fg: string, alpha: number, bg: string): string {
+  const parse = (hex: string) => {
+    const h = hex.replace('#', '');
+    const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+    return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  };
+  const [fr, fg2, fb] = parse(fg);
+  const [br, bg2, bb] = parse(bg);
+  const mix = (a: number, b: number) =>
+    Math.round(a * alpha + b * (1 - alpha))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${mix(fr!, br!)}${mix(fg2!, bg2!)}${mix(fb!, bb!)}`;
+}
+
+/** The `.mcb` rule block, as it actually ships. */
+function consentBannerCss(): string {
+  const start = CSS.indexOf('.mcb {');
+  assert.ok(start > 0, 'the .mcb consent banner rule is gone from globals.css');
+  const end = CSS.indexOf('.mcb__actions', start);
+  assert.ok(end > start, 'the .mcb block no longer runs through to .mcb__actions');
+  return CSS.slice(start, end);
+}
+
+test('the consent banner is measured, and its three text colours clear AA', () => {
+  /*
+   * This check exists because the banner sat at 1.05:1 — white-on-white,
+   * effectively invisible — and nothing caught it for the whole audit.
+   * The reason nothing caught it is the reason this test is here rather
+   * than in the browser audit: the banner only renders when the build
+   * carries NEXT_PUBLIC_META_PIXEL_ID or NEXT_PUBLIC_GOOGLE_TAG_ID, and
+   * every contrast run until that point had been against a build with
+   * neither. The browser check was not wrong; it was never pointed at the
+   * thing. Computed from the stylesheet, it cannot be skipped by a build
+   * configuration.
+   *
+   * The composite is the pessimistic one. The banner is #0b2136 at 94%
+   * with a backdrop blur, so what sits behind it raises its luminance and
+   * lowers the ratio; the light page background is the worst realistic
+   * case and the one measured here.
+   */
+  const block = consentBannerCss();
+
+  // Read the surface and the text tokens off the rule rather than
+  // restating them, so a change to either is a change to this measurement.
+  const surface = /#0b2136\s+(\d+)%/.exec(block);
+  assert.ok(surface, 'the .mcb background is no longer a color-mix of #0b2136');
+  const surfaceAlpha = Number(surface[1]) / 100;
+  const background = over('#0b2136', surfaceAlpha, LIGHT.background);
+
+  const inkAlpha = (name: string): number => {
+    const m = new RegExp(`--${name}:\\s*rgba\\(244,\\s*250,\\s*249,\\s*([\\d.]+)\\)`).exec(block);
+    assert.ok(m, `--${name} is no longer an rgba of the dark text token`);
+    return Number(m[1]);
+  };
+
+  // `--ink` is the opaque token; `strong` states it literally as well.
+  assert.match(block, /--ink:\s*var\(--jm-text-d\)/, '--ink no longer follows the dark text token');
+  assert.match(CSS, /--jm-text-d:\s*#f4faf9/i, '--jm-text-d has moved');
+
+  const PAIRS: [string, string][] = [
+    ['banner heading (--ink)', over('#f4faf9', 1, background)],
+    ['banner body text (--ink-2)', over('#f4faf9', inkAlpha('ink-2'), background)],
+    ['banner detail text (--ink-3)', over('#f4faf9', inkAlpha('ink-3'), background)],
+  ];
+  assert.equal(PAIRS.length, 3, 'a banner text colour was dropped from the check');
+
+  for (const [what, fg] of PAIRS) {
+    const ratio = contrast(fg, background);
+    assert.ok(
+      ratio >= CONTRAST_RATIO_MIN,
+      `${what} is ${ratio}:1 on the banner surface, below the published ` +
+        `${CONTRAST_RATIO_MIN}:1 floor (${fg} on ${background})`,
+    );
+  }
+});
+
+test('the consent banner carries no text colour outside its measured tokens', () => {
+  /*
+   * The measurement above only covers the colours it knows to look for.
+   * This closes the gap on the other side: an off-token colour added to
+   * the banner would go unmeasured, and an unmeasured colour is exactly
+   * how the original 1.05:1 arrived. The decline control in particular was
+   * invisible, which made "you can say no" a claim the page did not keep.
+   */
+  const block = consentBannerCss();
+  const colours = [...block.matchAll(/color:\s*([^;]+);/g)].map((m) =>
+    // `!important` is a specificity decision, not a colour. Leaving it in
+    // the comparison made this test fail on an on-token value.
+    m[1]!.replace(/!important/i, '').trim(),
+  );
+  assert.ok(colours.length >= 3, `the banner declares only ${colours.length} text colours`);
+
+  const allowed = /^(var\(--ink(-[23])?\)|#f4faf9)$/i;
+  const offToken = colours.filter((c) => !allowed.test(c));
+  assert.deepEqual(
+    offToken,
+    [],
+    'the banner carries text colours outside its measured tokens: ' + offToken.join(', '),
+  );
+});

@@ -9,6 +9,7 @@
  *   node scripts/audit-layout.mjs
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 
 const ROUTES = [
   '/', '/get-started', '/how-it-works', '/micro-movement', '/foodlens', '/mova',
@@ -22,7 +23,7 @@ const WIDTHS = [1440, 390];
 const base = process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000';
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: chromiumPath(),
 });
 
 let problems = 0;

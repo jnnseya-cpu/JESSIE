@@ -16,6 +16,7 @@
  *   SHOOT_BASE=http://127.0.0.1:3000 node scripts/audit-csp.mjs
  */
 import { chromium } from 'playwright';
+import { chromiumPath } from '../../../scripts/chromium.mjs';
 /*
  * The button's real label, not a guess at it. The first version of this
  * script looked for a button named /^accept/i; the button says "Yes,
@@ -39,7 +40,7 @@ const ROUTES = [
 const base = process.env.SHOOT_BASE ?? 'http://127.0.0.1:3000';
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  executablePath: chromiumPath(),
 });
 
 const violations = [];

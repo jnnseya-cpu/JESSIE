@@ -14,11 +14,11 @@
  */
 
 import { chromium } from 'playwright';
+import { chromiumPath } from './chromium.mjs';
 
 const FRONTEND = process.env.FRONTEND ?? 'http://localhost:3000';
 const API = process.env.API ?? 'http://localhost:4000/api';
-const EXECUTABLE =
-  process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXECUTABLE = chromiumPath();
 
 let pass = 0;
 let fail = 0;
