@@ -18,8 +18,16 @@ and verified against a real Postgres 16 **here**, and never against
 production — this environment cannot reach `api.jessmove.com`
 (`CONNECT tunnel failed, 403`, by network policy).
 
-What is needed: deploy, then confirm `/api/db/status` reports **35
-migrations**.
+What is needed: deploy, then run
+`scripts/verify-live.sh https://api.jessmove.com/api`.
+
+The migration count used to be something a person had to read off
+`/api/db/status` and compare against a number in this document, which is
+exactly the kind of check that gets ticked from memory. The script now
+counts `db/migrations/*.sql` in the working copy and **fails** if
+production reports fewer, naming both numbers. At the time of writing
+that is **37**; it moves on its own when a migration is added, so this
+sentence cannot go stale.
 
 Two things to know before you do. The migration clears orphan rows before
 each `ALTER`, so it cannot fail on an orphan — all sixteen candidate
@@ -190,6 +198,66 @@ What I will do when the figure arrives: if production is inside budget,
 add `verify:novice` to CI with the production figure recorded beside the
 budget. If it is over, implement whichever of the three options you
 choose.
+### H-10 — Switch on the trend engine, and know what day one looks like
+
+**Owner:** whoever can set environment variables on the API project
+**Blocks:** nothing. The platform behaves exactly as it does today until
+this is done.
+
+The engine is embedded in the editorial autopilot's existing daily tick.
+There is no new cron to create: `apps/backend/vercel.json` already
+schedules `/api/blog/agent/autopilot/cron` at `0 7 * * *`, and that tick
+now reads the evidence before it decides what to write.
+
+**Two variables, both already used by other things:**
+
+| Variable | Value | Why |
+|---|---|---|
+| `SEO_AUTOPILOT` | `on` | The existing autopilot flag. Off, the tick returns without drafting and without collecting. |
+| `CRON_SECRET` | 16+ random characters | Already required by the autopilot and nudge crons. Without it `assertScheduler` refuses every request, including Vercel's. |
+
+No new credential, no new vendor, no AI provider key beyond whatever the
+platform already uses for drafting. The engine reads two tables the
+platform has always written.
+
+**Then confirm, in this order:**
+
+1. `scripts/verify-live.sh https://api.jessmove.com/api` — it now fails if
+   production is behind the schema, which covers migrations 0036 and 0037.
+2. `GET /api/blog/agent/autopilot` as an administrator. Each recent run
+   now carries an `evidence` object. After the first tick, `filed` should
+   be greater than zero and `topicsScored` should be 12.
+
+**What day one looks like, so it is not mistaken for a fault.**
+
+`briefable` will be **empty**, and will stay empty for roughly a month.
+That is the design working, not a failure. A source family needs four
+complete comparable weeks before its gate will open at all — with fewer,
+the engine reports `insufficient_history` and refuses to score, because a
+baseline built from two weeks is a guess with a number attached. And
+confidence is capped at 69 for a single source family, which sits below
+the 75 a brief needs, so a topic has to be visible to two independent
+families before it can earn one.
+
+So the sequence after go-live is: `filed` rises daily from the first tick;
+`topicsScored` is 12 from the first tick; `briefable` stays empty until
+there are four complete weeks of funnel and conversion history on a topic,
+and then names topics as they qualify. An empty `briefable` with a rising
+`filed` is the healthy state in week one.
+
+**What it will never do, so nobody needs to watch for it.** It cannot
+publish. The highest band it can reach puts a topic at the front of a
+reviewer's queue and nothing else; `TrendsModule` imports nothing from the
+blog, so `publish()` is out of reach; and a live change to a page's title
+or meta description happens only through the admin API, only on a page
+already published and already carrying a named reviewer, only with an
+approver who is not the author, and is reversible.
+
+**Nothing to show a member.** There is no console and no member-facing
+surface, by design rather than by omission — `trends-invisible.test.ts`
+fails if one appears. Approval happens through the admin API. If an
+operator console is ever wanted, that is a separate decision with its own
+argument.
 
 ---
 

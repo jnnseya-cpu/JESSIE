@@ -34,6 +34,10 @@ API="${1:-https://api.jessmove.com/api}"
 EXPECTED="${2:-}"
 API="${API%/}"
 
+# Resolved up front: the migration check below needs the repository root,
+# and `here` is not computed until the smoke section.
+here_repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 hard_fail=0
 soft_fail=0
 off_list=""   # capabilities reporting themselves off, for the RESULT line
@@ -72,6 +76,42 @@ EOF
 say "commit      $commit"
 say "status      $status"
 say "migrations  $migrations"
+
+# ── migrations, asserted rather than printed ─────────────────────────────
+#
+# This number was displayed and never checked, which made it decoration.
+# It is the single most useful fact this script can establish, because the
+# database migrates itself on boot: if production reports fewer migrations
+# than this working copy contains, the deployment serving that domain is
+# older than the schema the code expects, and every symptom of that looks
+# like a bug somewhere else.
+#
+# That gap has already cost this platform real time. Migration 0035 fixed
+# a confirmed account deletion leaving a child's health data behind, and
+# confirming it had applied was a human action on a checklist — the sort
+# of thing that gets ticked from memory. Counted from db/migrations rather
+# than hard-coded, so adding one cannot leave this check behind.
+expected_migrations=$(ls "$here_repo"/db/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')
+if [ "$migrations" = "-" ]; then
+  say ""
+  say "FAIL  the API did not report a migration count."
+  say "      Either the database is unreachable from the deployment, or"
+  say "      health is not reporting its database check. Both mean the"
+  say "      schema state is unknown, which is not a pass."
+  hard_fail=1
+elif [ -n "$expected_migrations" ] && [ "$expected_migrations" -gt 0 ] 2>/dev/null; then
+  if [ "$migrations" -lt "$expected_migrations" ] 2>/dev/null; then
+    say ""
+    say "FAIL  serving $migrations migrations, this working copy has $expected_migrations."
+    say "      The deployment is behind the schema the code expects. The"
+    say "      database migrates itself on boot, so this means the instance"
+    say "      answering has not restarted since those migrations were added,"
+    say "      or it cannot reach the database to apply them."
+    hard_fail=1
+  else
+    say "            (expected at least $expected_migrations from db/migrations — ok)"
+  fi
+fi
 
 if [ -n "$EXPECTED" ] && [ "$commit" != "$EXPECTED" ]; then
   say ""

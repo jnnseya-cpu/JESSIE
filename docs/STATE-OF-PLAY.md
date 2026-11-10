@@ -1369,6 +1369,7 @@ A check nobody has seen fail is a check nobody should trust.
 | — | The trend engine must never publish | `trend-intelligence.test.ts` pins `TREND_DECISIONS` by name; migration 0036's `trend_snapshot_decision_known` CHECK; `db/test/constraints.sql` | yes | yes |
 | — | A trend patch must not overwrite an editor | `verify:trends` — a concurrent edit must produce a conflict and the editor's words must survive | yes | yes |
 | — | The constraint count was stated in two files | collapsed to `EXPECTED_CHECKS` in `sql-text.ts`; `db-apply.mjs` reads it rather than restating it | yes | yes |
+| H-1 | The production migration count was printed, never checked | `verify-live.sh` counts `db/migrations/*.sql` and fails if production reports fewer | run by hand against production | yes |
 | — | The trend engine must stay invisible to members | `trends-invisible.test.ts` — no frontend reach, no visible vocabulary, every route admin-only, `publish()` out of module reach, `ActionsService` unexported, collector offline | yes | yes |
 | — | The autopilot must write even when the engine fails | `trends-invisible.test.ts` asserts `readEvidence` catches and `briefFor` falls back; `verify:trends` proves baseline behaviour with no approved brief | yes | yes |
 
