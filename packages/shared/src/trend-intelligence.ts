@@ -549,11 +549,26 @@ export const BRIEF_CHANNELS = [
 ] as const;
 export type BriefChannel = (typeof BRIEF_CHANNELS)[number];
 
-/** The channels that actually have an adapter and a policy behind them. */
-export const AVAILABLE_BRIEF_CHANNELS: readonly BriefChannel[] = [
-  'seo',
-  'organic_social',
-];
+/**
+ * The channels with a platform-owned producer behind them.
+ *
+ * One, for now, and the reason is worth writing down rather than
+ * discovering again. `seo` has the editorial autopilot: the platform's
+ * own agent, drafting the platform's own pages, into a review queue a
+ * person empties.
+ *
+ * `organic_social` does not, and the thing that looks like it is not it.
+ * The only social copy writer here is the partner growth engine, which
+ * writes for affiliates, bills their own allowance and carries their own
+ * brief. Steering a partner's marketing with the platform's brief would
+ * be the platform putting words in a customer's mouth, and it would be
+ * visible to that customer — so it is not wired, and `organic_social`
+ * stays unavailable until the platform has a social writer of its own.
+ *
+ * `lifecycle` means sending email to real people and `paid` means
+ * spending real money. Both stay reserved.
+ */
+export const AVAILABLE_BRIEF_CHANNELS: readonly BriefChannel[] = ['seo'];
 
 /**
  * The one contract every agent reads.
@@ -825,3 +840,42 @@ export function mayProposeLiveWrite(input: {
     why: 'Eligible to be proposed. It still needs an approver who is not the author.',
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Fit and intent, from the platform's own topic map
+ * ------------------------------------------------------------------ */
+
+/**
+ * What a cluster's own search intent is worth as commercial intent.
+ *
+ * A verified mapping, not an inference. The specification is explicit
+ * that a model may suggest fit and intent and that they take effect only
+ * from a verified mapping, so these come from the intent each topic
+ * cluster already declares about itself in `blog.ts`.
+ *
+ * Transactional is somebody ready to act; navigational is somebody
+ * looking for a page they already know exists, which is the weakest
+ * commercial signal there is and the easiest to mistake for demand.
+ */
+export const TOPIC_INTENT_SCORES = {
+  transactional: 95,
+  commercial: 85,
+  informational: 60,
+  navigational: 40,
+} as const;
+
+/**
+ * Platform fit for one of this platform's own topic clusters.
+ *
+ * A hundred, and not a hedge. On a single-product platform, fit asks
+ * whether the business can serve the demand — and `TOPIC_CLUSTERS` is
+ * this platform's own statement of exactly what it covers. A topic in
+ * that list is by definition something JESS MOVE does; a topic outside it
+ * is never scored at all rather than scored low, because an unservable
+ * topic should not be on the board.
+ *
+ * This is the one number in the scoring that a multi-tenant installation
+ * would have to compute per tenant, and the one place the folded form is
+ * genuinely simpler than the specification rather than smaller.
+ */
+export const PLATFORM_CLUSTER_FIT = 100;

@@ -1185,11 +1185,108 @@ compare-and-set, and is reversible. It cannot create a page, cannot
 publish a draft, and `TrendsModule` imports nothing from the blog so it
 cannot reach `publish()` at all.
 
+### Embedded, not bolted on
+
+The first version of this was an island: a module with its own endpoints
+that nothing consulted, a brief no agent resolved, and observations that
+only arrived if somebody posted them. That is not an engine, it is a
+schema.
+
+It now runs inside what already ran. The Vercel cron that has been hitting
+`GET /api/blog/agent/autopilot/cron` daily since before any of this
+existed now, on every tick:
+
+1. **collects** — `CollectorService` reads `funnel_events` and
+   `blog_views`, the two tables the platform has always written, and files
+   them as weekly observations against the topic clusters the blog already
+   organises itself by. No import, no endpoint call, no credential;
+2. **scores** — `scoreClusters()` sweeps all twelve clusters, taking fit
+   from `PLATFORM_CLUSTER_FIT`, intent from each cluster's own declared
+   search intent, and readiness from whether a published, human-reviewed
+   page exists in it to land a change on;
+3. **resolves a brief** — and passes the audience, intent and prohibited
+   claims into the SEO agent as fenced data, labelled in the prompt as a
+   description that cannot change the rules above it.
+
+No second cron. A second schedule is a second thing to forget, and there
+was already a daily tick whose whole job is deciding what to write next.
+
+Collection runs **before** the cadence check, so evidence accrues daily
+even though drafting is weekly. Reading on only the weeks it writes would
+build a baseline from one week in seven.
+
+Two things make it safe to embed. `readEvidence()` swallows its own
+failures and logs them — the writing must not depend on the reading, and
+an intelligence layer that can stop the thing it was meant to improve is
+worse than none. And `briefFor()` returns null on anything at all: no
+brief, an expired one, an unapproved one, an error. Null means the agent
+writes exactly as it did before, which is the specification's baseline
+fallback and the normal case.
+
+### Invisible, and checked
+
+Nothing about this is visible to a member or a visitor. It is a control
+layer, not a feature: the whole of its visible effect is that a page's
+title reads better and an article got written about the right thing,
+which from outside is indistinguishable from a good editor having a good
+week.
+
+That is not an aesthetic preference. The engine scores demand and decides
+what the platform says about people's bodies; a member who could see it
+could learn they are being scored. `trends-invisible.test.ts` asserts the
+absence of a surface, which no other test here does — `admin-guard` asks
+whether a route is guarded and `unreachable` asks whether it can be
+reached, and neither asks whether a member can tell the thing exists:
+
+- no frontend file reaches `/trends`, and none may acquire one;
+- the engine's vocabulary appears nowhere a reader could see it;
+- all eleven routes are admin-only, with no public write beacon — unlike
+  the funnel next door, where a browser saying "somebody landed" is cheap
+  and worthless to forge; writing an observation steers what the platform
+  publishes about health;
+- `TrendsModule` imports nothing from the blog, so `publish()` is out of
+  reach, and `ActionsService` is not exported, so the write path has one
+  door and it is the admin API;
+- the collector reaches no network and reads no configuration beyond
+  `DATABASE_URL`.
+
+### One channel, honestly
+
+`AVAILABLE_BRIEF_CHANNELS` is `['seo']`, narrowed during the embedding
+from two. `organic_social` was removed on inspection: the only social copy
+writer on this platform is the partner growth engine, which writes for
+affiliates, bills their own allowance and carries their own brief.
+Steering a partner's marketing with the platform's brief would be the
+platform putting words in a customer's mouth, and it would be visible to
+that customer. So it is not wired, and the channel stays unavailable until
+the platform has a social writer of its own. `lifecycle` means emailing
+real people and `paid` means spending real money; both stay reserved.
+
 ### Proven, and how
 
-`pnpm verify:trends` — 34 checks, repeatable, seeds and cleans its own
-fixtures. Nineteen of them are refusals, because on this platform the
-refusals are the feature:
+`pnpm verify:trends` — 41 checks, repeatable, seeds and cleans its own
+fixtures. Most are refusals, because on this platform the refusals are
+the feature. Seven of them fire the existing cron and check the engine
+ran anyway:
+
+```
+the existing cron read the evidence without being asked to
+27 observations filed from the platform's own tables
+12 topic clusters swept
+micro-movement earned a brief on first-party evidence alone
+with no approved brief, the agent used baseline behaviour
+a second tick refiles nothing — collection is idempotent
+the run reached no public surface
+```
+
+One result worth keeping. Adding the engaged-reads family *lowered*
+confidence from 85.8 to 82.4 and moved the topic from `priority_review`
+down to `reviewable_brief`. That is correct: attention is context-only
+and cannot corroborate, and it carries the lowest source quality. More
+data made the platform less sure, which is what an honest confidence
+score does and the opposite of what a dashboard usually does.
+
+The scored sweep, from real first-party history:
 
 ```
 opportunity 92.75  confidence 88.75  → priority_review
@@ -1228,9 +1325,14 @@ database constraints, including that no acting decision can be stored.
   allowed to hold. The honest cost is written into the scoring: the
   single-family confidence cap of 69 sits below the 75 a brief needs, so a
   topic seen by one family can never earn one. With two families it can.
-- **No console.** Every endpoint is admin-API-only and has no frontend, so
-  all eleven are in `unreachable-baseline.json` under `admin`. The
-  member-facing ceiling did not move.
+- **No console, by design.** Every endpoint is admin-API-only and has no
+  frontend, so all eleven are in `unreachable-baseline.json` under
+  `admin`, and the member-facing ceiling did not move. This is not a
+  missing piece: the engine is meant to be invisible, and an operator
+  surface is the one part of the specification that would make it visible
+  to anybody who should not see it. Approval happens through the admin
+  API today. If a console is ever wanted it is a staff-only decision with
+  its own argument, not a continuation of this work.
 - **No measurement loop yet.** `trend_experiments` and `trend_outcomes`
   exist with their constraints proven, and nothing writes to them from the
   native surface yet. An action's effect is recorded; its lift is not.
@@ -1267,6 +1369,8 @@ A check nobody has seen fail is a check nobody should trust.
 | — | The trend engine must never publish | `trend-intelligence.test.ts` pins `TREND_DECISIONS` by name; migration 0036's `trend_snapshot_decision_known` CHECK; `db/test/constraints.sql` | yes | yes |
 | — | A trend patch must not overwrite an editor | `verify:trends` — a concurrent edit must produce a conflict and the editor's words must survive | yes | yes |
 | — | The constraint count was stated in two files | collapsed to `EXPECTED_CHECKS` in `sql-text.ts`; `db-apply.mjs` reads it rather than restating it | yes | yes |
+| — | The trend engine must stay invisible to members | `trends-invisible.test.ts` — no frontend reach, no visible vocabulary, every route admin-only, `publish()` out of module reach, `ActionsService` unexported, collector offline | yes | yes |
+| — | The autopilot must write even when the engine fails | `trends-invisible.test.ts` asserts `readEvidence` catches and `briefFor` falls back; `verify:trends` proves baseline behaviour with no approved brief | yes | yes |
 
 ### What CI runs, and what it does not
 

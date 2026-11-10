@@ -3,6 +3,9 @@ import { makePool, type PgPoolLike } from '../db/pg';
 import { buildLinkGraph, type LinkGraph } from '@jessmove/shared';
 import { BlogService } from './blog.service';
 import { SeoAgentService } from './seo-agent.service';
+import { BriefsService } from '../trends/briefs.service';
+import { CollectorService } from '../trends/collector.service';
+import { TrendsService } from '../trends/trends.service';
 import {
   AUTOPILOT_INTERVAL_HOURS,
   intervalHours,
@@ -66,8 +69,8 @@ export class SeoAutopilotService implements OnModuleDestroy {
     if (!this.pool) return;
     try {
       await this.pool.query(
-        `INSERT INTO autopilot_runs (at, outcome, says, keyword, cluster_key, slug, score, blockers, acu_spent)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
+        `INSERT INTO autopilot_runs (at, outcome, says, keyword, cluster_key, slug, score, blockers, acu_spent, evidence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb)`,
         [
           record.at,
           record.outcome,
@@ -78,6 +81,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
           record.score,
           JSON.stringify(record.blockers ?? []),
           record.acuSpent ?? 0,
+          record.evidence ? JSON.stringify(record.evidence) : null,
         ],
       );
     } catch (error) {
@@ -106,7 +110,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
     if (!this.pool) return this.history.slice(-limit).reverse() as unknown as Record<string, unknown>[];
     try {
       const { rows } = await this.pool.query(
-        `SELECT at, outcome, says, keyword, cluster_key, slug, score, blockers, acu_spent
+        `SELECT at, outcome, says, keyword, cluster_key, slug, score, blockers, acu_spent, evidence
            FROM autopilot_runs ORDER BY at DESC LIMIT $1`,
         [limit],
       );
@@ -116,10 +120,89 @@ export class SeoAutopilotService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Reading the evidence before deciding what to write.
+   *
+   * The trend engine is injected here rather than given a cron of its
+   * own. There is already a daily tick whose entire job is to decide what
+   * to write next, and reading the evidence is the natural beginning of
+   * that job — a second schedule would be a second thing to forget, and
+   * a separate engine nobody consults is what this was before.
+   *
+   * All three are used read-mostly and none of them can publish. The
+   * brief narrows who a draft is for; it cannot change the audit, the
+   * forbidden terms, the queue limit or the review requirement.
+   */
   constructor(
     private readonly blog: BlogService,
     private readonly agent: SeoAgentService,
+    private readonly collector: CollectorService,
+    private readonly trends: TrendsService,
+    private readonly briefs: BriefsService,
   ) {}
+
+  /**
+   * Read the evidence. Never fails the run.
+   *
+   * Wrapped because the writing must not depend on the reading. If the
+   * collector or the scorer throws — a schema change, a database blip —
+   * the autopilot carries on doing exactly what it did before the trend
+   * engine existed, and says so in the record. An intelligence layer that
+   * can stop the thing it was meant to improve is worse than no
+   * intelligence layer.
+   */
+  private async readEvidence(): Promise<{
+    filed: number;
+    duplicate: number;
+    topicsScored: number;
+    briefable: readonly string[];
+  }> {
+    try {
+      const collected = await this.collector.collect();
+      const scored = await this.trends.scoreClusters();
+      if (scored.summary.length > 0) {
+        this.logger.log(`trend sweep: ${scored.summary.join(' | ')}`);
+      }
+      return {
+        filed: collected.filed,
+        duplicate: collected.duplicate,
+        topicsScored: scored.scored,
+        briefable: scored.briefable,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `trend evidence unavailable, continuing on baseline behaviour: ${(error as Error).message}`,
+      );
+      return { filed: 0, duplicate: 0, topicsScored: 0, briefable: [] };
+    }
+  }
+
+  /**
+   * The approved brief for a cluster, or nothing.
+   *
+   * Nothing is the normal answer and must stay cheap: no brief means the
+   * agent writes exactly as it always did. This is the specification's
+   * baseline fallback, and it is the behaviour on a timeout, on an
+   * expired brief, on an unapproved one and on an error alike.
+   */
+  private async briefFor(clusterKey: string | null): Promise<{
+    audience: string;
+    intent: string;
+    prohibitedClaims: readonly string[];
+  } | null> {
+    if (!clusterKey) return null;
+    try {
+      const resolved = await this.briefs.effective(clusterKey, 'seo');
+      if (!resolved.brief) return null;
+      return {
+        audience: resolved.brief.audience,
+        intent: resolved.brief.intent,
+        prohibitedClaims: resolved.brief.prohibitedClaims,
+      };
+    } catch {
+      return null;
+    }
+  }
 
   /** The site's link graph, from whatever is published right now. */
   async graph(): Promise<LinkGraph> {
@@ -238,6 +321,18 @@ export class SeoAutopilotService implements OnModuleDestroy {
    * check and the audit.
    */
   async run(force = false): Promise<RunRecord> {
+    /*
+     * The evidence is read on every tick, before the cadence check, and
+     * deliberately so. Writing happens weekly; demand does not. If
+     * collection only ran on the weeks a draft was commissioned, the
+     * baseline would be built from one week in seven and the engine would
+     * be comparing this week against a history it had mostly not seen.
+     *
+     * This is also the whole of the "invisible" part: nobody imports
+     * anything, nobody calls an endpoint, and the only trace is a line in
+     * the run record.
+     */
+    const evidence = await this.readEvidence();
     const decision = await this.decision();
     const at = new Date().toISOString();
 
@@ -251,6 +346,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
         score: null,
         blockers: [],
         acuSpent: 0,
+        evidence: { ...evidence, briefUsed: null },
       };
       await this.remember(record);
       return record;
@@ -267,10 +363,17 @@ export class SeoAutopilotService implements OnModuleDestroy {
         score: null,
         blockers: [],
         acuSpent: 0,
+        evidence: { ...evidence, briefUsed: null },
       };
       await this.remember(record);
       return record;
     }
+
+    const brief = await this.briefFor(commission.clusterKey ?? null);
+    const evidenceWithBrief = {
+      ...evidence,
+      briefUsed: brief ? (commission.clusterKey ?? null) : null,
+    };
 
     // From here the run has happened, whatever the outcome. Stamping the
     // time before the model call means a provider that hangs cannot be
@@ -285,6 +388,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
         keyword: commission.keyword,
         clusterKey: commission.clusterKey,
         strict: commission.strict,
+        brief,
       });
 
       const call = verdict(result.audit);
@@ -302,6 +406,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
           score: result.audit.score,
           blockers,
           acuSpent: result.acuCeiling,
+          evidence: evidenceWithBrief,
         };
       } else {
         const stored = await this.blog.saveDraft(result.draft, true);
@@ -316,6 +421,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
           score: result.audit.score,
           blockers: [],
           acuSpent: result.acuCeiling,
+          evidence: evidenceWithBrief,
         };
       }
     } catch (error) {
@@ -332,6 +438,7 @@ export class SeoAutopilotService implements OnModuleDestroy {
         score: null,
         blockers: [],
         acuSpent: 0,
+        evidence: evidenceWithBrief,
       };
     }
 

@@ -253,6 +253,22 @@ export interface RunRecord {
   readonly score: number | null;
   readonly blockers: readonly string[];
   readonly acuSpent: number;
+  /**
+   * What the run read before it decided, and whether a brief steered it.
+   *
+   * Optional because every record written before the trend engine existed
+   * has none, and a field that forces a migration of history is a field
+   * that gets left out instead. `null` means the engine had nothing to
+   * say and the agent used its baseline behaviour, which is the normal
+   * case and not a fault.
+   */
+  readonly evidence?: {
+    readonly filed: number;
+    readonly duplicate: number;
+    readonly topicsScored: number;
+    readonly briefable: readonly string[];
+    readonly briefUsed: string | null;
+  } | null;
 }
 
 /**

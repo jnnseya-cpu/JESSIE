@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ActionsService } from './actions.service';
+import { CollectorService } from './collector.service';
 import { BriefsService } from './briefs.service';
 import { TrendsController } from './trends.controller';
 import { TrendsService } from './trends.service';
@@ -21,7 +22,14 @@ import { TrendsService } from './trends.service';
  */
 @Module({
   controllers: [TrendsController],
-  providers: [TrendsService, BriefsService, ActionsService],
-  exports: [BriefsService],
+  providers: [TrendsService, BriefsService, ActionsService, CollectorService],
+  /*
+   * Exported for the editorial autopilot, which reads the evidence and
+   * resolves a brief on its own daily tick. Deliberately read-mostly:
+   * `ActionsService` is NOT exported, so nothing outside this module can
+   * propose, approve or apply a write to a public page. The write path
+   * has one door and it is the admin API.
+   */
+  exports: [BriefsService, CollectorService, TrendsService],
 })
 export class TrendsModule {}

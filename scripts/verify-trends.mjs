@@ -183,8 +183,16 @@ console.log('\n0. The policy is published, not described');
   d.decisions.includes('priority_review') && !d.decisions.some((x) => /auto/.test(x))
     ? ok('no decision in the published policy acts without a person')
     : bad('the published policy offers an automatic decision');
-  JSON.stringify(d.availableChannels) === JSON.stringify(['seo', 'organic_social'])
-    ? ok('only the two channels with adapters are advertised')
+  /*
+   * One channel, and that is the honest number. `seo` has the editorial
+   * autopilot behind it. `organic_social` does not: the only social
+   * writer here is the partner growth engine, which writes for
+   * affiliates on their own allowance, and steering a customer's
+   * marketing with the platform's brief would be both wrong and visible
+   * to them.
+   */
+  JSON.stringify(d.availableChannels) === JSON.stringify(['seo'])
+    ? ok('only the channel with a platform-owned producer is advertised')
     : bad('advertised channels', JSON.stringify(d.availableChannels));
 }
 
@@ -272,8 +280,15 @@ let briefId = null, briefVersion = null;
   const after = await j(await call(session, `/trends/briefs/effective?topicId=${TOPIC}&channel=seo`));
   const a = (after.data ?? after).brief;
   a && a.approvedBy === 'ti.editor@example.test' ? ok('the approved brief resolves, carrying its reviewer') : bad('effective brief', JSON.stringify(after).slice(0, 250));
-  const wrong = await j(await call(session, `/trends/briefs/effective?topicId=${TOPIC}&channel=organic_social`));
-  (wrong.data ?? wrong).brief === null ? ok('a channel the brief does not allow resolves to nothing') : bad('wrong channel resolved');
+  // A channel with no producer is refused by name, with the list of the
+  // ones that have one — rather than resolving to a silent nothing that
+  // reads like "no brief today".
+  const wrong = await j(
+    await call(session, `/trends/briefs/effective?topicId=${TOPIC}&channel=organic_social`),
+  );
+  /channel must be one of/.test(JSON.stringify(wrong))
+    ? ok('a channel with no platform-owned producer is refused by name')
+    : bad('unavailable channel not refused', JSON.stringify(wrong).slice(0, 200));
 }
 
 if (!briefId || !briefVersion || !snapshotId) {
@@ -378,7 +393,114 @@ let actionId = null;
 }
 
 
-console.log('\n5. What this run proves, and what it does not');
+console.log('\n5. Embedded: the existing autopilot tick does it, unprompted');
+{
+  /*
+   * The point of this section is that nothing below calls the trend
+   * engine. It fires the cron the platform already had — the one Vercel
+   * has been hitting daily since before any of this existed — and checks
+   * that the evidence was read anyway.
+   *
+   * CRON_SECRET is required rather than optional. A section that skips
+   * itself when an environment variable is missing is how a check stops
+   * running without anybody noticing, which is the failure this whole
+   * suite exists to prevent.
+   */
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || cronSecret.length < 16) {
+    bad(
+      'the embedded path could not be exercised',
+      'CRON_SECRET must be set to 16+ characters, and SEO_AUTOPILOT=on, ' +
+        'for the autopilot tick to run. Not skipped: a check that skips ' +
+        'itself is a check that stopped running.',
+    );
+  } else {
+    // Real first-party history on a real cluster, written to the tables
+    // the platform writes itself. Nothing is inserted into the engine.
+    const cluster = 'micro-movement';
+    const slug = 'verify-embedded-reads';
+    sql(
+      `INSERT INTO posts (slug,title,description,category,keyword,body,cluster_key,status,reviewed_by,agent_drafted,author,published_at)
+       VALUES ('${slug}','Desk breaks','Short movements between meetings.','movement','desk breaks','Body.','${cluster}','published','a.physio@example.test',false,'Editor',now())
+       ON CONFLICT (slug) DO UPDATE SET cluster_key='${cluster}', status='published',
+         reviewed_by='a.physio@example.test', published_at=now()`,
+    );
+    sql(`DELETE FROM funnel_events WHERE path = '/blog/${slug}'`);
+    sql(`DELETE FROM trend_observations WHERE source_id LIKE 'firstparty%' AND topic_id = '${cluster}'`);
+    sql(
+      `DO $$
+       DECLARE w int; n int;
+       BEGIN
+         FOR w IN 1..9 LOOP
+           n := CASE WHEN w = 1 THEN 70 ELSE 22 + (w % 3) END;
+           FOR i IN 1..n LOOP
+             INSERT INTO funnel_events (step, source, path, at)
+             VALUES ('opened','verify','/blog/${slug}',
+                     date_trunc('week', now()) - (w || ' weeks')::interval + '2 days'::interval);
+           END LOOP;
+           n := CASE WHEN w = 1 THEN 64 ELSE 21 + (w % 3) END;
+           FOR i IN 1..n LOOP
+             INSERT INTO funnel_events (step, source, path, at)
+             VALUES ('registered','verify','/blog/${slug}',
+                     date_trunc('week', now()) - (w || ' weeks')::interval + '2 days'::interval);
+           END LOOP;
+         END LOOP;
+       END $$`,
+    );
+
+    const tick = async () =>
+      unwrap(
+        await j(
+          await fetch(`${API}/blog/agent/autopilot/cron`, {
+            headers: { authorization: `Bearer ${cronSecret}` },
+          }),
+        ),
+      );
+
+    const first = await tick();
+    const evidence = first.evidence;
+    evidence
+      ? ok('the existing cron read the evidence without being asked to')
+      : bad('the autopilot run carries no evidence', JSON.stringify(first).slice(0, 200));
+
+    if (evidence) {
+      evidence.filed >= 18
+        ? ok(`${evidence.filed} observations filed from the platform's own tables`)
+        : bad('nothing was collected', JSON.stringify(evidence));
+      evidence.topicsScored >= 12
+        ? ok(`${evidence.topicsScored} topic clusters swept`)
+        : bad('the sweep covered too few clusters', String(evidence.topicsScored));
+      evidence.briefable.includes(cluster)
+        ? ok(`${cluster} earned a brief on first-party evidence alone`)
+        : bad('no topic earned a brief', JSON.stringify(evidence.briefable));
+      /*
+       * Null is the correct answer and the important one: no brief has
+       * been approved for this cluster, so the agent wrote exactly as it
+       * did before the engine existed. This is the specification's
+       * baseline fallback, and it is the normal case.
+       */
+      evidence.briefUsed === null
+        ? ok('with no approved brief, the agent used baseline behaviour')
+        : bad('a brief steered a draft without being approved', String(evidence.briefUsed));
+    }
+
+    const second = await tick();
+    second.evidence && second.evidence.duplicate >= 18 && second.evidence.filed === 0
+      ? ok('a second tick refiles nothing — collection is idempotent')
+      : bad('collection is not idempotent', JSON.stringify(second.evidence));
+
+    first.reachedThePublic === false
+      ? ok('the run reached no public surface')
+      : bad('a run claims to have reached the public', String(first.reachedThePublic));
+
+    sql(`DELETE FROM funnel_events WHERE path = '/blog/${slug}'`);
+    sql(`DELETE FROM trend_observations WHERE source_id LIKE 'firstparty%' AND topic_id = '${cluster}'`);
+    sql(`DELETE FROM trend_opportunity_snapshots WHERE topic_id = '${cluster}'`);
+    sql(`DELETE FROM posts WHERE slug = '${slug}'`);
+  }
+}
+
+console.log('\n6. What this run proves, and what it does not');
 {
   /*
    * The release gate asks for an explicit assertion that no new

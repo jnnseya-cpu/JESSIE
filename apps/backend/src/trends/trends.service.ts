@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  PLATFORM_CLUSTER_FIT,
   SOURCE_FAMILY_DEFINITIONS,
+  TOPIC_CLUSTERS,
+  TOPIC_INTENT_SCORES,
   confidenceScore,
   corroborationScore,
   countFeedGate,
@@ -347,6 +350,82 @@ export class TrendsService {
       ],
     );
     return { id: rows[0]?.id ? String(rows[0].id) : null, frozen: true };
+  }
+
+  /**
+   * Score every topic the platform writes about, and freeze each one.
+   *
+   * This is what the autopilot calls. It is deliberately a sweep rather
+   * than a query: the engine's job is to notice a change nobody asked
+   * about, and a sweep over the platform's own cluster map is the whole
+   * of the search space on a single-product platform.
+   *
+   * Readiness is read from the database rather than passed in, because it
+   * is the one input that is a fact about right now: whether there is a
+   * published, human-reviewed page in that cluster for an approved change
+   * to land on. With none, readiness is zero, which vetoes activation —
+   * the specification is explicit that missing readiness blocks it, and
+   * the alternative is a reviewer being shown an actionable-looking topic
+   * with nothing to act on.
+   */
+  async scoreClusters(now = new Date()): Promise<{
+    scored: number;
+    briefable: readonly string[];
+    summary: readonly string[];
+  }> {
+    const readiness = await this.readinessByCluster();
+    const briefable: string[] = [];
+    const summary: string[] = [];
+
+    for (const cluster of TOPIC_CLUSTERS) {
+      const scored = await this.score(
+        {
+          topicId: cluster.key,
+          fit: PLATFORM_CLUSTER_FIT,
+          intent: TOPIC_INTENT_SCORES[cluster.intent],
+          readiness: readiness.get(cluster.key) ?? 0,
+          vetoes: [],
+        },
+        now,
+      );
+      await this.snapshot(scored);
+      if (scored.verdict.mayCreateBrief) briefable.push(cluster.key);
+      // Only topics with something to say are worth a line. A sweep that
+      // logs thirty "no observations" lines is a sweep nobody reads.
+      if (scored.families.some((f) => f.contributed)) {
+        summary.push(
+          `${cluster.key}: ${scored.verdict.opportunity.toFixed(1)}/` +
+            `${scored.verdict.confidence.toFixed(1)} → ${scored.verdict.decision}`,
+        );
+      }
+    }
+
+    return { scored: TOPIC_CLUSTERS.length, briefable, summary };
+  }
+
+  /**
+   * Readiness per cluster: is there something approved to land a change on.
+   *
+   * A published post that carries a named reviewer. An unreviewed draft is
+   * not readiness, and neither is a page nobody signed for — those are
+   * exactly the pages nothing may patch.
+   */
+  private async readinessByCluster(): Promise<Map<string, number>> {
+    const readiness = new Map<string, number>();
+    if (!this.pool) return readiness;
+    const { rows } = await this.pool.query(
+      `SELECT cluster_key, count(*) AS n
+         FROM posts
+        WHERE status = 'published' AND reviewed_by IS NOT NULL
+          AND cluster_key IS NOT NULL
+        GROUP BY cluster_key`,
+    );
+    for (const row of rows) {
+      // Present and approved is ready. More pages do not make a cluster
+      // readier than ready, so this is not a count dressed as a score.
+      readiness.set(String(row.cluster_key), Number(row.n) > 0 ? 100 : 0);
+    }
+    return readiness;
   }
 
   /**

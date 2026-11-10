@@ -1,0 +1,14 @@
+-- What the autopilot read before it decided.
+--
+-- Additive and nullable, so every run recorded before the trend engine
+-- existed stays valid and nothing that writes this table today needs to
+-- change. Null means "this run predates the engine, or the engine had
+-- nothing to say" — the two are distinguishable by the run's date, and
+-- conflating them in a backfill would invent history.
+--
+-- Kept because the alternative is an engine whose only trace is a log
+-- line. A reviewer looking at a queued draft should be able to find out
+-- whether a brief steered it and what evidence stood behind that brief,
+-- months later, without that answer depending on an instance still being
+-- warm.
+ALTER TABLE autopilot_runs ADD COLUMN IF NOT EXISTS evidence jsonb;

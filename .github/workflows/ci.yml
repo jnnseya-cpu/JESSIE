@@ -110,13 +110,20 @@ jobs:
       # could not be tested from the development container, so each
       # dependent step re-checks /api/health first and fails naming the
       # reason. A dead server must not read as fifty connection errors.
+      # CRON_SECRET is generated here and exported for the trend step,
+      # which fires the autopilot tick the same way Vercel's cron does.
+      # Generated, never committed: it authorises a scheduler, not a user.
       - name: Start the API
         env:
           DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
         run: |
+          CRON_SECRET="$(openssl rand -hex 24)"
+          echo "CRON_SECRET=$CRON_SECRET" >> "$GITHUB_ENV"
           AUTH_SECRET="$(openssl rand -hex 32)" \
           AUTH_ENFORCE=true \
           ADMIN_EMAILS="ti.admin@example.test,ti.editor@example.test" \
+          SEO_AUTOPILOT=on \
+          CRON_SECRET="$CRON_SECRET" \
           setsid node apps/backend/dist/main.js > /tmp/api.log 2>&1 < /dev/null &
           for i in $(seq 1 60); do
             curl -sf http://localhost:4000/api/health >/dev/null && break

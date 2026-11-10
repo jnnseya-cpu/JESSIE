@@ -416,13 +416,19 @@ test('a channel with no adapter is refused, and the reserved values stay unavail
    * real people and `paid` means spending real money; neither has an
    * adapter here and a brief naming either must be refused.
    */
-  for (const channel of ['lifecycle', 'paid', 'owned_placement'] as const) {
+  for (const channel of ['lifecycle', 'paid', 'owned_placement', 'organic_social'] as const) {
     const check = checkBrief(briefFixture({ allowedChannels: [channel] }), NOW);
     assert.equal(check.ok, false, `${channel} was accepted as available`);
     assert.ok(check.rejections.includes('unavailable_channel'));
   }
 
-  assert.deepEqual([...AVAILABLE_BRIEF_CHANNELS], ['seo', 'organic_social']);
+  /*
+   * One available channel. `organic_social` moved out of this list when
+   * the engine was embedded: the only social writer on the platform is
+   * the partner growth engine, which writes for affiliates and bills
+   * their allowance, so the platform's brief must not reach it.
+   */
+  assert.deepEqual([...AVAILABLE_BRIEF_CHANNELS], ['seo']);
   for (const available of AVAILABLE_BRIEF_CHANNELS) {
     assert.ok(
       (BRIEF_CHANNELS as readonly BriefChannel[]).includes(available),
@@ -432,13 +438,24 @@ test('a channel with no adapter is refused, and the reserved values stay unavail
 
   // Asking for a channel the brief does not allow is a different refusal
   // from asking for one nothing supports, and must not be conflated.
+  /*
+   * Asking for a channel the brief does not list is a different refusal
+   * from asking for one nothing supports, and conflating them would hide
+   * a brief that was scoped to one channel being acted on for another.
+   * `owned_placement` is used here because it is reserved rather than
+   * available, so this case reports both reasons and must include the
+   * specific one.
+   */
   const wrongChannel = checkBrief(
     briefFixture({ allowedChannels: ['seo'] }),
     NOW,
-    'organic_social',
+    'owned_placement',
   );
   assert.equal(wrongChannel.ok, false);
-  assert.ok(wrongChannel.rejections.includes('channel_not_in_brief'));
+  assert.ok(
+    wrongChannel.rejections.includes('channel_not_in_brief'),
+    `expected channel_not_in_brief, got ${wrongChannel.rejections.join(', ')}`,
+  );
 });
 
 /* ------------------------------------------------------------------ *
