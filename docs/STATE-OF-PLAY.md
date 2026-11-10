@@ -1124,6 +1124,119 @@ name before doing anything else.
 
 ---
 
+## Trend intelligence
+
+Built and proven, on 10 November 2026, from the Trend Intelligence AI
+build specification v2.3. **Not live** — it has never run against
+jessmove.com, and this machine cannot reach it.
+
+### What was folded in, and what was not
+
+The specification describes a standalone, multi-tenant, resaleable engine:
+installations, entitlements, metering, a React console, signed OCI images,
+optional self-hosted GPU inference, Python and FastAPI. That product was
+**not** built, by decision. This platform is one product with one tenant,
+and a second multi-tenant API architecture inside it would be duplicate
+architecture with no customer on the other end.
+
+What was missing here, and is now built:
+
+| Specification | Here |
+|---|---|
+| §5 observations with provenance | `trend_observations`, four first-party source families, windows kept separate from ingestion time |
+| §5 detection and scoring | `packages/shared/src/trend-intelligence.ts` — log lift, MAD-robust z, both count gates, opportunity (25/25/20/15/15), confidence (35/25/20/20) |
+| §6 the Growth Brief | `growth_briefs`, versioned, expiring, one active per topic, approved by a named person |
+| §6 actions, approvals, outbox | `growth_actions`, `growth_action_approvals`, `growth_action_outbox` — payload-hash-bound approval, author ≠ approver, compare-and-set write, rollback |
+| §10 experiments and outcomes | `trend_experiments`, `trend_outcomes` — hypothesis frozen at approval, `inconclusive` a first-class verdict |
+| §21 conformance | TI-01, TI-03, TI-04, TI-05, TI-08 covered; `pnpm verify:trends` runs 34 checks end to end |
+
+What was reused rather than rebuilt: `AGENT_REGISTRY` and
+`isToolPermitted` for agent authority, `seo-autopilot.logic.ts` and
+`seoAudit` for the SEO channel, `POST_STATUSES`/`canTransition` for the
+review gate, `ViewEvent`/`aggregateViews` for first-party outcomes,
+`funnel_events` for signals, `NotEnoughData` for insufficient evidence.
+
+### The refusal
+
+The specification's §5 makes a score of 85 with a confidence of 85
+"eligible for bounded automatic action", and §7 floats automatically
+running a CTA variant on a tenth of eligible traffic. **Neither is built,
+and neither will be.** On a platform where an agent writes about people's
+bodies both are a draft-to-published edge, which is a clinical safety
+control rather than a preference.
+
+The band exists and earns attention instead: `priority_review` moves a
+topic to the front of a reviewer's queue and does nothing else. It is
+pinned in three places, so losing it takes three deliberate acts rather
+than one careless one:
+
+- `TREND_DECISIONS` is asserted by name in `trend-intelligence.test.ts`,
+  and every member is checked against `/auto|publish|live|send|execute/`;
+- the `trend_snapshot_decision_known` CHECK in migration 0036 refuses to
+  store any other decision, so a change in the application fails at the
+  database;
+- `db/test/constraints.sql` proves that refusal on every `pnpm db:test`.
+
+A live patch can touch exactly two columns — `title` and `description` —
+on a page that is already published and already carries a named reviewer.
+It needs an approver who is not its author, binds that approval to the
+payload hash, re-checks every guard after the queue delay, writes by
+compare-and-set, and is reversible. It cannot create a page, cannot
+publish a draft, and `TrendsModule` imports nothing from the blog so it
+cannot reach `publish()` at all.
+
+### Proven, and how
+
+`pnpm verify:trends` — 34 checks, repeatable, seeds and cleans its own
+fixtures. Nineteen of them are refusals, because on this platform the
+refusals are the feature:
+
+```
+opportunity 92.75  confidence 88.75  → priority_review
+used   conversion       z of 5.19 on 64 observations.
+used   funnel           z of 5.42 on 70 observations.
+unused blog_engagement  No observations. Unknown, not zero interest.
+unused support_topic    No observations. Unknown, not zero interest.
+```
+
+Proven: an exact replay is all duplicates; readiness of zero vetoes rather
+than averaging away; a brief on a channel with no adapter is refused; an
+unapproved brief does not resolve; a channel the brief does not allow
+resolves to nothing; an unreviewed draft page cannot be patched; a field
+outside the allowlist is refused by name; a patch cannot blank a field; a
+reserved action kind is refused rather than half-attempted; an identical
+proposal returns the same action; the author cannot approve their own
+change; an approval for a different payload is refused; a concurrent
+editor edit produces a conflict and the editor's words survive; the
+approved text reaches the published page; rollback restores exactly what
+was there; the audit trail names the approver and the final state.
+
+Also proven: 26 unit tests on the arithmetic, including the
+specification's TI-03 figures of 86.25 and 83.5 exactly, each confirmed by
+mutating the implementation and watching the intended test fail. And 16
+database constraints, including that no acting decision can be stored.
+
+### What is not proven, and will not be from here
+
+- **Nothing is live.** It has never run against jessmove.com.
+- **One profile, not two.** The specification's G3 portability gate wants
+  two dissimilar profiles with different locales and outcome types. This
+  is one product, one locale, one outcome definition — so that gate is out
+  of scope rather than pending.
+- **First-party signals only.** Search Console, Trends, Keyword Planner
+  and every other richer source needs a credential this platform is not
+  allowed to hold. The honest cost is written into the scoring: the
+  single-family confidence cap of 69 sits below the 75 a brief needs, so a
+  topic seen by one family can never earn one. With two families it can.
+- **No console.** Every endpoint is admin-API-only and has no frontend, so
+  all eleven are in `unreachable-baseline.json` under `admin`. The
+  member-facing ceiling did not move.
+- **No measurement loop yet.** `trend_experiments` and `trend_outcomes`
+  exist with their constraints proven, and nothing writes to them from the
+  native surface yet. An action's effect is recorded; its lift is not.
+
+---
+
 ## What guards what
 
 A fix with no check behind it is a fix waiting to be undone, usually by
@@ -1151,6 +1264,9 @@ A check nobody has seen fail is a check nobody should trust.
 | — | `POST /accounts` was a second open door past registration | `admin-guard.test.ts` | yes | yes |
 | — | `push/subscribe` took its owner from the request body | `admin-guard.test.ts` | yes | yes |
 | — | 943 tests were never type-checked, hiding five defects | `tsconfig.test.json` in three packages, wired into `pnpm typecheck` | yes | yes |
+| — | The trend engine must never publish | `trend-intelligence.test.ts` pins `TREND_DECISIONS` by name; migration 0036's `trend_snapshot_decision_known` CHECK; `db/test/constraints.sql` | yes | yes |
+| — | A trend patch must not overwrite an editor | `verify:trends` — a concurrent edit must produce a conflict and the editor's words must survive | yes | yes |
+| — | The constraint count was stated in two files | collapsed to `EXPECTED_CHECKS` in `sql-text.ts`; `db-apply.mjs` reads it rather than restating it | yes | yes |
 
 ### What CI runs, and what it does not
 

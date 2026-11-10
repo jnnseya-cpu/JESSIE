@@ -116,6 +116,7 @@ jobs:
         run: |
           AUTH_SECRET="$(openssl rand -hex 32)" \
           AUTH_ENFORCE=true \
+          ADMIN_EMAILS="ti.admin@example.test,ti.editor@example.test" \
           setsid node apps/backend/dist/main.js > /tmp/api.log 2>&1 < /dev/null &
           for i in $(seq 1 60); do
             curl -sf http://localhost:4000/api/health >/dev/null && break
@@ -149,6 +150,14 @@ jobs:
         env:
           DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
         run: pnpm verify:recovery
+
+      # Detection, one shared brief, a named approval, a compare-and-set
+      # patch to an owned page, and a rollback — with no provider
+      # credential anywhere in it. Fifteen of its checks are refusals.
+      - name: Trend intelligence, end to end
+        env:
+          DATABASE_URL: postgres://jessmove:jessmove@localhost:5432/jessmove
+        run: pnpm verify:trends
 
       - name: Nothing unwired, nothing unreachable
         run: |

@@ -50,6 +50,31 @@ const rowsOf = (result) =>
 const ADOPTION_MARKERS = { '0001_core': 'tenants', '0002_identity': 'app_users' };
 const LOCK_KEY = 724_700_121;
 
+/**
+ * How many promises db/test/constraints.sql makes.
+ *
+ * Read out of `sql-text.ts` rather than restated here. An earlier version
+ * of this file kept its own copy of the number, which is two numbers that
+ * must agree — and two numbers that must agree eventually do not. This is
+ * a regex rather than an import because this script is plain JavaScript
+ * run before anything is built.
+ */
+const EXPECTED_CHECKS = (() => {
+  const source = readFileSync(
+    join(repoRoot, 'apps', 'backend', 'src', 'db', 'sql-text.ts'),
+    'utf8',
+  );
+  const found = /export const EXPECTED_CHECKS = (\d+);/.exec(source);
+  if (!found) {
+    throw new Error(
+      'could not read EXPECTED_CHECKS from apps/backend/src/db/sql-text.ts. ' +
+        'Refusing to guess: a wrong count here makes a missing constraint ' +
+        'look like a passing suite.',
+    );
+  }
+  return Number(found[1]);
+})();
+
 const pool = new Pool({
   connectionString: url,
   max: 1,
@@ -102,8 +127,15 @@ try {
       .flatMap((r) => Object.values(r))
       .filter((v) => typeof v === 'string' && v.startsWith('ok'));
     for (const line of checks) console.log(line);
-    console.log(`\n${checks.length} checks passed (expected 21)`);
-    if (checks.length !== 21) {
+    /*
+     * The count is pinned so a rule cannot leave the suite quietly. A
+     * check that stops running reports nothing: the suite still says
+     * "all passed", with one fewer promise behind it. Raising this
+     * number is ordinary work; lowering it means a constraint was
+     * removed, and that should be argued for in the commit.
+     */
+    console.log(`\n${checks.length} checks passed (expected ${EXPECTED_CHECKS})`);
+    if (checks.length !== EXPECTED_CHECKS) {
       failed = true;
       console.error('check count mismatch — a rule is missing or the suite changed without updating this count');
     }

@@ -45,6 +45,9 @@
     "GET /mail/recent",
     "GET /newsletter/issues/:issueKey/sends",
     "GET /security/events",
+    "GET /trends/actions/:id",
+    "GET /trends/briefs/effective",
+    "GET /trends/policy",
     "POST /acu/wallets",
     "POST /acu/wallets/:id/subscription",
     "POST /acu/wallets/:id/topup",
@@ -59,7 +62,15 @@
     "POST /mail/send",
     "POST /newsletter/issues/:issueKey/send",
     "POST /newsletter/issues/:issueKey/status",
-    "POST /security/triage"
+    "POST /security/triage",
+    "POST /trends/actions",
+    "POST /trends/actions/:id/approve",
+    "POST /trends/actions/:id/execute",
+    "POST /trends/actions/:id/rollback",
+    "POST /trends/briefs",
+    "POST /trends/briefs/approve",
+    "POST /trends/observations",
+    "POST /trends/score"
   ],
   "cron": [
     "GET /blog/agent/autopilot/cron",

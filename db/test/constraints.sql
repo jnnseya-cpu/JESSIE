@@ -196,4 +196,157 @@ SELECT pg_temp.must_reject(
 
 SELECT 'ok   — a guardian and a linked minor both insert';
 
+-- ------------------------------------------------------------
+-- Trend intelligence (0036)
+--
+-- The promises that must outlive a refactor of the service making
+-- them. Each one is the database refusing something the application
+-- also refuses, so a bug in one layer is caught by the other.
+-- ------------------------------------------------------------
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_observations
+        (source_id,source_family,source_record_id,topic_id,metric,value,unit,
+         observed_at,window_start,window_end,coverage)
+      VALUES ('s1','crystal_ball','r1','t','count',5,'count',
+              now(),now() - interval '1 day',now(),1) $q$,
+  'an unregistered source family is rejected');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_observations
+        (source_id,source_family,source_record_id,topic_id,metric,value,unit,
+         observed_at,window_start,window_end,coverage)
+      VALUES ('s1','funnel','r2','t','count',5,'count',
+              now(),now(),now(),1) $q$,
+  'a zero-length observation window is rejected');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_observations
+        (source_id,source_family,source_record_id,topic_id,metric,value,unit,
+         observed_at,window_start,window_end,coverage)
+      VALUES ('s1','funnel','r3','t','count',-1,'count',
+              now(),now() - interval '1 day',now(),1) $q$,
+  'a negative observation value is rejected');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_observations
+        (source_id,source_family,source_record_id,topic_id,metric,value,unit,
+         observed_at,window_start,window_end,coverage)
+      VALUES ('s1','funnel','r4','t','count',5,'count',
+              now(),now() - interval '1 day',now(),1.5) $q$,
+  'coverage above 1 is rejected — it is a fraction, not a percentage');
+
+INSERT INTO trend_observations
+  (source_id,source_family,source_record_id,topic_id,metric,value,unit,
+   observed_at,window_start,window_end,coverage)
+VALUES ('s1','funnel','r_ok','t','count',25,'count',
+        now(),now() - interval '1 day',now(),0.9);
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_observations
+        (source_id,source_family,source_record_id,topic_id,metric,value,unit,
+         observed_at,window_start,window_end,coverage)
+      VALUES ('s1','funnel','r_ok','t','count',999,'count',
+              now(),now() - interval '1 day',now(),0.9) $q$,
+  'a replayed source record cannot become a second observation');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_opportunity_snapshots
+        (topic_id,window_end,scoring_version,input_digest,demand,fit,intent,
+         timing,readiness,opportunity,confidence,independent_families,decision,why)
+      VALUES ('t',now(),1,'d1',90,90,90,90,90,90,90,3,'auto_execute','x') $q$,
+  'a decision that acts without a person cannot be stored');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO growth_briefs
+        (brief_id,brief_version,topic_id,opportunity_score,confidence,valid_from,
+         expires_at,evidence_ids,audience,intent,approved_claim_ids,cta_id,
+         allowed_channels,objective,policy_version,status)
+      VALUES ('gb1',1,'t',86,84,now(),now() + interval '7 days',
+              '["ev1"]'::jsonb,'a','i','["c1"]'::jsonb,'cta',
+              '["seo"]'::jsonb,'o',1,'approved') $q$,
+  'a brief cannot be approved by nobody');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO growth_briefs
+        (brief_id,brief_version,topic_id,opportunity_score,confidence,valid_from,
+         expires_at,evidence_ids,audience,intent,approved_claim_ids,cta_id,
+         allowed_channels,objective,policy_version)
+      VALUES ('gb2',1,'t',86,84,now(),now() + interval '7 days',
+              '[]'::jsonb,'a','i','["c1"]'::jsonb,'cta',
+              '["seo"]'::jsonb,'o',1) $q$,
+  'a brief with no evidence is rejected');
+
+INSERT INTO growth_briefs
+  (brief_id,brief_version,topic_id,opportunity_score,confidence,valid_from,
+   expires_at,evidence_ids,audience,intent,approved_claim_ids,cta_id,
+   allowed_channels,objective,policy_version,status,approved_by,approved_at)
+VALUES ('gb_ok',1,'t_active',86,84,now(),now() + interval '7 days',
+        '["ev1"]'::jsonb,'a','i','["c1"]'::jsonb,'cta',
+        '["seo"]'::jsonb,'o',1,'approved','editor@example.test',now());
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO growth_briefs
+        (brief_id,brief_version,topic_id,opportunity_score,confidence,valid_from,
+         expires_at,evidence_ids,audience,intent,approved_claim_ids,cta_id,
+         allowed_channels,objective,policy_version,status,approved_by,approved_at)
+      VALUES ('gb_second',1,'t_active',86,84,now(),now() + interval '7 days',
+              '["ev1"]'::jsonb,'a','i','["c1"]'::jsonb,'cta',
+              '["seo"]'::jsonb,'o',1,'approved','editor@example.test',now()) $q$,
+  'two approved briefs cannot fight over one topic');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO growth_actions
+        (brief_id,brief_version,channel,action_kind,target_id,base_revision,
+         patch,canonical_patch_hash,idempotency_key,author,state,applied_revision)
+      VALUES ('gb_ok',1,'seo','seo_metadata_patch','p1',1,
+              '{}'::jsonb,'h1','k1','a','applied',NULL) $q$,
+  'an applied action that does not know what it changed is rejected');
+
+INSERT INTO growth_actions
+  (brief_id,brief_version,channel,action_kind,target_id,base_revision,
+   patch,canonical_patch_hash,idempotency_key,author,state)
+VALUES ('gb_ok',1,'seo','seo_metadata_patch','p_ok',1,
+        '{}'::jsonb,'h_ok','k_ok','a','queued');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO growth_actions
+        (brief_id,brief_version,channel,action_kind,target_id,base_revision,
+         patch,canonical_patch_hash,idempotency_key,author,state)
+      VALUES ('gb_ok',1,'seo','seo_metadata_patch','p_ok',1,
+              '{}'::jsonb,'h2','k2','a','queued') $q$,
+  'two actions cannot be in flight against one target');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO growth_actions
+        (brief_id,brief_version,channel,action_kind,target_id,base_revision,
+         patch,canonical_patch_hash,idempotency_key,author)
+      VALUES ('gb_ok',1,'seo','seo_metadata_patch','p_other',1,
+              '{}'::jsonb,'h3','k_ok','a') $q$,
+  'a replayed idempotency key cannot create a second action');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_outcomes
+        (experiment_id,variant,denominator,conversions,window_start,window_end)
+      VALUES ('nope','a',10,2,now() - interval '1 day',now()) $q$,
+  'an outcome for an unknown experiment is rejected');
+
+INSERT INTO trend_experiments
+  (experiment_id,brief_id,hypothesis,primary_outcome,baseline,control_method,
+   window_start,window_end,owner)
+VALUES ('exp_ok','gb_ok','h','engaged_read','{}'::jsonb,'matched_untreated',
+        now() - interval '1 day',now() + interval '7 days','owner@example.test');
+
+SELECT pg_temp.must_reject(
+  $q$ INSERT INTO trend_outcomes
+        (experiment_id,variant,denominator,conversions,window_start,window_end)
+      VALUES ('exp_ok','a',10,11,now() - interval '1 day',now()) $q$,
+  'more conversions than eligible sessions is rejected');
+
+SELECT pg_temp.must_reject(
+  $q$ UPDATE trend_experiments SET verdict = 'it worked' WHERE experiment_id = 'exp_ok' $q$,
+  'an invented experiment verdict is rejected');
+
+SELECT 'ok   — trend observations, briefs, actions and outcomes hold their promises';
+
 ROLLBACK;

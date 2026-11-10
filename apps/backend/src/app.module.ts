@@ -19,6 +19,7 @@ import { ActivityModule } from './activity/activity.module';
 import { GroupsModule } from './groups/groups.module';
 import { StateModule } from './state/state.module';
 import { GrowthModule } from './growth/growth.module';
+import { TrendsModule } from './trends/trends.module';
 import { WearablesModule } from './wearables/wearables.module';
 import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
@@ -52,6 +53,7 @@ import { StripeModule } from './stripe/stripe.module';
     GroupsModule,
     StateModule,
     GrowthModule,
+    TrendsModule,
     WearablesModule,
     MailModule,
     NewsletterModule,

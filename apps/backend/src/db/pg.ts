@@ -25,6 +25,57 @@
 export interface PgPoolLike {
   query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
   end: () => Promise<void>;
+  /**
+   * Check out one connection, for work that genuinely needs a transaction.
+   *
+   * Optional because most callers do not need it and because `pg` supplies
+   * it while a test double need not. It exists because `BEGIN` issued
+   * through `query` runs on whichever pooled connection happened to
+   * answer, so the `COMMIT` can land on a different one — see the note in
+   * `movements.service.ts`, which accepts that for authoring because a
+   * partial write there cannot publish. Anywhere a partial write *can*
+   * take effect — money, and an approval that queues a live change — the
+   * statements have to share a connection.
+   */
+  connect?: () => Promise<PgClientLike>;
+}
+
+/** One checked-out connection. Always released, including on failure. */
+export interface PgClientLike {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+  release: () => void;
+}
+
+/**
+ * Run a function inside a real transaction, or refuse.
+ *
+ * Commits on return and rolls back on throw, and releases the connection
+ * either way. A pool with no `connect` fails loudly rather than silently
+ * running the body without a transaction, because the whole reason a
+ * caller reached for this is that partial application would be wrong.
+ */
+export async function withTransaction<T>(
+  pool: PgPoolLike,
+  run: (client: PgClientLike) => Promise<T>,
+): Promise<T> {
+  if (!pool.connect) {
+    throw new Error(
+      'this pool cannot check out a connection, so it cannot run a ' +
+        'transaction. Refusing rather than running the body unprotected.',
+    );
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await run(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export interface PoolOptions {
