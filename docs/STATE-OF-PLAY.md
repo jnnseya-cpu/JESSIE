@@ -1248,14 +1248,20 @@ be a different label wearing the same name.
 
 ### Not proven
 
-Nothing is live. **No real Open Food Facts response has ever passed
-through this code** — outbound to `world.openfoodfacts.org` is refused
-here by the same network policy that blocks jessmove.com. Everything is
-proven against realistic record shapes, which checks the mapping and the
-algorithm and cannot check the thirteen field names the lookup asks for.
-A wrong field name returns no error: the field is simply absent, the
-reading says "not declared", and every product looks sparse. That is
-H-11, one command, by anyone with internet.
+Nothing is live.
+
+**A real Open Food Facts response has now passed through this code.**
+`pnpm check:barcode` ran against live data on 15 November 2026 from a
+session whose environment allows the host — exit 0, six checks passed,
+all thirteen field names confirmed real, including the seven added for
+the processing, additive and origin readings. It is not in CI, because it
+depends on a free community database being up and a red build caused by
+somebody else's outage teaches people to ignore red builds; run it after
+changing the `fields=` list, and otherwise occasionally.
+
+It failed first, and both defects were in the verification: the presence
+test counted an empty string as present, and it asserted a field on a
+product that legitimately lacks it. Both are written up under H-11.
 
 No new vendor: Open Food Facts was already the source and the four
 readings come from fields the lookup was fetching and discarding. The basket's per-item readings are client-supplied and

@@ -198,45 +198,38 @@ What I will do when the figure arrives: if production is inside budget,
 add `verify:novice` to CI with the production figure recorded beside the
 budget. If it is over, implement whichever of the three options you
 choose.
-### H-11 — Run the barcode lookup against the real database, once
+### H-11 — Run the barcode lookup against the real database · **DONE**
 
-**Owner:** anyone with outbound internet and a checkout
-**Blocks:** nothing is wrong today. This is the one claim about the shelf
-scanner that cannot be made from the build machine.
+**Done on 15 November 2026.** No longer an action; kept because what it
+found is worth knowing.
 
-```
-pnpm build && pnpm check:barcode
-```
+`pnpm check:barcode` was run against live Open Food Facts data from a
+session on a network that allows the host. **Exit 0, six checks passed,
+none failed** — all thirteen field names the lookup asks for are real,
+including the seven added for the processing, additive and origin
+readings. A real response has now passed through the mapping.
 
-Everything else about the scanner is proven without a network: the
-Nutri-Score algorithm has twenty-three tests, the four readings are
-checked against realistic record shapes, and the contract between the
-scanner and the basket endpoint is compared file to file. **No real Open
-Food Facts response has ever passed through this code**, because outbound
-HTTPS to `world.openfoodfacts.org` is refused here by the same network
-policy that blocks jessmove.com (`CONNECT tunnel failed, 403`).
+It failed the first time, and both defects were in the verification
+rather than the lookup.
 
-What that leaves unproven is specific and quiet. The lookup asks for
-thirteen named fields, seven of them added for the new readings. **If a
-field name is wrong the API does not complain** — it returns the product
-without that field, the reading comes back "not declared", and the
-scanner looks like it is working on a record that happens to be sparse.
-Every product, for as long as nobody checks.
+**The checker counted an empty string as present.** `origins` and
+`manufacturing_places` come back as `""` on products declaring neither,
+and the presence test looked only for null and empty arrays. A script
+written to catch a field silently arriving empty was reporting empty as
+present — it would have passed on a renamed field the moment the API
+returned `""` for it, which is the single failure it exists to catch.
 
-The script checks three long-standing products for the fields each is
-certain to carry, then runs the real response through the mapping and
-prints what it read. It exits 2 with an explanation rather than passing
-when it cannot reach the database, so running it somewhere without
-internet proves nothing and says so.
+**The expectations were the wrong shape.** It asserted `additives_tags`
+on one named product and failed, because that product genuinely carries
+none — which says nothing about whether the field name is valid. A wrong
+name is absent on *every* product. The check is now three fields required
+on every record, and ten that must appear populated on at least one of
+five products spread across categories.
 
-It is deliberately not in CI: it depends on a free community database
-being up, and a red build caused by somebody else's outage teaches people
-to ignore red builds.
-
-**If a field is missing**, the fix is one line in
-`apps/backend/src/foodlens/barcode.service.ts` — the `fields=` list — and
-the reading it feeds will start working immediately. Nothing is stored,
-so there is no backfill.
+Re-run it after changing the `fields=` list in
+`apps/backend/src/foodlens/barcode.service.ts`, and otherwise
+occasionally — an upstream rename would be silent, and this is what
+catches it.
 
 ### H-10 — Switch on the trend engine, and know what day one looks like
 
