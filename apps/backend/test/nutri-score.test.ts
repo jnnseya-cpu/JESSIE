@@ -27,7 +27,7 @@ import {
   reconcile,
   shelfReading,
 } from '@jessmove/foodlens';
-import { categoryFor } from '../src/foodlens/barcode.logic.ts';
+import { categoryFor, novaGroupOf } from '../src/foodlens/barcode.logic.ts';
 
 /* ------------------------------------------------------------------ *
  * The four classic mistakes
@@ -525,4 +525,35 @@ test('olive, rapeseed and walnut oils are credited on the fruit line', () => {
     palm.score > olive.score,
     `palm oil (${palm.score}) must score worse than olive (${olive.score})`,
   );
+});
+
+test('a processing group is read whatever shape the record stores it in', () => {
+  /*
+   * Open Food Facts is community-entered and its values are not
+   * uniformly typed: a NOVA group can arrive as the number 4 or as the
+   * string "4". A strict number check reads the string as absent, and
+   * absent means "not classified" — so an ultra-processed product would
+   * present as unclassified, with no error anywhere and nothing to
+   * notice.
+   *
+   * Permissive about shape, strict about value.
+   */
+  assert.equal(novaGroupOf(4), 4);
+  assert.equal(novaGroupOf('4'), 4);
+  assert.equal(novaGroupOf(' 3 '), 3);
+  assert.equal(novaGroupOf(1), 1);
+
+  // Only 1 to 4 are groups. Everything else is honestly unknown.
+  assert.equal(novaGroupOf(0), null);
+  assert.equal(novaGroupOf(5), null);
+  assert.equal(novaGroupOf(2.5), null);
+  assert.equal(novaGroupOf('unknown'), null);
+  assert.equal(novaGroupOf(''), null);
+  assert.equal(novaGroupOf(null), null);
+  assert.equal(novaGroupOf(undefined), null);
+  assert.equal(novaGroupOf({}), null);
+
+  // And the reading that follows from it says the right thing.
+  assert.equal(processingReading(novaGroupOf('4')).group, 4);
+  assert.equal(processingReading(novaGroupOf('nonsense')).source, 'not_declared');
 });

@@ -39,12 +39,71 @@ const FIELDS =
  * says which product, and a product that has been delisted since is a
  * legible failure rather than a mystery.
  */
-const PRODUCTS = [
-  { barcode: '3017620422003', what: 'a spread', expect: ['nutriments', 'nova_group', 'additives_tags', 'nutriscore_grade'] },
-  { barcode: '5449000000996', what: 'a cola', expect: ['nutriments', 'categories_tags', 'additives_tags'] },
-  { barcode: '8076809513692', what: 'an Italian pantry item', expect: ['nutriments', 'categories_tags'] },
+/**
+ * Fields every record must carry, or the lookup has nothing to work with.
+ */
+const REQUIRED_EVERYWHERE = ['product_name', 'nutriments', 'categories_tags'];
+
+/**
+ * Fields that must appear on **at least one** product in the set.
+ *
+ * This is the distinction the first version of this script got wrong. It
+ * asserted `additives_tags` on a named product and failed, because that
+ * product genuinely carries none — which says nothing about whether the
+ * field name is right. The risk being checked here is a *wrong field
+ * name*, which makes a field absent on every product; a field legitimately
+ * empty on one product is not that.
+ *
+ * So: across the set, each name must come back populated somewhere. One
+ * sighting proves the name is real. Zero across all of them is the silent
+ * failure this script exists to catch.
+ */
+const MUST_APPEAR_SOMEWHERE = [
+  'brands',
+  'quantity',
+  'allergens_tags',
+  'ingredients_text',
+  'nova_group',
+  'additives_tags',
+  'origins',
+  'manufacturing_places',
+  'countries',
+  'nutriscore_grade',
 ];
 
+/*
+ * Long-standing products, spread across categories so the optional
+ * fields have somewhere to show up: a spread, a cola, an Italian pantry
+ * item, a British supermarket line and a bottled water.
+ */
+const PRODUCTS = [
+  { barcode: '3017620422003', what: 'a spread' },
+  { barcode: '5449000000996', what: 'a cola' },
+  { barcode: '8076809513692', what: 'an Italian pantry item' },
+  { barcode: '5000157024671', what: 'a tinned British staple' },
+  { barcode: '3274080005003', what: 'a bottled water' },
+];
+
+/**
+ * Whether a field actually arrived with something in it.
+ *
+ * The empty string is the case that matters, and the first version of
+ * this script missed it: `origins` and `manufacturing_places` come back
+ * as `""` on products that declare neither, and a check for null or an
+ * empty array counted that as present. A checker written to catch silent
+ * absence was itself reporting absence as presence — it would have
+ * passed on a renamed field the moment the API returned an empty string
+ * for it.
+ */
+function present(value) {
+  if (value == null) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+}
+
+const seenSomewhere = new Set();
 let pass = 0;
 let fail = 0;
 const failures = [];
@@ -61,7 +120,7 @@ const bad = (what, extra = '') => {
 console.log('\nBARCODE LOOKUP — against the real database');
 console.log(`  ${PRODUCTS.length} products, ${FIELDS.split(',').length} fields each\n`);
 
-for (const { barcode, what, expect } of PRODUCTS) {
+for (const { barcode, what } of PRODUCTS) {
   let body;
   try {
     const controller = new AbortController();
@@ -99,20 +158,20 @@ for (const { barcode, what, expect } of PRODUCTS) {
   }
 
   const product = body.product;
-  const absent = expect.filter((field) => {
-    const value = product[field];
-    return value == null || (Array.isArray(value) && value.length === 0);
-  });
-  if (absent.length > 0) {
+
+  const missing = REQUIRED_EVERYWHERE.filter((field) => !present(product[field]));
+  if (missing.length > 0) {
     bad(
       `${what} (${barcode})`,
-      `asked for ${absent.join(', ')} and the response carried ${absent.length === 1 ? 'none of it' : 'none of them'}. ` +
-        'Either the field was renamed upstream or it is mistyped in barcode.service.ts — ' +
-        'a wrong field name returns no error, just an empty reading on every product.',
+      `no ${missing.join(', ')} on this record. Every product must carry these ` +
+        'or there is nothing to read.',
     );
     continue;
   }
-  ok(`${what} (${barcode}) carried every field asked for`);
+  for (const field of MUST_APPEAR_SOMEWHERE) {
+    if (present(product[field])) seenSomewhere.add(field);
+  }
+  ok(`${what} (${barcode}) carried the fields every record needs`);
 
   /*
    * And the mapping, on real data. A field arriving is not the same as
@@ -134,6 +193,32 @@ for (const { barcode, what, expect } of PRODUCTS) {
     // printing, because a long list here is the signal to extend it.
     console.log(`        not in the registry: ${facts.shelf.additives.unrecognised.join(', ')}`);
   }
+}
+
+/*
+ * The assertion this script exists for. A field name that is wrong — or
+ * renamed upstream — is absent on every product, and that is what this
+ * catches. A field absent on all five is reported by name, because the
+ * fix is one line in barcode.service.ts and the symptom otherwise is
+ * every product quietly looking sparse.
+ */
+console.log('\n  Fields seen populated on at least one product:');
+const neverSeen = [];
+for (const field of MUST_APPEAR_SOMEWHERE) {
+  const seen = seenSomewhere.has(field);
+  console.log(`    ${seen ? 'yes' : 'NO '}  ${field}`);
+  if (!seen) neverSeen.push(field);
+}
+if (neverSeen.length > 0) {
+  bad(
+    'field names',
+    `${neverSeen.join(', ')} came back empty on all ${PRODUCTS.length} products. ` +
+      'That is what a wrong or renamed field name looks like — the API does ' +
+      'not error, it just omits it. Check the fields= list in ' +
+      'apps/backend/src/foodlens/barcode.service.ts.',
+  );
+} else {
+  ok(`all ${MUST_APPEAR_SOMEWHERE.length} optional field names are real`);
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed\n`);

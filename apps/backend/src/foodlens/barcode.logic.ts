@@ -130,6 +130,25 @@ const ALLERGEN_MAP: Record<string, string> = {
   'sulphur-dioxide-and-sulphites': 'sulphur dioxide and sulphites',
 };
 
+
+/**
+ * The NOVA group, whatever shape it arrives in.
+ *
+ * Open Food Facts is community-entered and its values are not uniformly
+ * typed: a group can come back as the number 4 or as the string "4".
+ * A strict `typeof === 'number'` reads the string as absent, and absent
+ * means the reading says "not classified" — the product looks
+ * unclassified rather than ultra-processed, with no error anywhere.
+ *
+ * That is the exact failure this feature is built to avoid, so the
+ * parsing is permissive about shape and strict about value: only 1 to 4
+ * are groups, and anything else is honestly unknown.
+ */
+export function novaGroupOf(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value.trim()) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 4 ? n : null;
+}
+
 /** Pure so the mapping is testable without a network. */
 export function toLabelFacts(code: string, product: Record<string, unknown>): LabelFacts {
   const n = (product.nutriments ?? {}) as Record<string, unknown>;
@@ -232,7 +251,7 @@ export function toLabelFacts(code: string, product: Record<string, unknown>): La
       typeof product.nutriscore_grade === 'string' ? product.nutriscore_grade : null,
     ),
     shelf: shelfReading({
-      novaGroup: typeof product.nova_group === 'number' ? product.nova_group : null,
+      novaGroup: novaGroupOf(product.nova_group),
       additiveTags: Array.isArray(product.additives_tags)
         ? (product.additives_tags as string[])
         : null,
