@@ -8664,3 +8664,55 @@ textarea:focus-visible {
 .nutri__tallyitem b { font-size: 13px; color: var(--jm-text-d); font-variant-numeric: tabular-nums; }
 
 .nutri__tallygroup { margin-top: 10px; }
+
+/* A cited classification. Deliberately not the amber warning treatment:
+   that is reserved for wording the law requires on a label. This is a
+   scientific body's published view, so it reads as a citation — the body
+   and year leading, in the same quiet ink as the rest of the detail. */
+.nutri__cited {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(244, 250, 249, 0.16);
+  background: rgba(244, 250, 249, 0.05);
+}
+.nutri__citedrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--jm-text-d);
+}
+.nutri__citedbody {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(244, 250, 249, 0.1);
+  color: rgba(244, 250, 249, 0.78);
+  align-self: flex-start;
+}
+.nutri__citedfoot {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(244, 250, 249, 0.62);
+}
+.nutri__concern { display: block; margin-top: 6px; }
+.nutri__concern b {
+  display: block;
+  font-size: 12px;
+  color: var(--jm-text-d);
+}
+.nutri__concern i {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(244, 250, 249, 0.62);
+}

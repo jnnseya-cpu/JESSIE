@@ -84,15 +84,31 @@ interface Scanned {
     processing: { group: number | null; label: string; what: string; says: string };
     additives: {
       count: number;
-      known: { code: string; name: string; role: string; regulatoryNote?: string }[];
+      known: {
+        code: string;
+        name: string;
+        role: string;
+        regulatoryNote?: string;
+        concern?: Concern;
+      }[];
       unrecognised: string[];
       withRegulatoryNote: { code: string; name: string; regulatoryNote?: string }[];
+      withConcern: { code: string; name: string; concern?: Concern }[];
       says: string;
     };
     origin: { ingredientOrigins: string[]; manufacturingPlaces: string[]; soldIn: string[]; says: string };
     axesRead: number;
     says: string;
   };
+}
+
+interface Concern {
+  body: string;
+  classification: string;
+  year: number;
+  means: string;
+  meansNot: string;
+  status: string;
 }
 
 type Grade = 'A' | 'B' | 'C' | 'D' | 'E';
@@ -200,6 +216,28 @@ function Readings({ scan }: { scan: Scanned }) {
         </div>
       )}
 
+      {/* Flagged where it can be seen, and worded so it cannot be
+          misread at a glance. A classification is not a warning: the
+          body and the year are the headline, because "IARC, 2023" is
+          checkable and "cancer risk" is not. What it means and what it
+          does not mean are one tap away, together, never apart. */}
+      {(shelf?.additives.withConcern.length ?? 0) > 0 && (
+        <div className="nutri__cited">
+          {shelf!.additives.withConcern.map((a) => (
+            <p key={a.code} className="nutri__citedrow">
+              <span className="nutri__citedbody">{a.concern!.body} {a.concern!.year}</span>
+              <span>
+                {a.name} — {a.concern!.classification}
+              </span>
+            </p>
+          ))}
+          <p className="nutri__citedfoot">
+            A classification by a scientific body, not a warning and not this
+            platform&rsquo;s view. What each one means, and what it does not, is below.
+          </p>
+        </div>
+      )}
+
       <button type="button" className="nutri__more" onClick={() => setOpen((v) => !v)}>
         {open ? 'Hide the working' : 'Show the working'}
       </button>
@@ -260,6 +298,19 @@ function Readings({ scan }: { scan: Scanned }) {
                       </span>
                       <em>{a.role}</em>
                       {a.regulatoryNote && <strong>{a.regulatoryNote}</strong>}
+                      {a.concern && (
+                        <span className="nutri__concern">
+                          <b>
+                            {a.concern.body} {a.concern.year}: {a.concern.classification}
+                          </b>
+                          <i>What that means: {a.concern.means}</i>
+                          {/* Never separable from the line above it. The
+                              distinction between hazard and risk is the
+                              whole of the honesty here. */}
+                          <i>What it does not mean: {a.concern.meansNot}</i>
+                          <i>Where it stands now: {a.concern.status}</i>
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -397,7 +448,13 @@ export function ScannerModule() {
         nutriGrade: s.nutriScore?.grade ?? null,
         nutriCategory: s.nutriCategory ?? null,
         novaGroup: s.shelf?.processing.group ?? null,
-        additives: s.shelf?.additives.known,
+        additives: s.shelf?.additives.known.map((a) => ({
+          code: a.code,
+          name: a.name,
+          role: a.role,
+          regulatoryNote: a.regulatoryNote,
+          concernBody: a.concern?.body,
+        })),
         origins: s.shelf?.origin.ingredientOrigins.length
           ? s.shelf.origin.ingredientOrigins
           : s.shelf?.origin.manufacturingPlaces,

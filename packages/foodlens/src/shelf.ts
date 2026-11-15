@@ -135,6 +135,58 @@ export interface AdditiveFact {
   readonly role: string;
   /** A regulator's own note, where one exists. Never this platform's opinion. */
   readonly regulatoryNote?: string;
+  /** A named body's published classification. Never this platform's view. */
+  readonly concern?: AdditiveConcern;
+}
+
+/**
+ * A published classification by a named scientific body.
+ *
+ * This is the one part of the module that could do real harm by being
+ * careless, so the shape forces the care.
+ *
+ * **Hazard is not risk.** It is the most misread distinction in this
+ * field and the reason `meansNot` is a required field rather than a
+ * footnote. IARC classifies whether a substance *can* cause cancer under
+ * some conditions, at any dose — not whether it does at the amount in a
+ * tin. Group 1 contains processed meat and sunlight alongside asbestos.
+ * Reporting "aspartame: possibly carcinogenic" and stopping there would
+ * be true, useless and frightening, and this platform serves ten-year-olds
+ * and people with health anxiety.
+ *
+ * So every entry must name the body, the exact classification, the year,
+ * what it means, what it does not mean, and where the substance stands
+ * with the regulator today — because "classified 2B" and "still
+ * authorised with an unchanged acceptable daily intake" are both true
+ * and only the pair is honest.
+ *
+ * Nothing here is aggregated, scored, or turned into a traffic light. A
+ * ranking of additives by danger would be this platform substituting its
+ * own judgement for a regulator's, which is the thing it must not do.
+ */
+export interface AdditiveConcern {
+  /** The body that published it. */
+  readonly body: 'IARC' | 'EFSA' | 'JECFA' | 'FSA';
+  /** Their words for the classification, not a paraphrase. */
+  readonly classification: string;
+  readonly year: number;
+  /** What the classification means. */
+  readonly means: string;
+  /** What it does not mean. Required, because this is where it misleads. */
+  readonly meansNot: string;
+  /** Where it stands with the regulator today. */
+  readonly status: string;
+  /**
+   * Whether it is authorised as a food additive in the UK today.
+   *
+   * A fact, not a judgement, and it exists because the summary line used
+   * to assert "all approved for use here" without checking — which was
+   * false on an imported loaf containing potassium bromate, flatly
+   * contradicting the entry three lines below it. A sentence that
+   * reassures and a sentence that corrects it are worse together than
+   * either alone.
+   */
+  readonly authorisedHere: boolean;
 }
 
 /**
@@ -163,17 +215,89 @@ export const ADDITIVE_FACTS: Readonly<Record<string, AdditiveFact>> = {
   e150d: { code: 'E150d', name: 'Sulphite ammonia caramel', role: 'Brown colour, common in colas' },
   e160a: { code: 'E160a', name: 'Carotenes', role: 'Orange colour' },
   e160c: { code: 'E160c', name: 'Paprika extract', role: 'Orange-red colour' },
-  e171: { code: 'E171', name: 'Titanium dioxide', role: 'White colour', regulatoryNote: 'No longer authorised as a food additive in the EU (Regulation 2022/63). Still permitted in Great Britain at the time of writing.' },
+  e171: {
+    code: 'E171',
+    name: 'Titanium dioxide',
+    role: 'White colour',
+    regulatoryNote:
+      'No longer authorised as a food additive in the EU (Regulation 2022/63). Still permitted in Great Britain at the time of writing.',
+    concern: {
+      body: 'EFSA',
+      classification: 'No longer considered safe as a food additive',
+      year: 2021,
+      means:
+        'EFSA could not rule out genotoxicity — damage to genetic material — and so could not set a safe daily intake. That is why the EU withdrew authorisation.',
+      meansNot:
+        'Not a finding that it causes cancer. EFSA said the evidence was insufficient to establish safety, which is a different statement from establishing harm.',
+      status:
+        'Banned as a food additive in the EU since August 2022. Still permitted in Great Britain at the time of writing, so it can appear on products sold here.',
+      // Banned in the EU, still permitted in Great Britain. "Here" is the
+      // UK, so this is true — and getting it backwards would have told a
+      // shopper a legal product was contraband.
+      authorisedHere: true,
+    },
+  },
 
   e200: { code: 'E200', name: 'Sorbic acid', role: 'Preservative, against moulds and yeasts' },
   e202: { code: 'E202', name: 'Potassium sorbate', role: 'Preservative, against moulds and yeasts' },
   e211: { code: 'E211', name: 'Sodium benzoate', role: 'Preservative' },
   e220: { code: 'E220', name: 'Sulphur dioxide', role: 'Preservative', regulatoryNote: 'A declarable allergen above 10 mg/kg — it must appear in the ingredients list.' },
   e223: { code: 'E223', name: 'Sodium metabisulphite', role: 'Preservative', regulatoryNote: 'A declarable allergen above 10 mg/kg.' },
-  e250: { code: 'E250', name: 'Sodium nitrite', role: 'Curing salt, in bacon and ham — colour and botulism control' },
-  e251: { code: 'E251', name: 'Sodium nitrate', role: 'Curing salt, in cured meats' },
+  e250: {
+    code: 'E250',
+    name: 'Sodium nitrite',
+    role: 'Curing salt, in bacon and ham — colour and botulism control',
+    concern: {
+      body: 'IARC',
+      classification:
+        'Group 2A — ingested nitrate or nitrite under conditions that result in endogenous nitrosation is probably carcinogenic to humans',
+      year: 2010,
+      means:
+        'When nitrite meets protein in the gut it can form nitrosamines, and there is strong evidence those are a cancer risk. The classification is about that conversion, not about the salt on its own.',
+      meansNot:
+        'It is not a classification of the additive in isolation, and not of nitrate from vegetables, which is most of what people eat and which IARC treats differently. Processed meat itself is separately classified Group 1, so the meat is the larger part of this question than the curing salt.',
+      status:
+        'Authorised in the UK and EU with maximum levels, and it is there to stop botulism. EFSA re-examined the levels in 2017 and found exposure within the acceptable daily intake for most people.',
+      authorisedHere: true,
+    },
+  },
+  e251: {
+    code: 'E251',
+    name: 'Sodium nitrate',
+    role: 'Curing salt, in cured meats',
+    concern: {
+      body: 'IARC',
+      classification:
+        'Group 2A — ingested nitrate or nitrite under conditions that result in endogenous nitrosation is probably carcinogenic to humans',
+      year: 2010,
+      means:
+        'When nitrite meets protein in the gut it can form nitrosamines, and there is strong evidence those are a cancer risk. The classification is about that conversion, not about the salt on its own.',
+      meansNot:
+        'It is not a classification of the additive in isolation, and not of nitrate from vegetables, which is most of what people eat and which IARC treats differently. Processed meat itself is separately classified Group 1, so the meat is the larger part of this question than the curing salt.',
+      status:
+        'Authorised in the UK and EU with maximum levels, and it is there to stop botulism. EFSA re-examined the levels in 2017 and found exposure within the acceptable daily intake for most people.',
+      authorisedHere: true,
+    },
+  },
 
   e300: { code: 'E300', name: 'Ascorbic acid', role: 'Antioxidant — vitamin C' },
+  e320: {
+    code: 'E320',
+    name: 'BHA (butylated hydroxyanisole)',
+    role: 'Antioxidant, stops fats going rancid',
+    concern: {
+      body: 'IARC',
+      classification: 'Group 2B — possibly carcinogenic to humans',
+      year: 1986,
+      means:
+        'High doses produced tumours in the forestomach of rats and mice, which placed it in the group used when animal evidence exists and human evidence does not.',
+      meansNot:
+        'The forestomach is an organ humans do not have, which is why the finding has not translated into a human classification in the forty years since.',
+      status:
+        'Authorised in the UK and EU. EFSA re-evaluated it in 2011 and set an acceptable daily intake of 1.0 mg per kg of body weight.',
+      authorisedHere: true,
+    },
+  },
   e322: { code: 'E322', name: 'Lecithins', role: 'Emulsifier, keeps fat and water mixed' },
   e330: { code: 'E330', name: 'Citric acid', role: 'Acidity regulator and preservative' },
   e331: { code: 'E331', name: 'Sodium citrates', role: 'Acidity regulator' },
@@ -196,10 +320,61 @@ export const ADDITIVE_FACTS: Readonly<Record<string, AdditiveFact>> = {
   e500: { code: 'E500', name: 'Sodium carbonates', role: 'Raising agent — bicarbonate of soda' },
   e503: { code: 'E503', name: 'Ammonium carbonates', role: 'Raising agent' },
   e621: { code: 'E621', name: 'Monosodium glutamate', role: 'Flavour enhancer' },
+  e924: {
+    code: 'E924',
+    name: 'Potassium bromate',
+    role: 'Flour treatment agent, in some imported breads',
+    concern: {
+      body: 'IARC',
+      classification: 'Group 2B — possibly carcinogenic to humans',
+      year: 1999,
+      means:
+        'It produced kidney and thyroid tumours in animal studies, and residues can survive baking.',
+      meansNot:
+        'Not something you can be exposed to from a product legally sold here, which is the point of the next line.',
+      status:
+        'Not authorised as a food additive in the UK or EU, and banned in many other countries. If this appears on a label, the product was made for a market that still permits it.',
+      authorisedHere: false,
+    },
+  },
 
   e950: { code: 'E950', name: 'Acesulfame K', role: 'Sweetener, no energy' },
-  e951: { code: 'E951', name: 'Aspartame', role: 'Sweetener, no energy', regulatoryNote: 'Label must carry "contains a source of phenylalanine" — relevant to anyone with PKU.' },
-  e952: { code: 'E952', name: 'Cyclamate', role: 'Sweetener, no energy' },
+  e951: {
+    code: 'E951',
+    name: 'Aspartame',
+    role: 'Sweetener, no energy',
+    regulatoryNote:
+      'Label must carry "contains a source of phenylalanine" — relevant to anyone with PKU.',
+    concern: {
+      body: 'IARC',
+      classification: 'Group 2B — possibly carcinogenic to humans',
+      year: 2023,
+      means:
+        'There is limited evidence that it could cause cancer in humans, so it was placed in the group used when the evidence is suggestive but not sufficient.',
+      meansNot:
+        'It is not a statement about how much is dangerous. Group 2B also holds aloe vera extract and pickled vegetables. IARC judges whether something can cause cancer under any conditions, not whether it does at the amount in a drink.',
+      status:
+        'Reviewed by JECFA in the same month, which kept the acceptable daily intake unchanged at 40 mg per kg of body weight — about 9 to 14 cans of a diet drink a day for an adult. Authorised in the UK and EU.',
+      authorisedHere: true,
+    },
+  },
+  e952: {
+    code: 'E952',
+    name: 'Cyclamate',
+    role: 'Sweetener, no energy',
+    concern: {
+      body: 'FSA',
+      classification: 'Authorised here, banned in the United States since 1970',
+      year: 1970,
+      means:
+        'The American ban followed a study in which rats fed cyclamate and saccharin together developed bladder tumours.',
+      meansNot:
+        'Not a current finding. Later work attributed those tumours to a mechanism specific to rats, and European reviews have repeatedly kept it authorised. The two countries read the same evidence differently, which is worth knowing and is not the same as a warning.',
+      status:
+        'Authorised in the UK and EU with an acceptable daily intake of 7 mg per kg of body weight. Still not permitted in the United States.',
+      authorisedHere: true,
+    },
+  },
   e954: { code: 'E954', name: 'Saccharin', role: 'Sweetener, no energy' },
   e955: { code: 'E955', name: 'Sucralose', role: 'Sweetener, no energy' },
   e960: { code: 'E960', name: 'Steviol glycosides', role: 'Sweetener from stevia, no energy' },
@@ -214,6 +389,20 @@ export interface AdditiveReading {
   readonly unrecognised: readonly string[];
   /** Additives whose label carries a legally required warning. */
   readonly withRegulatoryNote: readonly AdditiveFact[];
+  /**
+   * Additives a named body has published a classification about.
+   *
+   * Kept apart from `withRegulatoryNote` because they are different in
+   * kind and must not be presented the same way. A regulatory note is a
+   * legal requirement on the label — the law says those words must
+   * appear. A classification is a scientific body's published view, often
+   * about hazard rather than risk, frequently decades old, and usually
+   * sitting alongside an unchanged authorisation. Showing them in one
+   * red box would turn "IARC placed this in the same group as pickled
+   * vegetables" into a warning, which is how a shopper ends up more
+   * frightened and no better informed.
+   */
+  readonly withConcern: readonly AdditiveFact[];
   readonly sweeteners: readonly AdditiveFact[];
   readonly says: string;
   readonly source: 'open_food_facts' | 'not_declared';
@@ -233,6 +422,7 @@ export function additiveReading(tags: readonly string[] | null | undefined): Add
       known: [],
       unrecognised: [],
       withRegulatoryNote: [],
+      withConcern: [],
       sweeteners: [],
       says: 'No additive list on this record — not declared, rather than none.',
       source: 'not_declared',
@@ -255,19 +445,59 @@ export function additiveReading(tags: readonly string[] | null | undefined): Add
   }
 
   const withRegulatoryNote = known.filter((a) => a.regulatoryNote);
+  const withConcern = known.filter((a) => a.concern);
   const sweeteners = known.filter((a) => /sweetener|sugar alcohol/i.test(a.role));
 
   let says: string;
   if (codes.length === 0) {
     says = 'No additives declared on this record.';
+  } else if (withConcern.some((a) => !a.concern!.authorisedHere)) {
+    /*
+     * Something here is not authorised in the UK. That outranks the
+     * reassuring phrasing below, which used to be asserted without ever
+     * being checked — and was false on an imported loaf carrying
+     * potassium bromate, contradicting the entry a few lines under it.
+     */
+    const unauthorised = withConcern.filter((a) => !a.concern!.authorisedHere);
+    says =
+      `${codes.length} additive${codes.length === 1 ? '' : 's'}. ` +
+      `${unauthorised.map((a) => a.name).join(' and ')} ` +
+      `${unauthorised.length === 1 ? 'is' : 'are'} not authorised as a food additive ` +
+      'in the UK, so this product was made for a market that permits it. Set out below.';
   } else if (withRegulatoryNote.length > 0) {
+    /*
+     * The legal requirement leads, because it is the only line here the
+     * law compels. But a classification must not vanish behind it: an
+     * additive can carry both — aspartame's label must declare
+     * phenylalanine *and* IARC published a classification — and dropping
+     * the second because the first outranked it would hide it on exactly
+     * the products that have most to say.
+     */
     says =
       `${codes.length} additive${codes.length === 1 ? '' : 's'}, ` +
       `${withRegulatoryNote.length} of which carr${withRegulatoryNote.length === 1 ? 'ies' : 'y'} ` +
-      'a warning the label is legally required to print. Each is named below.';
+      'a warning the label is legally required to print.' +
+      (withConcern.length > 0
+        ? ` ${withConcern.length} ${withConcern.length === 1 ? 'has' : 'have'} also been ` +
+          `classified by ${[...new Set(withConcern.map((a) => a.concern!.body))].join(' and ')}.`
+        : '') +
+      ' Each is named below.';
+  } else if (withConcern.length > 0) {
+    /*
+     * Deliberately flat. The sentence names the number and the body and
+     * stops; the classification, what it means and what it does not mean
+     * are all in the entry itself. A summary line is the wrong place for
+     * a nuance that takes three sentences, and a frightening half of it
+     * is worse than none.
+     */
+    const bodies = [...new Set(withConcern.map((a) => a.concern!.body))].join(' and ');
+    says =
+      `${codes.length} additive${codes.length === 1 ? '' : 's'}, ${codes.length === 1 ? 'approved' : 'all approved'} for use here. ` +
+      `${withConcern.length} ${withConcern.length === 1 ? 'has' : 'have'} been classified by ` +
+      `${bodies} — each is set out below with what the classification does and does not mean.`;
   } else {
     says =
-      `${codes.length} additive${codes.length === 1 ? '' : 's'}, all approved for use. ` +
+      `${codes.length} additive${codes.length === 1 ? '' : 's'}, ${codes.length === 1 ? 'approved' : 'all approved'} for use. ` +
       'Named below with what each one does — none of this is a safety ranking.';
   }
 
@@ -276,6 +506,7 @@ export function additiveReading(tags: readonly string[] | null | undefined): Add
     known,
     unrecognised,
     withRegulatoryNote,
+    withConcern,
     sweeteners,
     says,
     source: 'open_food_facts',

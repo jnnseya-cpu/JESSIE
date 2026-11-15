@@ -557,3 +557,214 @@ test('a processing group is read whatever shape the record stores it in', () => 
   assert.equal(processingReading(novaGroupOf('4')).group, 4);
   assert.equal(processingReading(novaGroupOf('nonsense')).source, 'not_declared');
 });
+
+/* ------------------------------------------------------------------ *
+ * Classifications: flagged, and not turned into alarm
+ * ------------------------------------------------------------------ */
+
+test('every classification names a body, a year, and what it does not mean', () => {
+  /*
+   * The shape of the entry is the safety control.
+   *
+   * `meansNot` is required because hazard is not risk, and that is the
+   * most misread distinction in this field. IARC judges whether a
+   * substance can cause cancer under any conditions at any dose, not
+   * whether it does at the amount in a tin — Group 1 holds processed
+   * meat and sunlight alongside asbestos. An entry that says "possibly
+   * carcinogenic" and stops is true, useless, and frightening, and this
+   * platform is read by ten-year-olds and by people with health anxiety.
+   */
+  const withConcern = Object.values(ADDITIVE_FACTS).filter((a) => a.concern);
+  assert.ok(withConcern.length >= 6, `only ${withConcern.length} classifications`);
+
+  for (const additive of withConcern) {
+    const c = additive.concern!;
+    assert.ok(
+      ['IARC', 'EFSA', 'JECFA', 'FSA'].includes(c.body),
+      `${additive.code} cites "${c.body}", which is not a body this module recognises`,
+    );
+    assert.ok(c.year >= 1960 && c.year <= 2030, `${additive.code} has year ${c.year}`);
+    assert.ok(c.classification.length > 15, `${additive.code} has no real classification text`);
+    assert.ok(c.means.length > 40, `${additive.code} does not say what it means`);
+    assert.ok(
+      c.meansNot.length > 40,
+      `${additive.code} does not say what it does NOT mean, which is where this misleads`,
+    );
+    assert.ok(
+      c.status.length > 30,
+      `${additive.code} does not say where it stands with the regulator today`,
+    );
+  }
+});
+
+test('a scary classification always travels with its current status', () => {
+  /*
+   * "Classified 2B in 2023" and "authorised, with the acceptable daily
+   * intake unchanged" are both true, and only the pair is honest.
+   * Publishing the first without the second is how a shopper concludes
+   * a diet drink is banned-in-waiting.
+   */
+  for (const additive of Object.values(ADDITIVE_FACTS)) {
+    if (!additive.concern) continue;
+    const c = additive.concern;
+    const alarming = /carcinogen|cancer|tumour|genotox/i.test(
+      `${c.classification} ${c.means}`,
+    );
+    if (!alarming) continue;
+    assert.match(
+      c.status,
+      /authorised|banned|not authorised|permitted|withdrawn/i,
+      `${additive.code} describes a cancer classification without saying where it ` +
+        'stands with the regulator now',
+    );
+  }
+});
+
+test('aspartame carries the dose that the classification does not', () => {
+  /*
+   * The one people will look for, and the one most easily misreported.
+   * IARC and JECFA reported in the same month and said different things:
+   * a 2B classification, and an unchanged acceptable daily intake. Both
+   * belong on the card.
+   */
+  const aspartame = ADDITIVE_FACTS.e951!;
+  assert.ok(aspartame.concern, 'aspartame carries no classification');
+  assert.equal(aspartame.concern!.body, 'IARC');
+  assert.equal(aspartame.concern!.year, 2023);
+  assert.match(aspartame.concern!.classification, /2B/);
+  assert.match(aspartame.concern!.status, /JECFA/, 'the dose review must be named');
+  assert.match(aspartame.concern!.status, /40 mg/, 'the acceptable daily intake must be stated');
+  assert.match(
+    aspartame.concern!.meansNot,
+    /not a statement about how much/i,
+    'the hazard-versus-risk distinction must be explicit',
+  );
+});
+
+test('classifications are reported apart from legal label warnings', () => {
+  /*
+   * Two different things that must not share a presentation. A
+   * regulatory note is the law requiring words on a packet. A
+   * classification is a body's published view, often about hazard, often
+   * decades old, usually alongside an unchanged authorisation. One red
+   * box for both turns "same group as pickled vegetables" into a
+   * warning.
+   */
+  const reading = additiveReading(['en:e102', 'en:e951', 'en:e330']);
+
+  /*
+   * The two are orthogonal, and aspartame proves it by being in both:
+   * the label must carry a phenylalanine declaration by law, and IARC
+   * separately published a classification. Tartrazine has the legal
+   * warning and no classification. Citric acid has neither. A single
+   * list could not express any of that.
+   */
+  const legal = reading.withRegulatoryNote.map((a) => a.code).sort();
+  const classified = reading.withConcern.map((a) => a.code).sort();
+  assert.deepEqual(legal, ['E102', 'E951'], 'both carry a legal label requirement');
+  assert.deepEqual(classified, ['E951'], 'only aspartame carries a classification');
+  assert.ok(
+    legal.includes('E102') && !classified.includes('E102'),
+    'a legal warning must not imply a classification',
+  );
+
+  // Both at once: the legal requirement leads and the classification
+  // still appears, rather than being hidden behind it.
+  assert.match(reading.says, /legally required/);
+  assert.match(reading.says, /also been classified by IARC/);
+
+  // With no legal warning, the classification is named flatly.
+  const calm = additiveReading(['en:e250', 'en:e330']);
+  assert.match(calm.says, /IARC/);
+  assert.match(calm.says, /does and does not mean/);
+  assert.doesNotMatch(
+    calm.says,
+    /danger|unsafe|avoid|harmful|toxic|risk of/i,
+    'the summary line must not editorialise beyond what the body published',
+  );
+});
+
+test('an unauthorised additive is never described as approved', () => {
+  /*
+   * The summary line asserted "all approved for use here" without ever
+   * checking, and it was false on an imported loaf carrying potassium
+   * bromate — flatly contradicting the entry a few lines below it. A
+   * sentence that reassures and a sentence that corrects it are worse
+   * together than either alone.
+   */
+  const imported = additiveReading(['en:e924', 'en:e471']);
+  assert.doesNotMatch(imported.says, /all approved/i);
+  assert.match(imported.says, /not authorised as a food additive in the UK/);
+  assert.match(imported.says, /Potassium bromate/);
+
+  // And one that is authorised still says so.
+  const ordinary = additiveReading(['en:e250', 'en:e301']);
+  assert.match(ordinary.says, /approved for use here/);
+
+  for (const additive of Object.values(ADDITIVE_FACTS)) {
+    if (!additive.concern) continue;
+    assert.equal(
+      typeof additive.concern.authorisedHere,
+      'boolean',
+      `${additive.code} does not say whether it is authorised here`,
+    );
+  }
+});
+
+test('no additive is scored, ranked or given a traffic light', () => {
+  /*
+   * The line this must not cross. Ranking additives by danger would be
+   * this platform substituting its own judgement for a regulator's, and
+   * it is the composite verdict `NEVER_CLAIM` forbids wearing a lab
+   * coat. There is no severity, no score, no level.
+   */
+  for (const additive of Object.values(ADDITIVE_FACTS)) {
+    const keys = Object.keys(additive);
+    for (const forbidden of ['severity', 'score', 'rating', 'level', 'danger', 'risk']) {
+      assert.ok(
+        !keys.includes(forbidden),
+        `${additive.code} has a "${forbidden}" field — additives are reported, not ranked`,
+      );
+    }
+    if (!additive.concern) continue;
+    assert.deepEqual(
+      Object.keys(additive.concern).sort(),
+      ['authorisedHere', 'body', 'classification', 'means', 'meansNot', 'status', 'year'].sort(),
+      `${additive.code}'s classification has gained a field — if it scores anything, it is forbidden`,
+    );
+  }
+});
+
+test('titanium dioxide is reported as permitted here, because it is', () => {
+  /*
+   * A factual error caught by reading the output rather than by a test
+   * failing. E171 is banned as a food additive in the EU and still
+   * permitted in Great Britain, and this platform is UK-based — UK
+   * reference intakes, the FSA, the ICO. Marking it unauthorised "here"
+   * would have told a shopper that a legally sold product was
+   * contraband, which is a different and worse error than saying
+   * nothing.
+   */
+  const e171 = ADDITIVE_FACTS.e171!;
+  assert.equal(e171.concern!.authorisedHere, true);
+  assert.match(e171.regulatoryNote!, /Still permitted in Great Britain/);
+  assert.match(e171.concern!.status, /EU/, 'the EU ban must still be stated');
+
+  const reading = additiveReading(['en:e171', 'en:e330']);
+  assert.doesNotMatch(
+    reading.says,
+    /not authorised as a food additive in the UK/,
+    'a product permitted here must not be described as unauthorised here',
+  );
+});
+
+test('an unauthorised additive outranks a label warning in the summary', () => {
+  /*
+   * Ordering matters when both apply. "Not authorised here" is the
+   * strongest thing this module can say about an additive, and it was
+   * sitting behind the legal-warning branch where a product carrying
+   * both would never have surfaced it.
+   */
+  const both = additiveReading(['en:e924', 'en:e102']);
+  assert.match(both.says, /not authorised as a food additive in the UK/);
+});

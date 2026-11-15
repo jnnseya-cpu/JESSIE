@@ -1183,6 +1183,51 @@ Origin separates ingredient origin, manufacturing place and markets sold
 in, because a list of markets is not a provenance and is routinely
 presented as one.
 
+### Additives that a scientific body has classified
+
+Flagged, and deliberately not alarming. Seven additives carry a published
+classification: aspartame, sodium nitrite and nitrate, titanium dioxide,
+BHA, potassium bromate and cyclamate. Each names the body, the exact
+classification, the year, what it means, **what it does not mean**, where
+it stands with the regulator today, and whether it is authorised here.
+
+`meansNot` is a required field rather than a footnote, because **hazard
+is not risk** and that is the most misread distinction in this subject.
+IARC judges whether a substance can cause cancer under any conditions at
+any dose, not whether it does at the amount in a tin — Group 1 holds
+processed meat and sunlight alongside asbestos, and Group 2B holds
+aspartame alongside aloe vera extract and pickled vegetables. An entry
+reading "possibly carcinogenic" and stopping there would be true, useless
+and frightening, on a platform read by ten-year-olds and by people with
+health anxiety.
+
+So a classification always travels with its current status, tested: the
+aspartame card carries IARC's 2B *and* JECFA's unchanged acceptable daily
+intake from the same month, with the dose in cans. Both are true and only
+the pair is honest.
+
+They are presented apart from the legal label warnings, because the two
+are different in kind. A regulatory note is wording the law compels onto
+a packet — that keeps the amber treatment. A classification is a body's
+published view, often decades old and usually alongside an unchanged
+authorisation, so it reads as a citation with the body and year leading.
+One red box for both would turn "same group as pickled vegetables" into a
+warning. An additive can carry both, and aspartame does.
+
+Nothing is scored, ranked or given a traffic light. A severity ordering
+would be this platform substituting its own judgement for a regulator's —
+the composite verdict `NEVER_CLAIM` forbids, wearing a lab coat — and a
+test pins the field list to stop one arriving.
+
+Two defects were caught by reading the output rather than by a test
+failing. The summary asserted "all approved for use here" without
+checking, which was **false** on an imported loaf carrying potassium
+bromate and flatly contradicted the entry below it; authorisation is now
+a checked fact and leads the summary when something is not permitted. And
+titanium dioxide was marked unauthorised here when it is banned in the EU
+and **still permitted in Great Britain** — telling a shopper a legal
+product was contraband is a worse error than saying nothing.
+
 ### Why there is no single number
 
 `NEVER_CLAIM` forbids a composite health score, and these four would be

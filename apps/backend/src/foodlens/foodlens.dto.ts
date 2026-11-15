@@ -334,6 +334,17 @@ export class BasketAdditiveDto {
   @IsString()
   @MaxLength(300)
   regulatoryNote?: string;
+
+  /*
+   * Only the body and the year travel to the basket. The classification
+   * text, what it means and what it does not mean stay on the product
+   * card, because a shop-wide tally is the one place that nuance cannot
+   * fit — and a count of "3 classified additives" with no room for the
+   * hazard-versus-risk distinction is the alarming half on its own.
+   */
+  @IsOptional()
+  @IsIn(['IARC', 'EFSA', 'JECFA', 'FSA'])
+  concernBody?: string;
 }
 
 export class BasketDto {
