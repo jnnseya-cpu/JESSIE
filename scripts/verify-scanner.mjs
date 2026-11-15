@@ -114,6 +114,7 @@ await page.waitForTimeout(2500);
 const state = await page.evaluate(() => {
   const v = document.querySelector('video');
   if (!v) return { video: false };
+  const box = v.getBoundingClientRect();
   return {
     video: true,
     hasStream: v.srcObject !== null,
@@ -121,16 +122,45 @@ const state = await page.evaluate(() => {
     videoWidth: v.videoWidth,
     videoHeight: v.videoHeight,
     paused: v.paused,
+    boxWidth: Math.round(box.width),
+    boxHeight: Math.round(box.height),
   };
 });
 console.log('  video element present :', state.video);
 console.log('  srcObject assigned    :', state.hasStream);
 console.log('  readyState            :', state.readyState, '(0 = nothing loaded)');
 console.log('  intrinsic size        :', state.videoWidth + 'x' + state.videoHeight);
+console.log('  rendered box          :', state.boxWidth + 'x' + state.boxHeight);
 console.log('  paused                :', state.paused);
 
+/*
+ * The rendered box, which the first version of this check did not look
+ * at. `videoWidth` is the size of the *stream*, not of the element: a
+ * video laid out at zero height carries a perfectly good 640x480 stream
+ * and shows nothing at all. Asserting the stream and calling it a
+ * picture is the same mistake as asserting the element and calling it a
+ * stream, one layer up.
+ */
+const laidOut = state.video && state.boxWidth > 0 && state.boxHeight > 0;
+
+/*
+ * And the only question that actually matters: do the pixels move?
+ *
+ * Every property can read correctly over a black rectangle — that is
+ * precisely how this feature shipped broken twice. Two photographs of
+ * the stage a beat apart are the one check that cannot be satisfied by
+ * a still. Identical bytes mean nothing is arriving.
+ */
+const stage = page.locator('.scan__stage');
+const firstShot = await stage.screenshot();
+await page.waitForTimeout(700);
+const secondShot = await stage.screenshot();
+const moving = !firstShot.equals(secondShot);
+console.log('  stage pixels change   :', moving);
+
 const working = state.video && state.hasStream && state.videoWidth > 0 && !state.paused;
-if (!working) {
+const shows = working && laidOut && moving;
+if (!shows) {
   /*
    * The failure is visual, so keep the picture. "srcObject assigned:
    * false" and a black rectangle are the same fact, and only one of them
@@ -139,6 +169,33 @@ if (!working) {
   await page.screenshot({ path: 'scanner-failure.png' });
   console.log('  screenshot written to scanner-failure.png');
 }
-console.log('\n  ' + (working ? 'SCANNER SHOWS A PICTURE' : 'SCANNER IS BLACK — no picture reaches the video'));
+console.log('  ' + (shows ? 'SCANNER SHOWS A PICTURE' : 'SCANNER IS BLACK — no moving picture reaches the stage'));
+
+/*
+ * The other half: when there is no picture, does the stage say so?
+ *
+ * A black rectangle that reports nothing is how both earlier failures
+ * stayed invisible — on the phone and in this check. So the camera is
+ * taken away the way a real one is taken away, by stopping the track,
+ * and the stage is required to notice within its own grace period and
+ * print what state it is in. Without this the watchdog could be dead
+ * code and every run above would still be green.
+ */
+let explains = false;
+if (shows) {
+  await page.evaluate(() => {
+    const v = document.querySelector('video');
+    const stream = v?.srcObject;
+    if (stream) for (const track of stream.getVideoTracks()) track.stop();
+  });
+  await page.waitForTimeout(4000);
+  const stageText = (await stage.innerText()).replace(/\s+/g, ' ').trim();
+  explains = /no picture is reaching this page/i.test(stageText);
+  console.log('  says so when it stalls:', explains);
+  if (!explains) console.log('      stage said:', stageText.slice(0, 200) || '(nothing)');
+}
+
+const passed = shows && explains;
+console.log('\n  ' + (passed ? 'LIVE PREVIEW WORKS, AND EXPLAINS ITSELF WHEN IT CANNOT' : 'LIVE PREVIEW FAILED'));
 await browser.close();
-process.exit(working ? 0 : 1);
+process.exit(passed ? 0 : 1);

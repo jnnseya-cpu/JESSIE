@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { SITE_COMMIT } from '../build-info';
 /*
  * The limitations come from the package that computes the score, not
  * from a copy in this file. A second list is a second list that drifts,
@@ -373,6 +374,66 @@ interface BarcodeDetectorLike {
   detect: (source: CanvasImageSource) => Promise<DetectedBarcode[]>;
 }
 
+/**
+ * Whether a picture is actually arriving.
+ *
+ * This exists because of how the scanner failed twice. Both times the
+ * camera opened, the permission was granted, the stage rendered at the
+ * right size and no frame ever reached the element: a black rectangle
+ * with an orange box drawn on it, no error, nothing in the console,
+ * nothing on the network. From the aisle it is indistinguishable from a
+ * broken app, and from here it is indistinguishable from a working one.
+ *
+ * So the preview now watches itself. A stream that is open is not a
+ * picture, and only `videoWidth` with a `readyState` that has data and an
+ * unpaused element together mean a frame has been decoded. If that has
+ * not happened a few seconds after the camera was asked for — or stops
+ * happening later, when a phone locks or another app takes the camera —
+ * the stage says so in plain words and prints the state it is in.
+ *
+ * A black box that explains itself is a different product from a black
+ * box. The explanation also travels: it is readable in a photograph of
+ * the screen, which is how this gets reported.
+ */
+type Preview =
+  | { phase: 'off' }
+  | { phase: 'starting' }
+  | { phase: 'playing' }
+  | { phase: 'stalled'; detail: string };
+
+/** How long a camera gets to produce its first frame before it is called stalled. */
+const PREVIEW_GRACE_MS = 2500;
+
+/**
+ * The state of the preview, in one line a person can photograph.
+ *
+ * Deliberately concrete. "The camera is not working" is what the user
+ * already knows; `readyState 0 · no stream attached · track live` is the
+ * sentence that names which of three unrelated faults this is.
+ */
+function describePreview(
+  video: HTMLVideoElement | null,
+  stream: MediaStream | null,
+  frames: number | null,
+): string {
+  const track = stream?.getVideoTracks()[0] ?? null;
+  const parts: string[] = [];
+  parts.push(
+    video
+      ? `${video.videoWidth}×${video.videoHeight} · readyState ${video.readyState} · ${video.paused ? 'paused' : 'playing'}`
+      : 'no video element',
+  );
+  if (frames !== null) parts.push(`${frames} frame${frames === 1 ? '' : 's'}`);
+  parts.push(video?.srcObject ? 'stream attached' : 'no stream attached');
+  parts.push(
+    track
+      ? `track ${track.readyState}${track.muted ? ' · muted' : ''}${track.enabled ? '' : ' · disabled'}`
+      : 'no video track',
+  );
+  parts.push(`build ${SITE_COMMIT}`);
+  return parts.join(' · ');
+}
+
 export function ScannerModule() {
   const [scans, setScans] = useState<Scanned[]>([]);
   const [typed, setTyped] = useState('');
@@ -401,6 +462,7 @@ export function ScannerModule() {
     'unknown',
   );
   const [note, setNote] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Preview>({ phase: 'off' });
   const [busy, setBusy] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -661,38 +723,118 @@ export function ScannerModule() {
   };
 
   /**
-   * Hand the open stream to the <video> once it exists.
+   * Hand the open stream to the <video> at the moment the element exists.
    *
-   * Separate from `start()` because the element is conditionally
-   * rendered: it is created by the render that `setLive(true)` causes,
-   * which has not happened yet when `start()` returns. This runs after
-   * that render, which is the only moment the ref is populated.
+   * A ref callback rather than an effect, and the difference is the whole
+   * bug. The element is rendered only while `live` is true, so at the
+   * moment `setLive(true)` is called it does not exist yet — the first
+   * version assigned the stream on the next line, to a ref that was null,
+   * inside an `if` that silently did nothing. An effect keyed on `[live]`
+   * fixes that one case and no other: it runs once per change of `live`,
+   * so if React ever replaces this node while `live` stays true, the
+   * effect does not re-run, its cleanup has already set `srcObject` to
+   * null, and the new element lives out its life empty.
+   *
+   * The ref callback has no such gap. React calls it with the node every
+   * time one is attached and with null every time one goes away, which is
+   * exactly the set of moments the stream needs to follow.
    *
    * `play()` can still be refused — some browsers require the element to
    * be muted and inline, which it is, and some refuse anyway. A refusal
-   * is reported rather than swallowed, because a silent one is exactly
-   * what made this hard to see.
+   * is recorded rather than swallowed, because a silent one is what made
+   * this hard to see.
+   */
+  const attachStream = useCallback((video: HTMLVideoElement | null) => {
+    if (!video) {
+      // Going away: detach, so a stopped stream is not left attached.
+      if (videoRef.current) videoRef.current.srcObject = null;
+      videoRef.current = null;
+      return;
+    }
+    videoRef.current = video;
+    const stream = streamRef.current;
+    if (!stream) return;
+    if (video.srcObject !== stream) video.srcObject = stream;
+    void video.play().catch((error: unknown) => {
+      const name = (error as { name?: string })?.name ?? '';
+      setPreview({
+        phase: 'stalled',
+        detail: `play() refused: ${name || 'unknown reason'} · ${describePreview(video, stream, null)}`,
+      });
+    });
+  }, []);
+
+  /**
+   * Watch the preview for as long as it is meant to be showing one.
+   *
+   * Polling rather than waiting on an event because the failure being
+   * watched for is the absence of events: `playing`, `loadeddata` and
+   * `error` all stay silent when a stream is open and simply produces no
+   * frames. Two seconds and a half is long enough for a phone camera to
+   * warm up and short enough that nobody stands there wondering.
+   *
+   * It keeps running after the first frame. A camera is lost mid-shop
+   * more often than it fails to start — the phone locks, a call arrives,
+   * another app takes it — and that produces the same black rectangle.
    */
   useEffect(() => {
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (!live || !video || !stream) return;
-
-    video.srcObject = stream;
+    if (!live) {
+      setPreview({ phase: 'off' });
+      return;
+    }
+    setPreview({ phase: 'starting' });
+    let timer = 0;
+    let lastFrameAt = Date.now();
     let cancelled = false;
-    void video.play().catch((error: unknown) => {
+
+    /*
+     * Frames presented, not frames decodable.
+     *
+     * A camera that is taken away mid-shop — the phone locks, a call
+     * arrives, another app opens it — leaves the last frame sitting in
+     * the element. `readyState` stays 4 and `paused` stays false, so
+     * every property says the preview is fine while the picture is a
+     * still photograph of a shelf from thirty seconds ago. Counting
+     * presented frames is the only signal that tells those apart, and
+     * where the browser does not offer it the checks below are the
+     * next best thing rather than nothing.
+     */
+    const first = videoRef.current;
+    const counts = !!first && 'requestVideoFrameCallback' in first;
+    let frames = 0;
+    let framesAtLastPoll = 0;
+    const onFrame = () => {
       if (cancelled) return;
-      const name = (error as { name?: string })?.name ?? '';
-      setNote(
-        `The camera opened but this browser would not start the preview (${name || 'unknown reason'}). ` +
-          'Photographing the barcode works on every device.',
-      );
-    });
+      frames += 1;
+      videoRef.current?.requestVideoFrameCallback?.(onFrame);
+    };
+    if (counts) first.requestVideoFrameCallback?.(onFrame);
+
+    const poll = () => {
+      if (cancelled) return;
+      const video = videoRef.current;
+      const stream = streamRef.current;
+      const decodable =
+        !!video && video.videoWidth > 0 && video.readyState >= 2 && !video.paused;
+      const moving = counts ? frames > framesAtLastPoll : decodable;
+      framesAtLastPoll = frames;
+
+      if (decodable && moving) {
+        lastFrameAt = Date.now();
+        setPreview((current) => (current.phase === 'playing' ? current : { phase: 'playing' }));
+      } else if (Date.now() - lastFrameAt > PREVIEW_GRACE_MS) {
+        setPreview({
+          phase: 'stalled',
+          detail: describePreview(video, stream, counts ? frames : null),
+        });
+      }
+      timer = window.setTimeout(poll, 500);
+    };
+    timer = window.setTimeout(poll, 500);
 
     return () => {
       cancelled = true;
-      // Detach, so a stopped stream is not left attached to a hidden element.
-      video.srcObject = null;
+      window.clearTimeout(timer);
     };
   }, [live]);
 
@@ -767,8 +909,31 @@ export function ScannerModule() {
 
       {live && (
         <div className="scan__stage">
-          <video ref={videoRef} playsInline muted autoPlay className="scan__video" />
+          <video ref={attachStream} playsInline muted autoPlay className="scan__video" />
           <span className="scan__reticle" />
+          {/* Over the stage, never below it. A message about the camera
+              that renders four hundred pixels further down the page is a
+              message nobody standing in an aisle will ever see — the
+              earlier version put it under the buttons, off the bottom of
+              a phone screen, which is most of why this looked silent. */}
+          {preview.phase !== 'playing' && (
+            <div className="scan__stagenote">
+              {preview.phase === 'stalled' ? (
+                <>
+                  <strong>The camera opened, but no picture is reaching this page.</strong>
+                  <span>
+                    <b>Photograph a barcode</b> below uses your phone&rsquo;s own camera and
+                    reads the same packets — it needs no permission and it is not affected by
+                    this.
+                  </span>
+                  {/* Printed so a photograph of this screen is a bug report. */}
+                  <code>{preview.detail}</code>
+                </>
+              ) : (
+                <span>Starting the camera…</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 

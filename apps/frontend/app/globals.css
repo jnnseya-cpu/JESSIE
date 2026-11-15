@@ -6784,6 +6784,32 @@ textarea:focus-visible {
   border-radius: 12px;
   box-shadow: 0 0 0 9999px rgba(4, 18, 31, 0.35);
 }
+/* Sits on the stage while the preview is not carrying pictures, so an
+   empty rectangle is never shown without a reason beside it. Removed the
+   moment a frame arrives — it is an explanation, not a decoration. */
+.scan__stagenote {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  background: rgba(4, 18, 31, 0.82);
+  color: var(--ink-1, #f4faf9);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.scan__stagenote strong {
+  font-size: 14px;
+}
+.scan__stagenote code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-3, rgba(244, 250, 249, 0.62));
+  word-break: break-word;
+}
 .scan__list {
   list-style: none;
   margin: 14px 0 0;

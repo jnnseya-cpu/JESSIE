@@ -1168,23 +1168,66 @@ silently did nothing, and the element mounted with no stream. No error,
 no console warning, no failed request, nothing in a log. It had never
 worked.
 
-The stream is now handed over in an effect keyed on `live`, which runs
-after the render that creates the element — the only moment the ref is
-populated. `play()` is allowed to be refused and says so rather than
-being swallowed, since a silent refusal is what made this invisible. The
-element also carries `autoPlay` beside `muted` and `playsInline`, the
+The stream is now handed over by the `<video>`'s **ref callback**, which
+fires the instant a node is attached and again whenever one is replaced.
+An effect keyed on `live` — what this was fixed to first — closes only
+the original case: it runs once per change of `live`, so if React ever
+replaces that node while `live` stays true, the effect does not re-run,
+its cleanup has already set `srcObject` to null, and the new element
+lives out its life empty. The ref callback has no such gap. `play()` is
+allowed to be refused and says so rather than being swallowed, and the
+element carries `autoPlay` beside `muted` and `playsInline`, the
 combination every browser accepts for an inline preview.
+
+**The stage now watches itself.** A stream that is open is not a
+picture. A watchdog polls while the preview is meant to be showing one
+and, where the browser offers `requestVideoFrameCallback`, counts
+*presented frames* rather than trusting `readyState` — because a camera
+taken away mid-shop (the phone locks, a call arrives, another app opens
+it) leaves the last frame in the element with every property still
+reading healthy. If no frame has arrived 2.5 seconds after the camera
+was asked for, or frames stop arriving later, the stage says so over
+itself, points at **Photograph a barcode** (which needs no permission
+and is unaffected), and prints the state it is in — element size,
+`readyState`, paused, whether a stream is attached, the track's state,
+the frame count and the site build id. That line is readable in a
+photograph of the screen, which is how this gets reported.
+
+The message is **on** the stage, never under it. The earlier version put
+camera notes four hundred pixels down the page, below the buttons and
+off the bottom of a phone screen, so even a `play()` refusal would have
+been reported to nobody.
 
 **No unit test could reach this.** It needs a browser, a camera and a
 mounted component. `pnpm verify:scanner` drives it with a synthetic
-camera and insists the video is carrying pictures — `srcObject` attached,
-a non-zero intrinsic size, not paused — because a video element that
-exists proves nothing, which is the whole lesson. It is in CI, and it
-writes a screenshot when it fails, since the failure is visual and "a
-black rectangle" is what gets reported.
+camera and asserts three things the earlier version did not:
 
-Confirmed by restoring the original four lines and watching it fail:
-`srcObject assigned: false`, `readyState 0`, `0x0`, paused.
+- the element's **rendered box** is non-zero. `videoWidth` is the size of
+  the *stream*, not of the element — a video laid out at zero height
+  carries a perfect 640×480 stream and shows nothing.
+- the stage's **pixels actually move**, by screenshotting it twice 700ms
+  apart and requiring the bytes to differ. Every property can read
+  correctly over a black rectangle; this is the one check a still
+  cannot satisfy.
+- when there is no picture, the stage **says so** — the check stops the
+  camera track the way a real one is taken away and requires the
+  explanation to appear. Without it the watchdog could be dead code and
+  every run would still be green.
+
+Each was confirmed by breaking it: laying the video out at zero height
+(`rendered box: 300x0`, pixels unchanged, FAILED — and the earlier
+version of this check would have passed it), and disabling the watchdog
+(`says so when it stalls: false`, FAILED).
+
+**What is still not known.** A phone on 15 November still showed a black
+stage after the ref fix, with no note, with the button reading "Stop
+scanning" — so `getUserMedia` resolved and `play()` did not reject. Two
+causes were tested from here and **disproved**: a stale cached bundle
+(the service worker treats `/account` as personal and never caches it,
+and `/_next/static/` is content-hashed, so there is no stale path) and
+the aspect-ratio layout (the video measures 358×269 at phone width in
+real Chromium). The remaining candidates need the device, which is what
+the on-screen diagnosis is for.
 
 A rate-limited registration exits 2 with the reason rather than failing:
 the door policy counting attempts per connection is its abuse control
