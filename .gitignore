@@ -33,3 +33,4 @@ apps/frontend/app/build-info.ts
 
 # Vercel CLI scratch, written by a local `vercel build` probe
 .vercel/
+scanner-failure.png

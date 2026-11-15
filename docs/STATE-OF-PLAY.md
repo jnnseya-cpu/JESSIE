@@ -1154,6 +1154,44 @@ serving from the compiled CommonJS afterwards.
 
 ---
 
+## The live scanner was broken in production
+
+Fixed on 15 November 2026, from a screenshot of a phone. The camera
+opened, the permission was granted, the stage rendered with its reticle
+— and the picture went nowhere. A black rectangle.
+
+Four lines of ordinary-looking React. The `<video>` is rendered only
+while `live` is true, and the stream was assigned on the line *after*
+`setLive(true)`, before the render that creates the element. So
+`videoRef.current` was null, the assignment sat inside an `if` that
+silently did nothing, and the element mounted with no stream. No error,
+no console warning, no failed request, nothing in a log. It had never
+worked.
+
+The stream is now handed over in an effect keyed on `live`, which runs
+after the render that creates the element — the only moment the ref is
+populated. `play()` is allowed to be refused and says so rather than
+being swallowed, since a silent refusal is what made this invisible. The
+element also carries `autoPlay` beside `muted` and `playsInline`, the
+combination every browser accepts for an inline preview.
+
+**No unit test could reach this.** It needs a browser, a camera and a
+mounted component. `pnpm verify:scanner` drives it with a synthetic
+camera and insists the video is carrying pictures — `srcObject` attached,
+a non-zero intrinsic size, not paused — because a video element that
+exists proves nothing, which is the whole lesson. It is in CI, and it
+writes a screenshot when it fails, since the failure is visual and "a
+black rectangle" is what gets reported.
+
+Confirmed by restoring the original four lines and watching it fail:
+`srcObject assigned: false`, `readyState 0`, `0x0`, paused.
+
+A rate-limited registration exits 2 with the reason rather than failing:
+the door policy counting attempts per connection is its abuse control
+working, not a finding about the scanner.
+
+---
+
 ## The shelf scanner reads four things, never one
 
 Built and proven on 15 November 2026. **Not live.**

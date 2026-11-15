@@ -202,6 +202,16 @@ jobs:
           }
           pnpm verify:journeys
 
+      # The live camera preview, with a synthetic camera. No unit test
+      # reaches this: it needs a browser, a camera and a mounted
+      # component, and the bug it was written for produced a black
+      # rectangle and no error of any kind.
+      - name: Shelf scanner preview
+        env:
+          FRONTEND: http://localhost:3000
+          API: http://localhost:4000/api
+        run: pnpm verify:scanner
+
       - name: Layout, contrast and CSP
         env:
           FRONTEND: http://localhost:3000

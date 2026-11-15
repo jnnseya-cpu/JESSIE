@@ -515,11 +515,19 @@ export function ScannerModule() {
         video: { facingMode: 'environment' },
       });
       streamRef.current = stream;
+      /*
+       * The stream is handed to the element by the effect below, not
+       * here.
+       *
+       * It used to be assigned on the next line, and it never once
+       * worked. The <video> is rendered only while `live` is true, so at
+       * the moment `setLive(true)` is called the element does not exist:
+       * `videoRef.current` was null, the assignment was inside an `if`
+       * that silently did nothing, and the video then mounted with no
+       * stream. A black rectangle, no error, no note — the camera was
+       * open and its picture went nowhere.
+       */
       setLive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
     } catch (error) {
       // "Could not be opened" is not a diagnosis. Say which wall we hit,
       // because each one has a different way round it.
@@ -652,6 +660,42 @@ export function ScannerModule() {
     input.click();
   };
 
+  /**
+   * Hand the open stream to the <video> once it exists.
+   *
+   * Separate from `start()` because the element is conditionally
+   * rendered: it is created by the render that `setLive(true)` causes,
+   * which has not happened yet when `start()` returns. This runs after
+   * that render, which is the only moment the ref is populated.
+   *
+   * `play()` can still be refused — some browsers require the element to
+   * be muted and inline, which it is, and some refuse anyway. A refusal
+   * is reported rather than swallowed, because a silent one is exactly
+   * what made this hard to see.
+   */
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!live || !video || !stream) return;
+
+    video.srcObject = stream;
+    let cancelled = false;
+    void video.play().catch((error: unknown) => {
+      if (cancelled) return;
+      const name = (error as { name?: string })?.name ?? '';
+      setNote(
+        `The camera opened but this browser would not start the preview (${name || 'unknown reason'}). ` +
+          'Photographing the barcode works on every device.',
+      );
+    });
+
+    return () => {
+      cancelled = true;
+      // Detach, so a stopped stream is not left attached to a hidden element.
+      video.srcObject = null;
+    };
+  }, [live]);
+
   // The read loop. Runs only while the camera is live.
   useEffect(() => {
     if (!live || !supported) return;
@@ -723,7 +767,7 @@ export function ScannerModule() {
 
       {live && (
         <div className="scan__stage">
-          <video ref={videoRef} playsInline muted className="scan__video" />
+          <video ref={videoRef} playsInline muted autoPlay className="scan__video" />
           <span className="scan__reticle" />
         </div>
       )}
