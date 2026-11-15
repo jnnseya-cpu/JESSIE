@@ -1124,6 +1124,110 @@ name before doing anything else.
 
 ---
 
+## The shelf scanner reads four things, never one
+
+Built and proven on 15 November 2026. **Not live.**
+
+The scanner showed a product's front-of-pack bands and its declared
+allergens. It now reads four axes, and keeps them apart.
+
+**Nutri-Score, computed rather than copied.** The official algorithm
+applied to the panel on the packet, so every point is attributed to the
+nutrient that earned it — a letter nobody can interrogate is a verdict,
+and "it is a D because of the sugar" is the only version that changes a
+purchase. Computing it also means a product the database has never
+graded still gets one, which matters most for own-brand and reformulated
+lines. Where the database does publish a grade, both are shown and
+disagreement is reported rather than smoothed over.
+
+It is the **2017** algorithm, named on every result. The 2023 revision is
+real and this is not it; implementing it from memory would produce a
+number that looked official and was not.
+
+**Processing (NOVA), additives and origin** are the three things
+Nutri-Score is explicit about not seeing, and they are reported beside it
+rather than folded into it. Additives are named in English with what each
+one does; the six colours requiring a hyperactivity warning carry the
+regulator's own words, and that warning is never behind a disclosure.
+Origin separates ingredient origin, manufacturing place and markets sold
+in, because a list of markets is not a provenance and is routinely
+presented as one.
+
+### Why there is no single number
+
+`NEVER_CLAIM` forbids a composite health score, and these four would be
+the obvious thing to average. They are not commensurable: a tin of
+chickpeas from Italy with no additives and a dull Nutri-Score is a
+different proposition from a sweetener-heavy drink that scores B, and one
+number would rank them and be wrong. Four axes also fail more honestly —
+each can be absent on its own, and "not declared" is useful where a
+composite quietly scoring it as average is not.
+
+The comparison rule is enforced rather than footnoted. `mayCompare`
+refuses a cross-category comparison, and the basket tallies letters
+**within** each scoring table — a drink's B and a cheese's B were
+produced by different tables and do not rank against each other.
+
+### Three bugs this work found, two of them already shipped
+
+**`Per100gDto` required the four front-of-pack figures**, directly under a
+comment arguing that a required field turns a partial label into a
+rejected scan — which applied only to the other three. A record carrying
+fat but no salt was rejected outright.
+
+**The scanner spread its whole scan object into the basket request**, so
+`found`, `brand`, `note` and the allergen fields went too, and
+`forbidNonWhitelisted` refused the lot. Every real shop returned 400 and
+showed no trolley totals at all.
+
+Both arrived in the D-006 fix, which was verified against eight malformed
+payloads and one valid one — none of which was the payload the scanner
+actually sends. `basket-contract.test.ts` now compares the keys one file
+sends against the keys the other declares, and both defects were restored
+and watched failing.
+
+**"Chickpeas in water" was graded A by definition.** The category match
+read the product name, and `water` is the one category that
+short-circuits the whole algorithm. "Tuna in spring water" and "Peaches
+in water" would have gone the same way. Water is now read from the
+category tags alone.
+
+A fourth was found by the feature itself: olive oil computed D where the
+database published C, because the official allowance crediting olive,
+rapeseed and walnut oils on the fruit line was described in a comment and
+implemented nowhere. The reconciliation is what surfaced it.
+
+### Proven
+
+Twenty-three unit tests on the algorithm, aimed at the four places an
+unofficial implementation reliably goes wrong: salt not converted to
+sodium, a drink scored on the food table, an oil scored on absolute
+saturates, and protein rescuing a product the rule says it must not. Each
+costs a grade or two and produces a plausible number.
+
+Checked against realistic records for a cola, an olive oil, tinned
+chickpeas, children's sweets and an ungraded own-brand granola: three
+agree with the published grade, and the fourth disagreement is the
+2017-versus-2023 sugar table, reported as such.
+
+The five grade chips are measured in CI against the published 4.5:1
+floor. White on the official E red is 4.15:1 — enough for large text,
+short of this platform's own floor — so the foreground is near-black and
+the background stays the official colour, because a house-styled E would
+be a different label wearing the same name.
+
+### Not proven
+
+Nothing is live. No new vendor: Open Food Facts was already the source
+and the four readings come from fields the lookup was fetching and
+discarding. The basket's per-item readings are client-supplied and
+validated rather than re-looked-up server-side — a trolley may hold two
+hundred items, and re-reading each would turn one request into two
+hundred outbound calls against a free community database. Nothing is
+stored and nothing reaches another member.
+
+---
+
 ## Trend intelligence
 
 Built and proven, on 10 November 2026, from the Trend Intelligence AI

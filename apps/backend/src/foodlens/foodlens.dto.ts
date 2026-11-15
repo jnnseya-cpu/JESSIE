@@ -13,7 +13,16 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { EVIDENCE_SOURCES, SWAP_CONSTRAINTS, UK_ALLERGENS } from '@jessmove/foodlens';
+import {
+  EVIDENCE_SOURCES,
+  NUTRI_CATEGORIES,
+  NUTRI_GRADES,
+  SWAP_CONSTRAINTS,
+  UK_ALLERGENS,
+  type NovaGroup,
+  type NutriCategory,
+  type NutriGrade,
+} from '@jessmove/foodlens';
 
 export class DeclaredItemDto {
   @IsString()
@@ -27,16 +36,25 @@ export class DeclaredItemDto {
 }
 
 export class Per100gDto {
-  @IsNumber() @Min(0) fatG!: number;
-  @IsNumber() @Min(0) saturatesG!: number;
-  @IsNumber() @Min(0) sugarsG!: number;
-  @IsNumber() @Min(0) saltG!: number;
   /*
-   * Optional, because most labels carry them and some do not, and a
-   * required field would turn a partial label into a rejected scan.
+   * All seven optional, because a label is not a schema.
+   *
+   * The front-of-pack four were required here and the three below were
+   * not, with the comment arguing for optional sitting under the wrong
+   * half of the list. The consequence was not theoretical: a product
+   * whose record carries fat but no salt — ordinary, and common on
+   * fresh and own-brand lines — was rejected outright, so the shelf
+   * scanner's trolley totals returned 400 for a great many real shops.
+   *
    * Absent stays absent: there is no default here for the same reason
-   * there is no zero in the ledger.
+   * there is no zero in the ledger. A missing figure is left out of the
+   * total and counted in `weighed`, which is the honest handling and was
+   * already implemented downstream.
    */
+  @IsOptional() @IsNumber() @Min(0) fatG?: number;
+  @IsOptional() @IsNumber() @Min(0) saturatesG?: number;
+  @IsOptional() @IsNumber() @Min(0) sugarsG?: number;
+  @IsOptional() @IsNumber() @Min(0) saltG?: number;
   @IsOptional() @IsNumber() @Min(0) proteinG?: number;
   @IsOptional() @IsNumber() @Min(0) carbohydrateG?: number;
   @IsOptional() @IsNumber() @Min(0) fibreG?: number;
@@ -192,6 +210,7 @@ export class LogEntryDto {
   @ValidateNested()
   @Type(() => Per100gDto)
   per100g?: Per100gDto;
+
 }
 
 /**
@@ -250,6 +269,71 @@ export class BasketProductDto {
   @ValidateNested()
   @Type(() => Per100gDto)
   per100g?: Per100gDto;
+
+  /*
+   * The four readings, echoed back by the client from what the barcode
+   * lookup already returned to it.
+   *
+   * Client-supplied, and worth saying why rather than leaving it to be
+   * discovered. The alternative is for this endpoint to look each
+   * barcode up again server-side, which would stop a client inventing a
+   * grade — but a basket may hold two hundred items, and a caller
+   * posting two hundred unseen barcodes would turn one request into two
+   * hundred outbound lookups against a free, community-run database.
+   * That is a worse failure than a member mis-stating the contents of
+   * their own trolley, which affects nothing but their own arithmetic.
+   *
+   * So: validated tightly, bounded, and never trusted for anything but
+   * this stateless calculation. Nothing here is stored and nothing here
+   * reaches another member.
+   */
+  @IsOptional()
+  @IsIn(NUTRI_GRADES)
+  nutriGrade?: NutriGrade | null;
+
+  @IsOptional()
+  @IsIn(NUTRI_CATEGORIES)
+  nutriCategory?: NutriCategory | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(4)
+  novaGroup?: NovaGroup | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => BasketAdditiveDto)
+  additives?: BasketAdditiveDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  origins?: string[];
+}
+
+/** An additive as the lookup reported it, echoed back for the basket view. */
+export class BasketAdditiveDto {
+  @IsString()
+  @MaxLength(12)
+  code!: string;
+
+  @IsString()
+  @MaxLength(80)
+  name!: string;
+
+  @IsString()
+  @MaxLength(200)
+  role!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  regulatoryNote?: string;
 }
 
 export class BasketDto {

@@ -1,6 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+/*
+ * The limitations come from the package that computes the score, not
+ * from a copy in this file. A second list is a second list that drifts,
+ * and these are the sentences that stop the letter being over-read — the
+ * last thing that should quietly disagree with itself.
+ *
+ * A build-time import, so unlike a fetched list it cannot be missing at
+ * the moment something has already gone wrong.
+ */
+import { NUTRI_LIMITATIONS } from '@jessmove/foodlens';
 import { apiBase } from '../api-base';
 import { cameraBlockedMessage, deviceFrom } from './camera-advice';
 import { shrinkImage } from './image-shrink';
@@ -32,6 +42,16 @@ interface Basket {
     topContributors: { name: string; amount: number }[];
   }[];
   flags: { nutrient: string; says: string; action: string }[];
+  shape?: {
+    grades: { category: string; categoryLabel: string; comparable: string; counts: { grade: Grade; items: number }[] }[];
+    processing: { group: number; label: string; items: number }[];
+    ultraProcessedShare: number | null;
+    commonAdditives: { code: string; name: string; role: string; items: number }[];
+    warned: { code: string; name: string; note: string; items: string[] }[];
+    origins: { place: string; items: number }[];
+    read: { graded: number; classified: number; additivesListed: number; originDeclared: number };
+    says: string;
+  };
   note: string;
 }
 
@@ -46,6 +66,226 @@ interface Scanned {
   allergensPresent?: string[];
   declaresFullList?: boolean;
   note?: string;
+
+  /* ── The four readings ── */
+  nutriCategory?: NutriCategory;
+  nutriScore?: {
+    grade: Grade;
+    score: number;
+    negatives: Component[];
+    positives: Component[];
+    proteinExcluded: boolean;
+    missing: string[];
+    algorithmVersion: string;
+    says: string;
+  } | null;
+  nutriAgreement?: { computed: Grade | null; published: Grade | null; agree: boolean | null; says: string };
+  shelf?: {
+    processing: { group: number | null; label: string; what: string; says: string };
+    additives: {
+      count: number;
+      known: { code: string; name: string; role: string; regulatoryNote?: string }[];
+      unrecognised: string[];
+      withRegulatoryNote: { code: string; name: string; regulatoryNote?: string }[];
+      says: string;
+    };
+    origin: { ingredientOrigins: string[]; manufacturingPlaces: string[]; soldIn: string[]; says: string };
+    axesRead: number;
+    says: string;
+  };
+}
+
+type Grade = 'A' | 'B' | 'C' | 'D' | 'E';
+type NutriCategory = 'food' | 'beverage' | 'fat' | 'cheese' | 'water';
+interface Component {
+  key: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  points: number;
+  maxPoints: number;
+  says: string;
+}
+
+const CATEGORY_LABEL: Record<NutriCategory, string> = {
+  food: 'food',
+  beverage: 'drinks',
+  fat: 'oils and fats',
+  cheese: 'cheeses',
+  water: 'water',
+};
+
+
+/**
+ * The four readings for one product.
+ *
+ * Deliberately four blocks rather than one verdict. A shopper comparing
+ * two yoghurts needs to see which axis they are choosing on, and a
+ * single blended figure would hide exactly that — as well as being the
+ * composite health score the module is forbidden from inventing.
+ *
+ * The grade is a letter on a coloured chip because that is what is
+ * printed on the packet and recognisable at arm's length. Everything
+ * under it exists so the letter can be argued with.
+ */
+function Readings({ scan }: { scan: Scanned }) {
+  const [open, setOpen] = useState(false);
+  const ns = scan.nutriScore;
+  const shelf = scan.shelf;
+  if (!ns && !shelf) return null;
+
+  const warned = shelf?.additives.withRegulatoryNote ?? [];
+
+  return (
+    <div className="nutri">
+      {ns ? (
+        <div className="nutri__row">
+          <span className={`nutri__grade nutri__grade--${ns.grade.toLowerCase()}`} aria-hidden="true">
+            {ns.grade}
+          </span>
+          <div className="nutri__gist">
+            <p className="nutri__says">
+              <span className="sr-only">Nutri-Score {ns.grade}. </span>
+              {ns.says}
+            </p>
+            <p className="nutri__scope">
+              Compared with other {CATEGORY_LABEL[scan.nutriCategory ?? 'food']}, not with
+              food in general.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="nutri__none">
+          No Nutri-Score: this record is missing figures the calculation needs. That is
+          not a bad score — it is no score.
+        </p>
+      )}
+
+      {/* The three things the letter cannot see, which is most of the packet. */}
+      {shelf && (
+        <div className="nutri__axes">
+          <div className="nutri__axis">
+            <span className="nutri__axislabel">How processed</span>
+            <span>{shelf.processing.label}</span>
+          </div>
+          <div className="nutri__axis">
+            <span className="nutri__axislabel">Additives</span>
+            <span>
+              {shelf.additives.count === 0
+                ? shelf.additives.says.startsWith('No additive list')
+                  ? 'Not declared'
+                  : 'None declared'
+                : `${shelf.additives.count} listed`}
+            </span>
+          </div>
+          <div className="nutri__axis">
+            <span className="nutri__axislabel">Origin</span>
+            <span>
+              {shelf.origin.ingredientOrigins[0] ??
+                shelf.origin.manufacturingPlaces[0] ??
+                'Not declared'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* A legal warning is never behind a disclosure. */}
+      {warned.length > 0 && (
+        <div className="warn warn--caution nutri__warn">
+          <strong>
+            {warned.map((a) => a.name).join(', ')} — the label is required to warn that
+            {warned.length === 1 ? ' this colour' : ' these colours'} may affect activity
+            and attention in children.
+          </strong>
+        </div>
+      )}
+
+      <button type="button" className="nutri__more" onClick={() => setOpen((v) => !v)}>
+        {open ? 'Hide the working' : 'Show the working'}
+      </button>
+
+      {open && (
+        <div className="nutri__detail">
+          {ns && (
+            <>
+              <h5>Where the points came from</h5>
+              <ul className="nutri__points">
+                {[...ns.negatives, ...ns.positives].map((c) => (
+                  <li key={c.key}>
+                    <span>{c.label}</span>
+                    <em>
+                      {c.value === null ? 'not declared' : `${c.value} ${c.unit}`}
+                    </em>
+                    <b>
+                      {ns.negatives.includes(c) ? '+' : '−'}
+                      {c.points}
+                    </b>
+                  </li>
+                ))}
+              </ul>
+              {ns.proteinExcluded && (
+                <p className="fl__note">
+                  {ns.positives.find((p) => p.key === 'protein')?.says}
+                </p>
+              )}
+              {ns.missing.length > 0 && (
+                <p className="fl__note">
+                  Not on this record: {ns.missing.join(', ')}. Missing figures score
+                  nothing rather than being guessed at.
+                </p>
+              )}
+              {scan.nutriAgreement && (
+                <p className="fl__note">{scan.nutriAgreement.says}</p>
+              )}
+              <p className="fl__note">Nutri-Score {ns.algorithmVersion} algorithm.</p>
+            </>
+          )}
+
+          {shelf && (
+            <>
+              <h5>Processing</h5>
+              <p className="fl__note">{shelf.processing.says}</p>
+              {shelf.processing.group !== null && (
+                <p className="fl__note">{shelf.processing.what}</p>
+              )}
+
+              <h5>Additives</h5>
+              <p className="fl__note">{shelf.additives.says}</p>
+              {shelf.additives.known.length > 0 && (
+                <ul className="nutri__additives">
+                  {shelf.additives.known.map((a) => (
+                    <li key={a.code}>
+                      <span>
+                        <b>{a.code}</b> {a.name}
+                      </span>
+                      <em>{a.role}</em>
+                      {a.regulatoryNote && <strong>{a.regulatoryNote}</strong>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {shelf.additives.unrecognised.length > 0 && (
+                <p className="fl__note">
+                  Not recognised here: {shelf.additives.unrecognised.join(', ')}. Listed
+                  rather than dropped — a short list is not a clean one.
+                </p>
+              )}
+
+              <h5>Origin</h5>
+              <p className="fl__note">{shelf.origin.says}</p>
+            </>
+          )}
+
+          <h5>What the letter does not see</h5>
+          <ul className="nutri__limits">
+            {NUTRI_LIMITATIONS.map((limit) => (
+              <li key={limit}>{limit}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const BANDS = {
@@ -134,9 +374,34 @@ export function ScannerModule() {
   // interesting number in a supermarket is the shop, not the item.
   const [basket, setBasket] = useState<Basket | null>(null);
   useEffect(() => {
+    /*
+     * Built field by field rather than spread.
+     *
+     * Spreading the whole scan sent `found`, `brand`, `note` and the
+     * allergen fields too, which the endpoint rejects — it validates a
+     * closed shape, correctly. The result was a 400 on every real scan
+     * and no trolley totals at all, which looked like the basket feature
+     * simply not working.
+     *
+     * Naming the fields also means adding one to a scan cannot silently
+     * start sending it.
+     */
     const found = scans
       .filter((s) => s.found)
-      .map((s) => (s.quantity ? s : { ...s, quantity: sizes[s.barcode] ?? null }));
+      .map((s) => ({
+        barcode: s.barcode,
+        name: s.name ?? 'Unnamed product',
+        quantity: s.quantity ?? sizes[s.barcode] ?? null,
+        kcalPer100g: s.kcalPer100g ?? null,
+        per100g: s.per100g,
+        nutriGrade: s.nutriScore?.grade ?? null,
+        nutriCategory: s.nutriCategory ?? null,
+        novaGroup: s.shelf?.processing.group ?? null,
+        additives: s.shelf?.additives.known,
+        origins: s.shelf?.origin.ingredientOrigins.length
+          ? s.shelf.origin.ingredientOrigins
+          : s.shelf?.origin.manufacturingPlaces,
+      }));
     if (found.length === 0) {
       setBasket(null);
       return;
@@ -509,6 +774,92 @@ export function ScannerModule() {
               <em>{f.action}</em>
             </div>
           ))}
+
+          {/* The shape of the shop. One ultra-processed item is not a
+              finding — bread is group 4. Nine out of eleven is, and it
+              is not something anybody can see one label at a time. */}
+          {basket.shape && basket.shape.read.graded + basket.shape.read.classified > 0 && (
+            <div className="nutri nutri--shop">
+              <p className="nutri__says">{basket.shape.says}</p>
+
+              {basket.shape.grades.length > 0 && (
+                <>
+                  {basket.shape.grades.map((group) => (
+                    <div key={group.category} className="nutri__tallygroup">
+                      <span className="nutri__axislabel">{group.categoryLabel}</span>
+                      <div className="nutri__tally">
+                        {group.counts.map((g) => (
+                          <span key={g.grade} className="nutri__tallyitem">
+                            <span
+                              className={`nutri__grade nutri__grade--${g.grade.toLowerCase()} nutri__grade--sm`}
+                              aria-hidden="true"
+                            >
+                              {g.grade}
+                            </span>
+                            <b>
+                              {g.items}
+                              <span className="sr-only">
+                                {' '}
+                                items graded {g.grade} among {group.categoryLabel}
+                              </span>
+                            </b>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="nutri__scope">
+                    Letters are tallied within each kind of product. A drink&rsquo;s B and a
+                    cheese&rsquo;s B were scored on different tables and do not rank against
+                    each other.
+                  </p>
+                </>
+              )}
+
+              {basket.shape.ultraProcessedShare !== null && (
+                <div className="nutri__axes">
+                  <div className="nutri__axis">
+                    <span className="nutri__axislabel">Ultra-processed</span>
+                    <span>
+                      {basket.shape.ultraProcessedShare}% of {basket.shape.read.classified}{' '}
+                      classified
+                    </span>
+                  </div>
+                  {basket.shape.commonAdditives[0] && (
+                    <div className="nutri__axis">
+                      <span className="nutri__axislabel">Most common additive</span>
+                      <span>
+                        {basket.shape.commonAdditives[0].name} · {basket.shape.commonAdditives[0].items}
+                      </span>
+                    </div>
+                  )}
+                  {basket.shape.origins[0] && (
+                    <div className="nutri__axis">
+                      <span className="nutri__axislabel">Origins declared</span>
+                      <span>
+                        {basket.shape.origins.map((o) => o.place).slice(0, 2).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {basket.shape.warned.map((w) => (
+                <div key={w.code} className="warn warn--caution nutri__warn">
+                  <strong>
+                    {w.name} ({w.code}) in {w.items.join(', ')} — {w.note}
+                  </strong>
+                </div>
+              ))}
+
+              {basket.shape.read.originDeclared < basket.products && (
+                <p className="nutri__scope">
+                  {basket.products - basket.shape.read.originDeclared} of {basket.products} items
+                  declared no origin. Not declared is not the same as nowhere.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -546,6 +897,7 @@ export function ScannerModule() {
                       );
                     })}
                   </div>
+                  <Readings scan={s} />
                   {!s.quantity && (
                     <label className="scan__size">
                       <span>Pack size — so it can count towards your trolley</span>

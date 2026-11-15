@@ -503,3 +503,41 @@ test('the consent banner carries no text colour outside its measured tokens', ()
     'the banner carries text colours outside its measured tokens: ' + offToken.join(', '),
   );
 });
+
+/* ------------------------------------------------------------------ *
+ * The Nutri-Score chips
+ * ------------------------------------------------------------------ */
+
+test('every Nutri-Score grade chip clears the published contrast floor', () => {
+  /*
+   * The five chips carry the official Nutri-Score colours on purpose:
+   * the letter is useful because it matches the one printed on the
+   * packet, and a house-styled A would be a different label wearing the
+   * same name. That makes the background fixed and the foreground the
+   * only thing that can move.
+   *
+   * It had to move once already. White on the official E red measures
+   * 4.15:1 — fine against the large-text threshold, and short of the
+   * 4.5:1 floor this platform publishes for itself. The letter is set
+   * at 20px and 800 weight, so the lower threshold would have applied
+   * and nobody would have been wrong to ship it; it is near-black now
+   * because the published floor is the published floor.
+   */
+  const block = CSS.slice(CSS.indexOf('.nutri__grade--a'), CSS.indexOf('.nutri__gist'));
+  const pairs = [...block.matchAll(/--([a-e])\s*\{\s*background:\s*(#[0-9a-f]{6});\s*color:\s*(#[0-9a-f]{6});/gi)];
+  assert.equal(pairs.length, 5, `expected five grade chips, found ${pairs.length}`);
+
+  for (const [, grade, background, colour] of pairs) {
+    const ratio = contrast(colour!, background!);
+    assert.ok(
+      ratio >= CONTRAST_RATIO_MIN,
+      `grade ${grade!.toUpperCase()} is ${ratio}:1 (${colour} on ${background}), ` +
+        `below the published ${CONTRAST_RATIO_MIN}:1 floor`,
+    );
+  }
+
+  // The official backgrounds, pinned. If one changes, the letter stops
+  // matching the packet and the chip stops doing its job.
+  const backgrounds = pairs.map((m) => m[2]!.toLowerCase());
+  assert.deepEqual(backgrounds, ['#038141', '#85bb2f', '#fecb02', '#ee8100', '#e63e11']);
+});

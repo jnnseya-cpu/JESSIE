@@ -20,3 +20,5 @@ export * from './twin';
 export * from './analysis';
 export * from './composition';
 export * from './constraints';
+export * from './nutri-score';
+export * from './shelf';

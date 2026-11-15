@@ -34,7 +34,13 @@ export interface AnalyzeRequest {
   userConfirmedKcal?: number;
   declaredItems?: DetectedFood[];
   declaredKcal?: number;
-  per100g?: { fatG: number; saturatesG: number; sugarsG: number; saltG: number };
+  /*
+   * Partial, because a label is. A record carrying fat but no salt is
+   * ordinary, and `foodlens.logic.ts` has always typed this as a
+   * `Partial` — the two disagreed, and this side being the stricter one
+   * is what rejected real scans at the door.
+   */
+  per100g?: Partial<{ fatG: number; saturatesG: number; sugarsG: number; saltG: number }>;
   grams?: { proteinG: number; carbohydrateG: number; fatG: number };
   allergenSource?: EvidenceSource;
   allergensPresent?: Allergen[];

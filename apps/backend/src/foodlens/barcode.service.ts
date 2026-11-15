@@ -39,7 +39,22 @@ export class BarcodeService {
       const timer = setTimeout(() => controller.abort(), 5000);
       const response = (await fetch(
         `https://world.openfoodfacts.org/api/v2/product/${code}.json` +
-          '?fields=product_name,brands,quantity,nutriments,allergens_tags,ingredients_text',
+        /*
+         * Four more groups of fields than the panel alone.
+         *
+         * Each one answers a question Nutri-Score is explicit about not
+         * answering: nova_group is how processed it is, additives_tags
+         * is what has been put in, origins and manufacturing_places are
+         * where it came from, and nutriscore_grade is the database's own
+         * letter to check this platform's computation against.
+         *
+         * `categories_tags` is here to pick the scoring table — a drink
+         * scored on the food table reads two grades better than it is,
+         * and the category is the only thing that prevents it.
+         */
+        '?fields=product_name,brands,quantity,nutriments,allergens_tags,ingredients_text,' +
+          'nova_group,additives_tags,origins,manufacturing_places,countries,' +
+          'nutriscore_grade,categories_tags',
         {
           signal: controller.signal,
           headers: { 'user-agent': 'JessMove/1.0 (wellness platform; contact jess@jessmove.com)' },
