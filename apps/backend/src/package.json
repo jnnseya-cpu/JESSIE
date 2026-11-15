@@ -1,0 +1,24 @@
+{
+  "//": [
+    "Not a package. This tells Node that the .ts files beside it are ES",
+    "modules, for the tests that import them directly under",
+    "--experimental-strip-types.",
+    "",
+    "Without it Node parsed each source file as CommonJS, failed, and",
+    "reparsed it as ESM, emitting MODULE_TYPELESS_PACKAGE_JSON every time.",
+    "A warning that always fires is a warning nobody reads, and this one",
+    "sat above every test result in the log.",
+    "",
+    "It does not change the build. The compiler emits CommonJS because",
+    "tsconfig.base.json sets module: commonjs, and moduleResolution: node",
+    "does not read this field at all. dist/ keeps its own package.json",
+    "boundary at the package root, so the compiled output is still",
+    "CommonJS and the API still loads it with require(). Neither tsc nor",
+    "nest copies this file into dist.",
+    "",
+    "No name and no version, so pnpm does not treat it as a workspace",
+    "package: the workspace globs are apps/* and packages/*, not their",
+    "src directories."
+  ],
+  "type": "module"
+}

@@ -22,6 +22,13 @@ on:
 #     measures the code, and a shared runner is the wrong machine to
 #     draw a conclusion from.
 #
+#   pnpm check:barcode — calls Open Food Facts for real. It is the only
+#     check that can catch a renamed or mistyped field in the lookup,
+#     and it depends on a free community database being up. A red build
+#     caused by somebody else's outage teaches people to ignore red
+#     builds, so it is run deliberately rather than on every push —
+#     see H-11.
+#
 # Nothing here uses continue-on-error, and nothing skips on a missing
 # input. A step that cannot run must fail, because a step that passes
 # without running is worse than one that fails.

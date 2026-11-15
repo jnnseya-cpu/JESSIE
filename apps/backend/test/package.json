@@ -1,0 +1,24 @@
+{
+  "//": [
+    "Not a package. This file exists to tell Node that the test files beside",
+    "it are ES modules.",
+    "",
+    "Without it every test file emitted MODULE_TYPELESS_PACKAGE_JSON: Node",
+    "parsed each one as CommonJS, failed, and reparsed it as ESM — roughly",
+    "seventy times per run, with the warning noting the cost each time. The",
+    "noise was the smaller half of the problem; a warning that always fires",
+    "is a warning nobody reads, and this one sat above every test result in",
+    "the log.",
+    "",
+    "Node's own suggestion is to add \"type\": \"module\" to the package's",
+    "package.json, and that would break the application: the backend builds",
+    "to CommonJS in dist/ and the API loads it with require(). A nested",
+    "package.json scopes the declaration to this directory, because Node",
+    "resolves module type from the nearest one. dist/ is unaffected.",
+    "",
+    "It carries no name and no version, so pnpm does not treat it as a",
+    "workspace package — the workspace globs are apps/* and packages/*,",
+    "which this is not."
+  ],
+  "type": "module"
+}

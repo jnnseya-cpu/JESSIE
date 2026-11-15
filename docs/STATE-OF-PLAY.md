@@ -1124,6 +1124,36 @@ name before doing anything else.
 
 ---
 
+## Every test run printed seventy warnings
+
+Fixed on 15 November 2026. `MODULE_TYPELESS_PACKAGE_JSON` fired once per
+file: Node parsed each `.ts` as CommonJS, failed, and reparsed it as ESM,
+noting the cost each time. The noise was the smaller half — a warning
+that always fires is a warning nobody reads, and this one sat above every
+test result in the log, where a real warning would have had to compete
+with it.
+
+**Node's own advice breaks the application.** It suggests adding
+`"type": "module"` to the package's package.json; the backend compiles to
+CommonJS in `dist/` and the API loads it with `require()`, so declaring
+the backend package ESM stops the server starting — at boot, in
+production, from a change that looks like housekeeping.
+
+The declaration is scoped instead to the seven directories holding `.ts`
+sources and tests, where Node's nearest-package.json lookup finds it and
+the compiled output does not. The frontend takes it at the package root,
+which is safe there: its only `.js` files are the service worker and its
+template, which browsers fetch over HTTP and the field does not reach.
+
+`module-type.test.ts` holds the arrangement from both sides — the scoped
+markers must exist and carry an explanation, and the four packages that
+compile to CommonJS must stay silent about their type. The dangerous fix
+was applied and watched failing. Zero warnings now, with typecheck,
+both builds and 1,093 tests passing, and the API verified booting and
+serving from the compiled CommonJS afterwards.
+
+---
+
 ## The shelf scanner reads four things, never one
 
 Built and proven on 15 November 2026. **Not live.**
@@ -1218,9 +1248,17 @@ be a different label wearing the same name.
 
 ### Not proven
 
-Nothing is live. No new vendor: Open Food Facts was already the source
-and the four readings come from fields the lookup was fetching and
-discarding. The basket's per-item readings are client-supplied and
+Nothing is live. **No real Open Food Facts response has ever passed
+through this code** — outbound to `world.openfoodfacts.org` is refused
+here by the same network policy that blocks jessmove.com. Everything is
+proven against realistic record shapes, which checks the mapping and the
+algorithm and cannot check the thirteen field names the lookup asks for.
+A wrong field name returns no error: the field is simply absent, the
+reading says "not declared", and every product looks sparse. That is
+H-11, one command, by anyone with internet.
+
+No new vendor: Open Food Facts was already the source and the four
+readings come from fields the lookup was fetching and discarding. The basket's per-item readings are client-supplied and
 validated rather than re-looked-up server-side — a trolley may hold two
 hundred items, and re-reading each would turn one request into two
 hundred outbound calls against a free community database. Nothing is

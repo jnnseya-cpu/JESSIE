@@ -1,4 +1,15 @@
 {
+  "//type": [
+    "Declared so Node reads this app's .ts files as ES modules. Backend",
+    "tests import three of them directly under --experimental-strip-types,",
+    "and without this Node parsed each as CommonJS, failed, and reparsed",
+    "it as ESM, emitting MODULE_TYPELESS_PACKAGE_JSON every run.",
+    "",
+    "Safe here: the only .js files in this app are public/sw.js and its",
+    "template, which browsers fetch over HTTP and which this field does",
+    "not reach, and next.config.mjs is already explicit."
+  ],
+  "type": "module",
   "name": "@jessmove/frontend",
   "version": "1.0.0",
   "private": true,

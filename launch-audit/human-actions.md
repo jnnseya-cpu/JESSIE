@@ -198,6 +198,46 @@ What I will do when the figure arrives: if production is inside budget,
 add `verify:novice` to CI with the production figure recorded beside the
 budget. If it is over, implement whichever of the three options you
 choose.
+### H-11 — Run the barcode lookup against the real database, once
+
+**Owner:** anyone with outbound internet and a checkout
+**Blocks:** nothing is wrong today. This is the one claim about the shelf
+scanner that cannot be made from the build machine.
+
+```
+pnpm build && pnpm check:barcode
+```
+
+Everything else about the scanner is proven without a network: the
+Nutri-Score algorithm has twenty-three tests, the four readings are
+checked against realistic record shapes, and the contract between the
+scanner and the basket endpoint is compared file to file. **No real Open
+Food Facts response has ever passed through this code**, because outbound
+HTTPS to `world.openfoodfacts.org` is refused here by the same network
+policy that blocks jessmove.com (`CONNECT tunnel failed, 403`).
+
+What that leaves unproven is specific and quiet. The lookup asks for
+thirteen named fields, seven of them added for the new readings. **If a
+field name is wrong the API does not complain** — it returns the product
+without that field, the reading comes back "not declared", and the
+scanner looks like it is working on a record that happens to be sparse.
+Every product, for as long as nobody checks.
+
+The script checks three long-standing products for the fields each is
+certain to carry, then runs the real response through the mapping and
+prints what it read. It exits 2 with an explanation rather than passing
+when it cannot reach the database, so running it somewhere without
+internet proves nothing and says so.
+
+It is deliberately not in CI: it depends on a free community database
+being up, and a red build caused by somebody else's outage teaches people
+to ignore red builds.
+
+**If a field is missing**, the fix is one line in
+`apps/backend/src/foodlens/barcode.service.ts` — the `fields=` list — and
+the reading it feeds will start working immediately. Nothing is stored,
+so there is no backfill.
+
 ### H-10 — Switch on the trend engine, and know what day one looks like
 
 **Owner:** whoever can set environment variables on the API project
