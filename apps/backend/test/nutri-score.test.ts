@@ -373,6 +373,82 @@ test('additives are named in English, and unrecognised codes are admitted', () =
   assert.match(reading.says, /safety ranking/);
 });
 
+test('an empty additive list over no ingredients is not declared, never none', () => {
+  /*
+   * Found on a phone, in a shop. A Nando's sauce came back with no
+   * processing group, no allergen list and no origin — three signs that
+   * nobody had entered its ingredients — and an additives axis reading
+   * "None declared". Open Food Facts derives `additives_tags` by
+   * parsing the ingredients text, so a record with no ingredients
+   * yields an empty array rather than a missing field, and reading that
+   * array on its own turns an absence of data into a statement about
+   * the product. It is the one reading somebody avoiding an additive
+   * would act on.
+   */
+  const unentered = additiveReading([], false);
+  assert.equal(unentered.source, 'not_declared');
+  assert.match(unentered.says, /no ingredients list/);
+  assert.match(unentered.says, /rather than none/);
+
+  // And the honest version of the same shape: a list that was read and
+  // was genuinely empty still counts as read.
+  const read = additiveReading([], true);
+  assert.equal(read.source, 'open_food_facts');
+  assert.match(read.says, /No additives declared/);
+
+  /*
+   * The axis count must follow, because "3 of 3 declared" over a record
+   * nobody has filled in is the same false confidence one level up.
+   */
+  const sparse = shelfReading({ novaGroup: null, additiveTags: [], ingredientsText: null });
+  assert.equal(sparse.additives.source, 'not_declared');
+  assert.equal(sparse.axesRead, 0, 'an unread additive list is not an axis that was read');
+
+  const entered = shelfReading({
+    novaGroup: null,
+    additiveTags: [],
+    ingredientsText: 'Water, tomatoes, salt.',
+  });
+  assert.equal(entered.axesRead, 1);
+
+  // Defaulting must not reintroduce it quietly: a caller that passes no
+  // ingredients argument at all is trusted, which is why the backend
+  // passes one explicitly.
+  assert.equal(additiveReading(null).source, 'not_declared');
+});
+
+test('where a product is sold is not where it came from, and does not count as read', () => {
+  /*
+   * Same error, one axis over, found on the same screenshot. `source`
+   * was set to open_food_facts whenever `countries` was filled in, so a
+   * record carrying nothing but "sold in France" counted as an origin
+   * that had been read — while the sentence directly above it said "No
+   * origin declared". The axis tally contradicted its own detail, in the
+   * direction that flatters the record.
+   */
+  const soldOnly = originReading({ countries: 'France' });
+  assert.equal(soldOnly.source, 'not_declared');
+  assert.deepEqual([...soldOnly.soldIn], ['France'], 'the sold-in country is still kept');
+  assert.match(soldOnly.says, /not the same thing/);
+
+  // A real origin still reads as one, and so does a place of manufacture.
+  assert.equal(originReading({ origins: 'Italy' }).source, 'open_food_facts');
+  assert.equal(originReading({ manufacturingPlaces: 'Wales' }).source, 'open_food_facts');
+
+  /*
+   * The record from the phone, end to end: a nutrition panel and
+   * nothing else. Nought of three, not two.
+   */
+  const bare = shelfReading({
+    novaGroup: null,
+    additiveTags: [],
+    ingredientsText: null,
+    countries: 'France',
+  });
+  assert.equal(bare.axesRead, 0);
+  assert.match(bare.says, /nutrition panel and nothing else/);
+});
+
 test('the colours needing a legal warning carry the regulator\'s own words', () => {
   const reading = additiveReading(['en:e102', 'en:e110']);
   assert.equal(reading.withRegulatoryNote.length, 2);

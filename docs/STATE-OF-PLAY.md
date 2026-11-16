@@ -1396,6 +1396,50 @@ hundred items, and re-reading each would turn one request into two
 hundred outbound calls against a free community database. Nothing is
 stored and nothing reaches another member.
 
+### An absence of data is not a finding
+
+Fixed on 16 November 2026, from a scan of a Nando's sauce on a phone.
+Two instances of one error, both in the direction that flatters the
+record.
+
+**Additives read "None declared" when nobody had entered the
+ingredients.** Open Food Facts does not transcribe an additive list from
+the packet — it *derives* `additives_tags` by parsing the ingredients
+text. A record with no ingredients therefore returns an empty array
+rather than a missing field, and reading that array on its own turns
+"nobody has typed in what is in this" into "this product declares no
+additives". It is the one line a shopper avoiding an additive would act
+on, and it would be acting on nothing. The screenshot carried three
+independent signs the ingredients were never entered — no processing
+group, no allergen list, no origin — and the additives axis alone
+presented the gap as a result. `additiveReading` now takes whether the
+record has an ingredients list, and an empty list without one reads as
+not declared.
+
+**Origin counted as read when the only geography was where it is sold.**
+`source` was set to `open_food_facts` whenever `countries` was filled
+in, so a record carrying nothing but "sold in France" counted as an
+origin axis that had been read — while the sentence directly above it
+said "No origin declared". The summary contradicted its own detail.
+Where a product is sold is still kept and still reported, because the
+sentence explaining why it is not an origin is worth saying; it is no
+longer an answer to the question the axis asks.
+
+Both fed `axesRead` and the trolley's `read` tallies. That record now
+reads **0 of 3**, with the summary "a nutrition panel and nothing else",
+where it previously claimed 2.
+
+A third, found while fixing them: the frontend's additives chip chose
+between "Not declared" and "None declared" by matching a **prefix of the
+sentence underneath it**, so the whole distinction rested on prose
+nobody would think to keep stable — and the new wording would have
+broken it silently. It reads `source` now. The basket payload sends the
+additive list only when one was declared, so `read.additivesListed`
+keeps its meaning without a contract change.
+
+Pinned by two tests, each confirmed by breaking the fix and watching
+them fail.
+
 ---
 
 ## Trend intelligence

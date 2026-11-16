@@ -95,6 +95,15 @@ interface Scanned {
       unrecognised: string[];
       withRegulatoryNote: { code: string; name: string; regulatoryNote?: string }[];
       withConcern: { code: string; name: string; concern?: Concern }[];
+      /**
+       * Whether the additive list was read at all.
+       *
+       * Not cosmetic. `not_declared` means nobody has entered what is in
+       * this product, which must never be shown as "none" — an empty
+       * list is the one reading a shopper avoiding an additive would act
+       * on, and it would be acting on nothing.
+       */
+      source: 'open_food_facts' | 'not_declared';
       says: string;
     };
     origin: { ingredientOrigins: string[]; manufacturingPlaces: string[]; soldIn: string[]; says: string };
@@ -187,12 +196,17 @@ function Readings({ scan }: { scan: Scanned }) {
           </div>
           <div className="nutri__axis">
             <span className="nutri__axislabel">Additives</span>
+            {/* Read off `source`, never off the wording. This matched a
+                prefix of the sentence underneath it, so the difference
+                between "nobody entered this" and "there are none" —
+                which is the whole point of the axis — depended on a
+                prose string nobody would think to keep stable. */}
             <span>
-              {shelf.additives.count === 0
-                ? shelf.additives.says.startsWith('No additive list')
-                  ? 'Not declared'
-                  : 'None declared'
-                : `${shelf.additives.count} listed`}
+              {shelf.additives.source === 'not_declared'
+                ? 'Not declared'
+                : shelf.additives.count === 0
+                  ? 'None declared'
+                  : `${shelf.additives.count} listed`}
             </span>
           </div>
           <div className="nutri__axis">
@@ -510,13 +524,23 @@ export function ScannerModule() {
         nutriGrade: s.nutriScore?.grade ?? null,
         nutriCategory: s.nutriCategory ?? null,
         novaGroup: s.shelf?.processing.group ?? null,
-        additives: s.shelf?.additives.known.map((a) => ({
-          code: a.code,
-          name: a.name,
-          role: a.role,
-          regulatoryNote: a.regulatoryNote,
-          concernBody: a.concern?.body,
-        })),
+        /*
+         * Sent only when this record actually declared its additives.
+         * The trolley counts "additives listed" by whether this field
+         * arrived, so an empty array from a record nobody has entered
+         * ingredients for would be counted as a list that was read and
+         * found clean — the same absence-as-finding error one level up.
+         */
+        additives:
+          s.shelf?.additives.source === 'not_declared'
+            ? undefined
+            : s.shelf?.additives.known.map((a) => ({
+                code: a.code,
+                name: a.name,
+                role: a.role,
+                regulatoryNote: a.regulatoryNote,
+                concernBody: a.concern?.body,
+              })),
         origins: s.shelf?.origin.ingredientOrigins.length
           ? s.shelf.origin.ingredientOrigins
           : s.shelf?.origin.manufacturingPlaces,

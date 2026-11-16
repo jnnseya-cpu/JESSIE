@@ -415,18 +415,50 @@ export interface AdditiveReading {
  * silently shows four of a product's nine additives has told a more
  * confident lie than one that says it does not recognise five.
  */
-export function additiveReading(tags: readonly string[] | null | undefined): AdditiveReading {
+export function additiveReading(
+  tags: readonly string[] | null | undefined,
+  /**
+   * Whether this record carries an ingredients list at all.
+   *
+   * Load-bearing, and the reason this parameter exists. Open Food Facts
+   * does not transcribe an additive list from the packet — it *derives*
+   * `additives_tags` by parsing the ingredients text. A record nobody
+   * has entered ingredients for therefore comes back with an empty
+   * array, not a missing field, and an empty array read on its own says
+   * "this product declares no additives" when the truth is "nobody has
+   * typed in what is in it".
+   *
+   * A Nando's sauce scanned in a supermarket showed exactly that: no
+   * processing group, no allergen list, no origin — three independent
+   * signs that the ingredients were never entered — and an additives
+   * axis that nonetheless read "None declared", which is the one line a
+   * shopper avoiding an additive would act on.
+   *
+   * Absent means absent. An empty derived list over no ingredients is
+   * not a finding, and it must not be counted as an axis that was read.
+   */
+  hasIngredientList = true,
+): AdditiveReading {
+  const notDeclared = (says: string): AdditiveReading => ({
+    count: 0,
+    known: [],
+    unrecognised: [],
+    withRegulatoryNote: [],
+    withConcern: [],
+    sweeteners: [],
+    says,
+    source: 'not_declared',
+  });
+
   if (!tags) {
-    return {
-      count: 0,
-      known: [],
-      unrecognised: [],
-      withRegulatoryNote: [],
-      withConcern: [],
-      sweeteners: [],
-      says: 'No additive list on this record — not declared, rather than none.',
-      source: 'not_declared',
-    };
+    return notDeclared('No additive list on this record — not declared, rather than none.');
+  }
+  if (tags.length === 0 && !hasIngredientList) {
+    return notDeclared(
+      'No additives can be read: this record has no ingredients list, and the additive ' +
+        'list is worked out from the ingredients. Not declared, rather than none — the ' +
+        'packet in your hand is the one to read.',
+    );
   }
 
   const codes = [
@@ -583,7 +615,22 @@ export function originReading(input: {
         soldIn.length > 0
           ? `No origin declared. The record lists where it is sold (${soldIn.slice(0, 3).join(', ')}), which is not the same thing and does not tell you where the food came from.`
           : 'No origin declared on this record.',
-      source: soldIn.length > 0 ? 'open_food_facts' : 'not_declared',
+      /*
+       * Not declared, even when a sold-in country is present.
+       *
+       * This said `open_food_facts` whenever `countries` was filled in,
+       * which made a record carrying nothing but "sold in France" count
+       * as an origin axis that had been read — while the sentence
+       * directly above it said "No origin declared". The axis count
+       * feeds "N of 3 beyond the nutrition panel were declared", so the
+       * summary contradicted its own detail, and it did so in the
+       * direction that flatters the record.
+       *
+       * Where a product is sold is kept and still reported, because the
+       * sentence explaining why it is not an origin is worth saying. It
+       * is simply not an answer to the question the axis asks.
+       */
+      source: 'not_declared',
     };
   }
 
@@ -613,6 +660,14 @@ export function originReading(input: {
 export interface ShelfReadingInput {
   readonly novaGroup?: number | null;
   readonly additiveTags?: readonly string[] | null;
+  /**
+   * The record's ingredients text, if it has one.
+   *
+   * Needed because the additive list is derived from it: an empty
+   * additive list over a record with no ingredients is an absence of
+   * data, not an absence of additives. See `additiveReading`.
+   */
+  readonly ingredientsText?: string | null;
   readonly origins?: unknown;
   readonly manufacturingPlaces?: unknown;
   readonly countries?: unknown;
@@ -636,7 +691,10 @@ export interface ShelfReading {
 
 export function shelfReading(input: ShelfReadingInput): ShelfReading {
   const processing = processingReading(input.novaGroup);
-  const additives = additiveReading(input.additiveTags ?? null);
+  const additives = additiveReading(
+    input.additiveTags ?? null,
+    typeof input.ingredientsText === 'string' && input.ingredientsText.trim() !== '',
+  );
   const origin = originReading(input);
 
   const axesRead = [

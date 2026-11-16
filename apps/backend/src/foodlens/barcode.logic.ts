@@ -255,6 +255,9 @@ export function toLabelFacts(code: string, product: Record<string, unknown>): La
       additiveTags: Array.isArray(product.additives_tags)
         ? (product.additives_tags as string[])
         : null,
+      // The additive list is derived from this, so an empty list without
+      // it means nobody entered the ingredients — not that there are none.
+      ingredientsText: product.ingredients_text ? String(product.ingredients_text) : null,
       origins: product.origins,
       manufacturingPlaces: product.manufacturing_places,
       countries: product.countries,
