@@ -33,8 +33,51 @@ import {
  * table a mistake can land on for a drink and the correct one otherwise.
  */
 export function categoryFor(tags: readonly string[], name: string): NutriCategory {
-  const flat = tags.map((t) => t.replace(/^[a-z]{2}:/, '').toLowerCase());
-  const hay = `${flat.join(' ')} ${name.toLowerCase()}`;
+  /*
+   * The category decides which table the product is scored on, and the
+   * tables are not small variations of each other — the drinks table
+   * starts penalising sugar at 1.5 g where the food table starts at
+   * 4.5 g, and water short-circuits the algorithm entirely. Getting
+   * this wrong does not shade a grade, it answers a different question.
+   *
+   * So it is read from the category tags, by whole segment, and the
+   * product name is consulted for one thing only (below). Everything
+   * here was a word search across the tags *and* the name joined into
+   * one string, and every one of the three bugs it caused was the same
+   * shape: a word matched inside something that meant the opposite, or
+   * meant something narrower.
+   *
+   *   `unsweetened-beverages` contains "sweetened", so bottled water
+   *   was sent to the drinks table by the tag saying it has no sugar.
+   *
+   *   `low-fat-foods` contains "fat", so a low-fat yoghurt was scored
+   *   as an added fat — by the tag saying it is low in fat.
+   *
+   *   `nut-butters` contains "butter", so a hazelnut spread was scored
+   *   against olive oil and margarine.
+   *
+   * And a name search is worse than a tag search, because "Cheese &
+   * onion crisps" is not a cheese and "Coffee cake" is not a drink.
+   * A record whose tags decide nothing is scored on the general food
+   * table, which is the honest default, and the agreement line says so
+   * when the published grade disagrees.
+   */
+  const flat = tags
+    .map((t) => t.replace(/^[a-z]{2}:/, '').toLowerCase())
+    /*
+     * `plant-based-foods-and-beverages` is one of Open Food Facts' own
+     * root tags and it sits on a very large share of plant foods —
+     * tinned pulses, pasta, spreads, cereals. It is a shelf in their
+     * taxonomy, not a claim that the product is a drink. Matching
+     * "beverages" inside it put most plant-based FOOD on the drinks
+     * table, where sugar is penalised three times earlier, so those
+     * grades were systematically too harsh. Dropped by name, because a
+     * suffix rule cannot tell it from `carbonated-beverages`.
+     */
+    .filter((t) => t !== 'plant-based-foods-and-beverages');
+
+  /** True when a whole hyphen-separated segment matches, never a substring. */
+  const tagged = (pattern: RegExp) => flat.some((t) => pattern.test(t));
 
   /*
    * Water is read from the category tags alone, never from the product
@@ -47,8 +90,8 @@ export function categoryFor(tags: readonly string[], name: string): NutriCategor
    * is the one category that short-circuits the whole algorithm, so it
    * is the one that must be hardest to enter by accident.
    */
-  const isWater = flat.some((t) =>
-    /^(waters|mineral-waters|spring-waters|natural-mineral-waters)$/.test(t),
+  const isWater = tagged(
+    /^(waters|mineral-waters|spring-waters|natural-mineral-waters|still-waters|sparkling-waters)$/,
   );
   if (isWater) {
     /*
@@ -57,14 +100,33 @@ export function categoryFor(tags: readonly string[], name: string): NutriCategor
      * through was the same flattering-grade bug in a second costume: the
      * food table does not start penalising sugar until 4.5 g, where the
      * drinks table starts at 1.5 g.
+     *
+     * The one place the product name is read, because a record tagged
+     * only `waters` whose name says flavoured is a drink. Both tests
+     * require the word to start a segment, so `unsweetened-beverages`
+     * and "Unsweetened sparkling water" no longer say the opposite of
+     * what they mean.
      */
-    return /flavoured|sweetened|juice/.test(hay) ? 'beverage' : 'water';
+    const sweetened =
+      tagged(/(^|-)(flavoured|flavored|sweetened|juices?)(-|$)/) ||
+      /(^|[\s(,-])(flavoured|flavored|sweetened|juice)/.test(name.toLowerCase());
+    return sweetened ? 'beverage' : 'water';
   }
-  if (/\bcheeses?\b/.test(hay)) return 'cheese';
-  if (/\b(olive|sunflower|rapeseed|vegetable|groundnut)-?oils?\b|\bfats?\b|\bbutters?\b|margarine/.test(hay)) {
+  // Plural, so `macaroni-and-cheese` — a ready meal — is not a cheese.
+  if (tagged(/(^|-)cheeses$/)) return 'cheese';
+  /*
+   * Added fats and oils. `butters` only as a whole tag: dairy butter is
+   * `butters`, while `nut-butters` and `peanut-butters` are spreads and
+   * belong on the food table under the 2017 algorithm.
+   */
+  if (tagged(/^(fats|oils|butters|margarines|spreadable-fats)$|-(fats|oils|margarines)$/)) {
     return 'fat';
   }
-  if (/beverage|drink|juice|soda|squash|cordial|nectar|smoothie|\bteas?\b|\bcoffees?\b/.test(hay)) {
+  if (
+    tagged(
+      /^beverages$|-beverages$|(^|-)(drinks|sodas|juices|teas|coffees|squashes|cordials|nectars|smoothies)$/,
+    )
+  ) {
     return 'beverage';
   }
   return 'food';

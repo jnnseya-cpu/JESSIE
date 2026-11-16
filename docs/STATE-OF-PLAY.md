@@ -1353,6 +1353,41 @@ database published C, because the official allowance crediting olive,
 rapeseed and walnut oils on the fruit line was described in a comment and
 implemented nowhere. The reconciliation is what surfaced it.
 
+**And four more, on 16 November 2026, found by running the lookup
+against real records rather than fixtures.** The water fix above was
+right about the name and wrong to stop there: the router was still a
+word search across the category tags *and* the name joined into one
+string, and every remaining defect was the same shape — a word matching
+inside something that meant the reverse of itself.
+
+- **`plant-based-foods-and-beverages`** is one of Open Food Facts' own
+  root tags, carried by a very large share of plant foods. "beverages"
+  inside it put tinned pulses, pasta and spreads on the **drinks**
+  table, where sugar is penalised from 1.5 g instead of 4.5 g. Those
+  grades were systematically too harsh, on a lot of products. This is
+  the big one.
+- **`unsweetened-beverages`** contains "sweetened", so bottled water was
+  sent to the drinks table by the tag saying it has no sugar.
+- **`low-fat-foods`** contains "fat", so a low-fat yoghurt was scored as
+  an added fat — by the tag saying it is low in fat.
+- **`nut-butters`** contains "butter", so a hazelnut spread was scored
+  against olive oil and margarine.
+
+The category decides which table is used, and the tables are not
+variations of each other — getting it wrong does not shade a grade, it
+answers a different question. It is now read from category tags by whole
+segment, never by substring; the product name is consulted for one thing
+only, the flavoured-or-sweetened override on a water; and the OFF root
+tag is dropped by name, because no suffix rule can tell it from
+`carbonated-beverages`. A record whose tags decide nothing is scored on
+the general food table and the agreement line says so when the published
+grade disagrees.
+
+Sixteen assertions pin it, including "Cheese & onion crisps" is not a
+cheese, "Coffee cake" is not a drink and "Macaroni cheese" is not a
+cheese — all of which the name search got wrong. Confirmed by removing
+the root-tag filter and watching the suite fail.
+
 ### Proven
 
 Twenty-three unit tests on the algorithm, aimed at the four places an

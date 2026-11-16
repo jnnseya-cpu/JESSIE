@@ -557,6 +557,65 @@ test('the scoring table is chosen before anything else can go wrong', () => {
   assert.equal(categoryFor(['en:cheeses'], 'Mature cheddar'), 'cheese');
   assert.equal(categoryFor(['en:olive-oils'], 'Extra virgin olive oil'), 'fat');
   assert.equal(categoryFor([], 'Something nobody has categorised'), 'food');
+
+  /*
+   * The tag that means the opposite.
+   *
+   * Every one of these was a live mis-route, found by running the
+   * lookup against real Open Food Facts records on 16 November 2026.
+   * The router searched for words across the tags and the product name
+   * joined into one string, so a word matched inside something that
+   * meant the reverse of itself — and the category decides which
+   * scoring table is used, which is not a shade of a grade but a
+   * different question answered.
+   */
+
+  // Open Food Facts' own root tag, carried by a very large share of
+  // plant foods. "beverages" inside it put tinned pulses, pasta and
+  // spreads on the DRINKS table, where sugar is penalised at 1.5 g
+  // instead of 4.5 g — so those grades were systematically too harsh.
+  assert.equal(
+    categoryFor(
+      ['en:plant-based-foods-and-beverages', 'en:plant-based-foods', 'en:legumes', 'en:canned-foods'],
+      'Baked Beans',
+    ),
+    'food',
+  );
+  assert.equal(
+    categoryFor(['en:plant-based-foods-and-beverages', 'en:cereals-and-potatoes', 'en:pastas'], 'Spaghetti'),
+    'food',
+  );
+
+  // The tag saying it has no sugar was sending water to the drinks table.
+  assert.equal(
+    categoryFor(['en:beverages', 'en:waters', 'en:mineral-waters', 'en:unsweetened-beverages'], 'Evian'),
+    'water',
+  );
+  assert.equal(categoryFor(['en:waters'], 'Unsweetened sparkling water'), 'water');
+
+  // The tag saying it is low in fat was scoring it as an added fat.
+  assert.equal(categoryFor(['en:dairies', 'en:yogurts', 'en:low-fat-foods'], 'Low fat yoghurt'), 'food');
+
+  // A hazelnut spread is not scored against olive oil and margarine.
+  assert.equal(
+    categoryFor(['en:spreads', 'en:nut-butters', 'en:hazelnut-spreads'], 'Nutella'),
+    'food',
+  );
+  // But dairy butter still is.
+  assert.equal(categoryFor(['en:dairies', 'en:butters'], 'Salted butter'), 'fat');
+
+  // A ready meal is not a cheese, and a cake is not a drink.
+  assert.equal(categoryFor(['en:meals', 'en:macaroni-and-cheese'], 'Macaroni cheese'), 'food');
+  assert.equal(categoryFor(['en:snacks', 'en:crisps'], 'Cheese & onion crisps'), 'food');
+  assert.equal(categoryFor(['en:desserts', 'en:cakes'], 'Coffee cake'), 'food');
+
+  // And the drinks that are drinks still are.
+  assert.equal(categoryFor(['en:beverages', 'en:carbonated-drinks'], 'Lemonade'), 'beverage');
+  assert.equal(categoryFor(['en:beverages', 'en:fruit-juices'], 'Orange juice'), 'beverage');
+  assert.equal(categoryFor(['en:beverages', 'en:iced-teas'], 'Iced tea'), 'beverage');
+  assert.equal(categoryFor(['en:waters', 'en:flavoured-waters'], 'Strawberry water'), 'beverage');
+  assert.equal(categoryFor(['en:fats', 'en:vegetable-fats'], 'Vegetable fat'), 'fat');
+  assert.equal(categoryFor(['en:dairies', 'en:blue-cheeses'], 'Stilton'), 'cheese');
 });
 
 test('olive, rapeseed and walnut oils are credited on the fruit line', () => {
