@@ -1587,6 +1587,26 @@ fixtures. Most are refusals, because on this platform the refusals are
 the feature. Seven of them fire the existing cron and check the engine
 ran anyway:
 
+> **It was not repeatable, and that cost twenty minutes on 16 November
+> 2026.** It went red with `no topic earned a brief — []`, which reads
+> like an engine regression and was not one. An earlier version of the
+> embedded section seeded its post under a different slug, and its
+> teardown was scoped to that slug — so when the slug changed, 223
+> `blog_views` rows outlived it. They were still first-party evidence
+> for `micro-movement`, flat across eight earlier weeks, and they
+> diluted the week-over-week lift the section constructs until nothing
+> cleared the threshold. Three facts isolated it: the check passed on a
+> fresh database, passed twice consecutively, and passed again after
+> smoke, money, recovery, fuzz, adversarial and db:test all ran first —
+> so it was not the other suites. The seed now clears the evidence for
+> the whole **cluster** rather than for its own slug, which also makes
+> it survive its own future renames; `blog_views` was added to the
+> teardown, whose omission is how those rows came to exist; and the
+> failure message now names the counts and says where to look. Proved
+> on the database that was failing: 223 rows cleared, 18 observations
+> filed, the cluster earned its brief, 41/0, and green on two further
+> consecutive runs.
+
 ```
 the existing cron read the evidence without being asked to
 27 observations filed from the platform's own tables

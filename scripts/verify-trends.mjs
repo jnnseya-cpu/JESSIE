@@ -425,6 +425,28 @@ console.log('\n5. Embedded: the existing autopilot tick does it, unprompted');
        ON CONFLICT (slug) DO UPDATE SET cluster_key='${cluster}', status='published',
          reviewed_by='a.physio@example.test', published_at=now()`,
     );
+    /*
+     * Clear the evidence for the whole cluster, not merely for this
+     * run's own slug.
+     *
+     * This check was red for twenty minutes on a database that had
+     * simply been used before, with the message "no topic earned a
+     * brief — []", which reads exactly like a regression in the engine
+     * and was not one. An earlier version of this section seeded its
+     * post under a different slug and its teardown was scoped to that
+     * slug, so when the slug changed, 223 view rows outlived it. They
+     * were still first-party evidence for this cluster, spread flat
+     * across eight earlier weeks, and they diluted the week-over-week
+     * lift constructed below until nothing cleared the threshold.
+     *
+     * The measurement only means anything if the evidence for this
+     * cluster is exactly what this run wrote. So the cluster is
+     * cleared, not the slug — which also makes the check survive its
+     * own future renames.
+     */
+    const clusterPosts = `SELECT slug FROM posts WHERE cluster_key = '${cluster}'`;
+    sql(`DELETE FROM blog_views WHERE slug IN (${clusterPosts})`);
+    sql(`DELETE FROM funnel_events WHERE path IN (SELECT '/blog/' || slug FROM posts WHERE cluster_key = '${cluster}')`);
     sql(`DELETE FROM funnel_events WHERE path = '/blog/${slug}'`);
     sql(`DELETE FROM trend_observations WHERE source_id LIKE 'firstparty%' AND topic_id = '${cluster}'`);
     sql(
@@ -472,7 +494,16 @@ console.log('\n5. Embedded: the existing autopilot tick does it, unprompted');
         : bad('the sweep covered too few clusters', String(evidence.topicsScored));
       evidence.briefable.includes(cluster)
         ? ok(`${cluster} earned a brief on first-party evidence alone`)
-        : bad('no topic earned a brief', JSON.stringify(evidence.briefable));
+        : bad(
+            'no topic earned a brief',
+            `briefable=${JSON.stringify(evidence.briefable)}, filed=${evidence.filed}, ` +
+              `topicsScored=${evidence.topicsScored}. The spike written above is measured ` +
+              `against "${cluster}"'s own earlier weeks, so any other first-party history ` +
+              'for that cluster flattens the lift. The bare "[]" this used to print sent ' +
+              'somebody looking for an engine regression that was not there. If this is ' +
+              'red on a database that has been used before, look for rows an earlier run ' +
+              "left behind: select slug, count(*) from blog_views group by slug.",
+          );
       /*
        * Null is the correct answer and the important one: no brief has
        * been approved for this cluster, so the agent wrote exactly as it
@@ -493,6 +524,11 @@ console.log('\n5. Embedded: the existing autopilot tick does it, unprompted');
       ? ok('the run reached no public surface')
       : bad('a run claims to have reached the public', String(first.reachedThePublic));
 
+    // Leave nothing behind for the next run to inherit. `blog_views` was
+    // missing here, which is how the rows above came to exist at all —
+    // a teardown that forgets one table is how a check poisons its own
+    // next run, and the symptom surfaces as a product regression.
+    sql(`DELETE FROM blog_views WHERE slug = '${slug}'`);
     sql(`DELETE FROM funnel_events WHERE path = '/blog/${slug}'`);
     sql(`DELETE FROM trend_observations WHERE source_id LIKE 'firstparty%' AND topic_id = '${cluster}'`);
     sql(`DELETE FROM trend_opportunity_snapshots WHERE topic_id = '${cluster}'`);
