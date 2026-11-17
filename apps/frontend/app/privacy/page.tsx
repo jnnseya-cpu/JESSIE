@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BRAND, CONSENT_SCOPES, K_ANONYMITY_THRESHOLD } from '@jessmove/shared';
+import { BRAND, CONSENT_SCOPES, ICO_REGISTRATION, K_ANONYMITY_THRESHOLD } from '@jessmove/shared';
 import { Check, Cross, Footer, Nav, PageHero, SkipLink } from '../ui';
 
 export const metadata: Metadata = {
@@ -79,7 +79,13 @@ export default function Privacy() {
               <h2>1. Who is responsible</h2>
               <p>
                 The operator of {BRAND.platform} is the data controller for your personal data,
-                and is registered with the Information Commissioner&rsquo;s Office. Where an
+                and is registered with the Information Commissioner&rsquo;s Office under
+                registration <strong>{ICO_REGISTRATION}</strong>, which you can look up on the
+                ICO&rsquo;s public register at{' '}
+                <a href="https://ico.org.uk/ESDWebPages/Search" rel="noreferrer">
+                  ico.org.uk
+                </a>{' '}
+                without taking our word for it. Where an
                 employer, school, care provider or council enrols you, that organisation is a
                 controller for the enrolment relationship and we are a controller for your
                 movement and health data. Neither can see the other&rsquo;s side of that line at

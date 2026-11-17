@@ -585,7 +585,11 @@ Only once Stripe is fully activated.
 - [ ] `/terms`, `/privacy`, `/policies` and `/status` all load
 - [ ] `/console` is `noindex` — it is by default, confirm it
 - [ ] No unit-economics page is reachable, and nothing links to one
-- [ ] ICO registration done — you are processing UK health data
+- [x] ICO registration done — you are processing UK health data. Registration
+      **C2089949**, supplied 17 November 2026 and published in the privacy notice
+      so a parent, school or care provider can check it on the ICO's public
+      register rather than take the claim on trust. The number itself lives in
+      `packages/shared/src/brand.ts` as `ICO_REGISTRATION`, not in the page.
 - [ ] The Clinical Safety Officer has signed off every health claim on the live site
 - [ ] Uptime check in Cloud Monitoring against `/api/health`
 - [ ] A budget alert on the GCP billing account, so a runaway agent loop is noticed in

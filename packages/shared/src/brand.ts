@@ -21,6 +21,23 @@ export const BRAND = {
   unitScheduled: 'mission',
 } as const;
 
+/**
+ * The operator's registration with the Information Commissioner's Office.
+ *
+ * Published rather than merely asserted. The privacy notice already said
+ * the operator "is registered with the Information Commissioner's
+ * Office", which is a claim a reader has no way to check — and this
+ * platform processes children's health data from age ten, where the
+ * person deciding whether to trust it is often a parent, a school or a
+ * care provider doing exactly that kind of checking. The number is
+ * searchable on the ICO's own public register, which turns the sentence
+ * into something verifiable by someone who does not take our word for it.
+ *
+ * Here rather than in the page because it is a fact about the operator
+ * that can change, and every such fact lives in one place.
+ */
+export const ICO_REGISTRATION = 'C2089949';
+
 /** The primary tagline. Used alone — never stacked with a supporting line. */
 export const TAGLINE = 'Small Moves. Powerful Change.';
 
