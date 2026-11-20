@@ -50,11 +50,76 @@ say "verifying $API"
 hr
 
 # ── 1 · answering, and which commit ──────────────────────────────────────
+#
+# When the host does not answer, the wall it hit is named rather than
+# guessed at. This used to say "either the domain does not resolve to
+# this project, or the deployment is not running", which is two guesses
+# and no answer — and on 17 November 2026 Stripe spent nine days
+# retrying a live-mode payment webhook against this host while the only
+# tool for diagnosing it offered that sentence. curl already knows which
+# of these it was; it was simply being thrown away with `2>/dev/null`.
+diagnose_unreachable() {
+  local url="$1" host rc http err errfile
+  host=$(printf '%s' "$url" | sed -E 's#^[a-z]+://##; s#[/:].*##')
+  errfile=$(mktemp)
+  http=$(curl -sS -o /dev/null --connect-timeout 10 --max-time 25 \
+           -w '%{http_code}' "$url" 2>"$errfile")
+  rc=$?
+  err=$(cat "$errfile"); rm -f "$errfile"
+
+  say ""
+  case "$rc" in
+    6)
+      say "CAUSE  DNS. The name '$host' does not resolve."
+      say "       Nothing is listening because nothing is being pointed at."
+      say "       Check the DNS record for the API host. The trap already"
+      say "       documented in docs/GO-LIVE.md is typing the full name into"
+      say "       the host field: '$host.${host#*.}' resolves to nothing and"
+      say "       looks perfectly fine in the control panel."
+      ;;
+    7)
+      say "CAUSE  The name resolves, but the connection was refused."
+      say "       DNS is pointing somewhere that is not serving this API —"
+      say "       a deleted service, a parking record, or the wrong project."
+      ;;
+    28)
+      say "CAUSE  Timed out. The name resolves and something accepted the"
+      say "       connection, but no response arrived within 25 seconds."
+      ;;
+    35|51|58|59|60|77|83)
+      say "CAUSE  TLS. The connection was made and the handshake failed."
+      say "       On a managed certificate this normally means the"
+      say "       certificate has not finished provisioning, or it was"
+      say "       issued for a different name than the one being called."
+      ;;
+    0)
+      say "CAUSE  The host answered HTTP $http with an empty body."
+      say "       It is reachable, so this is the application or whatever"
+      say "       sits in front of it, not DNS and not the certificate."
+      [ "$http" = "403" ] && say "       A 403 with no body is what a service that requires" \
+        && say "       authentication returns to an anonymous caller."
+      ;;
+    56|97)
+      # The one answer that is not about the host at all.
+      say "NOT A VERDICT ON THE HOST. An HTTP proxy between this machine"
+      say "       and '$host' refused to open the tunnel, so nothing here"
+      say "       ever reached it and this run proves nothing either way."
+      say "       Development containers for this project are configured"
+      say "       exactly like that and report it for every external host,"
+      say "       healthy or not. Run this from a machine with direct"
+      say "       outbound access before concluding anything."
+      ;;
+    *)
+      say "CAUSE  curl exit $rc."
+      ;;
+  esac
+  [ -n "$err" ] && say "       $err"
+}
+
 health=$(curl -sS --max-time 25 "$API/health" 2>/dev/null)
 if [ -z "$health" ]; then
   say "FAIL  no response from $API/health"
-  say "      The host is not answering at all. Either the domain does not"
-  say "      resolve to this project, or the deployment is not running."
+  diagnose_unreachable "$API/health"
   exit 1
 fi
 
@@ -191,13 +256,73 @@ print("%s|%s" % (state, note[:110]))
   esac
 done
 
+# ── 4 · the payment webhook, asked directly ──────────────────────────────
+#
+# Every check above asks a GET endpoint whether it is well. Stripe does
+# not send a GET. It POSTs, to one exact path, and on 17 November 2026 it
+# spent nine days failing against this host and threatening to disable
+# the endpoint while every check here would have reported the API fine.
+#
+# An unsigned POST is the safe way to ask. It is refused at signature
+# verification before anything is read or written — proven locally, and
+# the 400 it earns is itself the proof the route is alive and checking
+# signatures. The point is the codes it is NOT allowed to return:
+#
+#   404/405  the route is not there. The domain is serving something
+#            else — the site rather than the API, or a static build.
+#   403      something in front is refusing anonymous callers, which is
+#            what a service deployed without public access returns.
+#   2xx      worse than a failure: the endpoint accepted an UNSIGNED
+#            event. Anybody could post a payment event to it.
+hr
+say "payment webhook"
+hook_code=$(curl -sS -o /dev/null --connect-timeout 10 --max-time 20 \
+  -X POST -H 'content-type: application/json' \
+  --data '{"id":"evt_liveness_probe","type":"ping"}' \
+  -w '%{http_code}' "$API/stripe/webhook" 2>/dev/null)
+case "$hook_code" in
+  400)
+    say "ok    POST $API/stripe/webhook -> 400, refused for a missing signature"
+    say "      The route is alive and verifying. This is the healthy answer."
+    ;;
+  2??)
+    say "FAIL  POST $API/stripe/webhook -> $hook_code for an UNSIGNED event"
+    say "      It accepted a payment event nobody signed. Treat as urgent:"
+    say "      STRIPE_WEBHOOK_SECRET is probably unset on the deployment."
+    hard_fail=1
+    ;;
+  404|405)
+    say "FAIL  POST $API/stripe/webhook -> $hook_code, no such route here"
+    say "      This host is not serving the API. Stripe reports exactly"
+    say "      this as a failing endpoint and disables it after a few days."
+    hard_fail=1
+    ;;
+  403)
+    say "FAIL  POST $API/stripe/webhook -> 403, anonymous callers refused"
+    say "      Stripe is anonymous. Whatever sits in front of this service"
+    say "      must allow unauthenticated requests to reach it."
+    hard_fail=1
+    ;;
+  000|"")
+    say "FAIL  POST $API/stripe/webhook got no response at all"
+    diagnose_unreachable "$API/stripe/webhook"
+    hard_fail=1
+    ;;
+  *)
+    say "FAIL  POST $API/stripe/webhook -> $hook_code, which is neither a"
+    say "      refusal nor a route. Stripe needs 2xx for a signed event and"
+    say "      this endpoint must give 400 for an unsigned one."
+    hard_fail=1
+    ;;
+esac
+
 hr
 
 # One machine-readable line, last, so a caller does not have to parse the
 # report above. The exit code says whether something is off; this says
 # which, and that distinction is the whole difference between "go and
 # look" and "go and set VAPID_PUBLIC_KEY".
-say "RESULT commit=$commit off=${off_list:-none}"
+say "RESULT commit=$commit off=${off_list:-none} webhook=$hook_code"
 
 if [ "$hard_fail" -ne 0 ]; then
   say "NOT SERVING CORRECTLY — see the failures above"

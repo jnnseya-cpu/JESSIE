@@ -311,6 +311,60 @@ Also unverified and separate: whether jessmove.com is aliased to the
 `jessie-move` project's production deployments. `/status` answers that from
 a browser now, naming the site's build beside the API's.
 
+### 20 November 2026 — the first outside evidence, and it is bad
+
+Stripe reported a **live-mode** webhook endpoint failing:
+`https://api.jessmove.com/api/stripe/webhook`, 34 attempts since
+**17 November 19:16 UTC**, and it stops sending on **26 November**.
+
+This is the first thing that has ever told us how that host behaves from
+outside, and it says: **it does not answer.** Stripe classifies delivery
+failures, and the email says *"34 requests had other errors"* — not
+"returned a 4xx" and not "returned a 5xx". No HTTP status came back at
+all, which rules out three things that would each have produced one:
+
+- the wrong `whsec_` on the deployment (that is a 400 — proven below),
+- the domain serving the site instead of the API (404),
+- deployment protection refusing anonymous callers (401/403).
+
+What is left is DNS, TLS, or the alias: `api.jessmove.com` is not
+resolving to, or not terminating TLS for, the `jessie-backend` project.
+`06e3779` deployed on 18 October and this record said then that
+**deployed is not proven serving**. Thirty-three days later something
+outside finally asked, and the answer is no.
+
+**The endpoint's code is not the fault, and that is established rather
+than assumed.** Driven locally with real Stripe-scheme signatures, every
+case behaved: a signed `checkout.session.completed` → 201; an event type
+the platform ignores → 201 (a 4xx here is precisely what makes Stripe
+retry for days and then disable an endpoint, which is what the email
+threatens); a forged signature → 400; no signature header → 400; a replay
+timestamped an hour ago → 400; the same event delivered twice → 201 both
+times with no second money. `/api/stripe/status` also reports the URL
+Stripe is calling, character for character.
+
+`scripts/verify-live.sh` now answers the question this incident asked.
+It used to say "either the domain does not resolve to this project, or
+the deployment is not running" — two guesses — while curl already knew
+which, and it was being discarded with `2>/dev/null`. It now names the
+wall: DNS, connection refused, timeout, TLS, or an HTTP status with an
+empty body. It also POSTs the webhook route directly, because every other
+check here sends a GET and Stripe does not: an unsigned POST is refused
+at signature verification before anything is read or written, so **400 is
+the healthy answer**, while 404/405 means this host is not serving the
+API, 403 means something in front is refusing anonymous callers, and a
+2xx would mean the endpoint accepts unsigned payment events and is an
+emergency. Each branch was exercised: 400 against the real API, 404
+against the frontend host — which is the live "domain points at the site"
+case — and connection-refused against a dead port.
+
+One branch cannot be reached from here and is handled on purpose. Every
+external host in this container answers `curl (56) CONNECT tunnel failed,
+403`, healthy or not, so the script says in as many words that this is
+**not a verdict on the host** and that the run proves nothing either way.
+A tool whose whole job is diagnosing an unreachable host must not let
+the development container's own network policy read as an outage.
+
 **Root cause, from the owner's build log. One line of `vercel.json`, and
 nothing in the application.**
 

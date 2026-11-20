@@ -7,6 +7,50 @@ blocks, and what I will do the moment it is supplied.
 
 ## Blocking an unrestricted launch
 
+### H-0 — api.jessmove.com is not answering, and Stripe has a deadline
+
+**Owner:** whoever can read the Vercel dashboard and the DNS records
+**Blocks:** every live payment. **Deadline: 26 November 2026.**
+
+Stripe has been failing to deliver **live-mode** webhook events to
+`https://api.jessmove.com/api/stripe/webhook` since **17 November,
+19:16 UTC** — 34 attempts — and stops sending on **26 November**.
+
+The error class is the useful part. Stripe said *"34 requests had other
+errors"*, which is its bucket for **no HTTP response at all**, separate
+from "returned a 4xx" and "returned a 5xx". So this is not the webhook
+secret, not the route, and not deployment protection; each of those
+answers with a status code. It is DNS, TLS, or the alias.
+
+Three commands, from any machine with normal outbound access — not from
+a development container, which refuses every external host identically:
+
+```bash
+curl -sI https://api.jessmove.com/api/health        # does anything answer?
+bash scripts/verify-live.sh https://api.jessmove.com/api
+```
+
+`verify-live.sh` now names the wall rather than guessing, and POSTs the
+webhook route itself: **400 is the healthy answer** there, 404 means the
+domain is serving the site instead of the API, 403 means anonymous
+callers are being refused, and a 2xx is an emergency.
+
+Then, in the Stripe Dashboard → Developers → Webhooks → that endpoint →
+recent deliveries: the literal error text per attempt. That screen ends
+the guessing outright.
+
+**Do this first, before any of the above.** The email warns that if
+Checkout fulfilment depends on `checkout.session.completed`, payments may
+have been taken since 17 November whose events never arrived. Check
+Payments for successful charges in that window and reconcile what was
+fulfilled. Nine days of live-mode events are involved.
+
+**What is already established:** the endpoint's code is correct. Driven
+locally with real Stripe-scheme signatures — signed event → 201, an
+ignored event type → 201, forged signature → 400, no signature → 400, an
+hour-old replay → 400, the same event twice → 201 twice with no second
+money. The fault is not in the application.
+
 ### H-1 — Deploy and confirm migration 0035 applied
 
 **Owner:** whoever can read the Vercel dashboard or `/api/db/status`
